@@ -12,9 +12,7 @@ export interface ArtccSector {
   sectorId: string;
   /** Lower vertical bound in feet MSL. */
   floorFt: number;
-  /** True when floor is at surface/ground.
-   * This often influences handling for ground-bound objects and airspace edges.
-   */
+  /** True when the floor is at surface/ground level (SFC) rather than a defined MSL altitude. */
   isSurfaceFloor: boolean;
   /** Upper vertical bound in feet MSL. */
   ceilingFt: number;

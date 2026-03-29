@@ -3,8 +3,12 @@ import type { AircraftRegistration } from './index.js';
 import type { Position } from './position.js';
 
 /**
- * Products of ICAO/FAA flight category definitions used for aircraft type filtering.
- * Keys are standard squawk category descriptors from FAA/ICAO coding.
+ * ICAO/FAA aircraft category codes mapped to human-readable labels.
+ *
+ * The letter prefix indicates the broad grouping:
+ * - `A` — airborne powered aircraft
+ * - `B` — airborne unpowered or special-category aircraft
+ * - `C` — surface vehicles and fixed obstacles
  */
 export const AircraftCategory = {
   A0: 'unknown',
@@ -44,7 +48,7 @@ export interface Aircraft {
   position?: Position;
   /** Ground speed in knots. */
   groundSpeedKts?: number;
-  /** Indicated airspeed in knots */
+  /** Indicated airspeed in knots. */
   iasKts?: number;
   /** True airspeed in knots. */
   tasKts?: number;

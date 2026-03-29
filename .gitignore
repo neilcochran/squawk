@@ -1,5 +1,7 @@
 node_modules/
 dist/
+docs/
+.DS_Store
 *.tsbuildinfo
 .turbo/
 .claude/

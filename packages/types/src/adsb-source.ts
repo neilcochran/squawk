@@ -3,8 +3,11 @@
  */
 export interface LocalSource {
   type: 'local';
+  /** Hostname or IP address of the dump1090/readsb instance. */
   host: string;
+  /** HTTP port of the dump1090/readsb instance (typically 8080). */
   port: number;
+  /** URL path to the aircraft JSON endpoint (e.g. `/data/aircraft.json`). */
   path?: string;
 }
 
