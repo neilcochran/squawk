@@ -11,6 +11,7 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "dev": "turbo run dev",
+    "clean": "node scripts/clean.js",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

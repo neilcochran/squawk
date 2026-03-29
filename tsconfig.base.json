@@ -6,7 +6,7 @@
     "lib": ["ES2022"],
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
