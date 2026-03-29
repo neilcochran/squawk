@@ -13,6 +13,7 @@
     "dev": "turbo run dev",
     "docs": "typedoc",
     "clean": "node scripts/clean.js",
+    "publish": "changeset publish",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -20,6 +21,7 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.0.0",
     "prettier": "^3.0.0",
