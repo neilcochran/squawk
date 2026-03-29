@@ -30,6 +30,9 @@
     "test": "node --test dist/**/*.spec.js",
     "lint": "tsc --noEmit && eslint src"
   },
+  "dependencies": {
+    "@types/geojson": "^7946.0.16"
+  },
   "publishConfig": {
     "access": "public"
   }
