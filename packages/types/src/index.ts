@@ -1,3 +1,7 @@
+/**
+ * @packageDocumentation
+ * Re-export core shared data model types used by Squawk packages.
+ */
 export * from './aircraft.js';
 export * from './adsb-source.js';
 export * from './airspace.js';
