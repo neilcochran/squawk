@@ -1,0 +1,40 @@
+{
+  "name": "@squawk/sdr-proxy",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WebSocket bridge from a local dump1090/readsb ADS-B decoder to JSON",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neilcochran/squawk.git",
+    "directory": "packages/sdr-proxy"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "sdr-proxy": "./dist/bin/sdr-proxy.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/**/*.spec.js",
+    "lint": "tsc --noEmit && eslint src"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@squawk/types": "*"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@squawk/atc-feeds",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ATC audio feed discovery and lookup by ARTCC or airport",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neilcochran/squawk.git",
+    "directory": "packages/atc-feeds"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/**/*.spec.js",
+    "lint": "tsc --noEmit && eslint src"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@squawk/types": "*"
+  }
+}
