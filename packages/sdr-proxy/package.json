@@ -25,7 +25,9 @@
   "bin": {
     "sdr-proxy": "./dist/bin/sdr-proxy.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "node --test dist/**/*.spec.js",
