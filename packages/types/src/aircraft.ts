@@ -28,6 +28,7 @@ export type AircraftCategory = (typeof AircraftCategory)[keyof typeof AircraftCa
 export interface Aircraft {
   icaoHex: string;
   callsign?: string;
+  registration?: string;
   position?: Position;
   groundSpeedKts?: number;
   iasKts?: number;
