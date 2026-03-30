@@ -24,8 +24,9 @@ jobs:
       - run: npm run build
 
       - uses: changesets/action@v1
-        with:
-          publish: npm run publish
+        # Uncomment the lines below and add NPM_TOKEN to repo secrets when ready to publish to npm
+        # with:
+        #   publish: npm run publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
