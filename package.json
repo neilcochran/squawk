@@ -18,7 +18,7 @@
     "format:check": "prettier --check ."
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",

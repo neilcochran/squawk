@@ -12,7 +12,7 @@
     "directory": "packages/artcc-resolver"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "typedocMain": "src/index.ts",
   "main": "./dist/index.js",
