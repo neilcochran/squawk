@@ -123,4 +123,38 @@ describe('speed conversions', () => {
       assert.ok(close(metersPerSecondToMilesPerHour(milesPerHourToMetersPerSecond(60)), 60));
     });
   });
+
+  describe('reference values (immutable anchors)', () => {
+    it('1 knot equals exactly 1.852 km/h (definition)', () => {
+      assert.equal(knotsToKilometersPerHour(1), 1.852);
+    });
+    it('Mach 1.0 at sea level equals ~661.47 knots', () => {
+      // Speed of sound at ISA sea level 15°C
+      assert.ok(close(knotsToMetersPerSecond(661.4788), 340.29, 0.1));
+    });
+  });
+
+  describe('critical physics constraint: Speed unit conversions preserve ordering', () => {
+    it('larger kt value converts to larger km/h value', () => {
+      const kts1 = 100;
+      const kts2 = 200;
+      const kmh1 = knotsToKilometersPerHour(kts1);
+      const kmh2 = knotsToKilometersPerHour(kts2);
+      assert.ok(kmh2 > kmh1, `${kts2} kt should convert to faster km/h than ${kts1} kt`);
+    });
+    it('larger kt value converts to larger mph value', () => {
+      const kts1 = 100;
+      const kts2 = 200;
+      const mph1 = knotsToMilesPerHour(kts1);
+      const mph2 = knotsToMilesPerHour(kts2);
+      assert.ok(mph2 > mph1, `${kts2} kt should convert to faster mph than ${kts1} kt`);
+    });
+    it('larger kt value converts to larger m/s value', () => {
+      const kts1 = 100;
+      const kts2 = 200;
+      const ms1 = knotsToMetersPerSecond(kts1);
+      const ms2 = knotsToMetersPerSecond(kts2);
+      assert.ok(ms2 > ms1, `${kts2} kt should convert to faster m/s than ${kts1} kt`);
+    });
+  });
 });

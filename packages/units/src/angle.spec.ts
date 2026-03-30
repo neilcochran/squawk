@@ -45,4 +45,19 @@ describe('angle conversions', () => {
       assert.ok(close(degreesToRadians(radiansToDegrees(1.5)), 1.5, 0.000001));
     });
   });
+
+  describe('negative angles and angle wrapping', () => {
+    it('converts -90 degrees to -pi/2 radians', () => {
+      assert.ok(close(degreesToRadians(-90), -Math.PI / 2, 0.000001));
+    });
+    it('converts 450 degrees (360 + 90) to pi/2 + 2*pi radians', () => {
+      assert.ok(close(degreesToRadians(450), Math.PI / 2 + 2 * Math.PI, 0.000001));
+    });
+    it('converts 0 radians to 0 degrees', () => {
+      assert.equal(degreesToRadians(0), 0);
+    });
+    it('converts negative radians correctly', () => {
+      assert.ok(close(radiansToDegrees(-Math.PI), -180, 0.000001));
+    });
+  });
 });

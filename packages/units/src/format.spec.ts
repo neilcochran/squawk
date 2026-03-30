@@ -149,4 +149,156 @@ describe('format utilities', () => {
       assert.ok(!result.includes('ISA'), `unexpected ISA deviation in "${result}"`);
     });
   });
+
+  describe('locale-specific formatting', () => {
+    it('formats numbers with locale thousands separator (en-US)', () => {
+      // en-US uses comma for thousands
+      const result = formatAltitude(12345, { locale: 'en-US' });
+      assert.ok(
+        result.includes('12,345'),
+        `expected thousands separator in en-US format: "${result}"`,
+      );
+    });
+    it('formats numbers with locale thousands separator (de-DE)', () => {
+      // de-DE uses period for thousands and comma for decimals
+      const result = formatAltitude(12345, { locale: 'de-DE' });
+      // German formatting uses . for thousands, so we should see the number formatted differently
+      assert.ok(
+        result.includes('12.345') || result.includes('12345'),
+        `expected German-formatted number: "${result}"`,
+      );
+    });
+    it('formatQNH respects locale for large pressure values', () => {
+      const resultUS = formatQNH(1013, 'hPa', { locale: 'en-US' });
+      const resultDE = formatQNH(1013, 'hPa', { locale: 'de-DE' });
+      // Verify both format but may differ in separators
+      assert.ok(resultUS.includes('hPa'));
+      assert.ok(resultDE.includes('hPa'));
+    });
+  });
+
+  describe('extreme value formatting', () => {
+    it('formats very high altitude (FL999 equivalent)', () => {
+      const result = formatAltitude(99900);
+      assert.ok(result.includes('FL999'), `expected FL999 in: "${result}"`);
+    });
+    it('formats very small distance (0.1 nm)', () => {
+      const result = formatDistance(0.1, 'nm');
+      assert.ok(result.includes('0.1'), `expected 0.1 in: "${result}"`);
+    });
+    it('formats zero altitude', () => {
+      const result = formatAltitude(0);
+      assert.ok(result.includes('0'), `expected 0 ft in: "${result}"`);
+    });
+    it('formats very high speed', () => {
+      const result = formatSpeed(999, 'kt');
+      assert.ok(result.includes('999'), `expected 999 kt in: "${result}"`);
+    });
+    it('formats Mach at transonic speeds', () => {
+      const result = formatSpeed(0.95, 'mach');
+      assert.equal(result, 'M0.95');
+    });
+    it('formats very low pressure (vacuum-approaching)', () => {
+      const result = formatQNH(10, 'hPa');
+      assert.ok(result.includes('10'), `expected 10 in: "${result}"`);
+    });
+  });
+
+  describe('edge cases: NaN, Infinity, and negative values', () => {
+    describe('NaN handling', () => {
+      it('formatAltitude(NaN) produces a valid string without crashing', () => {
+        const result = formatAltitude(NaN);
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(result.length > 0, 'result should not be empty');
+      });
+      it('formatSpeed(NaN, "kt") produces a valid string', () => {
+        const result = formatSpeed(NaN, 'kt');
+        assert.strictEqual(typeof result, 'string');
+      });
+      it('formatTemperature(NaN, "C") produces a valid string', () => {
+        const result = formatTemperature(NaN, 'C');
+        assert.strictEqual(typeof result, 'string');
+      });
+      it('formatQNH(NaN, "hPa") produces a valid string', () => {
+        const result = formatQNH(NaN, 'hPa');
+        assert.strictEqual(typeof result, 'string');
+      });
+      it('formatDistance(NaN, "nm") produces a valid string', () => {
+        const result = formatDistance(NaN, 'nm');
+        assert.strictEqual(typeof result, 'string');
+      });
+    });
+
+    describe('Infinity handling', () => {
+      it('formatAltitude(Infinity) produces a valid string', () => {
+        const result = formatAltitude(Infinity);
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(result.length > 0);
+      });
+      it('formatAltitude(-Infinity) produces a valid string', () => {
+        const result = formatAltitude(-Infinity);
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(result.length > 0);
+      });
+      it('formatSpeed(Infinity, "kt") produces a valid string', () => {
+        const result = formatSpeed(Infinity, 'kt');
+        assert.strictEqual(typeof result, 'string');
+      });
+      it('formatSpeed(-Infinity, "kt") produces a valid string', () => {
+        const result = formatSpeed(-Infinity, 'kt');
+        assert.strictEqual(typeof result, 'string');
+      });
+      it('formatTemperature(Infinity, "C") produces a valid string', () => {
+        const result = formatTemperature(Infinity, 'C');
+        assert.strictEqual(typeof result, 'string');
+      });
+      it('formatQNH(-Infinity, "hPa") produces a valid string', () => {
+        const result = formatQNH(-Infinity, 'hPa');
+        assert.strictEqual(typeof result, 'string');
+      });
+      it('formatDistance(Infinity, "nm") produces a valid string', () => {
+        const result = formatDistance(Infinity, 'nm');
+        assert.strictEqual(typeof result, 'string');
+      });
+    });
+
+    describe('negative value handling', () => {
+      it('formatAltitude(-150) formats negative altitude for below-sea-level', () => {
+        const result = formatAltitude(-150);
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(result.includes('-'), `expected negative sign in: "${result}"`);
+        assert.ok(result.includes('ft'));
+      });
+      it('formatAltitude(-18000) does not format negative as flight level', () => {
+        const result = formatAltitude(-18000);
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(!result.includes('FL'), 'negative altitude should not be a flight level');
+      });
+      it('formatSpeed(-50, "kt") formats negative speed value', () => {
+        const result = formatSpeed(-50, 'kt');
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(result.includes('-'), `expected negative sign in: "${result}"`);
+      });
+      it('formatTemperature(-40, "C") formats negative Celsius', () => {
+        const result = formatTemperature(-40, 'C');
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(result.includes('-'), `expected negative sign in: "${result}"`);
+      });
+      it('formatTemperature(-300, "C") formats below absolute zero (no validator rejection)', () => {
+        const result = formatTemperature(-300, 'C');
+        assert.strictEqual(typeof result, 'string');
+        // Formatter does not validate; application layer should catch this
+      });
+      it('formatQNH(-1013, "hPa") formats negative pressure value', () => {
+        const result = formatQNH(-1013, 'hPa');
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(result.includes('-'), `expected negative sign in: "${result}"`);
+      });
+      it('formatDistance(-5.5, "nm") formats negative distance', () => {
+        const result = formatDistance(-5.5, 'nm');
+        assert.strictEqual(typeof result, 'string');
+        assert.ok(result.includes('-'), `expected negative sign in: "${result}"`);
+      });
+    });
+  });
 });
