@@ -10,4 +10,4 @@ Resolves a 24-bit ICAO hex address to its aircraft registration and info using t
 npm install @squawk/icao-registry
 ```
 
-> This package is under active development. See the [documentation](https://neilcochran.github.io/squawk/modules/_squawk_icao-registry.html) for current API status.
+> Under active development. See the [docs](https://neilcochran.github.io/squawk/modules/_squawk_icao-registry.html) for current API status.

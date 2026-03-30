@@ -1,6 +1,6 @@
 # @squawk/adsb-stream
 
-ADS-B flight data ingestion and normalization from multiple sources. Connects to a local dump1090/readsb instance or external APIs (OpenSky, ADSBexchange, ADSB.fi) and emits a unified stream of `Aircraft` updates.
+ADS-B ingestion from dump1090/readsb or external APIs (OpenSky, ADSBexchange, ADSB.fi), normalized to a unified `Aircraft` event stream.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_adsb-stream.html)**
 
@@ -10,4 +10,4 @@ ADS-B flight data ingestion and normalization from multiple sources. Connects to
 npm install @squawk/adsb-stream
 ```
 
-> This package is under active development. See the [documentation](https://neilcochran.github.io/squawk/modules/_squawk_adsb-stream.html) for current API status.
+> Under active development. See the [docs](https://neilcochran.github.io/squawk/modules/_squawk_adsb-stream.html) for current API status.

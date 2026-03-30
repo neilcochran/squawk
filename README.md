@@ -1,17 +1,17 @@
 # @squawk
 
-A collection of focused TypeScript libraries for building aviation applications — ADS-B ingestion, airspace geometry, aircraft registry lookup, and more.
+TypeScript libraries for building aviation applications - ADS-B ingestion, airspace geometry, aircraft registry lookup, and more.
 
 **[Documentation](https://neilcochran.github.io/squawk/)**
 
 ## Packages
 
-| Package                                             | Description                                                         |
-| --------------------------------------------------- | ------------------------------------------------------------------- |
-| [`@squawk/types`](packages/types)                   | Shared TypeScript type definitions used across all packages         |
-| [`@squawk/adsb-stream`](packages/adsb-stream)       | ADS-B flight data ingestion and normalization from multiple sources |
-| [`@squawk/artcc-resolver`](packages/artcc-resolver) | Resolves which ARTCC Center owns a given lat/lon/altitude position  |
-| [`@squawk/icao-registry`](packages/icao-registry)   | FAA ICAO hex address to aircraft registration and info lookup       |
+| Package                                             | Description                                                             |
+| --------------------------------------------------- | ----------------------------------------------------------------------- |
+| [`@squawk/types`](packages/types)                   | Shared type definitions used across all packages                        |
+| [`@squawk/adsb-stream`](packages/adsb-stream)       | ADS-B ingestion and normalization from dump1090/readsb or external APIs |
+| [`@squawk/artcc-resolver`](packages/artcc-resolver) | Point-in-airspace lookup returning the controlling ARTCC sector         |
+| [`@squawk/icao-registry`](packages/icao-registry)   | ICAO hex to N-number and aircraft info via FAA registry                 |
 
 ## Development
 
