@@ -1,6 +1,6 @@
 {
   "name": "@squawk/artcc-resolver",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Resolves which ARTCC Center owns a given lat/lon/altitude position",
   "author": "Neil Cochran",
