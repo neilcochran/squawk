@@ -1,11 +1,6 @@
 {
   "entryPointStrategy": "packages",
-  "entryPoints": [
-    "packages/types",
-    "packages/adsb-stream",
-    "packages/artcc-resolver",
-    "packages/icao-registry"
-  ],
+  "entryPoints": ["packages/**"],
   "out": "docs",
   "name": "@squawk"
 }
