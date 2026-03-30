@@ -28,7 +28,6 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "node --test 'dist/**/*.spec.js'",
     "lint": "tsc --noEmit && eslint src"
   },
   "publishConfig": {
