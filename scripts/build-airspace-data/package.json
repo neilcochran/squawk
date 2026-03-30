@@ -1,0 +1,26 @@
+{
+  "name": "@squawk/build-airspace-data",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Internal build script: processes FAA NASR source files into the airspace GeoJSON dataset",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@squawk/types": "*",
+    "adm-zip": "^0.5.10",
+    "fast-xml-parser": "^4.4.0",
+    "shapefile": "^0.6.6"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5"
+  }
+}
