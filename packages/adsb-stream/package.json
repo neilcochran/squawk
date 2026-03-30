@@ -1,6 +1,6 @@
 {
   "name": "@squawk/adsb-stream",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "ADS-B flight data ingestion and normalization from multiple sources",
   "author": "Neil Cochran",
