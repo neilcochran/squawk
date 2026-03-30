@@ -12,7 +12,7 @@
     "directory": "packages/icao-registry"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "typedocMain": "src/index.ts",
   "main": "./dist/index.js",
@@ -28,7 +28,6 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "node --test dist/**/*.spec.js",
     "lint": "tsc --noEmit && eslint src"
   },
   "publishConfig": {
