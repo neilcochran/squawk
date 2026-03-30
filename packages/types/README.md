@@ -1,6 +1,6 @@
 # @squawk/types
 
-Shared TypeScript type definitions used across all `@squawk` packages. Contains no logic and no runtime dependencies — types only.
+Shared TypeScript type definitions used across all `@squawk` packages. Contains no logic and no runtime dependencies - types only.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_types.html)**
 

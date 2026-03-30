@@ -1,6 +1,6 @@
 # @squawk
 
-A collection of focused TypeScript libraries for building aviation applications — ADS-B ingestion, airspace geometry, aircraft registry lookup, and more.
+A collection of focused TypeScript libraries for building aviation applications - ADS-B ingestion, airspace geometry, aircraft registry lookup, and more.
 
 **[Documentation](https://neilcochran.github.io/squawk/)**
 
