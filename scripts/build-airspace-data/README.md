@@ -35,6 +35,37 @@ directory named in the format `28DaySubscription_Effective_YYYY-MM-DD`. The cycl
 date is parsed directly from that directory name and embedded in the output file's
 metadata.
 
+### Validating output
+
+After generating a new GeoJSON file, run the validation script to check for
+structural issues, geographic anomalies, altitude bound errors, and known-value
+spot checks:
+
+```bash
+npm run validate
+```
+
+The script exits with code 0 if all checks pass (warnings are allowed) and code 1
+if any check fails. It can also accept a path to a specific file:
+
+```bash
+node validate.mjs /path/to/airspace.geojson
+```
+
+### Visual inspection
+
+To visually spot-check the output on an interactive map:
+
+```bash
+npm run viewer
+```
+
+This starts a local HTTP server and opens a Leaflet map in the browser with all
+features color-coded by airspace type. Features can be filtered by type checkbox,
+searched by name or identifier, and clicked to inspect all properties. Use this
+after every data update to verify that geometry looks correct -- especially arcs,
+circles, and simplified shapefile polygons.
+
 ---
 
 ## Input files
