@@ -14,6 +14,15 @@ export interface AirspaceQuery {
   lon: number;
   /** Altitude in feet MSL to compare against airspace vertical bounds. */
   altitudeFt: number;
+  /**
+   * Optional set of airspace types to include in the results. When provided,
+   * only features whose type is in this set are considered. Features of other
+   * types are skipped before any geometry or altitude checks, improving query
+   * performance when only specific airspace classes are needed.
+   *
+   * When omitted, all airspace types are included.
+   */
+  types?: ReadonlySet<AirspaceType>;
 }
 
 /**
@@ -31,14 +40,51 @@ export interface AirspaceResolverOptions {
 export type AirspaceResolver = (query: AirspaceQuery) => AirspaceFeature[];
 
 /**
- * An airspace feature with its pre-parsed polygon coordinates stored
- * alongside the original AirspaceFeature properties for query use.
+ * Axis-aligned bounding box for fast rejection before point-in-polygon.
+ */
+interface BoundingBox {
+  /** Minimum longitude. */
+  minLon: number;
+  /** Maximum longitude. */
+  maxLon: number;
+  /** Minimum latitude. */
+  minLat: number;
+  /** Maximum latitude. */
+  maxLat: number;
+}
+
+/**
+ * An airspace feature with its pre-parsed polygon coordinates and bounding
+ * box stored alongside the original AirspaceFeature properties for query use.
  */
 interface IndexedFeature {
   /** The parsed AirspaceFeature properties. */
   feature: AirspaceFeature;
   /** The polygon exterior ring coordinates as [lon, lat] pairs. */
   ring: number[][];
+  /** Axis-aligned bounding box computed from the ring. */
+  boundingBox: BoundingBox;
+}
+
+/**
+ * Computes an axis-aligned bounding box from a polygon exterior ring.
+ */
+function computeBoundingBox(ring: number[][]): BoundingBox {
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+
+  for (const coord of ring) {
+    const lon = coord[0]!;
+    const lat = coord[1]!;
+    if (lon < minLon) minLon = lon;
+    if (lon > maxLon) maxLon = lon;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+
+  return { minLon, maxLon, minLat, maxLat };
 }
 
 /**
@@ -69,7 +115,7 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
     scheduleDescription: (props.scheduleDescription as string) ?? null,
   };
 
-  return { feature, ring };
+  return { feature, ring, boundingBox: computeBoundingBox(ring) };
 }
 
 /**
@@ -107,10 +153,19 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
 
   return (query: AirspaceQuery): AirspaceFeature[] => {
     const results: AirspaceFeature[] = [];
+    const { lon, lat, altitudeFt, types } = query;
 
-    for (const { feature, ring } of indexed) {
-      if (!pointInPolygon(query.lon, query.lat, ring)) continue;
-      if (!altitudeMatches(query.altitudeFt, feature.floor, feature.ceiling)) continue;
+    for (const { feature, ring, boundingBox } of indexed) {
+      if (types && !types.has(feature.type)) continue;
+      if (
+        lon < boundingBox.minLon ||
+        lon > boundingBox.maxLon ||
+        lat < boundingBox.minLat ||
+        lat > boundingBox.maxLat
+      )
+        continue;
+      if (!pointInPolygon(lon, lat, ring)) continue;
+      if (!altitudeMatches(altitudeFt, feature.floor, feature.ceiling)) continue;
       results.push(feature);
     }
 

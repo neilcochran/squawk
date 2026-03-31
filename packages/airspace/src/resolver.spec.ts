@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FeatureCollection, Feature } from 'geojson';
+import type { AirspaceType } from '@squawk/types';
 import { createAirspaceResolver } from './resolver.js';
 import type { AirspaceResolver } from './resolver.js';
 
@@ -189,6 +190,52 @@ describe('createAirspaceResolver with real data', () => {
       assert.ok(feature.ceiling && typeof feature.ceiling.reference === 'string');
       assert.ok(feature.boundary && feature.boundary.type === 'Polygon');
     });
+  });
+});
+
+describe('type filter', () => {
+  it('returns only requested types when types filter is provided', () => {
+    const results = resolve_({
+      lat: 33.9425,
+      lon: -118.4081,
+      altitudeFt: 3000,
+      types: new Set<AirspaceType>(['CLASS_B']),
+    });
+    assert.ok(results.length > 0, 'expected CLASS_B results at LAX');
+    assert.ok(
+      results.every((f) => f.type === 'CLASS_B'),
+      'all results should be CLASS_B',
+    );
+  });
+
+  it('returns no results when filtering for a type not present at location', () => {
+    const results = resolve_({
+      lat: 33.9425,
+      lon: -118.4081,
+      altitudeFt: 3000,
+      types: new Set<AirspaceType>(['MOA']),
+    });
+    assert.equal(results.length, 0, 'no MOAs expected at LAX');
+  });
+
+  it('supports filtering for multiple types', () => {
+    // P-56A area has both PROHIBITED and CLASS_B
+    const results = resolve_({
+      lat: 38.891,
+      lon: -77.03,
+      altitudeFt: 1000,
+      types: new Set<AirspaceType>(['PROHIBITED', 'CLASS_B']),
+    });
+    const types = new Set(results.map((f) => f.type));
+    assert.ok(types.has('PROHIBITED'), 'expected PROHIBITED');
+    assert.ok(types.has('CLASS_B'), 'expected CLASS_B');
+  });
+
+  it('returns all types when types filter is omitted', () => {
+    // P-56A area returns multiple types without filter
+    const results = resolve_({ lat: 38.891, lon: -77.03, altitudeFt: 1000 });
+    const types = new Set(results.map((f) => f.type));
+    assert.ok(types.size >= 2, 'expected multiple types without filter');
   });
 });
 
