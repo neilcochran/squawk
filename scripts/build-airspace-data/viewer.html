@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Airspace GeoJSON Viewer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      #map {
+        width: 100%;
+        height: 100vh;
+      }
+      .controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        max-width: 280px;
+        font-size: 13px;
+      }
+      .controls h3 {
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      .controls label {
+        display: block;
+        margin: 3px 0;
+        cursor: pointer;
+      }
+      .controls input[type='checkbox'] {
+        margin-right: 6px;
+      }
+      .controls .search {
+        width: 100%;
+        padding: 4px 8px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+      }
+      .controls .stats {
+        margin-top: 8px;
+        color: #666;
+        font-size: 12px;
+      }
+      .controls .file-input {
+        margin-bottom: 8px;
+      }
+      .popup-content {
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .popup-content strong {
+        display: inline-block;
+        width: 70px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div class="controls">
+      <h3>Airspace Viewer</h3>
+      <div class="file-input">
+        <input type="file" id="fileInput" accept=".geojson,.json" />
+      </div>
+      <input type="text" class="search" id="search" placeholder="Search by name or identifier..." />
+      <div id="typeFilters"></div>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <script>
+      const TYPE_COLORS = {
+        CLASS_B: '#0066cc',
+        CLASS_C: '#9933cc',
+        CLASS_D: '#3399ff',
+        MOA: '#cc6600',
+        RESTRICTED: '#cc0000',
+        PROHIBITED: '#990000',
+        WARNING: '#cc9900',
+        ALERT: '#ff6600',
+      };
+
+      const map = L.map('map').setView([39.5, -98.35], 5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18,
+      }).addTo(map);
+
+      let allFeatures = [];
+      let geoJsonLayer = null;
+      let activeTypes = new Set(Object.keys(TYPE_COLORS));
+      let searchTerm = '';
+
+      function getStyle(feature) {
+        const type = feature.properties?.type ?? 'UNKNOWN';
+        const color = TYPE_COLORS[type] ?? '#888888';
+        return {
+          color: color,
+          weight: 1.5,
+          opacity: 0.8,
+          fillColor: color,
+          fillOpacity: 0.15,
+        };
+      }
+
+      function formatAltitude(bound) {
+        if (!bound) return '?';
+        if (bound.reference === 'SFC') return 'SFC';
+        if (bound.valueFt === 99999) return 'UNL';
+        if (bound.valueFt >= 18000 && bound.reference === 'MSL') {
+          return 'FL' + bound.valueFt / 100;
+        }
+        return bound.valueFt + ' ' + bound.reference;
+      }
+
+      function onEachFeature(feature, layer) {
+        const p = feature.properties ?? {};
+        const coords = feature.geometry?.coordinates?.[0] ?? [];
+        const html = `
+        <div class="popup-content">
+          <strong>Type:</strong> ${p.type}<br>
+          <strong>Name:</strong> ${p.name}<br>
+          <strong>ID:</strong> ${p.identifier}<br>
+          <strong>Floor:</strong> ${formatAltitude(p.floor)}<br>
+          <strong>Ceiling:</strong> ${formatAltitude(p.ceiling)}<br>
+          <strong>State:</strong> ${p.state ?? 'N/A'}<br>
+          <strong>Facility:</strong> ${p.controllingFacility ?? 'N/A'}<br>
+          <strong>Coords:</strong> ${coords.length} points<br>
+          ${p.scheduleDescription ? '<strong>Schedule:</strong> ' + p.scheduleDescription.substring(0, 200) : ''}
+        </div>
+      `;
+        layer.bindPopup(html, { maxWidth: 350 });
+      }
+
+      function featureFilter(feature) {
+        const type = feature.properties?.type ?? '';
+        if (!activeTypes.has(type)) return false;
+        if (searchTerm) {
+          const name = (feature.properties?.name ?? '').toLowerCase();
+          const id = (feature.properties?.identifier ?? '').toLowerCase();
+          if (!name.includes(searchTerm) && !id.includes(searchTerm)) return false;
+        }
+        return true;
+      }
+
+      function render() {
+        if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+        geoJsonLayer = L.geoJSON(allFeatures, {
+          style: getStyle,
+          onEachFeature: onEachFeature,
+          filter: featureFilter,
+        }).addTo(map);
+
+        const visible = allFeatures.filter(featureFilter).length;
+        document.getElementById('stats').textContent =
+          `Showing ${visible} of ${allFeatures.length} features`;
+      }
+
+      function buildTypeFilters() {
+        const container = document.getElementById('typeFilters');
+        const types = {};
+        for (const f of allFeatures) {
+          const t = f.properties?.type ?? 'UNKNOWN';
+          types[t] = (types[t] ?? 0) + 1;
+        }
+        container.innerHTML = '';
+        for (const [type, count] of Object.entries(types).sort()) {
+          const label = document.createElement('label');
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = true;
+          cb.addEventListener('change', () => {
+            if (cb.checked) activeTypes.add(type);
+            else activeTypes.delete(type);
+            render();
+          });
+          const color = TYPE_COLORS[type] ?? '#888';
+          label.appendChild(cb);
+          label.appendChild(document.createTextNode(`${type} (${count}) `));
+          const swatch = document.createElement('span');
+          swatch.style.cssText = `display:inline-block;width:10px;height:10px;background:${color};border-radius:2px;`;
+          label.appendChild(swatch);
+          container.appendChild(label);
+        }
+      }
+
+      function loadGeoJSON(data) {
+        allFeatures = data.features ?? [];
+        activeTypes = new Set(Object.keys(TYPE_COLORS));
+        buildTypeFilters();
+        render();
+        if (data.properties) {
+          const meta = data.properties;
+          console.log(
+            'NASR cycle:',
+            meta.nasrCycleDate,
+            '| Generated:',
+            meta.generatedAt,
+            '| Features:',
+            meta.featureCount,
+          );
+        }
+      }
+
+      // File input handler
+      document.getElementById('fileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            loadGeoJSON(JSON.parse(ev.target.result));
+          } catch (err) {
+            alert('Failed to parse GeoJSON: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // Search handler
+      document.getElementById('search').addEventListener('input', (e) => {
+        searchTerm = e.target.value.toLowerCase().trim();
+        render();
+      });
+
+      // Try to load default file via fetch (works when served locally)
+      fetch('../../packages/airspace-data/data/airspace.geojson')
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then(loadGeoJSON)
+        .catch(() => {
+          document.getElementById('stats').textContent =
+            'Load a GeoJSON file using the file picker above.';
+        });
+    </script>
+  </body>
+</html>

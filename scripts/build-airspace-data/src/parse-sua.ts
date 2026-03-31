@@ -5,6 +5,22 @@ import type { AirspaceFeature, AirspaceType } from '@squawk/types';
 import { normalizeSaaAltitude } from './normalize-altitude.js';
 import { discretizeArc } from './discretize-arc.js';
 
+/** Feet per nautical mile, used to convert radius values when uom is "FT". */
+const FT_PER_NM = 6076.12;
+
+/**
+ * Reads a GML radius element and returns the value in nautical miles.
+ * The radius uom is almost always "NM" but a small number of features
+ * use "FT" (feet). Returns NaN if the value cannot be parsed.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function readRadiusNm(radiusElement: any): number {
+  const raw: number = radiusElement?.['#text'] ?? radiusElement;
+  const uom: string = radiusElement?.['@_uom'] ?? 'NM';
+  if (uom === 'FT') return raw / FT_PER_NM;
+  return raw;
+}
+
 /**
  * Maps full US state and territory names (as stored in the SAA AIXM
  * administrativeArea field) to their two-letter postal codes.
@@ -414,7 +430,7 @@ function extractArcPoints(arc: any, entryName: string): [number, number][] {
 
   const centerLon = parseFloat(parts[0] ?? '');
   const centerLat = parseFloat(parts[1] ?? '');
-  const radiusNm: number = arc.radius?.['#text'] ?? arc.radius;
+  const radiusNm = readRadiusNm(arc.radius);
   const startAngle: number = arc.startAngle?.['#text'] ?? arc.startAngle;
   const endAngle: number = arc.endAngle?.['#text'] ?? arc.endAngle;
 
@@ -459,7 +475,7 @@ function extractCirclePoints(circle: any, entryName: string): [number, number][]
 
   const centerLon = parseFloat(parts[0] ?? '');
   const centerLat = parseFloat(parts[1] ?? '');
-  const radiusNm: number = circle.radius?.['#text'] ?? circle.radius;
+  const radiusNm = readRadiusNm(circle.radius);
 
   if (!isFinite(centerLon) || !isFinite(centerLat) || !isFinite(radiusNm)) {
     console.warn(`[parse-sua] Incomplete circle parameters in "${entryName}" - skipping circle.`);

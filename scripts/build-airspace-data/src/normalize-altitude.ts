@@ -67,24 +67,29 @@ export function normalizeSaaAltitude(
     return { valueFt: 0, reference: 'SFC' };
   }
 
-  // uom/reference "OTHER" appears in two geometry cases:
-  // - value "UNL": unlimited ceiling, encoded as 99999 ft MSL.
-  // - value "GND": ground level floor, treated the same as SFC.
-  // All other OTHER combinations are AirspaceUsage schedule placeholders, not geometry.
+  // "GND" means ground level. It appears with various uom/reference combinations
+  // (including uom="FT" with no reference, or uom/reference="OTHER"). Always SFC.
+  const stringVal = String(value).trim().toUpperCase();
+  if (stringVal === 'GND') {
+    return { valueFt: 0, reference: 'SFC' };
+  }
+
+  // "UNL" means unlimited ceiling. Appears as uom="OTHER" with value "UNL".
+  // Represent as 99999 ft MSL, the same sentinel used for shapefile unlimited values.
+  if (stringVal === 'UNL') {
+    return { valueFt: 99999, reference: 'MSL' };
+  }
+
+  // Remaining OTHER combinations are AirspaceUsage schedule placeholders, not geometry.
   if (uom === 'OTHER' || reference === 'OTHER') {
-    const normalized = String(value).trim().toUpperCase();
-    if (normalized === 'UNL') {
-      return { valueFt: 99999, reference: 'MSL' };
-    }
-    if (normalized === 'GND') {
-      return { valueFt: 0, reference: 'SFC' };
-    }
     return null;
   }
 
   const numVal = typeof value === 'number' ? value : parseFloat(String(value));
 
-  if (uom === 'FL' && reference === 'STD') {
+  // Flight level: always multiply by 100 to get feet MSL. The reference element
+  // is typically "STD" but is sometimes missing entirely.
+  if (uom === 'FL') {
     return { valueFt: numVal * FT_PER_FL, reference: 'MSL' };
   }
 
