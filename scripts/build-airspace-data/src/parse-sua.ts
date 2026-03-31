@@ -86,7 +86,6 @@ const STATE_NAME_TO_CODE: Record<string, string> = {
 
 /**
  * Maps SAA AIXM suaType codes to the AirspaceType values used in AirspaceFeature.
- * NSA (National Security Area) is intentionally excluded from the planned scope.
  */
 const SUA_TYPE_MAP: Record<string, AirspaceType> = {
   MOA: 'MOA',
@@ -94,6 +93,7 @@ const SUA_TYPE_MAP: Record<string, AirspaceType> = {
   WA: 'WARNING',
   AA: 'ALERT',
   PA: 'PROHIBITED',
+  NSA: 'NSA',
 };
 
 /** Name of the inner ZIP that contains the individual SUA XML files. */

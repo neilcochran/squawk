@@ -38,7 +38,7 @@ const dataPath = resolve(dirname(fileURLToPath(import.meta.url)), '../data/airsp
  * FAA NASR 28-day subscription cycle.
  *
  * Covers Class B, C, D, and Special Use Airspace (MOAs, restricted,
- * prohibited, warning, and alert areas). Class E is excluded.
+ * prohibited, warning, alert, and national security areas). Class E is excluded.
  *
  * Each feature's `geometry` is a GeoJSON Polygon representing one airspace
  * boundary. Each feature's `properties` object contains:
