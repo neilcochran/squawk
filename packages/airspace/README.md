@@ -82,8 +82,19 @@ Creates a resolver function from a GeoJSON dataset.
 
 ### `AirspaceQuery`
 
-| Property     | Type   | Description                          |
-| ------------ | ------ | ------------------------------------ |
-| `lat`        | number | Latitude in decimal degrees (WGS84)  |
-| `lon`        | number | Longitude in decimal degrees (WGS84) |
-| `altitudeFt` | number | Altitude in feet MSL                 |
+| Property     | Type                       | Description                                                        |
+| ------------ | -------------------------- | ------------------------------------------------------------------ |
+| `lat`        | number                     | Latitude in decimal degrees (WGS84)                                |
+| `lon`        | number                     | Longitude in decimal degrees (WGS84)                               |
+| `altitudeFt` | number                     | Altitude in feet MSL                                               |
+| `types`      | ReadonlySet\<AirspaceType> | Optional. When provided, only features of these types are returned |
+
+```typescript
+// Only query controlled airspace
+const controlled = resolve({
+  lat: 33.9425,
+  lon: -118.4081,
+  altitudeFt: 3000,
+  types: new Set(['CLASS_B', 'CLASS_C', 'CLASS_D']),
+});
+```
