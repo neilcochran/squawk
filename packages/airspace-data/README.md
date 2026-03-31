@@ -7,7 +7,7 @@ Pre-processed GeoJSON snapshot of US airspace geometry derived from the FAA NASR
 ## Coverage
 
 - Class B, C, and D controlled airspace
-- Special Use Airspace: MOAs, restricted, prohibited, warning, and alert areas
+- Special Use Airspace: MOAs, restricted, prohibited, warning, alert, and national security areas
 - Class E is excluded due to volume
 
 ## Usage

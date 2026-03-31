@@ -79,6 +79,7 @@ const expectedRanges = {
   WARNING: [80, 220],
   ALERT: [15, 50],
   PROHIBITED: [5, 20],
+  NSA: [5, 30],
 };
 
 for (const [type, [min, max]] of Object.entries(expectedRanges)) {

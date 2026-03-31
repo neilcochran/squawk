@@ -183,14 +183,14 @@ Each XML file is parsed with `fast-xml-parser`. The parser is configured with
 
 **SUA type mapping:**
 
-| `suaType` in XML | `AirspaceType`                                     |
-| ---------------- | -------------------------------------------------- |
-| `MOA`            | `MOA`                                              |
-| `RA`             | `RESTRICTED`                                       |
-| `WA`             | `WARNING`                                          |
-| `AA`             | `ALERT`                                            |
-| `PA`             | `PROHIBITED`                                       |
-| `NSA`            | Skipped (National Security Areas are out of scope) |
+| `suaType` in XML | `AirspaceType` |
+| ---------------- | -------------- |
+| `MOA`            | `MOA`          |
+| `RA`             | `RESTRICTED`   |
+| `WA`             | `WARNING`      |
+| `AA`             | `ALERT`        |
+| `PA`             | `PROHIBITED`   |
+| `NSA`            | `NSA`          |
 
 **Multiple geometry components:** Some records define their airspace using multiple
 `geometryComponent` elements with an `operation` field (`BASE`, `SUBTR`, etc.). The
