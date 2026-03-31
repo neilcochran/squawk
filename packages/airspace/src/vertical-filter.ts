@@ -26,8 +26,12 @@ export function altitudeMatches(
   const ceilingFt = resolveAltitude(ceiling);
 
   // If either bound is AGL (resolved as null), skip that side of the check.
-  if (floorFt !== null && altitudeFt < floorFt) return false;
-  if (ceilingFt !== null && altitudeFt > ceilingFt) return false;
+  if (floorFt !== null && altitudeFt < floorFt) {
+    return false;
+  }
+  if (ceilingFt !== null && altitudeFt > ceilingFt) {
+    return false;
+  }
 
   return true;
 }

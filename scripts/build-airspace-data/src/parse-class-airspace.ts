@@ -69,16 +69,22 @@ export async function parseClassAirspace(
 
   while (true) {
     const result = await source.read();
-    if (result.done) break;
+    if (result.done) {
+      break;
+    }
 
     const { geometry, properties } = result.value;
     const attrs = properties as unknown as ClassAirspaceRecord;
 
     const localType = attrs.LOCAL_TYPE;
-    if (!localType || !INCLUDED_LOCAL_TYPES.has(localType)) continue;
+    if (!localType || !INCLUDED_LOCAL_TYPES.has(localType)) {
+      continue;
+    }
 
     const rawBoundary = extractPolygon(geometry, attrs.NAME ?? localType);
-    if (!rawBoundary) continue;
+    if (!rawBoundary) {
+      continue;
+    }
 
     const boundary = simplifyPolygon(rawBoundary, SIMPLIFICATION_TOLERANCE);
 
