@@ -13,7 +13,7 @@ npm install @squawk/types
 ## Usage
 
 ```ts
-import type { Aircraft, Position, ArtccSector, AdsbSource } from '@squawk/types';
+import type { Aircraft, Position, AdsbSource } from '@squawk/types';
 ```
 
 All types are re-exported from the package root. See the [documentation](https://neilcochran.github.io/squawk/modules/_squawk_types.html) for the full reference.
