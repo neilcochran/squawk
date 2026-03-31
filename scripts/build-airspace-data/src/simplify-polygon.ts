@@ -29,11 +29,15 @@ export function simplifyPolygon(
  * 4 points (the minimum for a valid GeoJSON polygon ring).
  */
 function simplifyRing(ring: number[][], tolerance: number): number[][] {
-  if (ring.length < 4) return ring;
+  if (ring.length < 4) {
+    return ring;
+  }
 
   const simplified = douglasPeucker(ring, 0, ring.length - 1, tolerance);
   // 4 is the GeoJSON minimum: 3 distinct vertices + closing duplicate.
-  if (simplified.length < 4) return ring;
+  if (simplified.length < 4) {
+    return ring;
+  }
   return simplified;
 }
 
