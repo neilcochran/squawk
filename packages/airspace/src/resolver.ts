@@ -78,10 +78,18 @@ function computeBoundingBox(ring: number[][]): BoundingBox {
   for (const coord of ring) {
     const lon = coord[0]!;
     const lat = coord[1]!;
-    if (lon < minLon) minLon = lon;
-    if (lon > maxLon) maxLon = lon;
-    if (lat < minLat) minLat = lat;
-    if (lat > maxLat) maxLat = lat;
+    if (lon < minLon) {
+      minLon = lon;
+    }
+    if (lon > maxLon) {
+      maxLon = lon;
+    }
+    if (lat < minLat) {
+      minLat = lat;
+    }
+    if (lat > maxLat) {
+      maxLat = lat;
+    }
   }
 
   return { minLon, maxLon, minLat, maxLat };
@@ -94,14 +102,20 @@ function computeBoundingBox(ring: number[][]): BoundingBox {
  */
 function parseFeature(geoFeature: Feature): IndexedFeature | null {
   const geom = geoFeature.geometry;
-  if (!geom || geom.type !== 'Polygon') return null;
+  if (!geom || geom.type !== 'Polygon') {
+    return null;
+  }
 
   const polygon = geom as Polygon;
   const ring = polygon.coordinates[0];
-  if (!ring || ring.length < 4) return null;
+  if (!ring || ring.length < 4) {
+    return null;
+  }
 
   const props = geoFeature.properties;
-  if (!props) return null;
+  if (!props) {
+    return null;
+  }
 
   const feature: AirspaceFeature = {
     type: props.type as AirspaceType,
@@ -148,7 +162,9 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
 
   for (const geoFeature of options.data.features) {
     const parsed = parseFeature(geoFeature);
-    if (parsed) indexed.push(parsed);
+    if (parsed) {
+      indexed.push(parsed);
+    }
   }
 
   return (query: AirspaceQuery): AirspaceFeature[] => {
@@ -156,16 +172,23 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
     const { lon, lat, altitudeFt, types } = query;
 
     for (const { feature, ring, boundingBox } of indexed) {
-      if (types && !types.has(feature.type)) continue;
+      if (types && !types.has(feature.type)) {
+        continue;
+      }
       if (
         lon < boundingBox.minLon ||
         lon > boundingBox.maxLon ||
         lat < boundingBox.minLat ||
         lat > boundingBox.maxLat
-      )
+      ) {
         continue;
-      if (!pointInPolygon(lon, lat, ring)) continue;
-      if (!altitudeMatches(altitudeFt, feature.floor, feature.ceiling)) continue;
+      }
+      if (!pointInPolygon(lon, lat, ring)) {
+        continue;
+      }
+      if (!altitudeMatches(altitudeFt, feature.floor, feature.ceiling)) {
+        continue;
+      }
       results.push(feature);
     }
 

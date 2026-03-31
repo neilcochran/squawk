@@ -32,7 +32,9 @@ export async function loadAirportStates(
   let isHeader = true;
 
   for await (const line of rl) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      continue;
+    }
     const fields = parseCsvLine(line);
 
     if (isHeader) {
