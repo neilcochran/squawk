@@ -5,7 +5,8 @@
   "packageManager": "npm@11.12.1",
   "workspaces": [
     "packages/*",
-    "scripts/build-airspace-data"
+    "scripts/build-airspace-data",
+    "scripts/build-icao-registry-data"
   ],
   "scripts": {
     "build": "turbo run build",

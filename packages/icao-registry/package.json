@@ -28,12 +28,17 @@
   ],
   "scripts": {
     "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
     "lint": "tsc --noEmit && eslint src"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@squawk/types": "*"
+    "@squawk/types": "*",
+    "adm-zip": "^0.5.10"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5"
   }
 }
