@@ -1,6 +1,6 @@
 # @squawk/icao-registry-data
 
-Pre-processed snapshot of US aircraft registrations derived from the FAA ReleasableAircraft database. Data only - no dependency on `@squawk/icao-registry`. Versioned and released independently; its release cadence follows the FAA 28-day update cycle.
+Pre-processed snapshot of US aircraft registrations derived from the FAA ReleasableAircraft database. Data only - no dependency on `@squawk/icao-registry`. Versioned and released independently;
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_icao-registry-data.html)**
 
