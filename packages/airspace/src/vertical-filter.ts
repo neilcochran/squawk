@@ -44,5 +44,7 @@ function resolveAltitude(bound: AltitudeBound): number | null {
       return bound.valueFt;
     case 'AGL':
       return null;
+    default:
+      return null;
   }
 }
