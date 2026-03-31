@@ -50,21 +50,4 @@ export interface AircraftRegistration {
   engineType?: EngineType;
   /** Year of manufacture. */
   yearManufactured?: number;
-  /** Source of the data; distinguishes lookup path used. */
-  dataSource: 'faa' | 'bundled' | 'custom';
-  /** Dataset publication date for staleness checks. */
-  datasetDate?: string;
 }
-
-/**
- * Custom data source passed through by callers for custom registry data sets.
- */
-export interface CustomRegistrySource {
-  type: 'custom';
-  data: AircraftRegistration[];
-}
-
-/**
- * Union describing supported registry data sources.
- */
-export type RegistrySource = { type: 'faa' } | { type: 'bundled' } | CustomRegistrySource;

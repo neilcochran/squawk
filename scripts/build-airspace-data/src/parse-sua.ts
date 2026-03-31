@@ -17,7 +17,9 @@ const FT_PER_NM = 6076.12;
 function readRadiusNm(radiusElement: any): number {
   const raw: number = radiusElement?.['#text'] ?? radiusElement;
   const uom: string = radiusElement?.['@_uom'] ?? 'NM';
-  if (uom === 'FT') return raw / FT_PER_NM;
+  if (uom === 'FT') {
+    return raw / FT_PER_NM;
+  }
   return raw;
 }
 
@@ -141,7 +143,9 @@ export function parseSua(
     const xmlText = entry.getData().toString('utf-8');
     try {
       const feature = parseSuaXml(xmlText, parser, entry.entryName);
-      if (feature) features.push(feature);
+      if (feature) {
+        features.push(feature);
+      }
     } catch (err) {
       console.warn(
         `[parse-sua] Failed to parse "${entry.entryName}": ${err instanceof Error ? err.message : String(err)}`,
@@ -176,11 +180,15 @@ function parseSuaXml(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const timeSlice: any = airspaceMember.Airspace?.timeSlice?.AirspaceTimeSlice;
-  if (!timeSlice) return null;
+  if (!timeSlice) {
+    return null;
+  }
 
   // Determine SUA type from the SUA-namespace extension.
   const suaType = extractSuaType(timeSlice.extension);
-  if (!suaType) return null;
+  if (!suaType) {
+    return null;
+  }
 
   const airspaceType = SUA_TYPE_MAP[suaType];
   if (!airspaceType) {
@@ -228,7 +236,9 @@ function parseSuaXml(
   }
 
   const boundary = extractBoundary(volume.horizontalProjection?.Surface, entryName);
-  if (!boundary) return null;
+  if (!boundary) {
+    return null;
+  }
 
   const state = extractState(timeSlice.extension);
   const controllingFacility = extractControllingFacility(members);
@@ -253,10 +263,14 @@ function parseSuaXml(
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractSuaType(extensions: any[] | undefined): string | null {
-  if (!Array.isArray(extensions)) return null;
+  if (!Array.isArray(extensions)) {
+    return null;
+  }
   for (const ext of extensions) {
     const suaType = ext?.AirspaceExtension?.suaType;
-    if (typeof suaType === 'string') return suaType;
+    if (typeof suaType === 'string') {
+      return suaType;
+    }
   }
   return null;
 }
@@ -267,7 +281,9 @@ function extractSuaType(extensions: any[] | undefined): string | null {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractState(extensions: any[] | undefined): string | null {
-  if (!Array.isArray(extensions)) return null;
+  if (!Array.isArray(extensions)) {
+    return null;
+  }
   for (const ext of extensions) {
     const area = ext?.AirspaceExtension?.administrativeArea;
     if (typeof area === 'string') {
@@ -287,7 +303,9 @@ function extractControllingFacility(members: any[]): string | null {
     const unit = member?.Unit?.timeSlice?.UnitTimeSlice;
     if (unit?.type === 'ARTCC') {
       const designator = unit.designator;
-      if (typeof designator === 'string') return designator;
+      if (typeof designator === 'string') {
+        return designator;
+      }
     }
   }
   return null;
@@ -300,18 +318,26 @@ function extractControllingFacility(members: any[]): string | null {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractScheduleDescription(annotations: any[] | undefined): string | null {
-  if (!Array.isArray(annotations)) return null;
+  if (!Array.isArray(annotations)) {
+    return null;
+  }
 
   for (const annotation of annotations) {
-    if (annotation?.Note?.propertyName !== 'legalDefinitionType') continue;
+    if (annotation?.Note?.propertyName !== 'legalDefinitionType') {
+      continue;
+    }
     const noteText: unknown = annotation?.Note?.translatedNote?.LinguisticNote?.note;
-    if (typeof noteText !== 'string') continue;
+    if (typeof noteText !== 'string') {
+      continue;
+    }
 
     // Extract the "Times of use." section up to the next labelled section.
     const match = noteText.match(
       /Times of use\.\s*(.+?)(?=\s*(?:Controlling agency|Using agency|$))/is,
     );
-    if (match?.[1]) return match[1].trim();
+    if (match?.[1]) {
+      return match[1].trim();
+    }
   }
 
   return null;
@@ -345,7 +371,9 @@ function extractBoundary(surface: any, entryName: string): Polygon | null {
     for (const member of curveMembers) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const segments = (member as any)?.Curve?.segments;
-      if (!segments) continue;
+      if (!segments) {
+        continue;
+      }
 
       if (segments.LineStringSegment) {
         const points = extractLineStringPoints(segments.LineStringSegment, entryName);
@@ -390,7 +418,9 @@ function extractLineStringPoints(segment: any, entryName: string): [number, numb
   const points: [number, number][] = [];
 
   for (const pos of posArray) {
-    if (typeof pos !== 'string' && typeof pos !== 'number') continue;
+    if (typeof pos !== 'string' && typeof pos !== 'number') {
+      continue;
+    }
     const parts = String(pos).trim().split(/\s+/);
     if (parts.length < 2) {
       console.warn(`[parse-sua] Malformed pos "${pos}" in "${entryName}" - skipping point.`);
@@ -398,7 +428,9 @@ function extractLineStringPoints(segment: any, entryName: string): [number, numb
     }
     const lon = parseFloat(parts[0] ?? '');
     const lat = parseFloat(parts[1] ?? '');
-    if (!isFinite(lon) || !isFinite(lat)) continue;
+    if (!isFinite(lon) || !isFinite(lat)) {
+      continue;
+    }
     points.push([lon, lat]);
   }
 
