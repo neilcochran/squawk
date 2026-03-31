@@ -34,7 +34,8 @@ export type AirspaceType =
   | 'RESTRICTED'
   | 'PROHIBITED'
   | 'WARNING'
-  | 'ALERT';
+  | 'ALERT'
+  | 'NSA';
 
 /**
  * A single airspace designation feature derived from FAA NASR data.
