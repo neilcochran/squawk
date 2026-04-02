@@ -1,6 +1,6 @@
 # @squawk
 
-TypeScript libraries for building aviation applications - ADS-B ingestion, airspace geometry, aircraft registry lookup, and more.
+TypeScript libraries for building aviation applications - ADS-B ingestion, airspace geometry, aircraft registry lookup, airport data, and more.
 
 **[Documentation](https://neilcochran.github.io/squawk/)**
 
@@ -15,6 +15,7 @@ TypeScript libraries for building aviation applications - ADS-B ingestion, airsp
 | [`@squawk/icao-registry-data`](packages/icao-registry-data) | Pre-processed FAA ReleasableAircraft snapshot for use with `@squawk/icao-registry` |
 | [`@squawk/airspace`](packages/airspace)                     | Point-in-airspace queries for Class B/C/D and Special Use Airspace                 |
 | [`@squawk/airspace-data`](packages/airspace-data)           | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`   |
+| [`@squawk/airport-data`](packages/airport-data)             | Pre-processed FAA NASR airport snapshot with runways and frequencies               |
 
 ## Development
 
