@@ -1,23 +1,15 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { FeatureCollection, Feature } from 'geojson';
 import type { AirspaceType } from '@squawk/types';
+import { usBundledAirspace } from '@squawk/airspace-data';
 import { createAirspaceResolver } from './resolver.js';
 import type { AirspaceResolver } from './resolver.js';
-
-const dataPath = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  '../../airspace-data/data/airspace.geojson',
-);
 
 let resolve_: AirspaceResolver;
 
 before(() => {
-  const data: FeatureCollection = JSON.parse(readFileSync(dataPath, 'utf-8'));
-  resolve_ = createAirspaceResolver({ data });
+  resolve_ = createAirspaceResolver({ data: usBundledAirspace });
 });
 
 describe('createAirspaceResolver with real data', () => {
@@ -159,8 +151,7 @@ describe('createAirspaceResolver with real data', () => {
       // Alert areas are small - if this specific point misses, just verify
       // the type exists in the dataset by checking all features
       if (alerts.length === 0) {
-        const data: FeatureCollection = JSON.parse(readFileSync(dataPath, 'utf-8'));
-        const hasAlerts = data.features.some((f) => f.properties?.type === 'ALERT');
+        const hasAlerts = usBundledAirspace.features.some((f) => f.properties?.type === 'ALERT');
         assert.ok(hasAlerts, 'ALERT type should exist in the dataset');
       }
     });
