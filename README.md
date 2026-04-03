@@ -27,6 +27,18 @@ npm run lint     # lint all packages
 npm run docs     # generate documentation
 ```
 
+## Scripts
+
+The `scripts/` directory contains internal tools for building data packages and
+inspecting their output. These are not published to npm.
+
+| Script                                                         | Description                                                      |
+| -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`build-airspace-data`](scripts/build-airspace-data)           | Processes FAA NASR shapefiles and AIXM XML into airspace GeoJSON |
+| [`build-icao-registry-data`](scripts/build-icao-registry-data) | Processes FAA ReleasableAircraft into ICAO registry JSON         |
+| [`build-airport-data`](scripts/build-airport-data)             | Processes FAA NASR airport, runway, and frequency CSVs into JSON |
+| [`map-viewer`](scripts/map-viewer)                             | Interactive Leaflet map for viewing airspace and airport data    |
+
 ## License
 
 [MIT](LICENSE.md)

@@ -7,7 +7,8 @@
     "packages/*",
     "scripts/build-airspace-data",
     "scripts/build-icao-registry-data",
-    "scripts/build-airport-data"
+    "scripts/build-airport-data",
+    "scripts/map-viewer"
   ],
   "scripts": {
     "build": "turbo run build",
