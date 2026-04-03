@@ -34,6 +34,9 @@
   "dependencies": {
     "@squawk/types": "*"
   },
+  "devDependencies": {
+    "@squawk/airspace-data": "*"
+  },
   "publishConfig": {
     "access": "public"
   }
