@@ -1,15 +1,15 @@
 {
-  "name": "@squawk/airspace",
+  "name": "@squawk/airports",
   "version": "0.1.0",
   "type": "module",
-  "description": "Pure logic library for querying US airspace geometry by position and altitude",
+  "description": "Pure logic library for querying US airport data by identifier, location, or name",
   "author": "Neil Cochran",
   "license": "MIT",
   "homepage": "https://github.com/neilcochran/squawk",
   "repository": {
     "type": "git",
     "url": "https://github.com/neilcochran/squawk.git",
-    "directory": "packages/airspace"
+    "directory": "packages/airports"
   },
   "engines": {
     "node": ">=22"
@@ -35,7 +35,7 @@
     "@squawk/types": "*"
   },
   "devDependencies": {
-    "@squawk/airspace-data": "*"
+    "@squawk/airport-data": "*"
   },
   "publishConfig": {
     "access": "public"
