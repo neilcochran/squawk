@@ -10,4 +10,5 @@ export * from './airway.js';
 export * from './fix.js';
 export * from './navaid.js';
 export * from './position.js';
+export * from './procedure.js';
 export * from './registry.js';
