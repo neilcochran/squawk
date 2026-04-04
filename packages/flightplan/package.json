@@ -1,15 +1,15 @@
 {
-  "name": "@squawk/icao-registry",
-  "version": "0.1.1",
+  "name": "@squawk/flightplan",
+  "version": "0.1.0",
   "type": "module",
-  "description": "FAA ICAO hex address to aircraft registration and info lookup",
+  "description": "Flight plan route string parsing and resolution using composed navigation resolvers",
   "author": "Neil Cochran",
   "license": "MIT",
   "homepage": "https://github.com/neilcochran/squawk",
   "repository": {
     "type": "git",
     "url": "https://github.com/neilcochran/squawk.git",
-    "directory": "packages/icao-registry"
+    "directory": "packages/flightplan"
   },
   "engines": {
     "node": ">=22"
@@ -31,15 +31,23 @@
     "test": "node --test 'dist/**/*.spec.js'",
     "lint": "tsc --noEmit && eslint src"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "dependencies": {
-    "@squawk/types": "*",
-    "adm-zip": "^0.5.10"
+    "@squawk/types": "*"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.5.5",
+    "@squawk/airport-data": "*",
+    "@squawk/airports": "*",
+    "@squawk/airway-data": "*",
+    "@squawk/airways": "*",
+    "@squawk/fix-data": "*",
+    "@squawk/fixes": "*",
+    "@squawk/navaid-data": "*",
+    "@squawk/navaids": "*",
+    "@squawk/procedure-data": "*",
+    "@squawk/procedures": "*",
     "@types/node": "^25.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

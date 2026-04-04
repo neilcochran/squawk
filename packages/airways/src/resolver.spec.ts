@@ -11,35 +11,46 @@ before(async () => {
 });
 
 describe('byDesignation', () => {
-  it('returns a matching Victor airway', () => {
-    const result = resolver.byDesignation('V16');
-    assert.ok(result, 'expected a result for V16');
-    assert.equal(result.designation, 'V16');
-    assert.equal(result.type, 'VICTOR');
-    assert.ok(result.waypoints.length > 2);
+  it('returns matching Victor airways', () => {
+    const results = resolver.byDesignation('V16');
+    assert.ok(results.length > 0, 'expected results for V16');
+    for (const airway of results) {
+      assert.equal(airway.designation, 'V16');
+      assert.equal(airway.type, 'VICTOR');
+      assert.ok(airway.waypoints.length > 2);
+    }
+  });
+
+  it('returns all regional variants of a shared designation', () => {
+    const results = resolver.byDesignation('V16');
+    assert.ok(results.length >= 2, 'expected at least 2 V16 variants (US and Hawaii)');
+    const regions = new Set(results.map((a) => a.region));
+    assert.ok(regions.has('US'), 'expected US variant');
+    assert.ok(regions.has('HAWAII'), 'expected Hawaii variant');
   });
 
   it('returns a matching Jet route', () => {
-    const result = resolver.byDesignation('J60');
-    assert.ok(result, 'expected a result for J60');
-    assert.equal(result.type, 'JET');
+    const results = resolver.byDesignation('J60');
+    assert.ok(results.length > 0, 'expected results for J60');
+    assert.equal(results[0]!.type, 'JET');
   });
 
   it('is case-insensitive', () => {
-    const result = resolver.byDesignation('v16');
-    assert.ok(result, 'expected a result for v16 (lowercase)');
-    assert.equal(result.designation, 'V16');
+    const results = resolver.byDesignation('v16');
+    assert.ok(results.length > 0, 'expected results for v16 (lowercase)');
+    assert.equal(results[0]!.designation, 'V16');
   });
 
-  it('returns undefined for unknown designation', () => {
-    assert.equal(resolver.byDesignation('ZZZZZ'), undefined);
+  it('returns empty array for unknown designation', () => {
+    assert.deepEqual(resolver.byDesignation('ZZZZZ'), []);
   });
 });
 
 describe('expand', () => {
   it('returns an ordered waypoint sequence between two fixes', () => {
-    const v16 = resolver.byDesignation('V16');
-    assert.ok(v16, 'expected V16 to exist');
+    const v16s = resolver.byDesignation('V16');
+    assert.ok(v16s.length > 0, 'expected V16 to exist');
+    const v16 = v16s.find((a) => a.region === 'US')!;
     assert.ok(v16.waypoints.length >= 3, 'V16 needs at least 3 waypoints to test expand');
 
     const firstWp = v16.waypoints[0]!;
@@ -54,9 +65,29 @@ describe('expand', () => {
     }
   });
 
+  it('expands the correct regional variant based on fix names', () => {
+    const v16s = resolver.byDesignation('V16');
+    const usV16 = v16s.find((a) => a.region === 'US')!;
+    const hiV16 = v16s.find((a) => a.region === 'HAWAII')!;
+    assert.ok(usV16, 'expected US V16');
+    assert.ok(hiV16, 'expected Hawaii V16');
+
+    const usFirst = usV16.waypoints.find((wp) => wp.identifier)!;
+    const usSecond = usV16.waypoints.filter((wp) => wp.identifier)[1]!;
+    const usResult = resolver.expand('V16', usFirst.identifier!, usSecond.identifier!);
+    assert.ok(usResult, 'expected US expansion');
+    assert.equal(usResult.airway.region, 'US');
+
+    const hiFirst = hiV16.waypoints.find((wp) => wp.identifier)!;
+    const hiSecond = hiV16.waypoints.filter((wp) => wp.identifier)[1]!;
+    const hiResult = resolver.expand('V16', hiFirst.identifier!, hiSecond.identifier!);
+    assert.ok(hiResult, 'expected Hawaii expansion');
+    assert.equal(hiResult.airway.region, 'HAWAII');
+  });
+
   it('returns a subset when expanding between interior fixes', () => {
-    const v16 = resolver.byDesignation('V16');
-    assert.ok(v16);
+    const v16s = resolver.byDesignation('V16');
+    const v16 = v16s.find((a) => a.region === 'US')!;
 
     const wpWithId = v16.waypoints.filter((wp) => wp.identifier);
     if (wpWithId.length >= 3) {
@@ -73,17 +104,22 @@ describe('expand', () => {
     assert.equal(resolver.expand('ZZZZZ', 'A', 'B'), undefined);
   });
 
-  it('returns undefined when entry fix comes after exit fix', () => {
-    const v16 = resolver.byDesignation('V16');
-    assert.ok(v16);
+  it('supports reverse traversal when entry fix comes after exit fix in stored order', () => {
+    const v16s = resolver.byDesignation('V16');
+    const v16 = v16s.find((a) => a.region === 'US')!;
 
-    const firstId = v16.waypoints.find((wp) => wp.identifier);
-    const lastId = [...v16.waypoints].reverse().find((wp) => wp.identifier);
+    const wpWithId = v16.waypoints.filter((wp) => wp.identifier);
+    const firstId = wpWithId[0]!;
+    const lastId = wpWithId[wpWithId.length - 1]!;
 
-    if (firstId && lastId && firstId.identifier !== lastId.identifier) {
-      const result = resolver.expand('V16', lastId.identifier!, firstId.identifier!);
-      assert.equal(result, undefined, 'reversed order should return undefined');
-    }
+    // Expand in reverse: last -> first
+    const result = resolver.expand('V16', lastId.identifier!, firstId.identifier!);
+    assert.ok(result, 'expected reverse expansion to succeed');
+    // First waypoint in result should be the entry fix (last in stored order)
+    assert.equal(result.waypoints[0]!.identifier, lastId.identifier);
+    // Last waypoint in result should be the exit fix (first in stored order)
+    assert.equal(result.waypoints[result.waypoints.length - 1]!.identifier, firstId.identifier);
+    assert.equal(result.waypoints.length, v16.waypoints.length);
   });
 
   it('returns undefined when fix is not on the airway', () => {
@@ -91,8 +127,8 @@ describe('expand', () => {
   });
 
   it('is case-insensitive for fix identifiers', () => {
-    const v16 = resolver.byDesignation('V16');
-    assert.ok(v16);
+    const v16s = resolver.byDesignation('V16');
+    const v16 = v16s.find((a) => a.region === 'US')!;
 
     const first = v16.waypoints.find((wp) => wp.identifier);
     const last = [...v16.waypoints].reverse().find((wp) => wp.identifier);
@@ -109,8 +145,9 @@ describe('expand', () => {
 
 describe('byFix', () => {
   it('returns airways that pass through a known fix/navaid', () => {
-    const v16 = resolver.byDesignation('V16');
-    assert.ok(v16);
+    const v16s = resolver.byDesignation('V16');
+    assert.ok(v16s.length > 0);
+    const v16 = v16s[0]!;
 
     const wpWithId = v16.waypoints.find((wp) => wp.identifier);
     if (wpWithId) {
@@ -123,8 +160,9 @@ describe('byFix', () => {
   });
 
   it('is case-insensitive', () => {
-    const v16 = resolver.byDesignation('V16');
-    assert.ok(v16);
+    const v16s = resolver.byDesignation('V16');
+    assert.ok(v16s.length > 0);
+    const v16 = v16s[0]!;
 
     const wpWithId = v16.waypoints.find((wp) => wp.identifier);
     if (wpWithId) {
@@ -139,8 +177,9 @@ describe('byFix', () => {
   });
 
   it('includes the waypointIndex in results', () => {
-    const v16 = resolver.byDesignation('V16');
-    assert.ok(v16);
+    const v16s = resolver.byDesignation('V16');
+    assert.ok(v16s.length > 0);
+    const v16 = v16s[0]!;
 
     const wpWithId = v16.waypoints.find((wp) => wp.identifier);
     if (wpWithId) {
