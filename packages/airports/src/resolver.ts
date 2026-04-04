@@ -1,5 +1,7 @@
 import type { Airport, FacilityType } from '@squawk/types';
-import { haversineDistanceNm } from './geo.js';
+import { distance } from '@squawk/units';
+
+const { greatCircleDistanceNm } = distance;
 
 /**
  * Options for creating an airport resolver.
@@ -144,7 +146,7 @@ export function createAirportResolver(options: AirportResolverOptions): AirportR
           continue;
         }
 
-        const dist = haversineDistanceNm(query.lat, query.lon, airport.lat, airport.lon);
+        const dist = greatCircleDistanceNm(query.lat, query.lon, airport.lat, airport.lon);
         if (dist <= maxDist) {
           results.push({ airport, distanceNm: Math.round(dist * 100) / 100 });
         }

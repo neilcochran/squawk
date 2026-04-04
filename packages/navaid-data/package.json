@@ -1,15 +1,15 @@
 {
-  "name": "@squawk/airports",
+  "name": "@squawk/navaid-data",
   "version": "0.1.0",
   "type": "module",
-  "description": "Pure logic library for querying US airport data by identifier, location, or name",
+  "description": "Pre-processed FAA NASR navaid snapshot for use with @squawk/navaids",
   "author": "Neil Cochran",
   "license": "MIT",
   "homepage": "https://github.com/neilcochran/squawk",
   "repository": {
     "type": "git",
     "url": "https://github.com/neilcochran/squawk.git",
-    "directory": "packages/airports"
+    "directory": "packages/navaid-data"
   },
   "engines": {
     "node": ">=22"
@@ -24,7 +24,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "data"
   ],
   "scripts": {
     "build": "tsc",
@@ -32,11 +33,7 @@
     "lint": "tsc --noEmit && eslint src"
   },
   "dependencies": {
-    "@squawk/types": "*",
-    "@squawk/units": "*"
-  },
-  "devDependencies": {
-    "@squawk/airport-data": "*"
+    "@squawk/types": "*"
   },
   "publishConfig": {
     "access": "public"
