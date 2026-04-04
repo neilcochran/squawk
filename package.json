@@ -9,6 +9,8 @@
     "scripts/build-icao-registry-data",
     "scripts/build-airport-data",
     "scripts/build-navaid-data",
+    "scripts/build-fix-data",
+    "scripts/build-airway-data",
     "scripts/map-viewer"
   ],
   "scripts": {
