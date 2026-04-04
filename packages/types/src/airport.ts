@@ -81,6 +81,77 @@ export type RunwayMarkingType = 'PIR' | 'NPI' | 'BSC' | 'BUOY' | 'STOL' | 'NONE'
 export type RunwayMarkingCondition = 'GOOD' | 'FAIR' | 'POOR';
 
 /**
+ * ILS approach category indicating the minimum decision height and
+ * runway visual range for which the system is certified.
+ */
+export type IlsCategory = 'I' | 'II' | 'III' | 'IIIA' | 'IIIB' | 'IIIC';
+
+/**
+ * Maps FAA NASR ILS CATEGORY values to IlsCategory.
+ */
+export const ILS_CATEGORY_MAP: Record<string, IlsCategory> = {
+  I: 'I',
+  II: 'II',
+  III: 'III',
+  IIIA: 'IIIA',
+  IIIB: 'IIIB',
+  IIIC: 'IIIC',
+};
+
+/**
+ * ILS system type describing the combination of components installed.
+ */
+export type IlsSystemType =
+  | 'ILS'
+  | 'ILS/DME'
+  | 'LOCALIZER'
+  | 'LOC/DME'
+  | 'LOC/GS'
+  | 'LDA'
+  | 'LDA/DME'
+  | 'SDF'
+  | 'SDF/DME';
+
+/**
+ * Maps FAA NASR SYSTEM_TYPE_CODE values to IlsSystemType.
+ */
+export const ILS_SYSTEM_TYPE_MAP: Record<string, IlsSystemType> = {
+  LS: 'ILS',
+  LD: 'ILS/DME',
+  LC: 'LOCALIZER',
+  LE: 'LOC/DME',
+  LG: 'LOC/GS',
+  LA: 'LDA',
+  DD: 'LDA/DME',
+  SF: 'SDF',
+  SD: 'SDF/DME',
+};
+
+/**
+ * An Instrument Landing System installation at a runway end.
+ * Combines localizer, glide slope, and DME component data into
+ * a single structured object.
+ */
+export interface IlsSystem {
+  /** System type describing the installed component combination. */
+  systemType: IlsSystemType;
+  /** ILS facility identifier (e.g. "I-ANB", "I-JFK"). */
+  identifier?: string;
+  /** ILS approach category. */
+  category?: IlsCategory;
+  /** Localizer frequency in MHz (e.g. 110.9). */
+  localizerFrequencyMhz?: number;
+  /** Localizer front course bearing in magnetic degrees. */
+  localizerCourseDeg?: number;
+  /** Glide slope angle in degrees (typically around 3.0). */
+  glideSlopeAngleDeg?: number;
+  /** Glide slope class/type code (e.g. "GS" for standard glide slope, "GD" for glide slope with DME). */
+  glideSlopeType?: string;
+  /** DME channel designation (e.g. "032X", "038X"). */
+  dmeChannel?: string;
+}
+
+/**
  * One end of a runway, identified by its designator (e.g. "04L", "22R").
  * Contains approach, lighting, and declared distance information for this end.
  */
@@ -89,8 +160,8 @@ export interface RunwayEnd {
   id: string;
   /** True heading in degrees. */
   trueHeading?: number;
-  /** Type of ILS or instrument approach installed (e.g. "ILS/DME", "ILS", "RNAV"). */
-  ilsType?: string;
+  /** Instrument Landing System installed at this runway end. */
+  ils?: IlsSystem;
   /** Whether right-hand traffic pattern is in effect for this end. */
   rightTraffic?: boolean;
   /** Type of runway markings. */

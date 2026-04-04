@@ -4,6 +4,9 @@ import type {
   FacilityStatus,
   FacilityType,
   FacilityUseType,
+  IlsCategory,
+  IlsSystem,
+  IlsSystemType,
   OwnershipType,
   Runway,
   RunwayEnd,
@@ -20,6 +23,28 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
+ * Compact representation of an IlsSystem in the bundled JSON format.
+ */
+interface CompactIls {
+  /** System type. */
+  st: IlsSystemType;
+  /** Identifier. */
+  id?: string;
+  /** Category. */
+  cat?: IlsCategory;
+  /** Localizer frequency MHz. */
+  lf?: number;
+  /** Localizer course degrees. */
+  lc?: number;
+  /** Glide slope angle degrees. */
+  ga?: number;
+  /** Glide slope type. */
+  gt?: string;
+  /** DME channel. */
+  dc?: string;
+}
+
+/**
  * Compact representation of a RunwayEnd in the bundled JSON format.
  */
 interface CompactRunwayEnd {
@@ -27,8 +52,8 @@ interface CompactRunwayEnd {
   id: string;
   /** True heading. */
   hdg?: number;
-  /** ILS type. */
-  ils?: string;
+  /** ILS system. */
+  ils?: CompactIls;
   /** Right-hand traffic. */
   rht?: true;
   /** Marking type. */
@@ -237,6 +262,35 @@ export interface AirportDataset {
 }
 
 /**
+ * Expands a compact ILS into a full IlsSystem.
+ */
+function expandIls(c: CompactIls): IlsSystem {
+  const ils: IlsSystem = { systemType: c.st };
+  if (c.id !== undefined) {
+    ils.identifier = c.id;
+  }
+  if (c.cat !== undefined) {
+    ils.category = c.cat;
+  }
+  if (c.lf !== undefined) {
+    ils.localizerFrequencyMhz = c.lf;
+  }
+  if (c.lc !== undefined) {
+    ils.localizerCourseDeg = c.lc;
+  }
+  if (c.ga !== undefined) {
+    ils.glideSlopeAngleDeg = c.ga;
+  }
+  if (c.gt !== undefined) {
+    ils.glideSlopeType = c.gt;
+  }
+  if (c.dc !== undefined) {
+    ils.dmeChannel = c.dc;
+  }
+  return ils;
+}
+
+/**
  * Expands a compact runway end into a full RunwayEnd.
  */
 function expandRunwayEnd(c: CompactRunwayEnd): RunwayEnd {
@@ -245,7 +299,7 @@ function expandRunwayEnd(c: CompactRunwayEnd): RunwayEnd {
     end.trueHeading = c.hdg;
   }
   if (c.ils !== undefined) {
-    end.ilsType = c.ils;
+    end.ils = expandIls(c.ils);
   }
   if (c.rht) {
     end.rightTraffic = true;
