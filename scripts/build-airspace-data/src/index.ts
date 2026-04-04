@@ -9,7 +9,7 @@ import { parseSua } from './parse-sua.js';
 import { writeOutput } from './write-output.js';
 
 /** Relative path from the script root to the default output file. */
-const DEFAULT_OUTPUT_PATH = '../../../packages/airspace-data/data/airspace.geojson';
+const DEFAULT_OUTPUT_PATH = '../../../packages/airspace-data/data/airspace.geojson.gz';
 
 /** Pattern used to extract the NASR cycle date from a subscription directory name. */
 const CYCLE_DATE_PATTERN = /28DaySubscription_Effective_(\d{4}-\d{2}-\d{2})/;

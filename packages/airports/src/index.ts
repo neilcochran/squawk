@@ -6,4 +6,3 @@ export type {
   NearestAirportResult,
   AirportSearchQuery,
 } from './resolver.js';
-export { haversineDistanceNm } from './geo.js';
