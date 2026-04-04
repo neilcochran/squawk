@@ -108,8 +108,3 @@ Returns `Airport[]`.
 ```typescript
 const results = resolver.search({ text: 'san francisco', limit: 10 });
 ```
-
-### `haversineDistanceNm(lat1, lon1, lat2, lon2)`
-
-Utility function exported for consumers who need great-circle distance calculations.
-Returns the distance in nautical miles between two geographic positions.

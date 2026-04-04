@@ -1,5 +1,7 @@
 import type { Airport, FacilityType } from '@squawk/types';
-import { haversineDistanceNm } from './geo.js';
+import { distance } from '@squawk/units';
+
+const { haversineDistanceNm } = distance;
 
 /**
  * Options for creating an airport resolver.
