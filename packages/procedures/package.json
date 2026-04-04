@@ -35,7 +35,8 @@
     "@squawk/types": "*"
   },
   "devDependencies": {
-    "@squawk/procedure-data": "*"
+    "@squawk/procedure-data": "*",
+    "@types/node": "^25.5.0"
   },
   "publishConfig": {
     "access": "public"
