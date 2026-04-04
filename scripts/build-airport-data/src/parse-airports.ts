@@ -4,6 +4,8 @@ import type {
   FacilityStatus,
   FacilityType,
   FacilityUseType,
+  IlsSystem,
+  IlsSystemType,
   OwnershipType,
   Runway,
   RunwayEnd,
@@ -14,6 +16,7 @@ import type {
   SurfaceTreatment,
   VgsiType,
 } from '@squawk/types';
+import { ILS_CATEGORY_MAP, ILS_SYSTEM_TYPE_MAP } from '@squawk/types';
 import type { CsvRecord } from './parse-csv.js';
 
 /** Maps FAA SITE_TYPE_CODE values to FacilityType. */
@@ -33,6 +36,7 @@ const ownershipMap: Record<string, OwnershipType> = {
   MA: 'PRIVATE',
   MN: 'PRIVATE',
   MR: 'PRIVATE',
+  CG: 'PRIVATE',
 };
 
 /** Maps FAA facility use codes to FacilityUseType. */
@@ -108,6 +112,12 @@ const markingCondMap: Record<string, RunwayMarkingCondition> = {
   POOR: 'POOR',
 };
 
+/** Maps FAA glide slope class/type codes to descriptive names. */
+const glideSlopeTypeMap: Record<string, string> = {
+  GS: 'GLIDE SLOPE',
+  GD: 'GLIDE SLOPE/DME',
+};
+
 /**
  * Safely parses a string to a float, returning undefined if empty or NaN.
  */
@@ -131,12 +141,92 @@ function parseOptInt(val: string | undefined): number | undefined {
 }
 
 /**
+ * Builds an IlsSystem from ILS CSV records for a specific runway end.
+ * Merges base, glide slope, and DME component data into a single object.
+ *
+ * @param baseRec - Parsed ILS_BASE.csv record for this runway end.
+ * @param gsRec - Parsed ILS_GS.csv record for this runway end, if present.
+ * @param dmeRec - Parsed ILS_DME.csv record for this runway end, if present.
+ * @returns An IlsSystem object, or undefined if the system type is unrecognized or shutdown.
+ */
+function buildIlsSystem(
+  baseRec: CsvRecord,
+  gsRec: CsvRecord | undefined,
+  dmeRec: CsvRecord | undefined,
+): IlsSystem | undefined {
+  const typeCode = baseRec.SYSTEM_TYPE_CODE;
+  if (!typeCode) {
+    return undefined;
+  }
+  const systemType: IlsSystemType | undefined = ILS_SYSTEM_TYPE_MAP[typeCode];
+  if (!systemType) {
+    return undefined;
+  }
+
+  // Exclude shutdown systems.
+  const status = baseRec.COMPONENT_STATUS;
+  if (status === 'SHUTDOWN') {
+    return undefined;
+  }
+
+  const ils: IlsSystem = { systemType };
+
+  if (baseRec.ILS_LOC_ID) {
+    ils.identifier = 'I-' + baseRec.ILS_LOC_ID;
+  }
+
+  const catCode = baseRec.CATEGORY;
+  if (catCode) {
+    const category = ILS_CATEGORY_MAP[catCode];
+    if (category) {
+      ils.category = category;
+    }
+  }
+
+  const locFreq = parseOptFloat(baseRec.LOC_FREQ);
+  if (locFreq !== undefined) {
+    ils.localizerFrequencyMhz = locFreq;
+  }
+
+  const course = parseOptFloat(baseRec.APCH_BEAR);
+  if (course !== undefined) {
+    ils.localizerCourseDeg = course;
+  }
+
+  // Glide slope data from ILS_GS record.
+  if (gsRec) {
+    const gsAngle = parseOptFloat(gsRec.G_S_ANGLE);
+    if (gsAngle !== undefined) {
+      ils.glideSlopeAngleDeg = gsAngle;
+    }
+
+    const gsTypeCode = gsRec.G_S_TYPE_CODE;
+    if (gsTypeCode) {
+      const gsType = glideSlopeTypeMap[gsTypeCode];
+      if (gsType) {
+        ils.glideSlopeType = gsType;
+      }
+    }
+  }
+
+  // DME data from ILS_DME record.
+  if (dmeRec) {
+    if (dmeRec.CHANNEL) {
+      ils.dmeChannel = dmeRec.CHANNEL;
+    }
+  }
+
+  return ils;
+}
+
+/**
  * Builds a RunwayEnd from a CSV record.
  *
  * @param rec - Parsed APT_RWY_END.csv record.
+ * @param ils - Pre-built IlsSystem for this runway end, if one exists.
  * @returns A RunwayEnd object.
  */
-function buildRunwayEnd(rec: CsvRecord): RunwayEnd {
+function buildRunwayEnd(rec: CsvRecord, ils: IlsSystem | undefined): RunwayEnd {
   const end: RunwayEnd = {
     id: rec.RWY_END_ID ?? '',
   };
@@ -145,8 +235,8 @@ function buildRunwayEnd(rec: CsvRecord): RunwayEnd {
   if (hdg !== undefined) {
     end.trueHeading = hdg;
   }
-  if (rec.ILS_TYPE) {
-    end.ilsType = rec.ILS_TYPE;
+  if (ils) {
+    end.ils = ils;
   }
   if (rec.RIGHT_HAND_TRAFFIC_PAT_FLAG === 'Y') {
     end.rightTraffic = true;
@@ -258,12 +348,20 @@ function buildRunwayEnd(rec: CsvRecord): RunwayEnd {
  *
  * @param rec - Parsed APT_RWY.csv record.
  * @param endRecords - Associated APT_RWY_END.csv records for this runway.
+ * @param ilsByRwyEnd - Map from runway end identifier to pre-built IlsSystem.
  * @returns A Runway object.
  */
-function buildRunway(rec: CsvRecord, endRecords: CsvRecord[]): Runway {
+function buildRunway(
+  rec: CsvRecord,
+  endRecords: CsvRecord[],
+  ilsByRwyEnd: Map<string, IlsSystem>,
+): Runway {
   const runway: Runway = {
     id: rec.RWY_ID ?? '',
-    ends: endRecords.map(buildRunwayEnd),
+    ends: endRecords.map((endRec) => {
+      const rwyEndId = endRec.RWY_END_ID ?? '';
+      return buildRunwayEnd(endRec, ilsByRwyEnd.get(rwyEndId));
+    }),
   };
 
   const len = parseOptInt(rec.RWY_LEN);
@@ -358,6 +456,9 @@ function buildFrequency(rec: CsvRecord): AirportFrequency | undefined {
  * @param rwyRecords - Associated APT_RWY.csv records.
  * @param rwyEndRecords - Associated APT_RWY_END.csv records.
  * @param freqRecords - Associated FRQ.csv records.
+ * @param ilsBaseRecords - Associated ILS_BASE.csv records for this airport.
+ * @param ilsGsRecords - Associated ILS_GS.csv records for this airport.
+ * @param ilsDmeRecords - Associated ILS_DME.csv records for this airport.
  * @returns An Airport object, or undefined if required fields are missing.
  */
 export function buildAirport(
@@ -365,6 +466,9 @@ export function buildAirport(
   rwyRecords: CsvRecord[],
   rwyEndRecords: CsvRecord[],
   freqRecords: CsvRecord[],
+  ilsBaseRecords: CsvRecord[],
+  ilsGsRecords: CsvRecord[],
+  ilsDmeRecords: CsvRecord[],
 ): Airport | undefined {
   const faaId = base.ARPT_ID;
   const name = base.ARPT_NAME;
@@ -490,7 +594,40 @@ export function buildAirport(
     airport.county = base.COUNTY_NAME;
   }
 
-  // Build runways with their ends
+  // Build ILS systems indexed by runway end identifier.
+  const ilsByRwyEnd = new Map<string, IlsSystem>();
+
+  // Index GS and DME records by RWY_END_ID for merging into ILS base records.
+  const gsByRwyEnd = new Map<string, CsvRecord>();
+  for (const gsRec of ilsGsRecords) {
+    const rwyEndId = gsRec.RWY_END_ID;
+    if (rwyEndId) {
+      gsByRwyEnd.set(rwyEndId, gsRec);
+    }
+  }
+
+  const dmeByRwyEnd = new Map<string, CsvRecord>();
+  for (const dmeRec of ilsDmeRecords) {
+    const rwyEndId = dmeRec.RWY_END_ID;
+    if (rwyEndId) {
+      dmeByRwyEnd.set(rwyEndId, dmeRec);
+    }
+  }
+
+  for (const ilsBaseRec of ilsBaseRecords) {
+    const rwyEndId = ilsBaseRec.RWY_END_ID;
+    if (!rwyEndId) {
+      continue;
+    }
+    const gsRec = gsByRwyEnd.get(rwyEndId);
+    const dmeRec = dmeByRwyEnd.get(rwyEndId);
+    const ils = buildIlsSystem(ilsBaseRec, gsRec, dmeRec);
+    if (ils) {
+      ilsByRwyEnd.set(rwyEndId, ils);
+    }
+  }
+
+  // Build runways with their ends.
   const endsBySiteRwy = new Map<string, CsvRecord[]>();
   for (const endRec of rwyEndRecords) {
     const endSiteNo = endRec.SITE_NO;
@@ -516,7 +653,7 @@ export function buildAirport(
     }
     const key = `${siteNo}|${rwyId}`;
     const ends = endsBySiteRwy.get(key) ?? [];
-    airport.runways.push(buildRunway(rwyRec, ends));
+    airport.runways.push(buildRunway(rwyRec, ends, ilsByRwyEnd));
   }
 
   // Build frequencies

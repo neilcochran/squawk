@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import type { IlsSystem } from '@squawk/types';
 import { usBundledAirports } from './index.js';
 
 describe('usBundledAirports', () => {
@@ -104,5 +105,104 @@ describe('usBundledAirports', () => {
     assert.equal(typeof freq.frequencyMhz, 'number');
     assert.equal(typeof freq.use, 'string');
     assert.ok(freq.frequencyMhz > 0);
+  });
+
+  it('has a reasonable number of runway ends with ILS data', () => {
+    let ilsCount = 0;
+    for (const apt of usBundledAirports.records) {
+      for (const rwy of apt.runways) {
+        for (const end of rwy.ends) {
+          if (end.ils) {
+            ilsCount++;
+          }
+        }
+      }
+    }
+    assert.ok(ilsCount > 1000, `expected >1000 ILS systems, got ${ilsCount}`);
+  });
+
+  it('has ILS data with expected structure on JFK runway ends', () => {
+    const jfk = usBundledAirports.records.find((r) => r.icao === 'KJFK');
+    assert.ok(jfk !== undefined);
+
+    const ilsEnds: { id: string; ils: IlsSystem }[] = [];
+    for (const rwy of jfk.runways) {
+      for (const end of rwy.ends) {
+        if (end.ils) {
+          ilsEnds.push({ id: end.id, ils: end.ils });
+        }
+      }
+    }
+
+    assert.ok(
+      ilsEnds.length >= 4,
+      `expected JFK to have >=4 ILS-equipped runway ends, got ${ilsEnds.length}`,
+    );
+
+    for (const { ils } of ilsEnds) {
+      assert.equal(typeof ils.systemType, 'string');
+      assert.ok(ils.systemType.length > 0);
+      assert.ok(ils.localizerFrequencyMhz !== undefined);
+      assert.ok(
+        ils.localizerFrequencyMhz >= 108 && ils.localizerFrequencyMhz <= 112,
+        `localizer frequency ${ils.localizerFrequencyMhz} outside 108-112 MHz range`,
+      );
+      assert.ok(ils.localizerCourseDeg !== undefined);
+      assert.ok(ils.localizerCourseDeg >= 0 && ils.localizerCourseDeg <= 360);
+    }
+  });
+
+  it('has ILS systems across multiple system types', () => {
+    const types = new Set<string>();
+    for (const apt of usBundledAirports.records) {
+      for (const rwy of apt.runways) {
+        for (const end of rwy.ends) {
+          if (end.ils) {
+            types.add(end.ils.systemType);
+          }
+        }
+      }
+    }
+    assert.ok(types.has('ILS'), 'expected ILS system type');
+    assert.ok(types.has('ILS/DME'), 'expected ILS/DME system type');
+    assert.ok(types.has('LOCALIZER'), 'expected LOCALIZER system type');
+    assert.ok(types.has('LOC/DME'), 'expected LOC/DME system type');
+  });
+
+  it('has ILS with glide slope data where expected', () => {
+    let ilsWithGs = 0;
+    let ilsDmeWithGs = 0;
+    for (const apt of usBundledAirports.records) {
+      for (const rwy of apt.runways) {
+        for (const end of rwy.ends) {
+          if (end.ils && end.ils.glideSlopeAngleDeg !== undefined) {
+            if (end.ils.systemType === 'ILS') {
+              ilsWithGs++;
+            } else if (end.ils.systemType === 'ILS/DME') {
+              ilsDmeWithGs++;
+            }
+          }
+        }
+      }
+    }
+    assert.ok(ilsWithGs > 100, `expected >100 ILS with glide slope, got ${ilsWithGs}`);
+    assert.ok(ilsDmeWithGs > 100, `expected >100 ILS/DME with glide slope, got ${ilsDmeWithGs}`);
+  });
+
+  it('has ILS with DME channel data where expected', () => {
+    let ilsDmeWithChannel = 0;
+    for (const apt of usBundledAirports.records) {
+      for (const rwy of apt.runways) {
+        for (const end of rwy.ends) {
+          if (end.ils && end.ils.systemType === 'ILS/DME' && end.ils.dmeChannel) {
+            ilsDmeWithChannel++;
+          }
+        }
+      }
+    }
+    assert.ok(
+      ilsDmeWithChannel > 100,
+      `expected >100 ILS/DME with DME channel, got ${ilsDmeWithChannel}`,
+    );
   });
 });

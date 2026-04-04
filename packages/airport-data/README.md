@@ -10,7 +10,8 @@ subscription cycle. Data only - no query logic, no dependency on
 
 - All open US aviation facilities: airports, heliports, seaplane bases, gliderports, ultralight, and balloonports
 - Runway dimensions, surface, condition, lighting, and weight limits
-- Per-runway-end details: heading, ILS, displaced thresholds, declared distances (TORA/TODA/ASDA/LDA), approach lighting, VGSI, LAHSO
+- Per-runway-end details: heading, displaced thresholds, declared distances (TORA/TODA/ASDA/LDA), approach lighting, VGSI, LAHSO
+- Structured ILS data: system type, identifier, category, localizer frequency and course, glide slope angle and type, DME channel
 - Communication frequencies with usage and sectorization
 
 ## Installation
@@ -26,7 +27,7 @@ import { usBundledAirports } from '@squawk/airport-data';
 
 // Inspect metadata
 console.log(usBundledAirports.properties.nasrCycleDate); // "2026-01-22"
-console.log(usBundledAirports.properties.recordCount); // 19138
+console.log(usBundledAirports.properties.recordCount); // 19146
 
 // Use with @squawk/airports for zero-config airport queries
 import { createAirportResolver } from '@squawk/airports';
@@ -73,15 +74,28 @@ Each record is a full `Airport` object from `@squawk/types`. Key fields:
 
 ### RunwayEnd
 
-| Property                              | Type                | Description                          |
-| ------------------------------------- | ------------------- | ------------------------------------ |
-| `id`                                  | string              | Designator (e.g. "04L", "22R")       |
-| `trueHeading`                         | number or undefined | True heading in degrees              |
-| `ilsType`                             | string or undefined | e.g. "ILS/DME", "ILS", "RNAV"        |
-| `toraFt`, `todaFt`, `asdaFt`, `ldaFt` | number or undefined | Declared distances in feet           |
-| `displacedThresholdFt`                | number or undefined | Displaced threshold distance in feet |
-| `vgsiType`                            | VgsiType            | e.g. PAPI-4L, VASI-2L                |
-| `approachLights`                      | string or undefined | Approach lighting system code        |
+| Property                              | Type                   | Description                          |
+| ------------------------------------- | ---------------------- | ------------------------------------ |
+| `id`                                  | string                 | Designator (e.g. "04L", "22R")       |
+| `trueHeading`                         | number or undefined    | True heading in degrees              |
+| `ils`                                 | IlsSystem or undefined | Structured ILS data (see below)      |
+| `toraFt`, `todaFt`, `asdaFt`, `ldaFt` | number or undefined    | Declared distances in feet           |
+| `displacedThresholdFt`                | number or undefined    | Displaced threshold distance in feet |
+| `vgsiType`                            | VgsiType               | e.g. PAPI-4L, VASI-2L                |
+| `approachLights`                      | string or undefined    | Approach lighting system code        |
+
+### IlsSystem
+
+| Property                | Type                     | Description                                                          |
+| ----------------------- | ------------------------ | -------------------------------------------------------------------- |
+| `systemType`            | IlsSystemType            | ILS, ILS/DME, LOCALIZER, LOC/DME, LOC/GS, LDA, LDA/DME, SDF, SDF/DME |
+| `identifier`            | string or undefined      | Facility identifier (e.g. "I-JFK")                                   |
+| `category`              | IlsCategory or undefined | Approach category (I, II, III, IIIA, IIIB, IIIC)                     |
+| `localizerFrequencyMhz` | number or undefined      | Localizer frequency in MHz (108-112)                                 |
+| `localizerCourseDeg`    | number or undefined      | Front course bearing in magnetic degrees                             |
+| `glideSlopeAngleDeg`    | number or undefined      | Glide slope angle in degrees (typically ~3.0)                        |
+| `glideSlopeType`        | string or undefined      | Glide slope class (GLIDE SLOPE, GLIDE SLOPE/DME)                     |
+| `dmeChannel`            | string or undefined      | DME channel (e.g. "032X", "046X")                                    |
 
 ### AirportFrequency
 
@@ -95,5 +109,6 @@ Each record is a full `Airport` object from `@squawk/types`. Key fields:
 
 All data is derived from the FAA National Airspace System Resource (NASR) 28-day
 subscription, which is public domain. Airport base data comes from APT_BASE.csv,
-runway data from APT_RWY.csv and APT_RWY_END.csv, and frequencies from FRQ.csv.
-The build pipeline that produces this dataset lives in `scripts/build-airport-data/`.
+runway data from APT_RWY.csv and APT_RWY_END.csv, frequencies from FRQ.csv, and
+ILS data from ILS_BASE.csv, ILS_GS.csv, and ILS_DME.csv. The build pipeline that
+produces this dataset lives in `scripts/build-airport-data/`.
