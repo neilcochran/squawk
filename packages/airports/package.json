@@ -36,7 +36,8 @@
     "@squawk/units": "*"
   },
   "devDependencies": {
-    "@squawk/airport-data": "*"
+    "@squawk/airport-data": "*",
+    "@types/node": "^25.5.0"
   },
   "publishConfig": {
     "access": "public"
