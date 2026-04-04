@@ -7,6 +7,6 @@ docs/
 .claude/
 coverage/
 .env*
-raw-airspace-data
+reference-data/
 /scripts/heap-report.js
 /scripts/data-summary.js
