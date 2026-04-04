@@ -1,7 +1,7 @@
 import type { Navaid, NavaidType } from '@squawk/types';
 import { distance } from '@squawk/units';
 
-const { haversineDistanceNm } = distance;
+const { greatCircleDistanceNm } = distance;
 
 /**
  * Options for creating a navaid resolver.
@@ -193,7 +193,7 @@ export function createNavaidResolver(options: NavaidResolverOptions): NavaidReso
           continue;
         }
 
-        const dist = haversineDistanceNm(query.lat, query.lon, navaid.lat, navaid.lon);
+        const dist = greatCircleDistanceNm(query.lat, query.lon, navaid.lat, navaid.lon);
         if (dist <= maxDist) {
           results.push({ navaid, distanceNm: Math.round(dist * 100) / 100 });
         }
