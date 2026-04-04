@@ -1,0 +1,44 @@
+{
+  "name": "@squawk/fixes",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Fix/waypoint queries by identifier, location, or name search",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neilcochran/squawk.git",
+    "directory": "packages/fixes"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src"
+  },
+  "dependencies": {
+    "@squawk/types": "*",
+    "@squawk/units": "*"
+  },
+  "devDependencies": {
+    "@squawk/fix-data": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

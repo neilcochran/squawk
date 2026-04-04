@@ -1,0 +1,22 @@
+{
+  "name": "@squawk/build-fix-data",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Internal build script: processes FAA NASR fix data into the fix dataset",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@squawk/types": "*",
+    "adm-zip": "^0.5.10"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5"
+  }
+}
