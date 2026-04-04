@@ -21,6 +21,8 @@ TypeScript libraries for building aviation applications - ADS-B ingestion, airsp
 | [`@squawk/navaid-data`](packages/navaid-data)               | Pre-processed FAA NASR navaid snapshot for use with `@squawk/navaids`              |
 | [`@squawk/fixes`](packages/fixes)                           | Fix/waypoint queries by identifier, location, or identifier search                 |
 | [`@squawk/fix-data`](packages/fix-data)                     | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`          |
+| [`@squawk/airways`](packages/airways)                       | Airway lookup, traversal, and expansion by designation, fix, or search             |
+| [`@squawk/airway-data`](packages/airway-data)               | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`              |
 
 ## Development
 
@@ -44,6 +46,7 @@ inspecting their output. These are not published to npm.
 | [`build-airport-data`](scripts/build-airport-data)             | Processes FAA NASR airport, runway, frequency, and ILS CSVs into JSON |
 | [`build-navaid-data`](scripts/build-navaid-data)               | Processes FAA NASR NAV_BASE.csv into navaid JSON                      |
 | [`build-fix-data`](scripts/build-fix-data)                     | Processes FAA NASR FIX CSVs into fix/waypoint JSON                    |
+| [`build-airway-data`](scripts/build-airway-data)               | Processes FAA NASR AWY.txt and ATS.txt into airway JSON               |
 | [`map-viewer`](scripts/map-viewer)                             | Interactive Leaflet map for viewing airspace and airport data         |
 
 ## License
