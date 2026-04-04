@@ -1,7 +1,29 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { gzipSync } from 'node:zlib';
-import type { Airport, AirportFrequency, Runway, RunwayEnd } from '@squawk/types';
+import type { Airport, AirportFrequency, IlsSystem, Runway, RunwayEnd } from '@squawk/types';
+
+/**
+ * Compact representation of an IlsSystem. Short keys reduce file size.
+ */
+interface CompactIls {
+  /** System type. */
+  st: string;
+  /** Identifier. */
+  id?: string;
+  /** Category. */
+  cat?: string;
+  /** Localizer frequency MHz. */
+  lf?: number;
+  /** Localizer course degrees. */
+  lc?: number;
+  /** Glide slope angle degrees. */
+  ga?: number;
+  /** Glide slope type. */
+  gt?: string;
+  /** DME channel. */
+  dc?: string;
+}
 
 /**
  * Compact representation of a RunwayEnd. Short keys reduce file size.
@@ -11,8 +33,8 @@ interface CompactRunwayEnd {
   id: string;
   /** True heading in degrees. */
   hdg?: number;
-  /** ILS type. */
-  ils?: string;
+  /** ILS system. */
+  ils?: CompactIls;
   /** Right-hand traffic pattern. */
   rht?: true;
   /** Marking type. */
@@ -199,13 +221,45 @@ interface BundledOutput {
 /**
  * Compacts a RunwayEnd into its short-key representation.
  */
+/**
+ * Compacts an IlsSystem into its short-key representation.
+ */
+function compactIls(ils: IlsSystem): CompactIls {
+  const c: CompactIls = { st: ils.systemType };
+  if (ils.identifier !== undefined) {
+    c.id = ils.identifier;
+  }
+  if (ils.category !== undefined) {
+    c.cat = ils.category;
+  }
+  if (ils.localizerFrequencyMhz !== undefined) {
+    c.lf = ils.localizerFrequencyMhz;
+  }
+  if (ils.localizerCourseDeg !== undefined) {
+    c.lc = ils.localizerCourseDeg;
+  }
+  if (ils.glideSlopeAngleDeg !== undefined) {
+    c.ga = ils.glideSlopeAngleDeg;
+  }
+  if (ils.glideSlopeType !== undefined) {
+    c.gt = ils.glideSlopeType;
+  }
+  if (ils.dmeChannel !== undefined) {
+    c.dc = ils.dmeChannel;
+  }
+  return c;
+}
+
+/**
+ * Compacts a RunwayEnd into its short-key representation.
+ */
 function compactEnd(end: RunwayEnd): CompactRunwayEnd {
   const c: CompactRunwayEnd = { id: end.id };
   if (end.trueHeading !== undefined) {
     c.hdg = end.trueHeading;
   }
-  if (end.ilsType !== undefined) {
-    c.ils = end.ilsType;
+  if (end.ils !== undefined) {
+    c.ils = compactIls(end.ils);
   }
   if (end.rightTraffic) {
     c.rht = true;
