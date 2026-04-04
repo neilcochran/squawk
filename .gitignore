@@ -8,3 +8,4 @@ docs/
 coverage/
 .env*
 raw-airspace-data
+/scripts/heap-report.js

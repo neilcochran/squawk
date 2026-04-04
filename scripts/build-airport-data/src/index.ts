@@ -21,6 +21,9 @@ const APT_BASE_CSV = 'APT_BASE.csv';
 const APT_RWY_CSV = 'APT_RWY.csv';
 const APT_RWY_END_CSV = 'APT_RWY_END.csv';
 const FRQ_CSV = 'FRQ.csv';
+const ILS_BASE_CSV = 'ILS_BASE.csv';
+const ILS_GS_CSV = 'ILS_GS.csv';
+const ILS_DME_CSV = 'ILS_DME.csv';
 
 /**
  * Prints usage instructions to stderr and exits with code 1.
@@ -112,6 +115,9 @@ async function main(): Promise<void> {
   const rwyRecords = readCsvFromZip(csvZip, APT_RWY_CSV);
   const rwyEndRecords = readCsvFromZip(csvZip, APT_RWY_END_CSV);
   const freqRecords = readCsvFromZip(csvZip, FRQ_CSV);
+  const ilsBaseRecords = readCsvFromZip(csvZip, ILS_BASE_CSV);
+  const ilsGsRecords = readCsvFromZip(csvZip, ILS_GS_CSV);
+  const ilsDmeRecords = readCsvFromZip(csvZip, ILS_DME_CSV);
 
   // Index runway and runway-end records by SITE_NO for efficient lookup.
   const rwyBySite = new Map<string, CsvRecord[]>();
@@ -154,6 +160,46 @@ async function main(): Promise<void> {
     }
   }
 
+  // Index ILS records by SITE_NO for efficient lookup.
+  const ilsBaseBySite = new Map<string, CsvRecord[]>();
+  for (const rec of ilsBaseRecords) {
+    const siteNo = rec.SITE_NO;
+    if (siteNo) {
+      let arr = ilsBaseBySite.get(siteNo);
+      if (!arr) {
+        arr = [];
+        ilsBaseBySite.set(siteNo, arr);
+      }
+      arr.push(rec);
+    }
+  }
+
+  const ilsGsBySite = new Map<string, CsvRecord[]>();
+  for (const rec of ilsGsRecords) {
+    const siteNo = rec.SITE_NO;
+    if (siteNo) {
+      let arr = ilsGsBySite.get(siteNo);
+      if (!arr) {
+        arr = [];
+        ilsGsBySite.set(siteNo, arr);
+      }
+      arr.push(rec);
+    }
+  }
+
+  const ilsDmeBySite = new Map<string, CsvRecord[]>();
+  for (const rec of ilsDmeRecords) {
+    const siteNo = rec.SITE_NO;
+    if (siteNo) {
+      let arr = ilsDmeBySite.get(siteNo);
+      if (!arr) {
+        arr = [];
+        ilsDmeBySite.set(siteNo, arr);
+      }
+      arr.push(rec);
+    }
+  }
+
   // Build Airport objects from the indexed data.
   console.log('[index] Building airport records...');
   const airports: Airport[] = [];
@@ -171,8 +217,19 @@ async function main(): Promise<void> {
     const siteRwys = rwyBySite.get(siteNo) ?? [];
     const siteRwyEnds = rwyEndBySite.get(siteNo) ?? [];
     const siteFreqs = freqByFacility.get(faaId) ?? [];
+    const siteIlsBase = ilsBaseBySite.get(siteNo) ?? [];
+    const siteIlsGs = ilsGsBySite.get(siteNo) ?? [];
+    const siteIlsDme = ilsDmeBySite.get(siteNo) ?? [];
 
-    const airport = buildAirport(base, siteRwys, siteRwyEnds, siteFreqs);
+    const airport = buildAirport(
+      base,
+      siteRwys,
+      siteRwyEnds,
+      siteFreqs,
+      siteIlsBase,
+      siteIlsGs,
+      siteIlsDme,
+    );
     if (airport) {
       airports.push(airport);
     } else {
