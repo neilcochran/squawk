@@ -57,8 +57,9 @@ Creates a resolver object from an array of Airway records.
 
 ### `resolver.byDesignation(designation)`
 
-Looks up an airway by its designation (e.g. "V16", "J60", "Q1").
-Case-insensitive. Returns `Airway | undefined`.
+Looks up airways by designation (e.g. "V16", "J60", "Q1"). Multiple airways
+can share the same designation in different regions (e.g. V16 exists in both
+the contiguous US and Hawaii). Case-insensitive. Returns `Airway[]`.
 
 ### `resolver.expand(designation, entryFix, exitFix)`
 
@@ -67,11 +68,14 @@ waypoints from the entry fix to the exit fix (inclusive). This is the
 primary use case for flight plan route decoding - given a route string
 like `MERIT J60 MARTN`, expand J60 between MERIT and MARTN.
 
+Airways can be traversed in either direction. When the entry fix appears
+after the exit fix in the stored waypoint order, the returned waypoints
+are reversed so they always run entry-to-exit.
+
 Returns `AirwayExpansionResult | undefined`. Returns undefined if:
 
 - The airway designation is not found
 - Either fix is not on the airway
-- The entry fix does not precede the exit fix in waypoint order
 
 The result contains:
 

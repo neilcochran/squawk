@@ -36,7 +36,8 @@
     "@squawk/units": "*"
   },
   "devDependencies": {
-    "@squawk/fix-data": "*"
+    "@squawk/fix-data": "*",
+    "@types/node": "^25.5.0"
   },
   "publishConfig": {
     "access": "public"

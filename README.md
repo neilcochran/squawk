@@ -25,6 +25,7 @@ TypeScript libraries for building aviation applications - ADS-B ingestion, airsp
 | [`@squawk/airway-data`](packages/airway-data)               | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`              |
 | [`@squawk/procedures`](packages/procedures)                 | Instrument procedure lookup and expansion for SIDs and STARs                       |
 | [`@squawk/procedure-data`](packages/procedure-data)         | Pre-processed FAA NASR procedure snapshot for use with `@squawk/procedures`        |
+| [`@squawk/flightplan`](packages/flightplan)                 | Flight plan route string parsing and resolution using composed resolvers           |
 
 ## Development
 

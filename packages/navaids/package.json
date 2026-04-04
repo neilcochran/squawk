@@ -36,7 +36,8 @@
     "@squawk/units": "*"
   },
   "devDependencies": {
-    "@squawk/navaid-data": "*"
+    "@squawk/navaid-data": "*",
+    "@types/node": "^25.5.0"
   },
   "publishConfig": {
     "access": "public"
