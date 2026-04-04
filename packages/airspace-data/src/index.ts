@@ -1,5 +1,6 @@
 import type { FeatureCollection } from 'geojson';
 import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,10 +29,7 @@ export interface AirspaceDataset extends FeatureCollection {
   properties: AirspaceDatasetProperties;
 }
 
-// Node's require() only auto-parses .json files, not .geojson. Read the
-// file with readFileSync + JSON.parse instead. The path is resolved relative
-// to this module's location so it works from both src/ and dist/.
-const dataPath = resolve(dirname(fileURLToPath(import.meta.url)), '../data/airspace.geojson');
+const dataPath = resolve(dirname(fileURLToPath(import.meta.url)), '../data/airspace.geojson.gz');
 
 /**
  * Pre-processed GeoJSON snapshot of US airspace geometry derived from the
@@ -60,4 +58,6 @@ const dataPath = resolve(dirname(fileURLToPath(import.meta.url)), '../data/airsp
  * const resolver = createAirspaceResolver({ data: usBundledAirspace });
  * ```
  */
-export const usBundledAirspace: AirspaceDataset = JSON.parse(readFileSync(dataPath, 'utf-8'));
+export const usBundledAirspace: AirspaceDataset = JSON.parse(
+  gunzipSync(readFileSync(dataPath)).toString('utf-8'),
+);

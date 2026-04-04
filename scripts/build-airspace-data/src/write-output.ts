@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import type { FeatureCollection, Feature, Polygon } from 'geojson';
 import type { AirspaceFeature } from '@squawk/types';
 
@@ -78,8 +79,14 @@ export async function writeOutput(
     features: geoFeatures,
   };
 
-  await writeFile(outputPath, JSON.stringify(collection), 'utf-8');
-  console.log(`[write-output] Wrote ${geoFeatures.length} features to ${outputPath}`);
+  const json = JSON.stringify(collection);
+  const compressed = gzipSync(Buffer.from(json));
+  await writeFile(outputPath, compressed);
+
+  const sizeMb = (compressed.length / 1024 / 1024).toFixed(1);
+  console.log(
+    `[write-output] Wrote ${geoFeatures.length} features to ${outputPath} (${sizeMb} MB gzipped)`,
+  );
 }
 
 /**

@@ -1,3 +1,5 @@
+import { degreesToRadians } from './angle.js';
+
 /**
  * Typed unit string literals for distance values to prevent unit confusion at the call site.
  */
@@ -205,4 +207,35 @@ export function feetToMeters(feet: number): number {
  */
 export function metersToFeet(meters: number): number {
   return meters / FT_TO_M;
+}
+
+/** Mean radius of the Earth in nautical miles. */
+const EARTH_RADIUS_NM = 3440.065;
+
+/**
+ * Computes the great-circle distance in nautical miles between two
+ * geographic positions using the Haversine formula.
+ *
+ * @param lat1 - Latitude of the first point in decimal degrees.
+ * @param lon1 - Longitude of the first point in decimal degrees.
+ * @param lat2 - Latitude of the second point in decimal degrees.
+ * @param lon2 - Longitude of the second point in decimal degrees.
+ * @returns Distance in nautical miles.
+ */
+export function greatCircleDistanceNm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const dLat = degreesToRadians(lat2 - lat1);
+  const dLon = degreesToRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(degreesToRadians(lat1)) *
+      Math.cos(degreesToRadians(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_NM * c;
 }

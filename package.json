@@ -8,6 +8,7 @@
     "scripts/build-airspace-data",
     "scripts/build-icao-registry-data",
     "scripts/build-airport-data",
+    "scripts/build-navaid-data",
     "scripts/map-viewer"
   ],
   "scripts": {
