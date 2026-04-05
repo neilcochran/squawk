@@ -354,10 +354,8 @@ export interface PeakWind {
   directionDeg: number;
   /** Peak wind speed in knots. */
   speedKt: number;
-  /** Hour (UTC) when the peak wind occurred. Always populated on a parsed Metar result (backfilled from observation time when omitted in the raw report). */
-  hour?: number;
-  /** Minute (UTC) when the peak wind occurred. */
-  minute: number;
+  /** Time (UTC) when the peak wind occurred. When the raw report omits the hour, it is populated from the observation time. */
+  time: DayTime;
 }
 
 /**
@@ -384,10 +382,8 @@ export interface VariableCeiling {
  * Wind shift information from the METAR remarks section (WSHFT group).
  */
 export interface WindShift {
-  /** Minute (UTC) when the wind shift occurred. */
-  minute: number;
-  /** Hour (UTC) when the wind shift occurred. Always populated on a parsed Metar result (backfilled from observation time when omitted in the raw report). */
-  hour?: number;
+  /** Time (UTC) when the wind shift occurred. When the raw report omits the hour, it is populated from the observation time. */
+  time: DayTime;
   /** True when the wind shift was associated with a frontal passage (FROPA). */
   frontalPassage: boolean;
 }
@@ -411,10 +407,8 @@ export interface PrecipitationEvent {
   phenomenon: string;
   /** "BEGIN" if the phenomenon began, "END" if it ended. */
   eventType: 'BEGIN' | 'END';
-  /** Minute (UTC) of the event. */
-  minute: number;
-  /** Hour (UTC) of the event. Always populated on a parsed Metar result (backfilled from observation time when omitted in the raw report). */
-  hour?: number;
+  /** Time (UTC) of the event. When the raw report omits the hour, it is populated from the observation time. */
+  time: DayTime;
 }
 
 /**
@@ -700,12 +694,8 @@ export interface Metar {
   type: MetarType;
   /** ICAO station identifier (e.g. "KJFK", "EGLL", "PANC"). */
   stationId: string;
-  /** Day of month (UTC) when the observation was taken (1-31). */
-  dayOfMonth: number;
-  /** Hour (UTC) when the observation was taken (0-23). */
-  hour: number;
-  /** Minute (UTC) when the observation was taken (0-59). */
-  minute: number;
+  /** Observation time (UTC). The day field is always present for METAR/SPECI. */
+  observationTime: DayTime;
   /** True when the observation was produced by an automated station (AUTO). */
   isAutomated: boolean;
   /** True when the observation is a correction to a previously issued report (COR). */
@@ -881,16 +871,10 @@ export interface TafForecastGroup {
   changeType?: TafChangeType;
   /** Probability percentage for PROB groups (30 or 40). Only used with TEMPO or standalone PROB. */
   probability?: 30 | 40;
-  /** Start day of month (UTC) for this group's validity period. */
-  startDay?: number;
-  /** Start hour (UTC) for this group's validity period. */
-  startHour?: number;
-  /** Start minute (UTC) for FM groups (always present on FM, absent on TEMPO/BECMG). */
-  startMinute?: number;
-  /** End day of month (UTC) for this group's validity period (TEMPO/BECMG/PROB only). */
-  endDay?: number;
-  /** End hour (UTC) for this group's validity period (TEMPO/BECMG/PROB only). */
-  endHour?: number;
+  /** Start time for this group's validity period. FM groups include minute; TEMPO/BECMG use day+hour with minute 0. Absent on the base forecast. */
+  start?: DayTime;
+  /** End time for this group's validity period (TEMPO/BECMG/PROB only). Uses day+hour with minute 0. */
+  end?: DayTime;
   /** True when CAVOK (Ceiling And Visibility OK) is reported in this group. */
   isCavok: boolean;
   /** True when NSW (No Significant Weather) is reported, indicating the end of weather phenomena. */
@@ -923,26 +907,18 @@ export interface Taf {
   raw: string;
   /** ICAO station identifier (e.g. "KJFK", "EGLL", "PANC"). */
   stationId: string;
-  /** Day of month (UTC) when the forecast was issued (1-31). */
-  issuedDay: number;
-  /** Hour (UTC) when the forecast was issued (0-23). */
-  issuedHour: number;
-  /** Minute (UTC) when the forecast was issued (0-59). */
-  issuedMinute: number;
+  /** Time (UTC) when the forecast was issued. Day is always present. */
+  issuedAt: DayTime;
   /** True when the TAF is an amendment to a previously issued forecast (AMD). */
   isAmended: boolean;
   /** True when the TAF is a correction to a previously issued forecast (COR). */
   isCorrected: boolean;
   /** True when the TAF has been cancelled (CNL). */
   isCancelled: boolean;
-  /** Start day of month (UTC) of the overall forecast validity period. */
-  validFromDay: number;
-  /** Start hour (UTC) of the overall forecast validity period. */
-  validFromHour: number;
-  /** End day of month (UTC) of the overall forecast validity period. */
-  validToDay: number;
-  /** End hour (UTC) of the overall forecast validity period. */
-  validToHour: number;
+  /** Start of the overall forecast validity period (UTC). Uses day+hour with minute 0. */
+  validFrom: DayTime;
+  /** End of the overall forecast validity period (UTC). Uses day+hour with minute 0. */
+  validTo: DayTime;
   /** Forecast groups. The first element is always the base forecast (no changeType). Empty when cancelled. */
   forecast: TafForecastGroup[];
 }

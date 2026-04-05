@@ -1,7 +1,7 @@
 import type {
   Altimeter,
+  DayTime,
   Metar,
-  MetarRemarks,
   MetarType,
   RunwayVisualRange,
   RvrTrend,
@@ -67,9 +67,11 @@ export function parseMetar(raw: string): Metar {
   if (!timeMatch) {
     throw new Error(`Invalid observation time: ${timeToken}`);
   }
-  const dayOfMonth = parseInt(timeMatch[1]!, 10);
-  const hour = parseInt(timeMatch[2]!, 10);
-  const minute = parseInt(timeMatch[3]!, 10);
+  const observationTime: DayTime = {
+    day: parseInt(timeMatch[1]!, 10),
+    hour: parseInt(timeMatch[2]!, 10),
+    minute: parseInt(timeMatch[3]!, 10),
+  };
   pos++;
 
   // Parse AUTO/COR modifiers
@@ -196,15 +198,9 @@ export function parseMetar(raw: string): Metar {
     pos++;
   }
 
-  // Parse remarks
-  const remarks = remarksPart !== undefined ? parseRemarks(remarksPart) : undefined;
-
-  // Backfill omitted hour fields in remarks with the observation hour.
-  // Per FAA JO 7900.5E, when the hour is omitted from a time field in remarks,
-  // it occurred during the observation hour and can be inferred from the report time.
-  if (remarks) {
-    backfillRemarkHours(remarks, hour);
-  }
+  // Parse remarks (observation hour is passed so time fields can be populated immediately)
+  const remarks =
+    remarksPart !== undefined ? parseRemarks(remarksPart, observationTime.hour) : undefined;
 
   // Derive flight category
   const flightCategory = deriveFlightCategory(
@@ -218,9 +214,7 @@ export function parseMetar(raw: string): Metar {
     raw: trimmed,
     type,
     stationId,
-    dayOfMonth,
-    hour,
-    minute,
+    observationTime,
     isAutomated,
     isCorrected,
     isCavok,
@@ -289,28 +283,4 @@ function parseAltimeter(token: string): Altimeter {
     return { inHg: value / 100 };
   }
   return { hPa: value };
-}
-
-/**
- * Backfills omitted hour fields in parsed remarks with the observation hour.
- * Per FAA JO 7900.5E, when the hour is omitted from a time field in remarks
- * (2-digit format instead of 4-digit), the event occurred during the
- * observation hour.
- */
-function backfillRemarkHours(remarks: MetarRemarks, observationHour: number): void {
-  if (remarks.peakWind && remarks.peakWind.hour === undefined) {
-    remarks.peakWind.hour = observationHour;
-  }
-
-  if (remarks.windShift && remarks.windShift.hour === undefined) {
-    remarks.windShift.hour = observationHour;
-  }
-
-  if (remarks.precipitationEvents) {
-    for (const event of remarks.precipitationEvents) {
-      if (event.hour === undefined) {
-        event.hour = observationHour;
-      }
-    }
-  }
 }

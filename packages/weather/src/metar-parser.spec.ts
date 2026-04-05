@@ -40,9 +40,9 @@ describe('parseMetar - station and time', () => {
       'METAR KJFK 041853Z 21010KT 10SM FEW250 18/06 A3012 RMK AO2 SLP203 T01830061',
     );
     assert.equal(result.stationId, 'KJFK');
-    assert.equal(result.dayOfMonth, 4);
-    assert.equal(result.hour, 18);
-    assert.equal(result.minute, 53);
+    assert.equal(result.observationTime.day, 4);
+    assert.equal(result.observationTime.hour, 18);
+    assert.equal(result.observationTime.minute, 53);
   });
 });
 
@@ -825,8 +825,8 @@ describe('parseMetar - remarks', () => {
     assert.ok(result.remarks.peakWind);
     assert.equal(result.remarks.peakWind.directionDeg, 260);
     assert.equal(result.remarks.peakWind.speedKt, 35);
-    assert.equal(result.remarks.peakWind.hour, 18);
-    assert.equal(result.remarks.peakWind.minute, 22);
+    assert.equal(result.remarks.peakWind.time.hour, 18);
+    assert.equal(result.remarks.peakWind.time.minute, 22);
   });
 
   it('backfills peak wind hour from observation time when omitted', () => {
@@ -837,8 +837,8 @@ describe('parseMetar - remarks', () => {
     assert.ok(result.remarks);
     assert.ok(result.remarks.peakWind);
     assert.equal(result.remarks.peakWind.speedKt, 45);
-    assert.equal(result.remarks.peakWind.hour, 18);
-    assert.equal(result.remarks.peakWind.minute, 32);
+    assert.equal(result.remarks.peakWind.time.hour, 18);
+    assert.equal(result.remarks.peakWind.time.minute, 32);
   });
 
   it('backfills wind shift hour from observation time when omitted', () => {
@@ -848,8 +848,8 @@ describe('parseMetar - remarks', () => {
     );
     assert.ok(result.remarks);
     assert.ok(result.remarks.windShift);
-    assert.equal(result.remarks.windShift.hour, 19);
-    assert.equal(result.remarks.windShift.minute, 35);
+    assert.equal(result.remarks.windShift.time.hour, 19);
+    assert.equal(result.remarks.windShift.time.minute, 35);
   });
 
   it('backfills precipitation event hours from observation time when omitted', () => {
@@ -860,7 +860,11 @@ describe('parseMetar - remarks', () => {
     assert.ok(result.remarks);
     assert.ok(result.remarks.precipitationEvents);
     for (const event of result.remarks.precipitationEvents) {
-      assert.equal(event.hour, 18, `expected hour 18 for ${event.phenomenon} ${event.eventType}`);
+      assert.equal(
+        event.time.hour,
+        18,
+        `expected hour 18 for ${event.phenomenon} ${event.eventType}`,
+      );
     }
   });
 
@@ -873,12 +877,12 @@ describe('parseMetar - remarks', () => {
     assert.ok(result.remarks.precipitationEvents);
     const begin = result.remarks.precipitationEvents.find((e) => e.eventType === 'BEGIN');
     assert.ok(begin);
-    assert.equal(begin.hour, 5);
-    assert.equal(begin.minute, 45);
+    assert.equal(begin.time.hour, 5);
+    assert.equal(begin.time.minute, 45);
     const end = result.remarks.precipitationEvents.find((e) => e.eventType === 'END');
     assert.ok(end);
-    assert.equal(end.hour, 6);
-    assert.equal(end.minute, 15);
+    assert.equal(end.time.hour, 6);
+    assert.equal(end.time.minute, 15);
   });
 
   it('parses pressure falling rapidly', () => {
@@ -985,8 +989,8 @@ describe('parseMetar - remarks', () => {
     assert.ok(result.remarks);
     assert.ok(result.remarks.windShift);
     assert.equal(result.remarks.windShift.frontalPassage, true);
-    assert.equal(result.remarks.windShift.minute, 35);
-    assert.equal(result.remarks.windShift.hour, 19);
+    assert.equal(result.remarks.windShift.time.minute, 35);
+    assert.equal(result.remarks.windShift.time.hour, 19);
   });
 
   it('parses hail size (whole + fraction)', () => {
