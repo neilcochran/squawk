@@ -12,3 +12,4 @@ export * from './navaid.js';
 export * from './position.js';
 export * from './procedure.js';
 export * from './registry.js';
+export * from './weather.js';
