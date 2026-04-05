@@ -456,8 +456,8 @@ describe('parseSigmet', () => {
       assert.equal(result.hazards[0]!.hazardType, 'VOLCANIC_ASH');
       assert.equal(result.volcanoName, 'MT REDOUBT');
       assert.ok(result.volcanoPosition);
-      assert.equal(result.volcanoPosition.latitude, 60 + 42 / 60);
-      assert.equal(result.volcanoPosition.longitude, -(156 + 10 / 60));
+      assert.equal(result.volcanoPosition.lat, 60 + 42 / 60);
+      assert.equal(result.volcanoPosition.lon, -(156 + 10 / 60));
       assert.ok(result.ashCloudAltitudeRange);
       assert.equal(result.ashCloudAltitudeRange.baseFt, 25000);
       assert.equal(result.ashCloudAltitudeRange.topFt, 35000);
@@ -716,8 +716,8 @@ describe('parseSigmet', () => {
       assert.equal(result.observedAt?.hour, 15);
       assert.equal(result.observedAt?.minute, 0);
       assert.ok(result.cyclonePosition);
-      assert.equal(result.cyclonePosition.latitude, 25 + 40 / 60);
-      assert.equal(result.cyclonePosition.longitude, -(88 + 30 / 60));
+      assert.equal(result.cyclonePosition.lat, 25 + 40 / 60);
+      assert.equal(result.cyclonePosition.lon, -(88 + 30 / 60));
       assert.equal(result.cbTopFl, 500);
       assert.equal(result.withinNm, 180);
       assert.equal(result.movement?.directionCompass, 'NW');
@@ -726,8 +726,8 @@ describe('parseSigmet', () => {
       assert.equal(result.forecastTime?.hour, 21);
       assert.equal(result.forecastTime?.minute, 0);
       assert.ok(result.forecastPosition);
-      assert.equal(result.forecastPosition.latitude, 26 + 40 / 60);
-      assert.equal(result.forecastPosition.longitude, -(89 + 30 / 60));
+      assert.equal(result.forecastPosition.lat, 26 + 40 / 60);
+      assert.equal(result.forecastPosition.lon, -(89 + 30 / 60));
     });
   });
 });

@@ -1,8 +1,10 @@
 import type {
   CompassDirection,
+  Coordinates,
   ConvectiveSigmet,
   ConvectiveSigmetOutlook,
   ConvectiveSigmetRegion,
+  DayTime,
   InternationalSigmet,
   NonConvectiveSigmet,
   Sigmet,
@@ -12,9 +14,7 @@ import type {
   SigmetIntensityChange,
   SigmetMovement,
   SigmetObservationStatus,
-  SigmetPosition,
   SigmetSeriesName,
-  SigmetTime,
   SigmetTops,
 } from '@squawk/types';
 
@@ -220,10 +220,10 @@ function parseIntensityChange(text: string): SigmetIntensityChange | undefined {
 }
 
 /**
- * Parses a time string like "0200Z" or "050200Z" into a SigmetTime.
+ * Parses a time string like "0200Z" or "050200Z" into a DayTime.
  * Accepts 4-digit (HHMM) or 6-digit (DDHHMM) formats, with or without Z suffix.
  */
-function parseTimeString(timeStr: string): SigmetTime | undefined {
+function parseTimeString(timeStr: string): DayTime | undefined {
   const cleaned = timeStr.replace(/Z$/, '');
   if (cleaned.length === 4) {
     return {
@@ -242,49 +242,49 @@ function parseTimeString(timeStr: string): SigmetTime | undefined {
 }
 
 /**
- * Parses a volcano position string like "6042N15610W" into a SigmetPosition.
+ * Parses a volcano position string like "6042N15610W" into a Coordinates.
  * Format: DDMMd DDDMMd where d is N/S for lat, E/W for lon.
  */
-function parseVolcanoPosition(posStr: string): SigmetPosition | undefined {
+function parseVolcanoPosition(posStr: string): Coordinates | undefined {
   const match = posStr.match(/^(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])$/);
   if (!match) {
     return undefined;
   }
 
-  let latitude = parseInt(match[1]!, 10) + parseInt(match[2]!, 10) / 60;
+  let lat = parseInt(match[1]!, 10) + parseInt(match[2]!, 10) / 60;
   if (match[3] === 'S') {
-    latitude = -latitude;
+    lat = -lat;
   }
 
-  let longitude = parseInt(match[4]!, 10) + parseInt(match[5]!, 10) / 60;
+  let lon = parseInt(match[4]!, 10) + parseInt(match[5]!, 10) / 60;
   if (match[6] === 'W') {
-    longitude = -longitude;
+    lon = -lon;
   }
 
-  return { latitude, longitude };
+  return { lat, lon };
 }
 
 /**
- * Parses an ICAO-style position string like "N2540 W08830" into a SigmetPosition.
+ * Parses an ICAO-style position string like "N2540 W08830" into a Coordinates.
  * Format: Nddmm Wdddmm (or S/E variants).
  */
-function parseIcaoPosition(posStr: string): SigmetPosition | undefined {
+function parseIcaoPosition(posStr: string): Coordinates | undefined {
   const match = posStr.match(/([NS])(\d{2})(\d{2})\s+([EW])(\d{3})(\d{2})/);
   if (!match) {
     return undefined;
   }
 
-  let latitude = parseInt(match[2]!, 10) + parseInt(match[3]!, 10) / 60;
+  let lat = parseInt(match[2]!, 10) + parseInt(match[3]!, 10) / 60;
   if (match[1] === 'S') {
-    latitude = -latitude;
+    lat = -lat;
   }
 
-  let longitude = parseInt(match[5]!, 10) + parseInt(match[6]!, 10) / 60;
+  let lon = parseInt(match[5]!, 10) + parseInt(match[6]!, 10) / 60;
   if (match[4] === 'W') {
-    longitude = -longitude;
+    lon = -lon;
   }
 
-  return { latitude, longitude };
+  return { lat, lon };
 }
 
 // ---------------------------------------------------------------------------
@@ -310,7 +310,7 @@ function parseConvectiveSigmet(normalized: string): ConvectiveSigmet {
   const region = sigmetMatch[2]! as ConvectiveSigmetRegion;
 
   // Parse valid time: VALID UNTIL DDHHMMz or VALID UNTIL HHMMz
-  let validUntil: SigmetTime | undefined;
+  let validUntil: DayTime | undefined;
   const validMatch = body.match(/VALID UNTIL\s+(\d{2})?(\d{2})(\d{2})Z/);
   if (validMatch) {
     validUntil = {
@@ -599,7 +599,7 @@ function parseNonConvectiveSigmet(normalized: string): NonConvectiveSigmet {
 
   const seriesName = headerMatch[1]! as SigmetSeriesName;
   const seriesNumber = parseInt(headerMatch[2]!, 10);
-  const validUntil: SigmetTime = {
+  const validUntil: DayTime = {
     day: parseInt(headerMatch[3]!, 10),
     hour: parseInt(headerMatch[4]!, 10),
     minute: parseInt(headerMatch[5]!, 10),
@@ -907,12 +907,12 @@ function parseInternationalSigmet(normalized: string): InternationalSigmet {
   const hasLeadingFir = firCodeFromHeader !== undefined;
   const seriesName = headerMatch[hasLeadingFir ? 2 : 1]! as SigmetSeriesName;
   const seriesNumber = parseInt(headerMatch[hasLeadingFir ? 3 : 2]!, 10);
-  const validFrom: SigmetTime = {
+  const validFrom: DayTime = {
     day: parseInt(headerMatch[hasLeadingFir ? 4 : 3]!, 10),
     hour: parseInt(headerMatch[hasLeadingFir ? 5 : 4]!, 10),
     minute: parseInt(headerMatch[hasLeadingFir ? 6 : 5]!, 10),
   };
-  const validTo: SigmetTime = {
+  const validTo: DayTime = {
     day: parseInt(headerMatch[hasLeadingFir ? 7 : 6]!, 10),
     hour: parseInt(headerMatch[hasLeadingFir ? 8 : 7]!, 10),
     minute: parseInt(headerMatch[hasLeadingFir ? 9 : 8]!, 10),
@@ -969,8 +969,8 @@ function parseInternationalBody(
   seriesName: SigmetSeriesName,
   seriesNumber: number,
   issuingStation: string,
-  validFrom: SigmetTime,
-  validTo: SigmetTime,
+  validFrom: DayTime,
+  validTo: DayTime,
 ): InternationalSigmet {
   // Clean trailing = sign (ICAO message terminator)
   const content = bodyAfterFir.replace(/=\s*$/, '').trim();
@@ -992,7 +992,7 @@ function parseInternationalBody(
 
   // Parse observation status
   let observationStatus: SigmetObservationStatus | undefined;
-  let observedAt: SigmetTime | undefined;
+  let observedAt: DayTime | undefined;
   const obsMatch = content.match(/\bOBS\s+AT\s+(\d{4})Z/);
   if (obsMatch) {
     observationStatus = 'OBSERVED';
@@ -1026,11 +1026,11 @@ function parseInternationalBody(
   const intensityChange = parseIntensityChange(content);
 
   // Tropical cyclone fields
-  let cyclonePosition: SigmetPosition | undefined;
+  let cyclonePosition: Coordinates | undefined;
   let cbTopFl: number | undefined;
   let withinNm: number | undefined;
-  let forecastTime: SigmetTime | undefined;
-  let forecastPosition: SigmetPosition | undefined;
+  let forecastTime: DayTime | undefined;
+  let forecastPosition: Coordinates | undefined;
 
   if (cycloneName) {
     const posMatch = content.match(/(?:OBS\s+AT\s+\d{4}Z\s+)?([NS]\d{4}\s+[EW]\d{5})/);
@@ -1102,8 +1102,8 @@ function parseInternationalCancellation(
   seriesName: SigmetSeriesName,
   seriesNumber: number,
   issuingStation: string,
-  validFrom: SigmetTime,
-  validTo: SigmetTime,
+  validFrom: DayTime,
+  validTo: DayTime,
 ): InternationalSigmet {
   const cnlMatch = afterHeader.match(/CNL\s+SIGMET\s+([A-Z]+)\s+(\d+)\s+(\d{6})\/(\d{6})/);
 
