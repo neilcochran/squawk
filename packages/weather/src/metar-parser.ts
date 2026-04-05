@@ -4,6 +4,7 @@ import type {
   CloudLayer,
   CloudType,
   Metar,
+  MetarRemarks,
   MetarType,
   RunwayVisualRange,
   RvrTrend,
@@ -225,9 +226,11 @@ export function parseMetar(raw: string): Metar {
   // Parse remarks
   const remarks = remarksPart !== undefined ? parseRemarks(remarksPart) : undefined;
 
-  // If remarks have maintenance indicator at end of raw string, also check
-  if (!remarks && trimmed.endsWith('$')) {
-    // $ at the very end without RMK section - unusual but possible
+  // Backfill omitted hour fields in remarks with the observation hour.
+  // Per FAA JO 7900.5E, when the hour is omitted from a time field in remarks,
+  // it occurred during the observation hour and can be inferred from the report time.
+  if (remarks) {
+    backfillRemarkHours(remarks, hour);
   }
 
   // Derive flight category
@@ -542,4 +545,28 @@ function parseAltimeter(token: string): Altimeter {
     return { inHg: value / 100 };
   }
   return { hPa: value };
+}
+
+/**
+ * Backfills omitted hour fields in parsed remarks with the observation hour.
+ * Per FAA JO 7900.5E, when the hour is omitted from a time field in remarks
+ * (2-digit format instead of 4-digit), the event occurred during the
+ * observation hour.
+ */
+function backfillRemarkHours(remarks: MetarRemarks, observationHour: number): void {
+  if (remarks.peakWind && remarks.peakWind.hour === undefined) {
+    remarks.peakWind.hour = observationHour;
+  }
+
+  if (remarks.windShift && remarks.windShift.hour === undefined) {
+    remarks.windShift.hour = observationHour;
+  }
+
+  if (remarks.precipitationEvents) {
+    for (const event of remarks.precipitationEvents) {
+      if (event.hour === undefined) {
+        event.hour = observationHour;
+      }
+    }
+  }
 }

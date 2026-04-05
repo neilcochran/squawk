@@ -3,6 +3,12 @@
 // ---------------------------------------------------------------------------
 
 /**
+ * Standard 8-point compass direction used in METAR sector visibility
+ * and other directional observations.
+ */
+export type CompassDirection = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+
+/**
  * Flight category derived from ceiling and visibility conditions.
  *
  * - `VFR` - Visual Flight Rules: ceiling above 3,000 ft AND visibility above 5 SM
@@ -314,7 +320,7 @@ export interface PeakWind {
   directionDeg: number;
   /** Peak wind speed in knots. */
   speedKt: number;
-  /** Hour (UTC) when the peak wind occurred. Absent when the peak occurred during the current hour. */
+  /** Hour (UTC) when the peak wind occurred. Always populated on a parsed Metar result (backfilled from observation time when omitted in the raw report). */
   hour?: number;
   /** Minute (UTC) when the peak wind occurred. */
   minute: number;
@@ -346,7 +352,7 @@ export interface VariableCeiling {
 export interface WindShift {
   /** Minute (UTC) when the wind shift occurred. */
   minute: number;
-  /** Hour (UTC) when the wind shift occurred. Absent when it occurred during the current hour. */
+  /** Hour (UTC) when the wind shift occurred. Always populated on a parsed Metar result (backfilled from observation time when omitted in the raw report). */
   hour?: number;
   /** True when the wind shift was associated with a frontal passage (FROPA). */
   frontalPassage: boolean;
@@ -356,8 +362,8 @@ export interface WindShift {
  * Sector visibility from the METAR remarks section (VIS [dir] [value]).
  */
 export interface SectorVisibility {
-  /** Compass direction of the sector (e.g. "N", "NE", "SW"). */
-  direction: string;
+  /** Compass direction of the sector. */
+  direction: CompassDirection;
   /** Visibility in statute miles for this sector. */
   statuteMiles: number;
 }
@@ -373,7 +379,7 @@ export interface PrecipitationEvent {
   eventType: 'BEGIN' | 'END';
   /** Minute (UTC) of the event. */
   minute: number;
-  /** Hour (UTC) of the event. Absent when the event occurred during the current hour. */
+  /** Hour (UTC) of the event. Always populated on a parsed Metar result (backfilled from observation time when omitted in the raw report). */
   hour?: number;
 }
 
@@ -391,6 +397,21 @@ export interface PrecipitationEvent {
  * - `8` - Steady or increasing, then decreasing, or decreasing then decreasing more rapidly
  */
 export type PressureTendencyCharacter = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+/**
+ * Maps pressure tendency character codes to human-readable descriptions.
+ */
+export const PRESSURE_TENDENCY_MAP: Record<PressureTendencyCharacter, string> = {
+  0: 'Increasing, then decreasing',
+  1: 'Increasing, then steady or increasing more slowly',
+  2: 'Increasing steadily or unsteadily',
+  3: 'Decreasing or steady, then increasing; or increasing then increasing more rapidly',
+  4: 'Steady',
+  5: 'Decreasing, then increasing',
+  6: 'Decreasing, then steady or decreasing more slowly',
+  7: 'Decreasing steadily or unsteadily',
+  8: 'Steady or increasing, then decreasing; or decreasing then decreasing more rapidly',
+};
 
 /**
  * Pressure tendency from the METAR remarks section (5appp group).
@@ -415,14 +436,33 @@ export interface IceAccretion {
 }
 
 /**
+ * Lightning observation frequency as reported in METAR remarks.
+ *
+ * - `FRQ` - Frequent (more than 6 flashes per minute)
+ * - `OCNL` - Occasional (1 to 6 flashes per minute)
+ * - `CONS` - Continuous (more than 6 flashes per minute with no break)
+ */
+export type LightningFrequency = 'FRQ' | 'OCNL' | 'CONS';
+
+/**
+ * Lightning type code as reported in METAR remarks.
+ *
+ * - `IC` - In-cloud lightning
+ * - `CC` - Cloud-to-cloud lightning
+ * - `CG` - Cloud-to-ground lightning
+ * - `CA` - Cloud-to-air lightning
+ */
+export type LightningType = 'IC' | 'CC' | 'CG' | 'CA';
+
+/**
  * Lightning observation from the METAR remarks section.
  * Reports the frequency, type(s), and location of observed lightning.
  */
 export interface LightningObservation {
-  /** Frequency of lightning (e.g. "FRQ", "OCNL", "DSNT", "CONS"). */
-  frequency?: string;
-  /** Lightning type codes observed (e.g. ["IC", "CC", "CG", "CA"]). */
-  types: string[];
+  /** Frequency of lightning. */
+  frequency?: LightningFrequency;
+  /** Lightning type codes observed. */
+  types: LightningType[];
   /** Location/direction description (e.g. "OHD", "VC", "DSNT NW-N", "SW-W"). */
   location?: string;
 }
@@ -433,8 +473,8 @@ export interface LightningObservation {
 export interface ThunderstormInfo {
   /** Location/direction of the thunderstorm (e.g. "OHD", "VC NW-N", "DSNT W"). */
   location?: string;
-  /** Direction the thunderstorm is moving (e.g. "NE", "E", "SW"). */
-  movingDirection?: string;
+  /** Direction the thunderstorm is moving. */
+  movingDirection?: CompassDirection;
 }
 
 /**
@@ -459,12 +499,25 @@ export interface VariableSkyCondition {
 }
 
 /**
+ * Significant cloud type code as reported in METAR remarks.
+ *
+ * - `CB` - Cumulonimbus
+ * - `TCU` - Towering cumulus
+ * - `ACC` - Altocumulus castellanus
+ * - `ACSL` - Altocumulus standing lenticular
+ * - `CCSL` - Cirrocumulus standing lenticular
+ * - `SCSL` - Stratocumulus standing lenticular
+ * - `CBMAM` - Cumulonimbus mammatus
+ */
+export type SignificantCloudType = 'CB' | 'TCU' | 'ACC' | 'ACSL' | 'CCSL' | 'SCSL' | 'CBMAM';
+
+/**
  * Significant cloud type observed and reported in the METAR remarks section.
  * Covers cumulonimbus, towering cumulus, and standing lenticular cloud types.
  */
 export interface SignificantCloudReport {
-  /** Cloud type code (e.g. "CB", "TCU", "ACC", "ACSL", "CCSL", "SCSL", "CBMAM"). */
-  type: string;
+  /** Significant cloud type code. */
+  type: SignificantCloudType;
   /** Location/direction from station (e.g. "DSNT W", "OHD", "NW-N"). */
   location?: string;
 }
@@ -496,8 +549,8 @@ export interface SecondLocationObservation {
  * Reports the obscuring phenomenon and its coverage at the surface.
  */
 export interface ObscurationReport {
-  /** The weather phenomenon causing the obscuration (e.g. "FG", "FU", "HZ", "BR"). */
-  phenomenon: string;
+  /** The weather phenomenon causing the obscuration. */
+  phenomenon: WeatherPhenomenonCode;
   /** Cloud coverage amount of the obscuration. */
   coverage: CloudCoverage;
   /** Height of the obscuration layer in feet AGL. */

@@ -1,7 +1,10 @@
 import type {
   CloudCoverage,
+  CompassDirection,
   IceAccretion,
+  LightningFrequency,
   LightningObservation,
+  LightningType,
   MetarRemarks,
   ObscurationReport,
   PeakWind,
@@ -11,6 +14,7 @@ import type {
   SecondLocationObservation,
   SectorVisibility,
   SignificantCloudReport,
+  SignificantCloudType,
   SnowIncreasing,
   StationType,
   ThunderstormInfo,
@@ -19,6 +23,7 @@ import type {
   VariableSkyCondition,
   VariableVisibility,
   VirgaObservation,
+  WeatherPhenomenonCode,
   WindShift,
 } from '@squawk/types';
 
@@ -243,7 +248,7 @@ export function parseRemarks(raw: string): MetarRemarks {
           remarks.sectorVisibility = [];
         }
         remarks.sectorVisibility.push({
-          direction: sectorMatch[1]!,
+          direction: sectorMatch[1]! as CompassDirection,
           statuteMiles: parseFraction(sectorMatch[2]!),
         } satisfies SectorVisibility);
         i += 2;
@@ -438,7 +443,7 @@ export function parseRemarks(raw: string): MetarRemarks {
 
     // Significant cloud types: CB/TCU/ACC/ACSL/CCSL/SCSL/CBMAM [DSNT] [direction]
     if (/^(CB|TCU|ACC|ACSL|CCSL|SCSL|CBMAM)$/.test(token)) {
-      const cloudReport: SignificantCloudReport = { type: token };
+      const cloudReport: SignificantCloudReport = { type: token as SignificantCloudType };
       // Collect subsequent direction/distance tokens
       const locParts: string[] = [];
       let j = i + 1;
@@ -466,7 +471,7 @@ export function parseRemarks(raw: string): MetarRemarks {
           remarks.obscurations = [];
         }
         remarks.obscurations.push({
-          phenomenon: token,
+          phenomenon: token as WeatherPhenomenonCode,
           coverage: obscMatch[1]! as CloudCoverage,
           altitudeFt: parseInt(obscMatch[2]!, 10) * 100,
         } satisfies ObscurationReport);
@@ -662,7 +667,7 @@ function parseLightning(
   tokens: string[],
   pos: number,
 ): { observation: LightningObservation; nextPos: number } | undefined {
-  let frequency: string | undefined;
+  let frequency: LightningFrequency | undefined;
   let ltgToken: string;
   let nextPos: number;
 
@@ -670,7 +675,7 @@ function parseLightning(
 
   // Check if current token is a frequency prefix
   if (/^(FRQ|OCNL|CONS)$/.test(token)) {
-    frequency = token;
+    frequency = token as LightningFrequency;
     if (pos + 1 >= tokens.length) {
       return undefined;
     }
@@ -687,11 +692,11 @@ function parseLightning(
   }
 
   const typeStr = ltgToken.slice(3);
-  const types: string[] = [];
+  const types: LightningType[] = [];
   for (let j = 0; j < typeStr.length; j += 2) {
     const code = typeStr.slice(j, j + 2);
     if (/^(IC|CC|CG|CA)$/.test(code)) {
-      types.push(code);
+      types.push(code as LightningType);
     }
   }
 
@@ -740,7 +745,7 @@ function parseThunderstormInfo(
     if (t === 'MOV') {
       // Next token is the movement direction
       if (nextPos + 1 < tokens.length) {
-        info.movingDirection = tokens[nextPos + 1]!;
+        info.movingDirection = tokens[nextPos + 1]! as CompassDirection;
         nextPos += 2;
       } else {
         nextPos++;
