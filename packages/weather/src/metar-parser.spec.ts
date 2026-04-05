@@ -817,7 +817,7 @@ describe('parseMetar - remarks', () => {
     assert.equal(result.remarks.sixHourMinTemperatureC, -1.2);
   });
 
-  it('parses peak wind', () => {
+  it('parses peak wind with explicit hour', () => {
     const result = parseMetar(
       'METAR KDEN 041853Z 25015G30KT 10SM FEW080 SCT120 BKN200 28/08 A3002 RMK AO2 PK WND 26035/1822 SLP098 T02830078',
     );
@@ -827,6 +827,58 @@ describe('parseMetar - remarks', () => {
     assert.equal(result.remarks.peakWind.speedKt, 35);
     assert.equal(result.remarks.peakWind.hour, 18);
     assert.equal(result.remarks.peakWind.minute, 22);
+  });
+
+  it('backfills peak wind hour from observation time when omitted', () => {
+    // PK WND 33045/32 - only minute provided, hour backfilled from observation time (18Z)
+    const result = parseMetar(
+      'METAR KBIS 041856Z 33025G38KT 1/2SM BLSN VV010 M15/M18 A3066 RMK AO2 PK WND 33045/32 SLP400 T11501178',
+    );
+    assert.ok(result.remarks);
+    assert.ok(result.remarks.peakWind);
+    assert.equal(result.remarks.peakWind.speedKt, 45);
+    assert.equal(result.remarks.peakWind.hour, 18);
+    assert.equal(result.remarks.peakWind.minute, 32);
+  });
+
+  it('backfills wind shift hour from observation time when omitted', () => {
+    // WSHFT 35 - only minute provided, hour backfilled from observation time (19Z)
+    const result = parseMetar(
+      'SPECI KDFW 041942Z 35022G40KT 5SM TSRA FEW015CB BKN030 OVC060 19/17 A2986 RMK AO2 WSHFT 35 TSB30 SLP108 T01940172',
+    );
+    assert.ok(result.remarks);
+    assert.ok(result.remarks.windShift);
+    assert.equal(result.remarks.windShift.hour, 19);
+    assert.equal(result.remarks.windShift.minute, 35);
+  });
+
+  it('backfills precipitation event hours from observation time when omitted', () => {
+    // RAB15E32B48 - all 2-digit (minute only), hours backfilled from observation time (18Z)
+    const result = parseMetar(
+      'METAR KCLE 041856Z 24012KT 6SM -RA BR BKN018 OVC030 14/12 A2992 RMK AO2 RAB15E32B48 SNE10 SLP134 P0008 60012 70028 T01390117',
+    );
+    assert.ok(result.remarks);
+    assert.ok(result.remarks.precipitationEvents);
+    for (const event of result.remarks.precipitationEvents) {
+      assert.equal(event.hour, 18, `expected hour 18 for ${event.phenomenon} ${event.eventType}`);
+    }
+  });
+
+  it('preserves explicit hours on precipitation events', () => {
+    // TSB0545E0615 - 4-digit times with explicit hours, should not be overwritten
+    const result = parseMetar(
+      'METAR KORD 041856Z 24012KT 6SM -RA BKN018 OVC030 14/12 A2992 RMK AO2 TSB0545E0615 SLP134 T01390117',
+    );
+    assert.ok(result.remarks);
+    assert.ok(result.remarks.precipitationEvents);
+    const begin = result.remarks.precipitationEvents.find((e) => e.eventType === 'BEGIN');
+    assert.ok(begin);
+    assert.equal(begin.hour, 5);
+    assert.equal(begin.minute, 45);
+    const end = result.remarks.precipitationEvents.find((e) => e.eventType === 'END');
+    assert.ok(end);
+    assert.equal(end.hour, 6);
+    assert.equal(end.minute, 15);
   });
 
   it('parses pressure falling rapidly', () => {
