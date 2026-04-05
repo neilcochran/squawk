@@ -1,10 +1,26 @@
+import type { Coordinates } from './position.js';
+
 // ---------------------------------------------------------------------------
-// Shared weather types - reused by METAR, TAF, and other weather formats
+// Shared weather types - reused by METAR, TAF, SIGMET, and other weather formats
 // ---------------------------------------------------------------------------
 
 /**
- * Standard 8-point compass direction used in METAR sector visibility
- * and other directional observations.
+ * A UTC day/hour/minute time reference used across weather products.
+ * The day field is optional because some time references omit it
+ * (e.g. "0200Z" has only hour and minute, while "050200Z" includes the day).
+ */
+export interface DayTime {
+  /** Day of month (UTC, 1-31). Omitted when the time reference has no day component. */
+  day?: number;
+  /** Hour (UTC, 0-23). */
+  hour: number;
+  /** Minute (UTC, 0-59). */
+  minute: number;
+}
+
+/**
+ * Standard 16-point compass direction used in METAR sector visibility,
+ * SIGMET movement, and other directional observations.
  */
 export type CompassDirection =
   | 'N'
@@ -1113,31 +1129,6 @@ export interface SigmetTops {
 }
 
 /**
- * A day/hour/minute time reference used in SIGMET time fields.
- * The day field is optional because some time references omit it
- * (e.g. "0200Z" vs "050200Z").
- */
-export interface SigmetTime {
-  /** Day of month (UTC, 1-31). Omitted when the time reference has no day component. */
-  day?: number;
-  /** Hour (UTC, 0-23). */
-  hour: number;
-  /** Minute (UTC, 0-59). */
-  minute: number;
-}
-
-/**
- * A geographic position specified by latitude and longitude in decimal degrees.
- * Used for volcano locations, tropical cyclone positions, and forecast positions in SIGMETs.
- */
-export interface SigmetPosition {
-  /** Latitude in decimal degrees. Positive values are north, negative values are south. */
-  latitude: number;
-  /** Longitude in decimal degrees. Positive values are east, negative values are west. */
-  longitude: number;
-}
-
-/**
  * A single hazard description within a non-convective SIGMET.
  * A SIGMET may contain multiple hazards (e.g. both icing and turbulence).
  */
@@ -1198,7 +1189,7 @@ export interface ConvectiveSigmet {
   /** True when this is a standalone outlook without an active convective SIGMET. */
   isOutlookOnly: boolean;
   /** Time (UTC) until which this convective SIGMET is valid. */
-  validUntil?: SigmetTime;
+  validUntil?: DayTime;
   /** US state abbreviations affected by the phenomena. */
   states?: string[];
   /** True when the affected area includes adjacent coastal waters. */
@@ -1253,7 +1244,7 @@ export interface NonConvectiveSigmet {
   /** Reason text for the cancellation (e.g. "CONDS MSTLY MOD", "CONDS HV ENDED"). */
   cancellationReason?: string;
   /** Time (UTC) until which this SIGMET is valid. */
-  validUntil?: SigmetTime;
+  validUntil?: DayTime;
   /** US state abbreviations and area codes affected by the phenomena. */
   states?: string[];
   /** Area definition points delineating the affected region (VOR-relative, e.g. "30NW SLC", "60SE BOI"). */
@@ -1265,17 +1256,17 @@ export interface NonConvectiveSigmet {
   /** Trend in intensity of the phenomena. */
   intensityChange?: SigmetIntensityChange;
   /** Time (UTC) beyond which conditions are expected to continue. */
-  conditionsContinuingBeyond?: SigmetTime;
+  conditionsContinuingBeyond?: DayTime;
   /** Time (UTC) by which conditions are expected to end. */
-  conditionsEndingBy?: SigmetTime;
+  conditionsEndingBy?: DayTime;
   /** Name of the volcano for volcanic ash SIGMETs (e.g. "MT REDOUBT"). */
   volcanoName?: string;
   /** Geographic position of the volcano. */
-  volcanoPosition?: SigmetPosition;
+  volcanoPosition?: Coordinates;
   /** Altitude range of the observed volcanic ash cloud. */
   ashCloudAltitudeRange?: SigmetAltitudeRange;
   /** Forecast time (UTC) for volcanic ash cloud position. */
-  forecastTime?: SigmetTime;
+  forecastTime?: DayTime;
   /** Forecast altitude range of the volcanic ash cloud. */
   forecastAltitudeRange?: SigmetAltitudeRange;
 }
@@ -1305,9 +1296,9 @@ export interface InternationalSigmet {
   /** ICAO identifier of the issuing station (e.g. "PANC", "KNHC"). */
   issuingStation: string;
   /** Start of the validity period (UTC). */
-  validFrom: SigmetTime;
+  validFrom: DayTime;
   /** End of the validity period (UTC). */
-  validTo: SigmetTime;
+  validTo: DayTime;
   /** True when this SIGMET cancels a previously issued SIGMET. */
   isCancellation: boolean;
   /** Series name of the SIGMET being cancelled (when isCancellation is true). */
@@ -1315,15 +1306,15 @@ export interface InternationalSigmet {
   /** Series number of the SIGMET being cancelled (when isCancellation is true). */
   cancelledSeriesNumber?: number;
   /** Start of the cancelled SIGMET's validity period (UTC). */
-  cancelledValidStart?: SigmetTime;
+  cancelledValidStart?: DayTime;
   /** End of the cancelled SIGMET's validity period (UTC). */
-  cancelledValidEnd?: SigmetTime;
+  cancelledValidEnd?: DayTime;
   /** Raw phenomena description string (e.g. "SEV TURB", "TC FRANCINE", "FRQ TS"). */
   phenomena?: string;
   /** Whether the phenomenon is observed or forecast. */
   observationStatus?: SigmetObservationStatus;
   /** Time (UTC) of observation. */
-  observedAt?: SigmetTime;
+  observedAt?: DayTime;
   /** Raw area description text (WI coordinates, NM-based areas, etc.). */
   areaDescription?: string;
   /** Altitude range of the phenomenon. */
@@ -1337,15 +1328,15 @@ export interface InternationalSigmet {
   /** Name of the tropical cyclone (e.g. "FRANCINE", "KYLE"). */
   cycloneName?: string;
   /** Geographic position of the tropical cyclone center. */
-  cyclonePosition?: SigmetPosition;
+  cyclonePosition?: Coordinates;
   /** Cumulonimbus top flight level (e.g. 500 for FL500). */
   cbTopFl?: number;
   /** Radius in nautical miles from the cyclone center (e.g. 180 from "WI 180NM OF CENTER"). */
   withinNm?: number;
   /** Forecast time (UTC) for the phenomenon position. */
-  forecastTime?: SigmetTime;
+  forecastTime?: DayTime;
   /** Forecast geographic position of the phenomenon (tropical cyclone center or volcanic ash cloud). */
-  forecastPosition?: SigmetPosition;
+  forecastPosition?: Coordinates;
   /** Additional information not captured in other fields (e.g. "+/- 35KTS LLWS"). */
   additionalInfo?: string;
 }
