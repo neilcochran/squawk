@@ -1079,8 +1079,10 @@ export interface SigmetMovement {
   directionDeg?: number;
   /** Movement direction as a compass point (e.g. NE, WSW from international format). */
   directionCompass?: CompassDirection;
-  /** Movement speed in knots. */
-  speedKt: number;
+  /** Movement speed in knots. Present when the speed is reported in knots. */
+  speedKt?: number;
+  /** Movement speed in kilometers per hour. Present when the speed is reported in KMH (some international MWOs). */
+  speedKmh?: number;
 }
 
 /**
@@ -1265,8 +1267,8 @@ export interface InternationalSigmet {
   firCode: string;
   /** Name of the Flight Information Region (e.g. "ANCHORAGE FIR", "MIAMI OCEANIC FIR"). */
   firName: string;
-  /** NATO phonetic series name (e.g. MIKE, INDIA, TANGO). */
-  seriesName: SigmetSeriesName;
+  /** Series identifier. US MWOs use NATO phonetic names (e.g. MIKE, INDIA); non-US MWOs may use single letters or other identifiers per ICAO conventions. */
+  seriesName: string;
   /** Sequence number within the series. */
   seriesNumber: number;
   /** ICAO identifier of the issuing station (e.g. "PANC", "KNHC"). */
@@ -1277,8 +1279,8 @@ export interface InternationalSigmet {
   validTo: DayTime;
   /** True when this SIGMET cancels a previously issued SIGMET. */
   isCancellation: boolean;
-  /** Series name of the SIGMET being cancelled (when isCancellation is true). */
-  cancelledSeriesName?: SigmetSeriesName;
+  /** Series identifier of the SIGMET being cancelled (when isCancellation is true). */
+  cancelledSeriesName?: string;
   /** Series number of the SIGMET being cancelled (when isCancellation is true). */
   cancelledSeriesNumber?: number;
   /** Start of the cancelled SIGMET's validity period (UTC). */
@@ -1307,6 +1309,8 @@ export interface InternationalSigmet {
   cyclonePosition?: Coordinates;
   /** Cumulonimbus top flight level (e.g. 500 for FL500). */
   cbTopFl?: number;
+  /** Cloud top altitude information (TOP FL### or TOP ABV FL###). */
+  tops?: SigmetTops;
   /** Radius in nautical miles from the cyclone center (e.g. 180 from "WI 180NM OF CENTER"). */
   withinNm?: number;
   /** Forecast time (UTC) for the phenomenon position. */
