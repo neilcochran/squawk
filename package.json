@@ -30,7 +30,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
     "@types/node": "^25.5.0",
-    "eslint": "^9.0.0",
+    "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.0.0",
     "turbo": "^2.0.0",
