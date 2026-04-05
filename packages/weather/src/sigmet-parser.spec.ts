@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSigmet } from './sigmet-parser.js';
+import { parseSigmet, parseSigmetBulletin } from './sigmet-parser.js';
 
 // ---------------------------------------------------------------------------
 // Reference data - inlined from reference-data/weather/sigmet/
@@ -196,6 +196,35 @@ KZMA MIAMI OCEANIC FIR TC FRANCINE OBS AT 1500Z N2540 W08830
 CB TOP FL500 WI 180NM OF CENTER MOV NW 12KT INTSF
 FCST AT 2100Z TC CENTER N2640 W08930`;
 
+// Real-world data from NWS/AWC/AAWU feeds
+const CONVECTIVE_NONE = `WSUS33 KKCI 051655
+SIGW
+MKCW WST 051655
+CONVECTIVE SIGMET...NONE
+
+OUTLOOK VALID 051855-052255
+TS ARE NOT EXPD TO REQUIRE WST ISSUANCES.`;
+
+const INTERNATIONAL_EMBD_TS = `WSPA03 PHFO 051309
+SIGPAP
+KZAK SIGMET PAPA 5 VALID 051305/051705 PHFO-
+OAKLAND OCEANIC FIR EMBD TS OBS AT 1305Z WI N0815 E15230 - N0600
+E15800 - N0445 E15730 - N0645 E15315 - N0615 E15045 - N0400 E15015 -
+N0545 E14515 - N0715 E14800 - N0815 E15230. TOP FL560. MOV W 5KT.
+NC.`;
+
+const INTERNATIONAL_VA_ERUPTION = `WVAK01 PAWU 190708
+PAZA SIGMET INDIA 5 VALID 190702/191302 PANC-
+ANCHORAGE FIR VA ERUPTION MT KATMAI PSN N5817 W15458
+VA CLD OBS AT 0702Z WI N5822 W15443 - N5731 W15338 - N5723 W15426 -
+N5818 W15458 - N5822 W15443 SFC/FL060 MOV STNR WKN
+FCST 1302Z VA CLD WI N5822 W15442 - N5723 W15343 - N5717 W15426 -
+N5817 W15457 - N5822 W15442 SFC/FL060`;
+
+const INTERNATIONAL_OBSC_TS = `WSTU31 UTAT 051525
+UTAT SIGMET N 5 VALID 051525/051925 UTAT-
+DASHOGUZ FIR OBSC TS FCST ENTIRE FIR TOP FL370 MOV NE 20KT NC=`;
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -208,6 +237,32 @@ describe('parseSigmet', () => {
 
     it('throws on invalid input', () => {
       assert.throws(() => parseSigmet('THIS IS NOT A SIGMET'));
+    });
+
+    it('throws on whitespace-only input', () => {
+      assert.throws(() => parseSigmet('   '), /Empty SIGMET string/);
+    });
+
+    it('throws on malformed convective SIGMET missing number and region', () => {
+      assert.throws(
+        () => parseSigmet('CONVECTIVE SIGMET VALID UNTIL 042055Z'),
+        /Invalid convective SIGMET/,
+      );
+    });
+
+    it('throws on malformed non-convective SIGMET missing series info', () => {
+      assert.throws(
+        () => parseSigmet('SIGMET VALID UNTIL 050200Z'),
+        /Invalid non-convective SIGMET/,
+      );
+    });
+
+    it('throws on malformed international SIGMET missing sequence number', () => {
+      assert.throws(() => parseSigmet('XXXX SIGMET MIKE VALID 291615/292015 PANC-'), /Invalid/);
+    });
+
+    it('throws on truncated non-convective SIGMET', () => {
+      assert.throws(() => parseSigmet('SIGMET'), /Invalid non-convective SIGMET/);
     });
 
     it('detects convective format', () => {
@@ -296,6 +351,7 @@ describe('parseSigmet', () => {
       assert.equal(result.thunderstormType, 'ISOLATED');
       assert.equal(result.isSevere, true);
       assert.deepEqual(result.states, ['MT', 'WY']);
+      assert.deepEqual(result.areaPoints, ['40NW BIL', '60SE BIL', '30NE SHR', '40NW BIL']);
       assert.equal(result.movement?.directionDeg, 250);
       assert.equal(result.movement?.speedKt, 15);
       assert.equal(result.tops?.altitudeFt, 42000);
@@ -314,6 +370,14 @@ describe('parseSigmet', () => {
 
       assert.equal(result.region, 'C');
       assert.equal(result.number, 52);
+      assert.deepEqual(result.states, ['NE', 'KS', 'OK']);
+      assert.deepEqual(result.areaPoints, [
+        '30NW OMA',
+        '40SE OMA',
+        '30NE ICT',
+        '50W DDC',
+        '30NW OMA',
+      ]);
       assert.equal(result.thunderstormType, 'AREA');
       assert.equal(result.isSevere, true);
       assert.equal(result.hasTornadoes, true);
@@ -369,6 +433,15 @@ describe('parseSigmet', () => {
 
       assert.equal(result.region, 'C');
       assert.equal(result.number, 76);
+      assert.deepEqual(result.states, ['OH', 'TN', 'KY', 'IN', 'AL', 'MS']);
+      assert.deepEqual(result.areaPoints, [
+        '10W CVG',
+        '40E CVG',
+        '50NNW GQO',
+        '40SSW MSL',
+        '40WNW MSL',
+        '10W CVG',
+      ]);
       assert.equal(result.thunderstormType, 'AREA');
       assert.equal(result.isSevere, true);
       assert.equal(result.windGustsKt, 50);
@@ -396,6 +469,25 @@ describe('parseSigmet', () => {
       assert.equal(result.tops?.isAbove, false);
       assert.ok(result.outlook);
     });
+
+    it('parses CONVECTIVE SIGMET NONE with outlook (real NWS data)', () => {
+      const result = parseSigmet(CONVECTIVE_NONE);
+      assert.equal(result.format, 'CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+
+      assert.equal(result.isNone, true);
+      assert.equal(result.region, 'W');
+      assert.equal(result.number, 0);
+      assert.ok(result.outlook);
+      assert.equal(result.outlook.validFromDay, 5);
+      assert.equal(result.outlook.validFromHour, 18);
+      assert.equal(result.outlook.validFromMinute, 55);
+      assert.equal(result.outlook.validToDay, 5);
+      assert.equal(result.outlook.validToHour, 22);
+      assert.equal(result.outlook.validToMinute, 55);
+    });
   });
 
   describe('non-convective SIGMET', () => {
@@ -412,6 +504,8 @@ describe('parseSigmet', () => {
       assert.equal(result.validUntil?.day, 5);
       assert.equal(result.validUntil?.hour, 2);
       assert.equal(result.validUntil?.minute, 0);
+      assert.equal(result.states, undefined);
+      assert.deepEqual(result.areaPoints, ['40NW SLC', '60SE BOI', '30SW BIL', '40NW SLC']);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
       assert.equal(result.hazards[0]!.isOccasional, false);
@@ -431,6 +525,14 @@ describe('parseSigmet', () => {
 
       assert.equal(result.seriesName, 'OSCAR');
       assert.equal(result.seriesNumber, 1);
+      assert.equal(result.states, undefined);
+      assert.deepEqual(result.areaPoints, [
+        '30E BUF',
+        '40S ALB',
+        '20NW JFK',
+        '40NE ACK',
+        '30E BUF',
+      ]);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'ICING');
       assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 18000);
@@ -452,6 +554,13 @@ describe('parseSigmet', () => {
       assert.equal(result.validUntil?.day, 4);
       assert.equal(result.validUntil?.hour, 22);
       assert.equal(result.validUntil?.minute, 0);
+      assert.deepEqual(result.areaPoints, [
+        '60NW ANC',
+        '40NE ANC',
+        '80SE ANC',
+        '60SW ANC',
+        '60NW ANC',
+      ]);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'VOLCANIC_ASH');
       assert.equal(result.volcanoName, 'MT REDOUBT');
@@ -477,6 +586,8 @@ describe('parseSigmet', () => {
 
       assert.equal(result.seriesName, 'QUEBEC');
       assert.equal(result.seriesNumber, 1);
+      assert.equal(result.states, undefined);
+      assert.deepEqual(result.areaPoints, ['40W TUS', '60S PHX', '30NW ELP', '40W TUS']);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'DUST_SANDSTORM');
       assert.equal(result.hazards[0]!.visibilityBelow, 3);
@@ -496,14 +607,14 @@ describe('parseSigmet', () => {
 
       assert.equal(result.seriesName, 'UNIFORM');
       assert.equal(result.seriesNumber, 4);
-      assert.ok(result.states);
-      assert.ok(result.states.includes('KS'));
-      assert.ok(result.states.includes('NM'));
+      assert.deepEqual(result.states, ['KS', 'OK', 'TX', 'UT', 'CO', 'AZ', 'NM']);
+      assert.deepEqual(result.areaPoints, ['30NW DVC', '50SE GCK', 'CDS', '60ENE INW', '30NW DVC']);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
       assert.equal(result.hazards[0]!.isOccasional, true);
       assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 28000);
       assert.equal(result.hazards[0]!.altitudeRange?.topFt, 38000);
+      assert.ok(result.hazards[0]!.cause?.includes('WNDSHR'));
       assert.equal(result.conditionsContinuingBeyond?.hour, 6);
       assert.equal(result.conditionsContinuingBeyond?.minute, 50);
     });
@@ -545,6 +656,16 @@ describe('parseSigmet', () => {
       assert.equal(result.seriesName, 'PAPA');
       assert.equal(result.seriesNumber, 2);
       assert.deepEqual(result.states, ['ME', 'NH', 'VT', 'NY', 'PA']);
+      assert.deepEqual(result.areaPoints, [
+        '70NW PQI',
+        '40NE MPV',
+        '30NW ALB',
+        '20E SYR',
+        '40N JHW',
+        '30NW ERI',
+        '50NE YOW',
+        '70NW PQI',
+      ]);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'ICING');
       assert.equal(result.hazards[0]!.isOccasional, true);
@@ -565,11 +686,21 @@ describe('parseSigmet', () => {
       assert.equal(result.seriesName, 'ROMEO');
       assert.equal(result.seriesNumber, 3);
       assert.deepEqual(result.states, ['WI', 'MI', 'IN', 'OH']);
+      assert.deepEqual(result.areaPoints, [
+        '30NW GRB',
+        '40E MKE',
+        '30S FWA',
+        '30E IND',
+        '40NW DLH',
+        '30NW GRB',
+      ]);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
       assert.equal(result.hazards[0]!.isOccasional, true);
       assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 31000);
       assert.equal(result.hazards[0]!.altitudeRange?.topFt, 41000);
+      assert.equal(result.hazards[0]!.cause, 'JTST');
+      assert.equal(result.movement, undefined);
       assert.equal(result.conditionsContinuingBeyond?.hour, 20);
       assert.equal(result.conditionsContinuingBeyond?.minute, 15);
     });
@@ -583,8 +714,18 @@ describe('parseSigmet', () => {
 
       assert.equal(result.seriesName, 'QUEBEC');
       assert.equal(result.seriesNumber, 2);
+      assert.deepEqual(result.states, ['FL', 'GA', 'SC']);
+      assert.deepEqual(result.areaPoints, [
+        '30NW TLH',
+        '40E SAV',
+        '80SE CHS',
+        '60SW PIE',
+        '30NW TLH',
+      ]);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
+      assert.equal(result.hazards[0]!.isOccasional, true);
+      assert.ok(result.hazards[0]!.cause?.includes('WNDSHR'));
       assert.equal(result.intensityChange, 'WEAKENING');
       assert.equal(result.conditionsEndingBy?.hour, 18);
       assert.equal(result.conditionsEndingBy?.minute, 20);
@@ -600,6 +741,16 @@ describe('parseSigmet', () => {
       assert.equal(result.seriesName, 'VICTOR');
       assert.equal(result.seriesNumber, 1);
       assert.deepEqual(result.states, ['NY', 'PA', 'NJ', 'CT', 'MA', 'VT', 'NH', 'ME']);
+      assert.deepEqual(result.areaPoints, [
+        '80NW PQI',
+        '40S BGR',
+        '30W BOS',
+        '40NW JFK',
+        '30E PSB',
+        '50NW ERI',
+        '40E YOW',
+        '80NW PQI',
+      ]);
       assert.equal(result.hazards.length, 2);
 
       assert.equal(result.hazards[0]!.hazardType, 'ICING');
@@ -627,9 +778,18 @@ describe('parseSigmet', () => {
 
       assert.equal(result.seriesName, 'OSCAR');
       assert.equal(result.seriesNumber, 2);
+      assert.deepEqual(result.states, ['MN', 'WI', 'IA', 'IL']);
+      assert.deepEqual(result.areaPoints, [
+        '50NW DLH',
+        '40E GRB',
+        '30SE RFD',
+        '40W DSM',
+        '50NW DLH',
+      ]);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
       assert.equal(result.hazards[0]!.isOccasional, true);
+      assert.ok(result.hazards[0]!.cause?.includes('WNDSHR'));
       assert.equal(result.intensityChange, 'INTENSIFYING');
       assert.equal(result.conditionsContinuingBeyond?.hour, 22);
       assert.equal(result.conditionsContinuingBeyond?.minute, 45);
@@ -728,6 +888,254 @@ describe('parseSigmet', () => {
       assert.ok(result.forecastPosition);
       assert.equal(result.forecastPosition.lat, 26 + 40 / 60);
       assert.equal(result.forecastPosition.lon, -(89 + 30 / 60));
+    });
+    it('parses EMBD TS from Oakland Oceanic FIR (real PHFO data)', () => {
+      const result = parseSigmet(INTERNATIONAL_EMBD_TS);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+
+      assert.equal(result.firCode, 'KZAK');
+      assert.ok(result.firName.includes('OAKLAND OCEANIC FIR'));
+      assert.equal(result.seriesName, 'PAPA');
+      assert.equal(result.seriesNumber, 5);
+      assert.equal(result.issuingStation, 'PHFO');
+      assert.equal(result.validFrom.day, 5);
+      assert.equal(result.validFrom.hour, 13);
+      assert.equal(result.validTo.day, 5);
+      assert.equal(result.validTo.hour, 17);
+      assert.equal(result.isCancellation, false);
+      assert.equal(result.phenomena, 'EMBD TS');
+      assert.equal(result.observationStatus, 'OBSERVED');
+      assert.equal(result.observedAt?.hour, 13);
+      assert.equal(result.observedAt?.minute, 5);
+      assert.ok(result.areaDescription);
+      assert.ok(result.tops);
+      assert.equal(result.tops.altitudeFt, 56000);
+      assert.equal(result.tops.isAbove, false);
+      assert.equal(result.movement?.directionCompass, 'W');
+      assert.equal(result.movement?.speedKt, 5);
+      assert.equal(result.intensityChange, 'NO_CHANGE');
+    });
+
+    it('parses VA ERUPTION from AAWU without ICAO prefix on FIR name (real data)', () => {
+      const result = parseSigmet(INTERNATIONAL_VA_ERUPTION);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+
+      assert.equal(result.firCode, 'PAZA');
+      assert.ok(result.firName.includes('ANCHORAGE FIR'));
+      assert.equal(result.seriesName, 'INDIA');
+      assert.equal(result.seriesNumber, 5);
+      assert.equal(result.issuingStation, 'PANC');
+      assert.equal(result.validFrom.day, 19);
+      assert.equal(result.validTo.day, 19);
+      assert.equal(result.isCancellation, false);
+      assert.equal(result.phenomena, 'VA ERUPTION');
+      assert.ok(result.altitudeRange);
+      assert.equal(result.altitudeRange.baseFt, undefined);
+      assert.equal(result.altitudeRange.topFt, 6000);
+      assert.equal(result.isStationary, true);
+      assert.equal(result.intensityChange, 'WEAKENING');
+    });
+
+    it('parses OBSC TS with FCST from Dashoguz FIR (real data)', () => {
+      const result = parseSigmet(INTERNATIONAL_OBSC_TS);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+
+      assert.equal(result.firCode, 'UTAT');
+      assert.ok(result.firName.includes('DASHOGUZ FIR'));
+      assert.equal(result.seriesName, 'N');
+      assert.equal(result.seriesNumber, 5);
+      assert.equal(result.issuingStation, 'UTAT');
+      assert.equal(result.isCancellation, false);
+      assert.equal(result.phenomena, 'OBSC TS');
+      assert.ok(result.tops);
+      assert.equal(result.tops.altitudeFt, 37000);
+      assert.equal(result.movement?.directionCompass, 'NE');
+      assert.equal(result.movement?.speedKt, 20);
+      assert.equal(result.intensityChange, 'NO_CHANGE');
+    });
+  });
+
+  describe('robustness', () => {
+    it('parses numeric series identifier (non-US MWO)', () => {
+      const result = parseSigmet(
+        'OEJD SIGMET 02 VALID 051300/051700 OEJN-\n' +
+          'OEJD JEDDAH FIR EMBD TS OBS S OF LINE N2130 E04012 - N2143 E04243\n' +
+          'TOP ABV FL390 MOV S NC=',
+      );
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+
+      assert.equal(result.firCode, 'OEJD');
+      assert.ok(result.firName.includes('JEDDAH FIR'));
+      assert.equal(result.seriesName, '02');
+      assert.equal(result.seriesNumber, 2);
+      assert.equal(result.issuingStation, 'OEJN');
+      assert.equal(result.phenomena, 'EMBD TS');
+      assert.ok(result.areaDescription);
+      assert.ok(result.areaDescription.includes('N2130'));
+      assert.ok(result.tops);
+      assert.equal(result.tops.altitudeFt, 39000);
+      assert.equal(result.tops.isAbove, true);
+      assert.equal(result.intensityChange, 'NO_CHANGE');
+    });
+
+    it('parses KMH speed in international SIGMET', () => {
+      const result = parseSigmet(
+        'LFFF SIGMET GOLF 1 VALID 051200/051600 LFPW-\n' +
+          'LFFF PARIS FIR SEV TURB OBS AT 1200Z WI N4830 E00230 - N4700 E00400 - N4630 E00200\n' +
+          'FL300/FL400 MOV NE 40KMH NC=',
+      );
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+
+      assert.equal(result.movement?.directionCompass, 'NE');
+      assert.equal(result.movement?.speedKmh, 40);
+      assert.equal(result.movement?.speedKt, undefined);
+    });
+
+    it('handles carriage return line endings', () => {
+      const result = parseSigmet(
+        'SIGMET NOVEMBER 3 VALID UNTIL 050200Z\r\n' +
+          'FROM 40NW SLC-60SE BOI-30SW BIL-40NW SLC\r\n' +
+          'SEV TURB BTN FL350 AND FL410. DUE TO JTST. CONDS CONTG BYD 0200Z.',
+      );
+      assert.equal(result.format, 'NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+
+      assert.equal(result.seriesName, 'NOVEMBER');
+      assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
+    });
+
+    it('handles old Mac carriage returns without newlines', () => {
+      const result = parseSigmet(
+        'SIGMET OSCAR 1 VALID UNTIL 050400Z\r' +
+          'FROM 30E BUF-40S ALB-20NW JFK-40NE ACK-30E BUF\r' +
+          'SEV ICE BTN FL180 AND FL280. DUE TO FZRA. CONDS CONTG BYD 0400Z.',
+      );
+      assert.equal(result.format, 'NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+
+      assert.equal(result.seriesName, 'OSCAR');
+      assert.equal(result.hazards[0]!.hazardType, 'ICING');
+    });
+
+    it('parses S OF LINE area format in international SIGMET', () => {
+      const result = parseSigmet(
+        'OEJD SIGMET 03 VALID 051300/051700 OEJN-\n' +
+          'OEJD JEDDAH FIR EMBD TS FCST S OF LINE N2130 E04012 - N2143 E04243\n' +
+          'TOP FL370 MOV S 10KT NC=',
+      );
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+
+      assert.ok(result.areaDescription);
+      assert.ok(result.areaDescription.includes('N2130'));
+      assert.ok(result.areaDescription.includes('N2143'));
+    });
+
+    it('parses FCST without AT keyword in VA SIGMET', () => {
+      const result = parseSigmet(
+        'SIGMET PAPA 3 VALID 041600/042200Z\n' +
+          'VOLCANIC ASH FROM ERUPTION OF MT REDOUBT 6042N15610W\n' +
+          'VA CLD OBS AT 1530Z FL250/FL350\n' +
+          'FROM 60NW ANC-40NE ANC-80SE ANC-60SW ANC-60NW ANC\n' +
+          'MOV NE 30KT. FCST 2200Z FL200/FL400.',
+      );
+      assert.equal(result.format, 'NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+
+      assert.equal(result.forecastTime?.hour, 22);
+      assert.equal(result.forecastTime?.minute, 0);
+      assert.ok(result.forecastAltitudeRange);
+      assert.equal(result.forecastAltitudeRange.baseFt, 20000);
+      assert.equal(result.forecastAltitudeRange.topFt, 40000);
+    });
+  });
+
+  describe('parseSigmetBulletin', () => {
+    it('splits a multi-SIGMET convective bulletin', () => {
+      const bulletin =
+        'WSUS32 KKCI 051655\n' +
+        'SIGC\n' +
+        'MKCC WST 051655\n' +
+        'CONVECTIVE SIGMET 50C\n' +
+        'VALID UNTIL 1855Z\n' +
+        'FL GA AL MS LA AND FL AL MS LA CSTL WTRS\n' +
+        'FROM 20SSE ODF-10ENE PZD-50S LEV-80SSE LCH-20SSE ODF\n' +
+        'AREA EMBD TS MOV FROM 28015KT. TOPS TO FL420.\n' +
+        '\n' +
+        'CONVECTIVE SIGMET 51C\n' +
+        'VALID UNTIL 1855Z\n' +
+        'TX AND CSTL WTRS\n' +
+        'FROM 40SW ACT-90SE PSX-10E BRO-20SE DLF-40SW ACT\n' +
+        'AREA TS MOV FROM 21015KT. TOPS TO FL330.\n' +
+        '\n' +
+        'OUTLOOK VALID 051855-052255\n' +
+        'FROM ODF-PZD-50SSE LEV-110S LCH-LSU-ODF\n' +
+        'WST ISSUANCES EXPD. REFER TO MOST RECENT ACUS01 KWNS FROM STORM\n' +
+        'PREDICTION CENTER FOR SYNOPSIS AND METEOROLOGICAL DETAILS.';
+
+      const results = parseSigmetBulletin(bulletin);
+      assert.equal(results.length, 2);
+
+      const first = results[0]!;
+      assert.equal(first.format, 'CONVECTIVE');
+      if (first.format === 'CONVECTIVE') {
+        assert.equal(first.number, 50);
+        assert.equal(first.region, 'C');
+        assert.equal(first.thunderstormType, 'AREA');
+        assert.equal(first.isEmbedded, true);
+        assert.ok(first.outlook);
+      }
+
+      const second = results[1]!;
+      assert.equal(second.format, 'CONVECTIVE');
+      if (second.format === 'CONVECTIVE') {
+        assert.equal(second.number, 51);
+        assert.equal(second.region, 'C');
+        assert.equal(second.thunderstormType, 'AREA');
+        assert.ok(second.outlook);
+      }
+    });
+
+    it('handles NONE bulletin', () => {
+      const results = parseSigmetBulletin(CONVECTIVE_NONE);
+      assert.equal(results.length, 1);
+      assert.equal(results[0]!.format, 'CONVECTIVE');
+      if (results[0]!.format === 'CONVECTIVE') {
+        assert.equal(results[0]!.isNone, true);
+      }
+    });
+
+    it('handles single non-convective SIGMET as bulletin', () => {
+      const results = parseSigmetBulletin(NONCONVECTIVE_TURBULENCE);
+      assert.equal(results.length, 1);
+      assert.equal(results[0]!.format, 'NONCONVECTIVE');
+    });
+
+    it('throws on empty input', () => {
+      assert.throws(() => parseSigmetBulletin(''), /Empty SIGMET bulletin/);
     });
   });
 });

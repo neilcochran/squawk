@@ -44,32 +44,40 @@ console.log(taf.forecast[1].start); // { day: 4, hour: 22, minute: 0 }
 
 ### SIGMET
 
+Use `parseSigmetBulletin` as the primary entry point - it handles both single
+SIGMETs and multi-SIGMET bulletins (common in AWC convective SIGMET feeds),
+always returning an array.
+
+```typescript
+import { parseSigmetBulletin } from '@squawk/weather';
+
+// Works with single SIGMETs or full bulletins from any source
+const sigmets = parseSigmetBulletin(rawSigmetText);
+
+for (const sigmet of sigmets) {
+  if (sigmet.format === 'NONCONVECTIVE') {
+    console.log(sigmet.seriesName); // "NOVEMBER"
+    console.log(sigmet.hazards[0].hazardType); // "TURBULENCE"
+    console.log(sigmet.hazards[0].altitudeRange); // { baseFt: 35000, topFt: 41000 }
+  } else if (sigmet.format === 'CONVECTIVE') {
+    console.log(sigmet.region); // "C"
+    console.log(sigmet.thunderstormType); // "AREA"
+    console.log(sigmet.tops); // { altitudeFt: 45000, isAbove: true }
+  } else {
+    console.log(sigmet.firCode); // "PAZA"
+    console.log(sigmet.phenomena); // "SEV TURB"
+  }
+}
+```
+
+If you know you have a single SIGMET record, `parseSigmet` returns a single
+object instead of an array:
+
 ```typescript
 import { parseSigmet } from '@squawk/weather';
 
-// Non-convective SIGMET
-const sigmet = parseSigmet(
-  'SIGMET NOVEMBER 3 VALID UNTIL 050200Z\n' +
-    'FROM 40NW SLC-60SE BOI-30SW BIL-40NW SLC\n' +
-    'SEV TURB BTN FL350 AND FL410. DUE TO JTST. CONDS CONTG BYD 0200Z.',
-);
-if (sigmet.format === 'NONCONVECTIVE') {
-  console.log(sigmet.seriesName); // "NOVEMBER"
-  console.log(sigmet.hazards[0].hazardType); // "TURBULENCE"
-  console.log(sigmet.hazards[0].altitudeRange); // { baseFt: 35000, topFt: 41000 }
-}
-
-// Convective SIGMET
-const convective = parseSigmet(
-  'CONVECTIVE SIGMET 45C\nVALID UNTIL 042055Z\nKS OK TX\n' +
-    'FROM 30NW ICT-40S MCI-20W ADM-50SW ABI-30NW ICT\n' +
-    'AREA SEV TS MOV FROM 26025KT. TOPS ABV FL450.',
-);
-if (convective.format === 'CONVECTIVE') {
-  console.log(convective.region); // "C"
-  console.log(convective.thunderstormType); // "AREA"
-  console.log(convective.tops); // { altitudeFt: 45000, isAbove: true }
-}
+const sigmet = parseSigmet(singleSigmetRecord);
+console.log(sigmet.format); // "CONVECTIVE" | "NONCONVECTIVE" | "INTERNATIONAL"
 ```
 
 ## API
@@ -86,14 +94,22 @@ and ICAO formats including FM, TEMPO, BECMG, and PROB change groups, wind shear
 (WS), turbulence (5-group), icing (6-group), CAVOK, NSW, and cancelled (CNL)
 forecasts. Multi-line TAFs are normalized automatically.
 
+### `parseSigmetBulletin(raw)`
+
+Recommended entry point for SIGMET parsing. Handles both single SIGMET records
+and multi-SIGMET bulletins (e.g. AWC convective bulletins containing multiple
+individually numbered SIGMETs with a shared outlook). Returns a `Sigmet[]`
+array. For single records, returns a one-element array.
+
 ### `parseSigmet(raw)`
 
-Parses a raw SIGMET string into a structured `Sigmet` discriminated union.
-Auto-detects the format from content and returns one of three variants:
+Parses a single SIGMET record into a structured `Sigmet` discriminated union.
+Use this when you know the input contains exactly one SIGMET. Auto-detects the
+format from content and returns one of three variants:
 
 - `ConvectiveSigmet` - domestic CONUS thunderstorm advisories (area/line/isolated TS, outlook sections, severe weather hazards)
 - `NonConvectiveSigmet` - domestic CONUS turbulence, icing, volcanic ash, dust/sandstorm (supports multi-hazard and cancellations)
-- `InternationalSigmet` - ICAO format for Alaska, oceanic FIRs, and international airspace (tropical cyclone, cancellations)
+- `InternationalSigmet` - ICAO format for Alaska, oceanic FIRs, and international airspace (tropical cyclone, volcanic ash, cancellations)
 
 Accepts both raw WMO-wrapped messages and body-only messages.
 

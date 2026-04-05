@@ -39,7 +39,10 @@ const COMPASS_DIRECTIONS = new Set<string>([
 ]);
 
 /**
- * Parses a raw SIGMET string into a structured {@link Sigmet} object.
+ * Parses a single SIGMET record into a structured {@link Sigmet} object.
+ *
+ * For general use, prefer {@link parseSigmetBulletin} which handles both
+ * single records and multi-SIGMET bulletins transparently.
  *
  * Automatically detects the SIGMET format (convective, non-convective, or
  * international ICAO) from the content and returns the appropriate variant
@@ -69,7 +72,10 @@ export function parseSigmet(raw: string): Sigmet {
   }
 
   // Normalize to single line for easier parsing
-  const normalized = trimmed.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+  const normalized = trimmed
+    .replace(/\r?\n|\r/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   // Detect format based on content
   if (normalized.includes('CONVECTIVE SIGMET')) {
@@ -83,21 +89,132 @@ export function parseSigmet(raw: string): Sigmet {
   return parseNonConvectiveSigmet(normalized);
 }
 
+/**
+ * Recommended entry point for SIGMET parsing. Handles both single SIGMET
+ * records and multi-SIGMET bulletins, always returning an array.
+ *
+ * Consumers do not need to know whether their input is a single record or
+ * a bulletin - this function handles both transparently. Real-world convective
+ * SIGMET bulletins from AWC often contain multiple individually numbered
+ * SIGMETs for a region, followed by a shared outlook section. This function
+ * splits the bulletin, parses each SIGMET, and attaches the shared outlook
+ * to each convective SIGMET.
+ *
+ * For non-convective and international SIGMETs (which are typically single
+ * messages), this returns an array with one element.
+ *
+ * ```typescript
+ * import { parseSigmetBulletin } from '@squawk/weather';
+ *
+ * const sigmets = parseSigmetBulletin(rawBulletin);
+ * for (const sigmet of sigmets) {
+ *   console.log(sigmet.format, sigmet.raw);
+ * }
+ * ```
+ *
+ * @param raw - The raw SIGMET bulletin string, possibly containing multiple SIGMETs.
+ * @returns An array of parsed {@link Sigmet} objects.
+ * @throws {Error} If no valid SIGMETs can be parsed from the bulletin.
+ */
+export function parseSigmetBulletin(raw: string): Sigmet[] {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    throw new Error('Empty SIGMET bulletin');
+  }
+
+  const normalized = trimmed
+    .replace(/\r?\n|\r/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Check if this is a convective bulletin with multiple SIGMETs
+  if (normalized.includes('CONVECTIVE SIGMET')) {
+    return parseConvectiveBulletin(normalized);
+  }
+
+  // Non-convective and international: single SIGMET per message
+  return [parseSigmet(raw)];
+}
+
+/**
+ * Splits a convective SIGMET bulletin into individual SIGMETs.
+ * A bulletin may contain: multiple CONVECTIVE SIGMET entries + shared OUTLOOK,
+ * or just CONVECTIVE SIGMET...NONE + OUTLOOK.
+ */
+function parseConvectiveBulletin(normalized: string): Sigmet[] {
+  // Find all CONVECTIVE SIGMET boundaries
+  const sigmetStarts: number[] = [];
+  const pattern = /CONVECTIVE SIGMET/g;
+  let match;
+  while ((match = pattern.exec(normalized)) !== null) {
+    sigmetStarts.push(match.index);
+  }
+
+  if (sigmetStarts.length === 0) {
+    throw new Error('No CONVECTIVE SIGMET found in bulletin');
+  }
+
+  // If only one SIGMET entry, parse as single
+  if (sigmetStarts.length === 1) {
+    return [parseSigmet(normalized)];
+  }
+
+  // Find the outlook section (shared across all SIGMETs in the bulletin)
+  const outlookIdx = normalized.indexOf('OUTLOOK VALID');
+
+  // Split into individual SIGMET texts
+  const results: Sigmet[] = [];
+  for (let i = 0; i < sigmetStarts.length; i++) {
+    const start = sigmetStarts[i]!;
+    const text = normalized.substring(start);
+
+    // Skip if this is the OUTLOOK-only marker (not a real SIGMET)
+    if (text.startsWith('CONVECTIVE SIGMET OUTLOOK')) {
+      continue;
+    }
+
+    // Determine end of this SIGMET's body (next SIGMET or OUTLOOK)
+    let end: number | undefined;
+    if (i + 1 < sigmetStarts.length) {
+      end = sigmetStarts[i + 1]!;
+    } else if (outlookIdx >= 0 && outlookIdx > start) {
+      end = outlookIdx;
+    }
+
+    const sigmetText = end !== undefined ? normalized.substring(start, end).trim() : text.trim();
+
+    // If there's a shared outlook, append it so each SIGMET gets it
+    const withOutlook =
+      outlookIdx >= 0 && !sigmetText.includes('OUTLOOK VALID')
+        ? sigmetText + ' ' + normalized.substring(outlookIdx)
+        : sigmetText;
+
+    try {
+      results.push(parseSigmet(withOutlook));
+    } catch {
+      // Skip individual SIGMETs that fail to parse in a bulletin context
+    }
+  }
+
+  if (results.length === 0) {
+    throw new Error('No valid SIGMETs found in bulletin');
+  }
+
+  return results;
+}
+
 // ---------------------------------------------------------------------------
 // Format detection
 // ---------------------------------------------------------------------------
 
 /**
  * Tests whether the normalized SIGMET text matches the international (ICAO) format.
- * International SIGMETs have a pattern like:
- *   XXXX SIGMET NAME # VALID dddddd/dddddd XXXX-
- * where XXXX is a 4-letter ICAO identifier and validity uses the slash format.
+ * International SIGMETs use: SIGMET NAME # VALID dddddd/dddddd XXXX-
+ * The trailing XXXX- (issuing station + dash) distinguishes them from
+ * domestic range-validity SIGMETs (e.g. VALID dddddd/ddddddZ for volcanic ash).
  */
 function isInternationalFormat(text: string): boolean {
-  // International SIGMETs use: SIGMET NAME # VALID dddddd/dddddd XXXX-
-  // The trailing XXXX- (issuing station + dash) distinguishes them from
-  // domestic range-validity SIGMETs (e.g. VALID dddddd/ddddddZ for volcanic ash).
-  return /\bSIGMET\s+[A-Z]+\s+\d+\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}-/.test(text);
+  return /\bSIGMET\s+[A-Z0-9]+(?:\s+\d+)?\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}-/.test(text);
 }
 
 // ---------------------------------------------------------------------------
@@ -183,22 +300,24 @@ function parseAltitudeRange(text: string): SigmetAltitudeRange | undefined {
  */
 function parseMovement(text: string): SigmetMovement | undefined {
   // Domestic format: MOV FROM dddssKT or MOVG FROM dddssKT or MOVING FROM dddssKT
-  const domesticMatch = text.match(/MOV(?:ING|G)?\s+FROM\s+(\d{3})(\d{2,3})KT/);
+  const domesticMatch = text.match(/MOV(?:ING|G)?\s+FROM\s+(\d{3})(\d{2,3})(KT|KMH)/);
   if (domesticMatch) {
+    const speed = parseInt(domesticMatch[2]!, 10);
     return {
       directionDeg: parseInt(domesticMatch[1]!, 10),
-      speedKt: parseInt(domesticMatch[2]!, 10),
+      ...(domesticMatch[3] === 'KMH' ? { speedKmh: speed } : { speedKt: speed }),
     };
   }
 
-  // International format: MOV [compass] [speed] KT
+  // International format: MOV [compass] [speed] KT/KMH
   const intlMatch = text.match(
-    /MOV\s+(N|NE|E|SE|S|SW|W|NW|NNE|ENE|ESE|SSE|SSW|WSW|WNW|NNW)\s+(\d+)\s*KT/,
+    /\bMOV\s+(N|NE|E|SE|S|SW|W|NW|NNE|ENE|ESE|SSE|SSW|WSW|WNW|NNW)\s+(\d+)\s*(KT|KMH)\b/,
   );
   if (intlMatch && COMPASS_DIRECTIONS.has(intlMatch[1]!)) {
+    const speed = parseInt(intlMatch[2]!, 10);
     return {
       directionCompass: intlMatch[1]! as CompassDirection,
-      speedKt: parseInt(intlMatch[2]!, 10),
+      ...(intlMatch[3] === 'KMH' ? { speedKmh: speed } : { speedKt: speed }),
     };
   }
 
@@ -213,7 +332,8 @@ function parseIntensityChange(text: string): SigmetIntensityChange | undefined {
   if (/\bWKN\b/.test(text)) {
     return 'WEAKENING';
   }
-  if (/\bNC\b/.test(text)) {
+  // NC must not match inside other words - require word boundary or end of content
+  if (/\bNC\b/.test(text) && !/\bANC\b/.test(text)) {
     return 'NO_CHANGE';
   }
   return undefined;
@@ -242,7 +362,7 @@ function parseTimeString(timeStr: string): DayTime | undefined {
 }
 
 /**
- * Parses a volcano position string like "6042N15610W" into a Coordinates.
+ * Parses a volcano position string like "6042N15610W" into Coordinates.
  * Format: DDMMd DDDMMd where d is N/S for lat, E/W for lon.
  */
 function parseVolcanoPosition(posStr: string): Coordinates | undefined {
@@ -265,7 +385,7 @@ function parseVolcanoPosition(posStr: string): Coordinates | undefined {
 }
 
 /**
- * Parses an ICAO-style position string like "N2540 W08830" into a Coordinates.
+ * Parses an ICAO-style position string like "N2540 W08830" into Coordinates.
  * Format: Nddmm Wdddmm (or S/E variants).
  */
 function parseIcaoPosition(posStr: string): Coordinates | undefined {
@@ -298,6 +418,11 @@ function parseConvectiveSigmet(normalized: string): ConvectiveSigmet {
   // Check for OUTLOOK-only format
   if (/^CONVECTIVE SIGMET OUTLOOK\b/.test(body)) {
     return parseConvectiveOutlookOnly(body, normalized);
+  }
+
+  // Check for NONE format (no convective activity in region)
+  if (/CONVECTIVE SIGMET\.{3}NONE/.test(body)) {
+    return parseConvectiveNone(body, normalized);
   }
 
   // Parse "CONVECTIVE SIGMET ##[E/C/W]"
@@ -371,9 +496,32 @@ function parseConvectiveSigmet(normalized: string): ConvectiveSigmet {
   };
 }
 
+/** Parses a CONVECTIVE SIGMET...NONE (no convective activity in region). */
+function parseConvectiveNone(body: string, raw: string): ConvectiveSigmet {
+  // Detect region from WMO header (SIGE/SIGC/SIGW) or AWIPS header
+  let region: ConvectiveSigmetRegion = 'C';
+  const regionMatch = raw.match(/SIG([ECW])/);
+  if (regionMatch) {
+    region = regionMatch[1]! as ConvectiveSigmetRegion;
+  }
+
+  // Parse attached outlook if present
+  const outlook = parseConvectiveOutlookSection(body);
+
+  return {
+    format: 'CONVECTIVE',
+    raw,
+    region,
+    number: 0,
+    isNone: true,
+    isOutlookOnly: false,
+    ...(outlook ? { outlook } : {}),
+  };
+}
+
 /** Parses a standalone convective SIGMET outlook. */
 function parseConvectiveOutlookOnly(body: string, raw: string): ConvectiveSigmet {
-  const validMatch = body.match(/VALID\s+(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})Z/);
+  const validMatch = body.match(/VALID\s+(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})Z?/);
   if (!validMatch) {
     throw new Error('Invalid convective SIGMET outlook: could not parse valid period');
   }
@@ -493,7 +641,7 @@ function parseThunderstormDescription(body: string): {
 
 /** Parses cloud tops from a convective SIGMET body. */
 function parseTops(body: string): SigmetTops | undefined {
-  const topsMatch = body.match(/TOPS\s+(ABV\s+)?(?:TO\s+)?FL(\d{3})/);
+  const topsMatch = body.match(/TOPS?\s+(ABV\s+)?(?:TO\s+)?FL(\d{3})/);
   if (!topsMatch) {
     return undefined;
   }
@@ -584,11 +732,11 @@ function parseNonConvectiveSigmet(normalized: string): NonConvectiveSigmet {
 
   // Parse SIGMET NAME # VALID UNTIL DDHHMMz
   const headerMatch = body.match(
-    /^SIGMET\s+([A-Z]+)\s+(\d+)\s+VALID\s+UNTIL\s+(\d{2})(\d{2})(\d{2})/,
+    /^SIGMET\s+([A-Z0-9]+)\s+(\d+)\s+VALID\s+UNTIL\s+(\d{2})(\d{2})(\d{2})/,
   );
   if (!headerMatch) {
     // Try the range validity format: SIGMET NAME # VALID DDHHMM/DDHHMM
-    const rangeMatch = body.match(/^SIGMET\s+([A-Z]+)\s+(\d+)\s+VALID\s+(\d{6})\/(\d{6})Z?\b/);
+    const rangeMatch = body.match(/^SIGMET\s+([A-Z0-9]+)\s+(\d+)\s+VALID\s+(\d{6})\/(\d{6})Z?\b/);
     if (rangeMatch) {
       return parseNonConvectiveRangeValidity(body, normalized, rangeMatch);
     }
@@ -662,17 +810,27 @@ function parseNonConvectiveBody(
 > {
   const result: Record<string, unknown> = {};
 
-  // Parse states (2-letter codes before FROM)
-  const statesMatch = content.match(/^([A-Z]{2}(?:\s+[A-Z]{2})*)\s+FROM\b/);
+  // Parse states (2-letter codes before FROM, possibly with "AND CSTL WTRS")
+  const statesMatch = content.match(
+    /^((?:[A-Z]{2}\s+)*[A-Z]{2}(?:\s+AND\s+(?:[A-Z]{2}\s+)*CSTL\s+WTRS)?)\s+FROM\b/,
+  );
   if (statesMatch) {
-    result.states = statesMatch[1]!.split(/\s+/).filter((s) => /^[A-Z]{2}$/.test(s));
+    const statesStr = statesMatch[1]!;
+    result.states = statesStr.split(/\s+/).filter((s) => /^[A-Z]{2}$/.test(s));
   }
 
-  // Parse area points
-  const fromIdx = content.indexOf('FROM ');
+  // Parse area points (skip "FROM ERUPTION" in volcanic ash SIGMETs)
+  let fromSearchStart = 0;
+  const eruptionIdx = content.indexOf('FROM ERUPTION');
+  if (eruptionIdx >= 0) {
+    fromSearchStart = eruptionIdx + 'FROM ERUPTION'.length;
+  }
+  const fromIdx = content.indexOf('FROM ', fromSearchStart);
   if (fromIdx >= 0) {
     const afterFrom = content.substring(fromIdx + 5);
-    const endMatch = afterFrom.match(/\s+(?:OCNL\s+)?SEV\s+(?:TURB|ICE|DUST)|VOLCANIC\s+ASH/);
+    const endMatch = afterFrom.match(
+      /\s+(?:OCNL\s+)?SEV\s+(?:TURB|ICE|DUST)|VOLCANIC\s+ASH|\s+MOV\b|\s+STNR\b/,
+    );
     if (endMatch && endMatch.index !== undefined) {
       const pointsStr = afterFrom.substring(0, endMatch.index).trim();
       result.areaPoints = pointsStr
@@ -727,7 +885,7 @@ function parseNonConvectiveBody(
       result.ashCloudAltitudeRange = parseAltitudeRange(vaAlt[1]!);
     }
 
-    const fcstMatch = content.match(/FCST\s+AT\s+(\d{4})Z\s+(FL\d{3}\/FL\d{3}|SFC\/FL\d{3})/);
+    const fcstMatch = content.match(/FCST\s+(?:AT\s+)?(\d{4})Z\s+(FL\d{3}\/FL\d{3}|SFC\/FL\d{3})/);
     if (fcstMatch) {
       result.forecastTime = parseTimeString(fcstMatch[1]! + 'Z');
       result.forecastAltitudeRange = parseAltitudeRange(fcstMatch[2]!);
@@ -838,7 +996,7 @@ function parseSingleHazard(text: string): SigmetHazard | undefined {
 
 /** Parses a non-convective SIGMET cancellation. */
 function parseNonConvectiveCancellation(body: string, raw: string): NonConvectiveSigmet {
-  const cancelMatch = body.match(/^CANCEL\s+SIGMET\s+([A-Z]+)\s+(\d+)\.\s*(.*)/);
+  const cancelMatch = body.match(/^CANCEL\s+SIGMET\s+([A-Z0-9]+)\s+(\d+)\.\s*(.*)/);
   if (!cancelMatch) {
     throw new Error('Invalid non-convective SIGMET cancellation: could not parse series');
   }
@@ -860,77 +1018,167 @@ function parseNonConvectiveCancellation(body: string, raw: string): NonConvectiv
 // International SIGMET parser
 // ---------------------------------------------------------------------------
 
+/**
+ * Strips WMO, AWIPS, and area identifier headers from an international SIGMET.
+ * WMO headers: TTAAii CCCC DDHHmm (e.g. WSNT02 KNHC 041500)
+ * AWIPS identifiers: SIGxxx, WSVxxx, etc.
+ * Area identifiers: XXXX WS DDHHmm
+ * After stripping, the body starts with [FIR codes...] SIGMET or just SIGMET.
+ */
+function stripInternationalHeaders(text: string): string {
+  // Find the position of the SIGMET body by looking for FIR code(s) + SIGMET pattern
+  // or just SIGMET keyword with the ICAO validity format
+  const sigmetPattern =
+    /\b(?:[A-Z]{4}\s+)*SIGMET\s+\w+(?:\s+\d+)?\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}-/;
+  const match = text.match(sigmetPattern);
+  if (!match || match.index === undefined) {
+    return text;
+  }
+
+  // Walk backwards from the match to see if there are FIR codes that are part
+  // of the SIGMET body (not WMO headers). WMO headers contain 6-char product IDs
+  // (TTAAii like WSNT02), 6-digit timestamps, and AWIPS codes with digits.
+  // FIR codes are strictly 4 uppercase letters.
+  const beforeMatch = text.substring(0, match.index);
+
+  // Strip known WMO/AWIPS header patterns from the prefix
+  // This removes lines like "WSNT02 KNHC 041500", "SIGA0A", "ANCM WS 291615"
+  const strippedPrefix = beforeMatch
+    .replace(/\b[A-Z]{2}[A-Z]{2}\d{2}\s+[A-Z]{4}\s+\d{6}\b/g, '') // WMO header
+    .replace(/\bSIG[A-Z0-9]+\b/g, '') // AWIPS SIGMET IDs (SIGA0A, SIGPAP, SIGAK5, etc.)
+    .replace(/\bWSV[A-Z0-9]+\b/g, '') // AWIPS VA SIGMET IDs (WSVAK1, etc.)
+    .replace(/\b[A-Z]{3,4}\s+WS\s+\d{6}\b/g, '') // Area IDs (ANCM WS 291615)
+    .trim();
+
+  // Whatever 4-letter codes remain in the prefix are FIR codes from the body
+  const remainingFirCodes = strippedPrefix.match(/\b[A-Z]{4}\b/g);
+
+  if (remainingFirCodes && remainingFirCodes.length > 0) {
+    // Use the last FIR code as the primary (for multi-FIR, the one closest to SIGMET)
+    return (
+      remainingFirCodes[remainingFirCodes.length - 1]! +
+      ' ' +
+      text.substring(text.indexOf('SIGMET', match.index)).trim()
+    );
+  }
+
+  // No FIR codes in prefix - body starts at the match position
+  return text.substring(match.index).trim();
+}
+
+/**
+ * Parses the header of an international SIGMET.
+ * Handles both name+number (SIGMET ALFA 1 VALID...) and number-only (SIGMET 02 VALID...) formats,
+ * with or without a leading FIR code.
+ */
+function parseInternationalHeader(body: string):
+  | {
+      firCodeFromHeader: string | undefined;
+      seriesName: string;
+      seriesNumber: number;
+      validFrom: DayTime;
+      validTo: DayTime;
+      issuingStation: string;
+      headerLength: number;
+    }
+  | undefined {
+  // Pattern A: [XXXX] SIGMET NAME # VALID dddddd/dddddd XXXX- (name + number)
+  const withNumMatch = body.match(
+    /^(?:([A-Z]{4})\s+)?SIGMET\s+([A-Z0-9]+)\s+(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})-/,
+  );
+  if (withNumMatch) {
+    return {
+      firCodeFromHeader: withNumMatch[1],
+      seriesName: withNumMatch[2]!,
+      seriesNumber: parseInt(withNumMatch[3]!, 10),
+      validFrom: {
+        day: parseInt(withNumMatch[4]!, 10),
+        hour: parseInt(withNumMatch[5]!, 10),
+        minute: parseInt(withNumMatch[6]!, 10),
+      },
+      validTo: {
+        day: parseInt(withNumMatch[7]!, 10),
+        hour: parseInt(withNumMatch[8]!, 10),
+        minute: parseInt(withNumMatch[9]!, 10),
+      },
+      issuingStation: withNumMatch[10]!,
+      headerLength: withNumMatch[0].length,
+    };
+  }
+
+  // Pattern B: [XXXX] SIGMET ## VALID dddddd/dddddd XXXX- (number-only, no separate name)
+  const numOnlyMatch = body.match(
+    /^(?:([A-Z]{4})\s+)?SIGMET\s+(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})-/,
+  );
+  if (numOnlyMatch) {
+    const numStr = numOnlyMatch[2]!;
+    return {
+      firCodeFromHeader: numOnlyMatch[1],
+      seriesName: numStr,
+      seriesNumber: parseInt(numStr, 10),
+      validFrom: {
+        day: parseInt(numOnlyMatch[3]!, 10),
+        hour: parseInt(numOnlyMatch[4]!, 10),
+        minute: parseInt(numOnlyMatch[5]!, 10),
+      },
+      validTo: {
+        day: parseInt(numOnlyMatch[6]!, 10),
+        hour: parseInt(numOnlyMatch[7]!, 10),
+        minute: parseInt(numOnlyMatch[8]!, 10),
+      },
+      issuingStation: numOnlyMatch[9]!,
+      headerLength: numOnlyMatch[0].length,
+    };
+  }
+
+  return undefined;
+}
+
 /** Parses an international (ICAO format) SIGMET. */
 function parseInternationalSigmet(normalized: string): InternationalSigmet {
-  // Strip WMO headers if present - find the SIGMET keyword for ICAO format
   let body = normalized;
 
-  // Pattern 1: XXXX SIGMET NAME # VALID dddddd/dddddd XXXX-
-  // Pattern 2: SIGMET NAME # VALID dddddd/dddddd XXXX- (FIR code comes later)
-  const withFirPrefix = body.match(
-    /([A-Z]{4})\s+SIGMET\s+[A-Z]+\s+\d+\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}-/,
-  );
-  if (withFirPrefix && withFirPrefix.index !== undefined && withFirPrefix.index > 0) {
-    body = body.substring(withFirPrefix.index).trim();
-  } else {
-    // Look for pattern without leading FIR code
-    const sigmetIdx = body.search(/SIGMET\s+[A-Z]+\s+\d+\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}-/);
-    if (sigmetIdx > 0) {
-      body = body.substring(sigmetIdx).trim();
-    }
-  }
+  // Strip WMO/AWIPS headers to find where the SIGMET body begins.
+  // WMO headers follow the pattern: TTAAii CCCC DDHHmm (e.g. WSNT02 KNHC 041500)
+  // followed optionally by AWIPS identifiers (e.g. SIGA0A, SIGPAP, SIGAK5)
+  // and area identifiers (e.g. ANCM WS 291615).
+  // After stripping these, the body starts with [FIR codes] SIGMET or just SIGMET.
+  body = stripInternationalHeaders(body);
 
-  // Try pattern 1: XXXX SIGMET NAME # VALID dddddd/dddddd XXXX-
-  let headerMatch = body.match(
-    /^([A-Z]{4})\s+SIGMET\s+([A-Z]+)\s+(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})-/,
-  );
-  let firCodeFromHeader: string | undefined;
-
-  if (!headerMatch) {
-    // Try pattern 2: SIGMET NAME # VALID dddddd/dddddd XXXX- (no leading FIR code)
-    const noFirMatch = body.match(
-      /^SIGMET\s+([A-Z]+)\s+(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})-/,
+  // Parse the international SIGMET header. Handles:
+  // - XXXX SIGMET NAME # VALID dddddd/dddddd XXXX- (FIR code + name + number)
+  // - SIGMET NAME # VALID dddddd/dddddd XXXX- (no FIR code, name + number)
+  // - XXXX SIGMET ## VALID dddddd/dddddd XXXX- (FIR code + numeric-only identifier)
+  // - SIGMET ## VALID dddddd/dddddd XXXX- (no FIR code, numeric-only identifier)
+  const parsed = parseInternationalHeader(body);
+  if (!parsed) {
+    throw new Error(
+      `Invalid international SIGMET: could not parse header from: ${body.substring(0, 100)}`,
     );
-    if (!noFirMatch) {
-      throw new Error(
-        `Invalid international SIGMET: could not parse header from: ${body.substring(0, 100)}`,
-      );
-    }
-    // Remap to the same index positions as pattern 1
-    headerMatch = noFirMatch;
-    firCodeFromHeader = undefined;
-  } else {
-    firCodeFromHeader = headerMatch[1]!;
   }
 
-  // Extract fields based on which pattern matched
-  const hasLeadingFir = firCodeFromHeader !== undefined;
-  const seriesName = headerMatch[hasLeadingFir ? 2 : 1]! as SigmetSeriesName;
-  const seriesNumber = parseInt(headerMatch[hasLeadingFir ? 3 : 2]!, 10);
-  const validFrom: DayTime = {
-    day: parseInt(headerMatch[hasLeadingFir ? 4 : 3]!, 10),
-    hour: parseInt(headerMatch[hasLeadingFir ? 5 : 4]!, 10),
-    minute: parseInt(headerMatch[hasLeadingFir ? 6 : 5]!, 10),
-  };
-  const validTo: DayTime = {
-    day: parseInt(headerMatch[hasLeadingFir ? 7 : 6]!, 10),
-    hour: parseInt(headerMatch[hasLeadingFir ? 8 : 7]!, 10),
-    minute: parseInt(headerMatch[hasLeadingFir ? 9 : 8]!, 10),
-  };
-  const issuingStation = headerMatch[hasLeadingFir ? 10 : 9]!;
+  const {
+    firCodeFromHeader,
+    seriesName,
+    seriesNumber,
+    validFrom,
+    validTo,
+    issuingStation,
+    headerLength,
+  } = parsed;
 
   // Get the rest of the body after the header
-  const afterHeader = body.substring(headerMatch[0].length).trim();
+  const afterHeader = body.substring(headerLength).trim();
 
-  // Parse FIR name: XXXX [NAME] FIR
-  const firNameMatch = afterHeader.match(/^([A-Z]{4})\s+(.*?FIR)\b/);
-  const firCode = firCodeFromHeader ?? (firNameMatch ? firNameMatch[1]! : '');
-  const firName = firNameMatch ? firNameMatch[2]!.trim() : '';
+  // Parse FIR info from the body after the header dash.
+  // Handles: "PAZA ANCHORAGE FIR", "ANCHORAGE FIR", "NEW YORK OCEANIC FIR SAN JUAN FIR MIAMI OCEANIC FIR"
+  // Also handles "ANCHORAGE FIR ANCHORAGE OCEANIC FIR" (multiple FIR names)
+  const { firCode, firName, afterFirContent } = parseFirInfo(afterHeader, firCodeFromHeader);
 
   // Check for cancellation: CNL SIGMET NAME # dddddd/dddddd
-  if (/\bCNL\s+SIGMET\b/.test(afterHeader)) {
+  if (/\bCNL\s+SIGMET\b/.test(afterFirContent)) {
     return parseInternationalCancellation(
-      afterHeader,
+      afterFirContent,
       normalized,
       firCode,
       firName,
@@ -942,13 +1190,8 @@ function parseInternationalSigmet(normalized: string): InternationalSigmet {
     );
   }
 
-  // Parse phenomena and details from the rest
-  const afterFir = firNameMatch
-    ? afterHeader.substring(afterHeader.indexOf('FIR') + 3).trim()
-    : afterHeader;
-
   return parseInternationalBody(
-    afterFir,
+    afterFirContent,
     normalized,
     firCode,
     firName,
@@ -960,13 +1203,80 @@ function parseInternationalSigmet(normalized: string): InternationalSigmet {
   );
 }
 
+/**
+ * Parses FIR information from the body text after the SIGMET header.
+ * Handles formats like:
+ * - "PAZA ANCHORAGE FIR ..." (ICAO code + name)
+ * - "ANCHORAGE FIR ..." (name only, no ICAO prefix)
+ * - "ANCHORAGE FIR ANCHORAGE OCEANIC FIR ..." (multiple FIR names)
+ * - "NEW YORK OCEANIC FIR SAN JUAN FIR MIAMI OCEANIC FIR ..." (multi-FIR)
+ */
+function parseFirInfo(
+  afterHeader: string,
+  firCodeFromHeader: string | undefined,
+): { firCode: string; firName: string; afterFirContent: string } {
+  // Find the last occurrence of "FIR" followed by a known phenomenon or CNL
+  // This handles multi-FIR bodies where FIR appears multiple times
+  const firEndPattern = /\bFIR\s+(?:SEV|FRQ|OBSC|EMBD|SQL|ISOL|TC|VA|RDOACT|WDSPR|CNL|TS\b)/;
+  const firEndMatch = afterHeader.match(firEndPattern);
+
+  if (firEndMatch && firEndMatch.index !== undefined) {
+    const firSection = afterHeader.substring(0, firEndMatch.index + 3).trim(); // +3 for "FIR"
+    const afterFirContent = afterHeader.substring(firEndMatch.index + 3).trim();
+
+    // Extract FIR code from the section if it starts with a 4-letter code
+    const codeMatch = firSection.match(/^([A-Z]{4})\s+(.*)/);
+    if (codeMatch) {
+      return {
+        firCode: firCodeFromHeader ?? codeMatch[1]!,
+        firName: codeMatch[2]!.trim(),
+        afterFirContent,
+      };
+    }
+
+    // No leading ICAO code - entire section is the FIR name
+    return {
+      firCode: firCodeFromHeader ?? '',
+      firName: firSection,
+      afterFirContent,
+    };
+  }
+
+  // Fallback: try simple pattern "XXXX NAME FIR"
+  const simpleMatch = afterHeader.match(/^([A-Z]{4})\s+(.*?FIR)\b\s*(.*)/s);
+  if (simpleMatch) {
+    return {
+      firCode: firCodeFromHeader ?? simpleMatch[1]!,
+      firName: simpleMatch[2]!.trim(),
+      afterFirContent: simpleMatch[3]!.trim(),
+    };
+  }
+
+  // Fallback: try "NAME FIR" without ICAO prefix
+  const nameOnlyMatch = afterHeader.match(/^(.*?FIR)\b\s*(.*)/s);
+  if (nameOnlyMatch) {
+    return {
+      firCode: firCodeFromHeader ?? '',
+      firName: nameOnlyMatch[1]!.trim(),
+      afterFirContent: nameOnlyMatch[2]!.trim(),
+    };
+  }
+
+  // No FIR found at all
+  return {
+    firCode: firCodeFromHeader ?? '',
+    firName: '',
+    afterFirContent: afterHeader,
+  };
+}
+
 /** Parses the body of an international SIGMET after the FIR name. */
 function parseInternationalBody(
   bodyAfterFir: string,
   raw: string,
   firCode: string,
   firName: string,
-  seriesName: SigmetSeriesName,
+  seriesName: string,
   seriesNumber: number,
   issuingStation: string,
   validFrom: DayTime,
@@ -976,13 +1286,13 @@ function parseInternationalBody(
   const content = bodyAfterFir.replace(/=\s*$/, '').trim();
 
   // Detect tropical cyclone
-  const tcMatch = content.match(/\bTC\s+([A-Z]+)\b/);
+  const tcMatch = content.match(/\bTC\s+([A-Z0-9]+)\b/);
   const cycloneName = tcMatch ? tcMatch[1]! : undefined;
 
-  // Detect phenomena
+  // Detect phenomena - includes VA ERUPTION, VA CLD, and all TS variants
   let phenomena: string | undefined;
   const phenMatch = content.match(
-    /^((?:SEV\s+TURB|SEV\s+ICE|FRQ\s+TS|OBSC\s+TS|EMBD\s+TS|SQL\s+TS|ISOL\s+SEV\s+TS|TC\s+\w+|VA\s+CLD|RDOACT\s+CLD|WDSPR\s+[DS]S)\b)/,
+    /^((?:SEV\s+TURB|SEV\s+ICE(?:\s+\(FZRA\))?|FRQ\s+TS|OBSC\s+TS|EMBD\s+TS|SQL\s+TS|ISOL\s+SEV\s+TS|TC\s+\w+|VA\s+ERUPTION|VA\s+CLD|VA\s+CLD\w*|RDOACT\s+CLD|WDSPR\s+[DS]S)\b)/,
   );
   if (phenMatch) {
     phenomena = phenMatch[1]!;
@@ -1000,16 +1310,16 @@ function parseInternationalBody(
   } else if (/\bOBS\b/.test(content) && !/\bOBS\s+AND\s+FCST\b/.test(content)) {
     observationStatus = 'OBSERVED';
   }
-  if (/\bFCST\b/.test(content) && !/FCST\s+AT\b/.test(content)) {
+  if (/\bFCST\b/.test(content) && !/FCST\s+AT\b/.test(content) && !/FCST\s+\d{4}Z/.test(content)) {
     if (!observationStatus) {
       observationStatus = 'FORECAST';
     }
   }
 
-  // Parse area description
+  // Parse area description (WI ... or [N/S/E/W] OF LINE ... patterns)
   let areaDescription: string | undefined;
   const areaMatch = content.match(
-    /\b(?:AREA\s+)?WI\s+(.*?)(?=\s+(?:SFC|FL\d{3}|MOV|STNR|NC|INTSF|WKN|FCST\s+AT)\b|$)/,
+    /\b(?:AREA\s+)?(?:WI|[NSEW]\s+OF\s+LINE)\s+(.*?)(?=\s+(?:SFC|FL\d{3}|TOP|MOV|STNR|NC\b|INTSF|WKN|FCST\s+(?:AT\s+)?\d{4}Z)\b|$)/,
   );
   if (areaMatch) {
     areaDescription = areaMatch[1]!.trim();
@@ -1017,6 +1327,13 @@ function parseInternationalBody(
 
   // Parse altitude range
   const altitudeRange = parseAltitudeRange(content);
+
+  // Parse tops (TOP FL### or TOP ABV FL### - international format)
+  let tops: SigmetTops | undefined;
+  const topsResult = parseTops(content);
+  if (topsResult) {
+    tops = topsResult;
+  }
 
   // Parse movement
   const movement = parseMovement(content);
@@ -1033,7 +1350,7 @@ function parseInternationalBody(
   let forecastPosition: Coordinates | undefined;
 
   if (cycloneName) {
-    const posMatch = content.match(/(?:OBS\s+AT\s+\d{4}Z\s+)?([NS]\d{4}\s+[EW]\d{5})/);
+    const posMatch = content.match(/(?:OBS\s+AT\s+\d{4}Z\s+)?(?:NR\s+)?([NS]\d{4}\s+[EW]\d{5})/);
     if (posMatch) {
       cyclonePosition = parseIcaoPosition(posMatch[1]!);
     }
@@ -1043,7 +1360,7 @@ function parseInternationalBody(
       cbTopFl = parseInt(cbMatch[1]!, 10);
     }
 
-    const wiMatch = content.match(/WI\s+(\d+)NM\s+OF\s+CENTER/);
+    const wiMatch = content.match(/WI\s+(\d+)\s*NM\s+OF\s+CENTER/);
     if (wiMatch) {
       withinNm = parseInt(wiMatch[1]!, 10);
     }
@@ -1057,7 +1374,7 @@ function parseInternationalBody(
     }
   }
 
-  // Collect additional info (e.g. LLWS notes)
+  // Collect additional info (e.g. LLWS notes, re-suspended ash notes)
   let additionalInfo: string | undefined;
   const llwsMatch = raw.match(/INCLUDES\s+[^=]+/);
   if (llwsMatch) {
@@ -1080,6 +1397,7 @@ function parseInternationalBody(
     ...(observedAt ? { observedAt } : {}),
     ...(areaDescription ? { areaDescription } : {}),
     ...(altitudeRange ? { altitudeRange } : {}),
+    ...(tops ? { tops } : {}),
     ...(movement ? { movement } : {}),
     ...(isStationary ? { isStationary } : {}),
     ...(intensityChange ? { intensityChange } : {}),
@@ -1095,17 +1413,17 @@ function parseInternationalBody(
 
 /** Parses an international SIGMET cancellation. */
 function parseInternationalCancellation(
-  afterHeader: string,
+  afterFirContent: string,
   raw: string,
   firCode: string,
   firName: string,
-  seriesName: SigmetSeriesName,
+  seriesName: string,
   seriesNumber: number,
   issuingStation: string,
   validFrom: DayTime,
   validTo: DayTime,
 ): InternationalSigmet {
-  const cnlMatch = afterHeader.match(/CNL\s+SIGMET\s+([A-Z]+)\s+(\d+)\s+(\d{6})\/(\d{6})/);
+  const cnlMatch = afterFirContent.match(/CNL\s+SIGMET\s+([A-Z0-9]+)\s+(\d+)\s+(\d{6})\/(\d{6})/);
 
   return {
     format: 'INTERNATIONAL',
@@ -1120,7 +1438,7 @@ function parseInternationalCancellation(
     isCancellation: true,
     ...(cnlMatch
       ? {
-          cancelledSeriesName: cnlMatch[1]! as SigmetSeriesName,
+          cancelledSeriesName: cnlMatch[1]!,
           cancelledSeriesNumber: parseInt(cnlMatch[2]!, 10),
           cancelledValidStart: parseTimeString(cnlMatch[3]!)!,
           cancelledValidEnd: parseTimeString(cnlMatch[4]!)!,
