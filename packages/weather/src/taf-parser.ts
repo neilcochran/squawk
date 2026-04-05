@@ -1,4 +1,5 @@
 import type {
+  DayTime,
   IcingIntensity,
   SkyCondition,
   SkyClearType,
@@ -77,9 +78,11 @@ export function parseTaf(raw: string): Taf {
   if (!timeMatch) {
     throw new Error(`Invalid issuance time: ${timeToken}`);
   }
-  const issuedDay = parseInt(timeMatch[1]!, 10);
-  const issuedHour = parseInt(timeMatch[2]!, 10);
-  const issuedMinute = parseInt(timeMatch[3]!, 10);
+  const issuedAt: DayTime = {
+    day: parseInt(timeMatch[1]!, 10),
+    hour: parseInt(timeMatch[2]!, 10),
+    minute: parseInt(timeMatch[3]!, 10),
+  };
   pos++;
 
   // Parse valid period (DDHH/DDHH)
@@ -88,10 +91,16 @@ export function parseTaf(raw: string): Taf {
   if (!validMatch) {
     throw new Error(`Invalid valid period: ${validToken}`);
   }
-  const validFromDay = parseInt(validMatch[1]!, 10);
-  const validFromHour = parseInt(validMatch[2]!, 10);
-  const validToDay = parseInt(validMatch[3]!, 10);
-  const validToHour = parseInt(validMatch[4]!, 10);
+  const validFrom: DayTime = {
+    day: parseInt(validMatch[1]!, 10),
+    hour: parseInt(validMatch[2]!, 10),
+    minute: 0,
+  };
+  const validTo: DayTime = {
+    day: parseInt(validMatch[3]!, 10),
+    hour: parseInt(validMatch[4]!, 10),
+    minute: 0,
+  };
   pos++;
 
   // Check for cancelled TAF
@@ -99,16 +108,12 @@ export function parseTaf(raw: string): Taf {
     return {
       raw: normalized,
       stationId,
-      issuedDay,
-      issuedHour,
-      issuedMinute,
+      issuedAt,
       isAmended,
       isCorrected,
       isCancelled: true,
-      validFromDay,
-      validFromHour,
-      validToDay,
-      validToHour,
+      validFrom,
+      validTo,
       forecast: [],
     };
   }
@@ -124,16 +129,12 @@ export function parseTaf(raw: string): Taf {
   return {
     raw: normalized,
     stationId,
-    issuedDay,
-    issuedHour,
-    issuedMinute,
+    issuedAt,
     isAmended,
     isCorrected,
     isCancelled: false,
-    validFromDay,
-    validFromHour,
-    validToDay,
-    validToHour,
+    validFrom,
+    validTo,
     forecast,
   };
 }
@@ -192,11 +193,8 @@ function parseForecastGroup(tokens: string[]): TafForecastGroup {
 
   let changeType: TafChangeType | undefined;
   let probability: 30 | 40 | undefined;
-  let startDay: number | undefined;
-  let startHour: number | undefined;
-  let startMinute: number | undefined;
-  let endDay: number | undefined;
-  let endHour: number | undefined;
+  let start: DayTime | undefined;
+  let end: DayTime | undefined;
 
   const token = tokens[pos]!;
 
@@ -204,9 +202,11 @@ function parseForecastGroup(tokens: string[]): TafForecastGroup {
   const fmMatch = token.match(/^FM(\d{2})(\d{2})(\d{2})$/);
   if (fmMatch) {
     changeType = 'FM';
-    startDay = parseInt(fmMatch[1]!, 10);
-    startHour = parseInt(fmMatch[2]!, 10);
-    startMinute = parseInt(fmMatch[3]!, 10);
+    start = {
+      day: parseInt(fmMatch[1]!, 10),
+      hour: parseInt(fmMatch[2]!, 10),
+      minute: parseInt(fmMatch[3]!, 10),
+    };
     pos++;
   }
 
@@ -224,10 +224,8 @@ function parseForecastGroup(tokens: string[]): TafForecastGroup {
     if (pos < tokens.length) {
       const periodResult = parseValidityPeriod(tokens[pos]!);
       if (periodResult) {
-        startDay = periodResult.startDay;
-        startHour = periodResult.startHour;
-        endDay = periodResult.endDay;
-        endHour = periodResult.endHour;
+        start = periodResult.start;
+        end = periodResult.end;
         pos++;
       }
     }
@@ -242,10 +240,8 @@ function parseForecastGroup(tokens: string[]): TafForecastGroup {
     if (pos < tokens.length) {
       const periodResult = parseValidityPeriod(tokens[pos]!);
       if (periodResult) {
-        startDay = periodResult.startDay;
-        startHour = periodResult.startHour;
-        endDay = periodResult.endDay;
-        endHour = periodResult.endHour;
+        start = periodResult.start;
+        end = periodResult.end;
         pos++;
       }
     }
@@ -255,11 +251,8 @@ function parseForecastGroup(tokens: string[]): TafForecastGroup {
   const header: {
     changeType?: TafChangeType;
     probability?: 30 | 40;
-    startDay?: number;
-    startHour?: number;
-    startMinute?: number;
-    endDay?: number;
-    endHour?: number;
+    start?: DayTime;
+    end?: DayTime;
   } = {};
   if (changeType !== undefined) {
     header.changeType = changeType;
@@ -267,38 +260,25 @@ function parseForecastGroup(tokens: string[]): TafForecastGroup {
   if (probability !== undefined) {
     header.probability = probability;
   }
-  if (startDay !== undefined) {
-    header.startDay = startDay;
+  if (start !== undefined) {
+    header.start = start;
   }
-  if (startHour !== undefined) {
-    header.startHour = startHour;
-  }
-  if (startMinute !== undefined) {
-    header.startMinute = startMinute;
-  }
-  if (endDay !== undefined) {
-    header.endDay = endDay;
-  }
-  if (endHour !== undefined) {
-    header.endHour = endHour;
+  if (end !== undefined) {
+    header.end = end;
   }
 
   return parseForecastFields(tokens, pos, header);
 }
 
 /** Parses a DDHH/DDHH validity period token. */
-function parseValidityPeriod(
-  token: string,
-): { startDay: number; startHour: number; endDay: number; endHour: number } | undefined {
+function parseValidityPeriod(token: string): { start: DayTime; end: DayTime } | undefined {
   const match = token.match(/^(\d{2})(\d{2})\/(\d{2})(\d{2})$/);
   if (!match) {
     return undefined;
   }
   return {
-    startDay: parseInt(match[1]!, 10),
-    startHour: parseInt(match[2]!, 10),
-    endDay: parseInt(match[3]!, 10),
-    endHour: parseInt(match[4]!, 10),
+    start: { day: parseInt(match[1]!, 10), hour: parseInt(match[2]!, 10), minute: 0 },
+    end: { day: parseInt(match[3]!, 10), hour: parseInt(match[4]!, 10), minute: 0 },
   };
 }
 
@@ -309,11 +289,8 @@ function parseForecastFields(
   header: {
     changeType?: TafChangeType;
     probability?: 30 | 40;
-    startDay?: number;
-    startHour?: number;
-    startMinute?: number;
-    endDay?: number;
-    endHour?: number;
+    start?: DayTime;
+    end?: DayTime;
   },
 ): TafForecastGroup {
   let pos = startPos;

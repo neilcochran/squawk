@@ -1,6 +1,7 @@
 import type {
   CloudCoverage,
   CompassDirection,
+  DayTime,
   IceAccretion,
   LightningFrequency,
   LightningObservation,
@@ -24,7 +25,6 @@ import type {
   VariableVisibility,
   VirgaObservation,
   WeatherPhenomenonCode,
-  WindShift,
 } from '@squawk/types';
 
 /** Valid cloud coverage codes for matching in remarks. */
@@ -35,9 +35,11 @@ const COVERAGE_CODES = new Set(['FEW', 'SCT', 'BKN', 'OVC']);
  * structured {@link MetarRemarks} object.
  *
  * @param raw - The raw remarks string (without the "RMK" prefix).
+ * @param observationHour - The observation hour (UTC) from the METAR header, used to populate
+ *   the hour on time-based remark fields when the raw report omits it.
  * @returns A parsed {@link MetarRemarks} object.
  */
-export function parseRemarks(raw: string): MetarRemarks {
+export function parseRemarks(raw: string, observationHour: number): MetarRemarks {
   const remarks: MetarRemarks = { raw };
   const tokens = raw.split(/\s+/);
 
@@ -183,7 +185,7 @@ export function parseRemarks(raw: string): MetarRemarks {
     // Peak wind: PK WND dddff(f)/hhmm or PK WND dddff(f)/mm
     if (token === 'PK' && i + 2 < tokens.length && tokens[i + 1] === 'WND') {
       const pkWndToken = tokens[i + 2]!;
-      const peakWind = parsePeakWind(pkWndToken);
+      const peakWind = parsePeakWind(pkWndToken, observationHour);
       if (peakWind) {
         remarks.peakWind = peakWind;
       }
@@ -314,20 +316,18 @@ export function parseRemarks(raw: string): MetarRemarks {
         const wsToken = tokens[i + 1]!;
         const wsMatch = wsToken.match(/^(\d{2})?(\d{2})$/);
         if (wsMatch) {
-          const windShift: WindShift = {
+          const hasHour = wsMatch[1] !== undefined && wsMatch[2] !== undefined;
+          const time: DayTime = {
+            hour: hasHour ? parseInt(wsMatch[1]!, 10) : observationHour,
             minute: parseInt(wsMatch[2] ?? wsMatch[1]!, 10),
-            frontalPassage: false,
           };
-          if (wsMatch[2] && wsMatch[1]) {
-            windShift.hour = parseInt(wsMatch[1], 10);
-          }
-          if (i + 2 < tokens.length && tokens[i + 2] === 'FROPA') {
-            windShift.frontalPassage = true;
+          const frontalPassage = i + 2 < tokens.length && tokens[i + 2] === 'FROPA';
+          if (frontalPassage) {
             i += 3;
           } else {
             i += 2;
           }
-          remarks.windShift = windShift;
+          remarks.windShift = { time, frontalPassage };
           continue;
         }
       }
@@ -512,7 +512,7 @@ export function parseRemarks(raw: string): MetarRemarks {
       const phenomenon = precipEventMatch[1]!;
       const eventStr = precipEventMatch[2]!;
       if (isWeatherCode(phenomenon)) {
-        const events = parsePrecipitationEvents(phenomenon, eventStr);
+        const events = parsePrecipitationEvents(phenomenon, eventStr, observationHour);
         if (events.length > 0) {
           if (!remarks.precipitationEvents) {
             remarks.precipitationEvents = [];
@@ -544,7 +544,7 @@ function parsePreciseTemp(raw: string): number {
  * Parses a peak wind token (e.g. "22065/1842" or "33045/32").
  * Format: dddff(f)/hhmm or dddff(f)/mm
  */
-function parsePeakWind(token: string): PeakWind | undefined {
+function parsePeakWind(token: string, observationHour: number): PeakWind | undefined {
   const match = token.match(/^(\d{3})(\d{2,3})\/(\d{2,4})$/);
   if (!match) {
     return undefined;
@@ -554,19 +554,12 @@ function parsePeakWind(token: string): PeakWind | undefined {
   const speedKt = parseInt(match[2]!, 10);
   const timeStr = match[3]!;
 
-  if (timeStr.length === 4) {
-    return {
-      directionDeg,
-      speedKt,
-      hour: parseInt(timeStr.slice(0, 2), 10),
-      minute: parseInt(timeStr.slice(2), 10),
-    };
-  }
-  return {
-    directionDeg,
-    speedKt,
-    minute: parseInt(timeStr, 10),
-  };
+  const time: DayTime =
+    timeStr.length === 4
+      ? { hour: parseInt(timeStr.slice(0, 2), 10), minute: parseInt(timeStr.slice(2), 10) }
+      : { hour: observationHour, minute: parseInt(timeStr, 10) };
+
+  return { directionDeg, speedKt, time };
 }
 
 /** Parses a fraction string (e.g. "1/4", "3/4") or whole number ("2") into a decimal. */
@@ -771,7 +764,11 @@ function parseThunderstormInfo(
  * Parses precipitation begin/end event strings (e.g. "B15E32", "B15E32B48").
  * B = begin, E = end, followed by 2-digit minute or 4-digit hour+minute.
  */
-function parsePrecipitationEvents(phenomenon: string, eventStr: string): PrecipitationEvent[] {
+function parsePrecipitationEvents(
+  phenomenon: string,
+  eventStr: string,
+  observationHour: number,
+): PrecipitationEvent[] {
   const events: PrecipitationEvent[] = [];
   const eventPattern = /([BE])(\d{2,4})/g;
   let eventMatch: RegExpExecArray | null;
@@ -780,20 +777,12 @@ function parsePrecipitationEvents(phenomenon: string, eventStr: string): Precipi
     const eventType = eventMatch[1] === 'B' ? ('BEGIN' as const) : ('END' as const);
     const timeStr = eventMatch[2]!;
 
-    const event: PrecipitationEvent = {
-      phenomenon,
-      eventType,
-      minute: 0,
-    };
+    const time: DayTime =
+      timeStr.length === 4
+        ? { hour: parseInt(timeStr.slice(0, 2), 10), minute: parseInt(timeStr.slice(2), 10) }
+        : { hour: observationHour, minute: parseInt(timeStr, 10) };
 
-    if (timeStr.length === 4) {
-      event.hour = parseInt(timeStr.slice(0, 2), 10);
-      event.minute = parseInt(timeStr.slice(2), 10);
-    } else {
-      event.minute = parseInt(timeStr, 10);
-    }
-
-    events.push(event);
+    events.push({ phenomenon, eventType, time });
   }
 
   return events;
