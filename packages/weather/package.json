@@ -1,0 +1,43 @@
+{
+  "name": "@squawk/weather",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET) into structured objects",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neilcochran/squawk.git",
+    "directory": "packages/weather"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src"
+  },
+  "dependencies": {
+    "@squawk/types": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
