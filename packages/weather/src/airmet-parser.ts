@@ -791,6 +791,45 @@ function parseOutlookSection(section: string):
 }
 
 /**
+ * Extracts the condition description from text following the BOUNDED BY
+ * clause of an outlook AREA block. Handles all hazard types, not just ICE/TURB.
+ */
+function parseOutlookConditionDescription(
+  text: string,
+  hazardType: AirmetHazardType,
+): string | undefined {
+  switch (hazardType) {
+    case 'ICE':
+    case 'TURB': {
+      const match = text.match(
+        /^((?:MOD|SEV)\s+(?:ICE|TURB)\s+(?:BTN\s+(?:FRZLVL|FL\d{3}|\d{3})\s+AND\s+(?:FL\d{3}|\d{3})|BLW\s+(?:FL\d{3}|\d{3})))/,
+      );
+      return match ? match[1]!.trim() : undefined;
+    }
+    case 'IFR': {
+      const match = text.match(/^(CIG BLW\s+\d{3}\/VIS BLW\s+\d+SM\s*[A-Z/]*)/);
+      return match ? match[1]!.trim() : undefined;
+    }
+    case 'MTN_OBSCN': {
+      const match = text.match(/^(MTNS?\s+OBSC?D?\s+BY\s+[A-Z/]+)/);
+      return match ? match[1]!.trim() : undefined;
+    }
+    case 'STG_SFC_WND': {
+      const match = text.match(
+        /^(SUSTAINED\s+(?:SFC|SURFACE)\s+(?:WINDS?|WNDS?)\s+GTR\s+THAN\s+\d+KT(?:\s+EXP)?)/,
+      );
+      return match ? match[1]!.trim() : undefined;
+    }
+    case 'LLWS': {
+      const match = text.match(/^(LLWS\s+(?:DUE TO\s+[A-Z]+|EXP))/);
+      return match ? match[1]!.trim() : undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Extracts AREA outlook blocks from normalized text, associating each with
  * the given outlook validity times.
  */
@@ -801,7 +840,7 @@ function parseAreaBlocks(
 ): AirmetOutlookArea[] {
   const results: AirmetOutlookArea[] = [];
   const areaRegex =
-    /AREA\s+(\d+)\s*\.{3}\s*(IFR|MTN OBSCN|TURB|STG SFC WNDS?|SFC WND|LLWS|ICE)\s+([A-Z\s]+?)\s+BOUNDED\s+BY\s+(.+?)(?=\s+(?:MOD|SEV|CIG|MTNS?|LLWS)\b)/g;
+    /AREA\s+(\d+)\s*\.{3}\s*(IFR|MTN OBSCN|TURB|STG SFC WNDS?|SFC WND|LLWS|ICE)\s+([A-Z\s]+?)\s+BOUNDED\s+BY\s+(.+?)(?=\s+(?:MOD|SEV|CIG|MTNS?|LLWS|SUSTAINED)\b)/g;
 
   let areaMatch;
   while ((areaMatch = areaRegex.exec(normalized)) !== null) {
@@ -815,13 +854,7 @@ function parseAreaBlocks(
 
     // Extract condition description from rest of text after BOUNDED BY
     const afterBounded = normalized.substring(areaMatch.index! + areaMatch[0].length).trimStart();
-    let conditionDescription: string | undefined;
-    const condMatch = afterBounded.match(
-      /^((?:MOD|SEV)\s+(?:ICE|TURB)\s+BTN\s+(?:FL\d{3}|\d{3})\s+AND\s+(?:FL\d{3}|\d{3}))/,
-    );
-    if (condMatch) {
-      conditionDescription = condMatch[1];
-    }
+    const conditionDescription = parseOutlookConditionDescription(afterBounded, hazardType);
 
     const altitudeRange = conditionDescription
       ? parseAltitudeRange(conditionDescription)

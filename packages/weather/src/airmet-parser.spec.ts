@@ -555,8 +555,11 @@ describe('parseAirmet', () => {
       assert.equal(sfcWindHazards.length, 1);
       assert.equal(llwsHazards.length, 1);
 
-      // STG SFC WNDS with coastal waters
+      // STG SFC WNDS with coastal waters and full-word condition description
       assert.equal(sfcWindHazards[0]!.coastalWaters, true);
+      assert.ok(
+        sfcWindHazards[0]!.conditionDescription?.includes('SUSTAINED SURFACE WINDS GTR THAN 30KT'),
+      );
 
       // LLWS POTENTIAL uses BOUNDED BY
       assert.ok(llwsHazards[0]!.boundedBy.length > 0);
@@ -573,6 +576,11 @@ describe('parseAirmet', () => {
 
       assert.equal(sfcWindHazards.length, 3);
       assert.equal(llwsHazards.length, 2);
+
+      // All three SFC WND hazards use SUSTAINED SURFACE WINDS (full words)
+      for (const h of sfcWindHazards) {
+        assert.ok(h.conditionDescription?.includes('SUSTAINED SURFACE WINDS GTR THAN 30KT'));
+      }
 
       // Third SFC WND hazard: CONDS ENDG BY 21Z
       assert.equal(sfcWindHazards[2]!.conditions?.status, 'ENDING');
@@ -917,6 +925,19 @@ describe('parseAirmet', () => {
       assert.equal(area1.conditions?.isAfter, true);
       assert.deepEqual(area1.conditions?.startTime, { hour: 0, minute: 0 });
       assert.deepEqual(area1.conditions?.endTime, { hour: 3, minute: 0 });
+    });
+
+    it('parses standalone CONTG THRU (no BYD, no DVLPG)', () => {
+      const raw = `AIRMET TANGO FOR TURB AND SFC WND AND LLWS
+VALID UNTIL 050400Z
+AIRMET TURB...MT WY CO NM
+FROM 40NW BIL-30E SHR-20S PUB-40W ABQ-40NW BIL
+MOD TURB BTN FL250 AND FL380. CONDS CONTG THRU 06Z.`;
+      const result = parseAirmet(raw);
+      const h = result.hazards[0]!;
+      assert.equal(h.conditions?.status, 'CONTINUING');
+      assert.equal(h.conditions?.startTime, undefined);
+      assert.deepEqual(h.conditions?.endTime, { hour: 6, minute: 0 });
     });
   });
 
