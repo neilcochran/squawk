@@ -124,17 +124,17 @@ describe('parseTaf - header', () => {
   it('parses station ID and issuance time', () => {
     const result = parseTaf(BASIC);
     assert.equal(result.stationId, 'KJFK');
-    assert.equal(result.issuedDay, 4);
-    assert.equal(result.issuedHour, 17);
-    assert.equal(result.issuedMinute, 30);
+    assert.equal(result.issuedAt.day, 4);
+    assert.equal(result.issuedAt.hour, 17);
+    assert.equal(result.issuedAt.minute, 30);
   });
 
   it('parses valid period', () => {
     const result = parseTaf(BASIC);
-    assert.equal(result.validFromDay, 4);
-    assert.equal(result.validFromHour, 18);
-    assert.equal(result.validToDay, 5);
-    assert.equal(result.validToHour, 24);
+    assert.equal(result.validFrom.day, 4);
+    assert.equal(result.validFrom.hour, 18);
+    assert.equal(result.validTo.day, 5);
+    assert.equal(result.validTo.hour, 24);
   });
 
   it('defaults to not amended and not corrected', () => {
@@ -276,9 +276,9 @@ describe('parseTaf - FM groups', () => {
 
     const fm1 = result.forecast[1]!;
     assert.equal(fm1.changeType, 'FM');
-    assert.equal(fm1.startDay, 4);
-    assert.equal(fm1.startHour, 22);
-    assert.equal(fm1.startMinute, 0);
+    assert.equal(fm1.start!.day, 4);
+    assert.equal(fm1.start!.hour, 22);
+    assert.equal(fm1.start!.minute, 0);
     assert.equal(fm1.wind?.directionDeg, 240);
     assert.equal(fm1.wind?.speedKt, 15);
     assert.equal(fm1.wind?.gustKt, 25);
@@ -294,22 +294,21 @@ describe('parseTaf - FM groups', () => {
 
     const fm5 = result.forecast[5]!;
     assert.equal(fm5.changeType, 'FM');
-    assert.equal(fm5.startDay, 5);
-    assert.equal(fm5.startHour, 12);
-    assert.equal(fm5.startMinute, 0);
+    assert.equal(fm5.start!.day, 5);
+    assert.equal(fm5.start!.hour, 12);
+    assert.equal(fm5.start!.minute, 0);
     assert.equal(fm5.wind?.directionDeg, 300);
 
     const fm6 = result.forecast[6]!;
-    assert.equal(fm6.startDay, 5);
-    assert.equal(fm6.startHour, 18);
+    assert.equal(fm6.start!.day, 5);
+    assert.equal(fm6.start!.hour, 18);
     assert.equal(fm6.sky.clear, 'SKC');
   });
 
   it('has no endDay/endHour on FM groups', () => {
     const result = parseTaf(BASIC);
     const fm = result.forecast[1]!;
-    assert.equal(fm.endDay, undefined);
-    assert.equal(fm.endHour, undefined);
+    assert.equal(fm.end, undefined);
   });
 });
 
@@ -323,10 +322,10 @@ describe('parseTaf - TEMPO and BECMG groups', () => {
 
     const tempo = result.forecast[1]!;
     assert.equal(tempo.changeType, 'TEMPO');
-    assert.equal(tempo.startDay, 4);
-    assert.equal(tempo.startHour, 18);
-    assert.equal(tempo.endDay, 4);
-    assert.equal(tempo.endHour, 22);
+    assert.equal(tempo.start!.day, 4);
+    assert.equal(tempo.start!.hour, 18);
+    assert.equal(tempo.end!.day, 4);
+    assert.equal(tempo.end!.hour, 22);
     assert.equal(tempo.visibility?.statuteMiles, 5);
     assert.equal(tempo.weather[0]!.intensity, 'LIGHT');
     assert.equal(tempo.weather[0]!.descriptor, 'TS');
@@ -340,10 +339,10 @@ describe('parseTaf - TEMPO and BECMG groups', () => {
 
     const becmg = result.forecast[2]!;
     assert.equal(becmg.changeType, 'BECMG');
-    assert.equal(becmg.startDay, 4);
-    assert.equal(becmg.startHour, 22);
-    assert.equal(becmg.endDay, 4);
-    assert.equal(becmg.endHour, 24);
+    assert.equal(becmg.start!.day, 4);
+    assert.equal(becmg.start!.hour, 22);
+    assert.equal(becmg.end!.day, 4);
+    assert.equal(becmg.end!.hour, 24);
     assert.equal(becmg.wind?.directionDeg, 300);
     assert.equal(becmg.wind?.speedKt, 12);
   });
@@ -395,10 +394,10 @@ describe('parseTaf - PROB groups', () => {
     const prob30 = result.forecast[1]!;
     assert.equal(prob30.probability, 30);
     assert.equal(prob30.changeType, undefined);
-    assert.equal(prob30.startDay, 4);
-    assert.equal(prob30.startHour, 20);
-    assert.equal(prob30.endDay, 4);
-    assert.equal(prob30.endHour, 24);
+    assert.equal(prob30.start!.day, 4);
+    assert.equal(prob30.start!.hour, 20);
+    assert.equal(prob30.end!.day, 4);
+    assert.equal(prob30.end!.hour, 24);
     assert.equal(prob30.visibility?.statuteMiles, 3);
   });
 
@@ -408,10 +407,10 @@ describe('parseTaf - PROB groups', () => {
     const prob40tempo = result.forecast[3]!;
     assert.equal(prob40tempo.probability, 40);
     assert.equal(prob40tempo.changeType, 'TEMPO');
-    assert.equal(prob40tempo.startDay, 5);
-    assert.equal(prob40tempo.startHour, 6);
-    assert.equal(prob40tempo.endDay, 5);
-    assert.equal(prob40tempo.endHour, 10);
+    assert.equal(prob40tempo.start!.day, 5);
+    assert.equal(prob40tempo.start!.hour, 6);
+    assert.equal(prob40tempo.end!.day, 5);
+    assert.equal(prob40tempo.end!.hour, 10);
     assert.equal(prob40tempo.visibility?.statuteMiles, 2);
     assert.deepEqual(prob40tempo.weather[0]!.phenomena, ['BR']);
   });
@@ -565,9 +564,9 @@ describe('parseTaf - real-world TAFs', () => {
     const result = parseTaf(REAL_PANC);
 
     assert.equal(result.stationId, 'PANC');
-    assert.equal(result.issuedDay, 4);
-    assert.equal(result.issuedHour, 21);
-    assert.equal(result.issuedMinute, 1);
+    assert.equal(result.issuedAt.day, 4);
+    assert.equal(result.issuedAt.hour, 21);
+    assert.equal(result.issuedAt.minute, 1);
 
     // Base: 06005KT P6SM BKN100
     const base = result.forecast[0]!;
