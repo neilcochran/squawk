@@ -5,4 +5,5 @@
  */
 export { parseMetar } from './metar-parser.js';
 export { parseTaf } from './taf-parser.js';
+export { parseSigmet } from './sigmet-parser.js';
 export { deriveFlightCategory } from './flight-category.js';
