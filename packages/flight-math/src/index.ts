@@ -12,3 +12,5 @@
 export * as atmosphere from './atmosphere.js';
 export * as airspeed from './airspeed.js';
 export * as wind from './wind.js';
+export * as descent from './descent.js';
+export * as navigation from './navigation.js';

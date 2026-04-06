@@ -65,3 +65,5 @@ Functions that already exist in `@squawk/units` are not re-exported. Import them
 - **atmosphere** - Altitude calculations combining multiple field inputs
 - **airspeed** - Airspeed conversions not covered by `@squawk/units`
 - **wind** - E6B wind triangle, headwind/crosswind components, reverse wind triangle
+- **descent** - Top of descent, required descent/climb rate, gradient conversions, VDP
+- **navigation** - Holding pattern entry, DME arc lead, ETE, fuel, great-circle bearing, 1-in-60 rule
