@@ -14,3 +14,6 @@ export * as airspeed from './airspeed.js';
 export * as wind from './wind.js';
 export * as descent from './descent.js';
 export * as navigation from './navigation.js';
+export * as turn from './turn.js';
+export * as glide from './glide.js';
+export * as pivotal from './pivotal.js';
