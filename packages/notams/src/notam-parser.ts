@@ -2,11 +2,15 @@ import type {
   Coordinates,
   Notam,
   NotamAction,
+  NotamConditionCode,
   NotamDateTime,
+  NotamPurpose,
   NotamQualifier,
   NotamScope,
+  NotamSubjectCode,
   NotamTrafficType,
 } from '@squawk/types';
+import { NOTAM_CONDITION_CODE_MAP, NOTAM_SUBJECT_CODE_MAP } from '@squawk/types';
 
 /**
  * Parses a NOTAM datetime string in YYMMDDHHmm format into a {@link NotamDateTime}.
@@ -109,6 +113,25 @@ function parseScope(code: string): NotamScope {
   }
 }
 
+/** Valid purpose code characters. */
+const VALID_PURPOSES = new Set(['N', 'B', 'O', 'M', 'K']);
+
+/**
+ * Parses the purpose field from the Q-line into an array of {@link NotamPurpose} codes.
+ *
+ * @param code - The raw purpose string (e.g. "NBO", "BO", "K").
+ * @returns An array of individual purpose codes.
+ */
+function parsePurposes(code: string): NotamPurpose[] {
+  const purposes: NotamPurpose[] = [];
+  for (const ch of code) {
+    if (VALID_PURPOSES.has(ch)) {
+      purposes.push(ch as NotamPurpose);
+    }
+  }
+  return purposes;
+}
+
 /**
  * Parses the Q-line into a structured qualifier object.
  * Format: FIR/QCODE/TRAFFIC/PURPOSE/SCOPE/LOWER/UPPER/COORDS
@@ -127,15 +150,18 @@ function parseQLine(qLine: string): NotamQualifier | undefined {
 
   // Q-code format: QXXXX (5 letters starting with Q)
   const notamCode = qCode;
-  let subjectCode = '';
-  let conditionCode = '';
+  let subjectCode: NotamSubjectCode = 'XX';
+  let conditionCode: NotamConditionCode = 'XX';
   if (qCode.length === 5 && qCode.startsWith('Q')) {
-    subjectCode = qCode.substring(1, 3);
-    conditionCode = qCode.substring(3, 5);
+    const rawSubject = qCode.substring(1, 3);
+    const rawCondition = qCode.substring(3, 5);
+    subjectCode = rawSubject in NOTAM_SUBJECT_CODE_MAP ? (rawSubject as NotamSubjectCode) : 'XX';
+    conditionCode =
+      rawCondition in NOTAM_CONDITION_CODE_MAP ? (rawCondition as NotamConditionCode) : 'XX';
   }
 
   const trafficType = parseTrafficType(parts[2]!);
-  const purpose = parts[3]!;
+  const purposes = parsePurposes(parts[3]!);
   const scope = parseScope(parts[4]!);
 
   const lowerRaw = parseInt(parts[5]!, 10);
@@ -154,7 +180,7 @@ function parseQLine(qLine: string): NotamQualifier | undefined {
     subjectCode,
     conditionCode,
     trafficType,
-    purpose,
+    purposes,
     scope,
     ...(lowerFt !== undefined && lowerFt !== 0 ? { lowerFt } : {}),
     upperFt,
@@ -299,10 +325,11 @@ export function parseNotam(raw: string): Notam {
   // Find all item positions once, then extract by letter
   const itemPositions = findItemPositions(normalized);
 
-  const locationCode = extractItem(normalized, 'A', itemPositions);
-  if (!locationCode) {
+  const itemA = extractItem(normalized, 'A', itemPositions);
+  if (!itemA) {
     throw new Error('Unable to parse NOTAM Item A (location)');
   }
+  const locationCodes = itemA.split(/\s+/).filter((s) => s.length > 0);
 
   const itemB = extractItem(normalized, 'B', itemPositions);
   if (!itemB) {
@@ -351,7 +378,7 @@ export function parseNotam(raw: string): Notam {
     action,
     ...(referencedId ? { referencedId } : {}),
     ...(qualifier ? { qualifier } : {}),
-    locationCode,
+    locationCodes,
     effectiveFrom,
     ...(effectiveUntil ? { effectiveUntil } : {}),
     isEstimatedEnd,

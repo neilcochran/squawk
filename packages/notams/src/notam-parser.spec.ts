@@ -388,7 +388,7 @@ describe('parseNotam - basic parsing', () => {
   it('handles \\r\\n line endings', () => {
     const result = parseNotam(CRLF_FORMAT);
     assert.equal(result.id, 'A0900/26');
-    assert.equal(result.locationCode, 'KJFK');
+    assert.deepEqual(result.locationCodes, ['KJFK']);
     assert.equal(result.text, 'RWY 13R/31L CLSD');
   });
 });
@@ -433,7 +433,7 @@ describe('parseNotam - header and action', () => {
   it('parses C-series NOTAM ID', () => {
     const result = parseNotam(C_SERIES);
     assert.equal(result.id, 'C0156/26');
-    assert.equal(result.locationCode, 'CYUL');
+    assert.deepEqual(result.locationCodes, ['CYUL']);
   });
 });
 
@@ -457,12 +457,12 @@ describe('parseNotam - Q-line qualifier', () => {
     assert.equal(result.qualifier.conditionCode, 'LC');
   });
 
-  it('sets empty subject and condition codes for non-5-letter Q-code', () => {
+  it('defaults subject and condition codes to XX for non-5-letter Q-code', () => {
     const result = parseNotam(SHORT_QCODE);
     assert.ok(result.qualifier);
     assert.equal(result.qualifier.notamCode, 'QMR');
-    assert.equal(result.qualifier.subjectCode, '');
-    assert.equal(result.qualifier.conditionCode, '');
+    assert.equal(result.qualifier.subjectCode, 'XX');
+    assert.equal(result.qualifier.conditionCode, 'XX');
   });
 
   it('parses IV traffic type as IFR_VFR', () => {
@@ -504,7 +504,7 @@ describe('parseNotam - Q-line qualifier', () => {
   it('parses purpose codes', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
     assert.ok(result.qualifier);
-    assert.equal(result.qualifier.purpose, 'NBO');
+    assert.deepEqual(result.qualifier.purposes, ['N', 'B', 'O']);
   });
 
   it('parses aerodrome scope (A)', () => {
@@ -626,7 +626,7 @@ describe('parseNotam - Q-line qualifier', () => {
   it('sets qualifier to undefined when Q-line has invalid coordinates', () => {
     const result = parseNotam(INVALID_QCOORDS);
     assert.equal(result.qualifier, undefined);
-    assert.equal(result.locationCode, 'KJFK');
+    assert.deepEqual(result.locationCodes, ['KJFK']);
     assert.equal(result.text, 'RWY CLSD');
   });
 
@@ -639,7 +639,7 @@ describe('parseNotam - Q-line qualifier', () => {
 describe('parseNotam - items A and B', () => {
   it('parses location code', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.equal(result.locationCode, 'PANC');
+    assert.deepEqual(result.locationCodes, ['PANC']);
   });
 
   it('parses effective from datetime', () => {
@@ -653,7 +653,7 @@ describe('parseNotam - items A and B', () => {
 
   it('parses multi-location Item A', () => {
     const result = parseNotam(MULTI_LOCATION);
-    assert.equal(result.locationCode, 'KJFK KLGA KEWR');
+    assert.deepEqual(result.locationCodes, ['KJFK', 'KLGA', 'KEWR']);
   });
 
   it('throws when Item A is missing', () => {
@@ -816,14 +816,14 @@ describe('parseNotam - edge cases', () => {
     const result = parseNotam(NO_Q_LINE);
     assert.equal(result.id, 'A9999/24');
     assert.equal(result.qualifier, undefined);
-    assert.equal(result.locationCode, 'KJFK');
+    assert.deepEqual(result.locationCodes, ['KJFK']);
     assert.equal(result.text, 'EXAMPLE NOTAM WITHOUT Q LINE');
   });
 
   it('handles single-line NOTAM', () => {
     const result = parseNotam(SINGLE_LINE);
     assert.equal(result.id, 'A1000/24');
-    assert.equal(result.locationCode, 'KJFK');
+    assert.deepEqual(result.locationCodes, ['KJFK']);
     assert.equal(result.text, 'RWY 13L/31R CLSD');
     assert.ok(result.qualifier, 'expected qualifier from single-line Q-line');
     assert.equal(result.qualifier.fir, 'KZNY');
@@ -833,13 +833,13 @@ describe('parseNotam - edge cases', () => {
     const padded = '  \n  ' + ANC_RUNWAY_CLOSURE + '  \n  ';
     const result = parseNotam(padded);
     assert.equal(result.id, 'A0030/26');
-    assert.equal(result.locationCode, 'PANC');
+    assert.deepEqual(result.locationCodes, ['PANC']);
   });
 
   it('handles NOTAM with only required items (A, B, E) and no C', () => {
     const result = parseNotam(NO_ITEM_C);
     assert.equal(result.id, 'A0800/26');
-    assert.equal(result.locationCode, 'KJFK');
+    assert.deepEqual(result.locationCodes, ['KJFK']);
     assert.equal(result.text, 'RWY 04L/22R CLSD FOR EMERGENCY REPAIRS');
     assert.equal(result.effectiveUntil, undefined);
     assert.equal(result.schedule, undefined);
