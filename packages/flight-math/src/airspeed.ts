@@ -27,11 +27,7 @@ import { isa } from '@squawk/units';
  * @param oatCelsius - Outside air temperature in degrees Celsius (optional, defaults to ISA).
  * @returns Calibrated airspeed (CAS) in knots.
  */
-export function casFromTas(
-  tasKnots: number,
-  pressureAltFt: number,
-  oatCelsius?: number,
-): number {
+export function casFromTas(tasKnots: number, pressureAltFt: number, oatCelsius?: number): number {
   const a0 = isa.ISA_SPEED_OF_SOUND_SEA_LEVEL_KNOTS;
   const P0 = isa.ISA_SEA_LEVEL_PRESSURE_HPA;
 

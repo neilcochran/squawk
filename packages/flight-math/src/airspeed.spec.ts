@@ -23,7 +23,10 @@ describe('casFromTas', () => {
     const alt = 10000;
     const tas = isa.tasFromCasKnots(originalCas, alt);
     const roundTripped = airspeed.casFromTas(tas, alt);
-    assert.ok(close(roundTripped, originalCas, 0.01), `expected ~${originalCas}, got ${roundTripped}`);
+    assert.ok(
+      close(roundTripped, originalCas, 0.01),
+      `expected ~${originalCas}, got ${roundTripped}`,
+    );
   });
 
   it('round-trips with isa.tasFromCasKnots at non-ISA temperature', () => {
@@ -32,7 +35,10 @@ describe('casFromTas', () => {
     const oat = -5; // Warmer than ISA at FL150.
     const tas = isa.tasFromCasKnots(originalCas, alt, oat);
     const roundTripped = airspeed.casFromTas(tas, alt, oat);
-    assert.ok(close(roundTripped, originalCas, 0.01), `expected ~${originalCas}, got ${roundTripped}`);
+    assert.ok(
+      close(roundTripped, originalCas, 0.01),
+      `expected ~${originalCas}, got ${roundTripped}`,
+    );
   });
 
   it('round-trips at high altitude', () => {
@@ -40,6 +46,9 @@ describe('casFromTas', () => {
     const alt = 35000;
     const tas = isa.tasFromCasKnots(originalCas, alt);
     const roundTripped = airspeed.casFromTas(tas, alt);
-    assert.ok(close(roundTripped, originalCas, 0.05), `expected ~${originalCas}, got ${roundTripped}`);
+    assert.ok(
+      close(roundTripped, originalCas, 0.05),
+      `expected ~${originalCas}, got ${roundTripped}`,
+    );
   });
 });

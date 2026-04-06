@@ -48,17 +48,17 @@ This package complements `@squawk/units`, which provides unit conversions, forma
 
 Functions that already exist in `@squawk/units` are not re-exported. Import them directly:
 
-| Calculation | Package |
-|---|---|
-| Pressure altitude from indicated alt + QNH | `@squawk/units` (`pressure.pressureAltitudeFeet`) |
-| Density altitude from PA + OAT | `@squawk/units` (`isa.densityAltitudeFeet`) |
-| TAS from CAS | `@squawk/units` (`isa.tasFromCasKnots`) |
-| Mach from TAS | `@squawk/units` (`isa.machFromTasKnots`) |
-| TAS from Mach | `@squawk/units` (`isa.tasFromMachKnots`) |
-| Density altitude from field observations | `@squawk/flight-math` (`atmosphere.densityAltitude`) |
-| True altitude correction | `@squawk/flight-math` (`atmosphere.trueAltitude`) |
-| CAS from TAS | `@squawk/flight-math` (`airspeed.casFromTas`) |
-| Wind triangle / components | `@squawk/flight-math` (`wind.*`) |
+| Calculation                                | Package                                              |
+| ------------------------------------------ | ---------------------------------------------------- |
+| Pressure altitude from indicated alt + QNH | `@squawk/units` (`pressure.pressureAltitudeFeet`)    |
+| Density altitude from PA + OAT             | `@squawk/units` (`isa.densityAltitudeFeet`)          |
+| TAS from CAS                               | `@squawk/units` (`isa.tasFromCasKnots`)              |
+| Mach from TAS                              | `@squawk/units` (`isa.machFromTasKnots`)             |
+| TAS from Mach                              | `@squawk/units` (`isa.tasFromMachKnots`)             |
+| Density altitude from field observations   | `@squawk/flight-math` (`atmosphere.densityAltitude`) |
+| True altitude correction                   | `@squawk/flight-math` (`atmosphere.trueAltitude`)    |
+| CAS from TAS                               | `@squawk/flight-math` (`airspeed.casFromTas`)        |
+| Wind triangle / components                 | `@squawk/flight-math` (`wind.*`)                     |
 
 ## Namespaces
 
