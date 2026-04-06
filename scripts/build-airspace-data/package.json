@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@squawk/types": "*",
-    "adm-zip": "^0.5.10",
+    "adm-zip": "^0.5.17",
     "fast-xml-parser": "^4.4.0",
     "shapefile": "^0.6.6"
   },
