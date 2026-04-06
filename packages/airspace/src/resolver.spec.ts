@@ -51,19 +51,30 @@ describe('createAirspaceResolver with real data', () => {
     });
   });
 
-  describe('empty area (middle of nowhere)', () => {
+  describe('Class E only (rural CONUS)', () => {
     // Middle of Kansas farmland: 38.5 N, 99.5 W
-    it('returns no features at low altitude in open terrain', () => {
+    // Class E5 covers most of CONUS at 700 ft AGL, so only Class E is expected here
+    it('returns only Class E at low altitude in open terrain', () => {
       const results = resolve_({ lat: 38.5, lon: -99.5, altitudeFt: 3000 });
-      assert.equal(results.length, 0, 'expected no airspace in rural Kansas');
+      assert.ok(results.length > 0, 'expected Class E coverage in rural Kansas');
+      assert.ok(
+        results.every((f) => f.type.startsWith('CLASS_E')),
+        `expected only Class E, got: ${results.map((f) => f.type).join(', ')}`,
+      );
     });
   });
 
-  describe('ocean (no airspace)', () => {
-    // Mid-Atlantic: 35 N, 55 W
-    it('returns no features over open ocean', () => {
+  describe('no airspace', () => {
+    it('returns no features over the mid-Atlantic', () => {
+      // Mid-Atlantic: 35 N, 55 W
       const results = resolve_({ lat: 35, lon: -55, altitudeFt: 10000 });
       assert.equal(results.length, 0, 'expected no airspace over mid-Atlantic');
+    });
+
+    it('returns no features over the Pacific off the California coast', () => {
+      // Pacific: 33 N, 125 W
+      const results = resolve_({ lat: 33, lon: -125, altitudeFt: 3000 });
+      assert.equal(results.length, 0, 'expected no airspace over the Pacific');
     });
   });
 
@@ -90,6 +101,28 @@ describe('createAirspaceResolver with real data', () => {
         classD.some((f) => f.identifier === 'SAF'),
         'expected SAF identifier',
       );
+    });
+  });
+
+  describe('Class E2', () => {
+    // GNV Gainesville FL: centroid roughly 29.69 N, 82.27 W, SFC to 99999 MSL
+    it('returns CLASS_E2 for a point at Gainesville GNV', () => {
+      const results = resolve_({ lat: 29.69, lon: -82.27, altitudeFt: 1000 });
+      const classE2 = results.filter((f) => f.type === 'CLASS_E2');
+      assert.ok(classE2.length > 0, 'expected CLASS_E2 at GNV');
+      assert.ok(
+        classE2.some((f) => f.identifier === 'GNV'),
+        'expected GNV identifier',
+      );
+    });
+  });
+
+  describe('Class E5', () => {
+    // CLASS_E5 covers most of CONUS at 700 ft AGL
+    it('returns CLASS_E5 for a point in open terrain', () => {
+      const results = resolve_({ lat: 38.5, lon: -99.5, altitudeFt: 3000 });
+      const classE5 = results.filter((f) => f.type === 'CLASS_E5');
+      assert.ok(classE5.length > 0, 'expected CLASS_E5 in open terrain');
     });
   });
 
@@ -220,6 +253,29 @@ describe('type filter', () => {
     const types = new Set(results.map((f) => f.type));
     assert.ok(types.has('PROHIBITED'), 'expected PROHIBITED');
     assert.ok(types.has('CLASS_B'), 'expected CLASS_B');
+  });
+
+  it('filters Class E subtypes independently', () => {
+    // Rural Kansas returns Class E5; filtering for E2 only should exclude it
+    const e2Only = resolve_({
+      lat: 38.5,
+      lon: -99.5,
+      altitudeFt: 3000,
+      types: new Set<AirspaceType>(['CLASS_E2']),
+    });
+    assert.equal(e2Only.length, 0, 'no CLASS_E2 expected in rural Kansas');
+
+    const e5Only = resolve_({
+      lat: 38.5,
+      lon: -99.5,
+      altitudeFt: 3000,
+      types: new Set<AirspaceType>(['CLASS_E5']),
+    });
+    assert.ok(e5Only.length > 0, 'expected CLASS_E5 in rural Kansas');
+    assert.ok(
+      e5Only.every((f) => f.type === 'CLASS_E5'),
+      'all results should be CLASS_E5',
+    );
   });
 
   it('returns all types when types filter is omitted', () => {

@@ -126,9 +126,9 @@ async function main(): Promise<void> {
     const airportStates = await loadAirportStates(tempCsvPath);
     console.log(`[index] Loaded ${airportStates.size} airport state entries.`);
 
-    console.log('[index] Parsing Class B/C/D airspace...');
+    console.log('[index] Parsing Class B/C/D/E airspace...');
     const classFeatures = await parseClassAirspace(shpPath, airportStates);
-    console.log(`[index] Parsed ${classFeatures.length} Class B/C/D features.`);
+    console.log(`[index] Parsed ${classFeatures.length} Class B/C/D/E features.`);
 
     console.log('[index] Parsing SUA airspace...');
     const suaFeatures = parseSua(saaZipPath);

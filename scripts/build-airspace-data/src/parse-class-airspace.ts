@@ -23,16 +23,34 @@ interface ShapefileModule {
 const shapefile = require('shapefile') as ShapefileModule;
 
 /** LOCAL_TYPE values from the Class_Airspace shapefile that we include. */
-const INCLUDED_LOCAL_TYPES = new Set(['CLASS_B', 'CLASS_C', 'CLASS_D']);
+const INCLUDED_LOCAL_TYPES = new Set([
+  'CLASS_B',
+  'CLASS_C',
+  'CLASS_D',
+  'CLASS_E2',
+  'CLASS_E3',
+  'CLASS_E4',
+  'CLASS_E5',
+  'CLASS_E6',
+  'CLASS_E7',
+]);
 
 /**
- * Douglas-Peucker tolerance in degrees applied to shapefile polygons. The FAA
- * shapefile encodes airspace boundaries with extremely dense vertex counts
- * (often 3,000+ per feature) that are far beyond what is needed for airspace
- * queries. A tolerance of 0.0001 degrees is roughly 11 meters, well within the
- * precision of the legal boundary definitions (to the nearest arcsecond, ~30m).
+ * Douglas-Peucker tolerance in degrees applied to Class B/C/D shapefile
+ * polygons. A tolerance of 0.0001 degrees is roughly 11 meters, well within
+ * the precision of the legal boundary definitions (to the nearest arcsecond,
+ * ~30m).
  */
 const SIMPLIFICATION_TOLERANCE = 0.0001;
+
+/**
+ * Douglas-Peucker tolerance in degrees applied to Class E shapefile polygons.
+ * Class E boundaries are predominantly circular arcs encoded with extremely
+ * dense vertex counts that resist simplification at the standard tolerance.
+ * A tolerance of 0.001 degrees (~111m) produces visually smooth polygons while
+ * reducing vertex counts to levels comparable to Class C/D features.
+ */
+const CLASS_E_SIMPLIFICATION_TOLERANCE = 0.001;
 
 /** Raw attribute fields from the Class_Airspace.dbf record. */
 interface ClassAirspaceRecord {
@@ -51,8 +69,8 @@ interface ClassAirspaceRecord {
 
 /**
  * Reads the Class_Airspace shapefile and returns one AirspaceFeature for each
- * Class B, C, or D polygon. Features whose LOCAL_TYPE is not in the included
- * set (e.g. CLASS_E5) are silently skipped.
+ * Class B, C, D, or E polygon. Features whose LOCAL_TYPE is not in the
+ * included set are silently skipped.
  *
  * The state field cannot be populated from the shapefile alone; pass the
  * airportStates lookup built by loadAirportStates to enrich it via the
@@ -86,7 +104,10 @@ export async function parseClassAirspace(
       continue;
     }
 
-    const boundary = simplifyPolygon(rawBoundary, SIMPLIFICATION_TOLERANCE);
+    const tolerance = localType.startsWith('CLASS_E')
+      ? CLASS_E_SIMPLIFICATION_TOLERANCE
+      : SIMPLIFICATION_TOLERANCE;
+    const boundary = simplifyPolygon(rawBoundary, tolerance);
 
     const ident = attrs.IDENT ?? null;
 
@@ -109,7 +130,7 @@ export async function parseClassAirspace(
 /**
  * Extracts a single Polygon from a shapefile geometry. For MultiPolygon
  * geometries only the largest ring by coordinate count is used, which is
- * correct for all known Class B/C/D records. Logs a warning and returns null
+ * correct for all known Class B/C/D/E records. Logs a warning and returns null
  * for any geometry type that cannot be handled.
  */
 function extractPolygon(geometry: Polygon | MultiPolygon, label: string): Polygon | null {
