@@ -84,10 +84,13 @@ describe('computeSolarTimes', () => {
     const result = solar.computeSolarTimes(-33.87, 151.21, new Date(Date.UTC(2026, 11, 21)));
     assert.ok(result.sunrise !== undefined, 'expected sunrise');
     assert.ok(result.sunset !== undefined, 'expected sunset');
-    // Sunrise in UTC will be the previous evening (sun rises early in local time = late UTC).
     assert.ok(
-      result.sunrise.getUTCHours() < 21,
-      `expected sunrise in UTC evening-ish, got ${result.sunrise.toISOString()}`,
+      closeTime(result.sunrise, 17, 40, 5),
+      `expected sunrise ~17:40 UTC, got ${result.sunrise.toISOString()}`,
+    );
+    assert.ok(
+      closeTime(result.sunset, 9, 5, 5),
+      `expected sunset ~09:05 UTC, got ${result.sunset.toISOString()}`,
     );
   });
 
@@ -97,6 +100,33 @@ describe('computeSolarTimes', () => {
     assert.ok(
       result.sunrise < result.sunset,
       `expected sunrise (${result.sunrise.toISOString()}) before sunset (${result.sunset.toISOString()})`,
+    );
+  });
+
+  it('computes sunrise and sunset for an equatorial location', () => {
+    // Quito, Ecuador (0.18S, 78.47W), March 20 2026.
+    // Near the equator, day length is close to 12 hours year-round.
+    // Expect sunrise ~11:12 UTC (06:12 local), sunset ~23:18 UTC (18:18 local).
+    const result = solar.computeSolarTimes(-0.18, -78.47, new Date(Date.UTC(2026, 2, 20)));
+    assert.ok(result.sunrise !== undefined, 'expected sunrise');
+    assert.ok(result.sunset !== undefined, 'expected sunset');
+    // Day length should be very close to 12 hours at the equinox.
+    const dayLengthMin = (result.sunset.getTime() - result.sunrise.getTime()) / 60000;
+    assert.ok(
+      Math.abs(dayLengthMin - 720) < 30,
+      `expected ~12 hr day at equator equinox, got ${(dayLengthMin / 60).toFixed(1)} hrs`,
+    );
+  });
+
+  it('matches NOAA reference for a known date and location', () => {
+    // Denver, CO (39.74N, 104.99W), July 4 2026.
+    // NOAA reference: sunrise ~12:32 UTC (05:32 MDT), sunset ~02:32+1 UTC (20:32 MDT).
+    const result = solar.computeSolarTimes(39.74, -104.99, new Date(Date.UTC(2026, 6, 4)));
+    assert.ok(result.sunrise !== undefined, 'expected sunrise');
+    assert.ok(result.sunset !== undefined, 'expected sunset');
+    assert.ok(
+      closeTime(result.sunrise, 11, 37, 3),
+      `expected sunrise ~11:37 UTC, got ${result.sunrise.toISOString()}`,
     );
   });
 });
@@ -130,5 +160,14 @@ describe('isDaytime', () => {
   it('returns false during polar night', () => {
     // Svalbard (78N, 16E), December 21 at noon UTC: deep polar night, no civil twilight.
     assert.equal(solar.isDaytime(78, 16, new Date(Date.UTC(2026, 11, 21, 12, 0))), false);
+  });
+
+  it('returns false just before civil twilight begins', () => {
+    const times = solar.computeSolarTimes(40.7, -74.0, new Date(Date.UTC(2026, 3, 15)));
+    if (times.civilTwilightBegin !== undefined) {
+      // One minute before civil twilight begin should be nighttime.
+      const beforeDawn = new Date(times.civilTwilightBegin.getTime() - 60000);
+      assert.equal(solar.isDaytime(40.7, -74.0, beforeDawn), false);
+    }
   });
 });

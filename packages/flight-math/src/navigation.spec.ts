@@ -30,6 +30,18 @@ describe('holdingPatternEntry', () => {
       // Inbound 090, outbound 270. diff = normalize(300 - 270) = 30 < 70: parallel.
       assert.equal(navigation.holdingPatternEntry(90, 300), 'parallel');
     });
+
+    it('returns teardrop at exactly 70 degrees from outbound', () => {
+      // Inbound 090, outbound 270. heading = 270 + 70 = 340.
+      // theta = normalize(340 - 270) = 70, which is >= 70 -> teardrop.
+      assert.equal(navigation.holdingPatternEntry(90, 340), 'teardrop');
+    });
+
+    it('returns direct at exactly 180 degrees from outbound', () => {
+      // Inbound 090, outbound 270. heading = 270 + 180 = 450 = 090.
+      // theta = normalize(90 - 270) = 180, which is >= 180 -> direct.
+      assert.equal(navigation.holdingPatternEntry(90, 90), 'direct');
+    });
   });
 
   describe('left-turn hold', () => {
@@ -72,6 +84,15 @@ describe('dmeArcLeadRadial', () => {
     const lead = navigation.dmeArcLeadRadial(10, 120, 25);
     assert.ok(lead > 1 && lead < 10, `expected 1-10 degrees, got ${lead}`);
   });
+
+  it('uses default 25-degree bank when bank angle is omitted', () => {
+    const withDefault = navigation.dmeArcLeadRadial(10, 120);
+    const withExplicit = navigation.dmeArcLeadRadial(10, 120, 25);
+    assert.ok(
+      close(withDefault, withExplicit, 0.001),
+      `expected ${withExplicit}, got ${withDefault}`,
+    );
+  });
 });
 
 describe('greatCircleBearing', () => {
@@ -101,6 +122,19 @@ describe('greatCircleBearing', () => {
     // Expected initial bearing roughly 265-275 degrees (west-southwest).
     const brg = navigation.greatCircleBearing(40.6413, -73.7781, 33.9425, -118.4081);
     assert.ok(brg > 260 && brg < 280, `expected 260-280, got ${brg}`);
+  });
+
+  it('returns 0 for identical points (degenerate case)', () => {
+    // atan2(0, 0) = 0, normalized to 0.
+    const brg = navigation.greatCircleBearing(40.0, -74.0, 40.0, -74.0);
+    assert.ok(close(brg, 0, 0.001), `expected 0, got ${brg}`);
+  });
+
+  it('handles antipodal points', () => {
+    // From north pole to south pole: any meridian is valid, but the result
+    // should be a finite number in [0, 360).
+    const brg = navigation.greatCircleBearing(90, 0, -90, 0);
+    assert.ok(brg >= 0 && brg < 360, `expected 0-360, got ${brg}`);
   });
 });
 
@@ -135,6 +169,13 @@ describe('correctionAngle', () => {
     // 2 NM off course after 30 NM: 4 degrees.
     const corr = navigation.correctionAngle(2, 30);
     assert.ok(close(corr, 4, 0.001), `expected 4 degrees, got ${corr}`);
+  });
+
+  it('produces large angles for significant crosstrack error at short distance', () => {
+    // 5 NM off course after 20 NM: 15 degrees.
+    // The 1-in-60 rule degrades for larger angles but remains useful as an approximation.
+    const corr = navigation.correctionAngle(5, 20);
+    assert.ok(close(corr, 15, 0.001), `expected 15 degrees, got ${corr}`);
   });
 });
 

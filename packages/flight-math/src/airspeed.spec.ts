@@ -51,4 +51,29 @@ describe('casFromTas', () => {
       `expected ~${originalCas}, got ${roundTripped}`,
     );
   });
+
+  it('round-trips at low altitude and low speed', () => {
+    const originalCas = 60;
+    const alt = 1000;
+    const tas = isa.tasFromCasKnots(originalCas, alt);
+    const roundTripped = airspeed.casFromTas(tas, alt);
+    assert.ok(
+      close(roundTripped, originalCas, 0.01),
+      `expected ~${originalCas}, got ${roundTripped}`,
+    );
+  });
+
+  it('uses ISA temperature when oatCelsius is omitted', () => {
+    // With no OAT specified, should use ISA standard temp at the altitude.
+    // This should match the round-trip with isa.tasFromCasKnots (which also defaults to ISA).
+    const originalCas = 180;
+    const alt = 10000;
+    const tas = isa.tasFromCasKnots(originalCas, alt);
+    const withDefault = airspeed.casFromTas(tas, alt);
+    const withExplicitIsa = airspeed.casFromTas(tas, alt, isa.isaTemperatureCelsius(alt));
+    assert.ok(
+      close(withDefault, withExplicitIsa, 0.01),
+      `expected default (${withDefault}) to match explicit ISA (${withExplicitIsa})`,
+    );
+  });
 });

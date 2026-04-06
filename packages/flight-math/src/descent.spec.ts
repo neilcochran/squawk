@@ -35,6 +35,12 @@ describe('topOfDescentFromRate', () => {
     const tod = descent.topOfDescentFromRate(5000, 5000, 500, 120);
     assert.ok(close(tod, 0, 0.001), `expected 0, got ${tod}`);
   });
+
+  it('increases distance with higher groundspeed', () => {
+    const slow = descent.topOfDescentFromRate(7000, 2000, 500, 90);
+    const fast = descent.topOfDescentFromRate(7000, 2000, 500, 180);
+    assert.ok(close(fast, slow * 2, 0.01), `expected fast (${fast}) = 2 * slow (${slow})`);
+  });
 });
 
 describe('requiredDescentRate', () => {
@@ -58,6 +64,22 @@ describe('requiredClimbRate', () => {
     // Time = 15/90 * 60 = 10 min. Rate = 3000/10 = 300 fpm.
     const rate = descent.requiredClimbRate(15, 2000, 5000, 90);
     assert.ok(close(rate, 300, 0.1), `expected 300 fpm, got ${rate}`);
+  });
+
+  it('returns higher rate for shorter distance', () => {
+    const short = descent.requiredClimbRate(5, 2000, 5000, 90);
+    const long = descent.requiredClimbRate(20, 2000, 5000, 90);
+    assert.ok(short > long, `expected short (${short}) > long (${long})`);
+  });
+
+  it('returns higher rate at higher groundspeed over the same distance', () => {
+    // Faster GS means less time, so a higher climb rate is needed.
+    // Wait - faster GS means LESS time over the same distance,
+    // but the formula is altToGain / timeMin, and timeMin = dist/GS * 60.
+    // Higher GS -> less time -> higher rate.
+    const slow = descent.requiredClimbRate(10, 0, 3000, 90);
+    const fast = descent.requiredClimbRate(10, 0, 3000, 180);
+    assert.ok(close(fast, slow * 2, 0.1), `expected fast (${fast}) = 2 * slow (${slow})`);
   });
 });
 
@@ -106,5 +128,12 @@ describe('visualDescentPoint', () => {
     const low = descent.visualDescentPoint(3, 200);
     const high = descent.visualDescentPoint(3, 400);
     assert.ok(high > low, `expected high TCH (${high}) > low TCH (${low})`);
+  });
+
+  it('computes VDP for a steeper RNAV glidepath', () => {
+    // 300 ft TCH at 4.5 degrees.
+    // 300 / (tan(4.5) * 6076.11549) = ~0.628 NM
+    const vdp = descent.visualDescentPoint(4.5, 300);
+    assert.ok(close(vdp, 0.628, 0.01), `expected ~0.628 NM, got ${vdp}`);
   });
 });
