@@ -45,7 +45,7 @@
     "@squawk/navaids": "*",
     "@squawk/procedure-data": "*",
     "@squawk/procedures": "*",
-    "@types/node": "^25.5.0"
+    "@types/node": "^25.5.2"
   },
   "publishConfig": {
     "access": "public"
