@@ -87,29 +87,6 @@ export function dmeArcLeadRadial(
 }
 
 /**
- * Computes estimated time en route in minutes given distance and groundspeed.
- *
- * @param distanceNm - Distance in nautical miles.
- * @param groundspeedKt - Groundspeed in knots.
- * @returns Estimated time en route in minutes.
- */
-export function estimatedTimeEnRoute(distanceNm: number, groundspeedKt: number): number {
-  return (distanceNm / groundspeedKt) * 60;
-}
-
-/**
- * Computes fuel required given a fuel flow rate and time. The result is in the
- * same volumetric or mass units as the flow rate (gallons, liters, pounds, etc.).
- *
- * @param fuelFlowPerHour - Fuel flow rate per hour (in any consistent unit).
- * @param timeMinutes - Time in minutes.
- * @returns Fuel required (in the same unit as fuelFlowPerHour).
- */
-export function fuelRequired(fuelFlowPerHour: number, timeMinutes: number): number {
-  return fuelFlowPerHour * (timeMinutes / 60);
-}
-
-/**
  * Computes the initial great-circle bearing from one geographic position to
  * another. The bearing is the direction to travel from the start point to
  * reach the end point along the shortest path on the Earth's surface.

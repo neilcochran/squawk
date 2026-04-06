@@ -74,32 +74,6 @@ describe('dmeArcLeadRadial', () => {
   });
 });
 
-describe('estimatedTimeEnRoute', () => {
-  it('computes time for a known distance and speed', () => {
-    // 150 NM at 150 kt = 60 minutes.
-    const ete = navigation.estimatedTimeEnRoute(150, 150);
-    assert.ok(close(ete, 60, 0.01), `expected 60 min, got ${ete}`);
-  });
-
-  it('computes fractional time', () => {
-    // 75 NM at 150 kt = 30 minutes.
-    const ete = navigation.estimatedTimeEnRoute(75, 150);
-    assert.ok(close(ete, 30, 0.01), `expected 30 min, got ${ete}`);
-  });
-});
-
-describe('fuelRequired', () => {
-  it('computes fuel for a given flow and time', () => {
-    // 10 gph for 90 minutes = 15 gallons.
-    const fuel = navigation.fuelRequired(10, 90);
-    assert.ok(close(fuel, 15, 0.01), `expected 15, got ${fuel}`);
-  });
-
-  it('returns zero for zero time', () => {
-    assert.ok(close(navigation.fuelRequired(12, 0), 0, 0.001));
-  });
-});
-
 describe('greatCircleBearing', () => {
   it('returns 0/360 for a due-north bearing', () => {
     // From equator to north pole.
