@@ -1579,3 +1579,180 @@ export interface Airmet {
   /** Outlook areas with forecast conditions beyond the valid period (Zulu bulletins only). */
   outlooks: AirmetOutlookArea[];
 }
+
+// ---------------------------------------------------------------------------
+// NOTAM types
+// ---------------------------------------------------------------------------
+
+/**
+ * NOTAM action type indicating whether this NOTAM creates, replaces,
+ * or cancels a notice.
+ *
+ * - `NEW` - A new NOTAM (NOTAMN)
+ * - `REPLACE` - Replaces a previously issued NOTAM (NOTAMR)
+ * - `CANCEL` - Cancels a previously issued NOTAM (NOTAMC)
+ */
+export type NotamAction = 'NEW' | 'REPLACE' | 'CANCEL';
+
+/**
+ * Maps NOTAM action codes to human-readable descriptions.
+ */
+export const NOTAM_ACTION_MAP: Record<NotamAction, string> = {
+  NEW: 'New',
+  REPLACE: 'Replacement',
+  CANCEL: 'Cancellation',
+};
+
+/**
+ * Traffic type qualifier from the NOTAM Q-line indicating which
+ * flight rules the NOTAM applies to.
+ *
+ * - `IFR` - Applies to IFR traffic only
+ * - `VFR` - Applies to VFR traffic only
+ * - `IFR_VFR` - Applies to both IFR and VFR traffic
+ * - `CHECKLIST` - Checklist NOTAM
+ */
+export type NotamTrafficType = 'IFR' | 'VFR' | 'IFR_VFR' | 'CHECKLIST';
+
+/**
+ * Maps NOTAM traffic type codes to human-readable descriptions.
+ */
+export const NOTAM_TRAFFIC_TYPE_MAP: Record<NotamTrafficType, string> = {
+  IFR: 'IFR',
+  VFR: 'VFR',
+  IFR_VFR: 'IFR and VFR',
+  CHECKLIST: 'Checklist',
+};
+
+/**
+ * Scope qualifier from the NOTAM Q-line indicating the geographic
+ * scope of the notice.
+ *
+ * - `AERODROME` - Applies to a specific aerodrome (A)
+ * - `ENROUTE` - Applies to en route airspace or FIR-level (E)
+ * - `NAV_WARNING` - Navigation warning (W)
+ * - `AERODROME_ENROUTE` - Applies to both aerodrome and en route (AE)
+ * - `AERODROME_WARNING` - Applies to both aerodrome and navigation warning (AW)
+ * - `ENROUTE_WARNING` - Applies to both en route and navigation warning (EW)
+ * - `AERODROME_ENROUTE_WARNING` - Applies to aerodrome, en route, and navigation warning (AEW)
+ */
+export type NotamScope =
+  | 'AERODROME'
+  | 'ENROUTE'
+  | 'NAV_WARNING'
+  | 'AERODROME_ENROUTE'
+  | 'AERODROME_WARNING'
+  | 'ENROUTE_WARNING'
+  | 'AERODROME_ENROUTE_WARNING';
+
+/**
+ * Maps NOTAM scope codes to human-readable descriptions.
+ */
+export const NOTAM_SCOPE_MAP: Record<NotamScope, string> = {
+  AERODROME: 'Aerodrome',
+  ENROUTE: 'En Route',
+  NAV_WARNING: 'Navigation Warning',
+  AERODROME_ENROUTE: 'Aerodrome and En Route',
+  AERODROME_WARNING: 'Aerodrome and Navigation Warning',
+  ENROUTE_WARNING: 'En Route and Navigation Warning',
+  AERODROME_ENROUTE_WARNING: 'Aerodrome, En Route, and Navigation Warning',
+};
+
+/**
+ * The parsed Q-line (qualifier line) from an ICAO NOTAM.
+ * Contains encoded metadata about the NOTAM in a structured 8-field format.
+ */
+export interface NotamQualifier {
+  /** ICAO identifier of the Flight Information Region (e.g. "KZNY", "EGTT"). */
+  fir: string;
+  /** The full 5-letter NOTAM Q-code (e.g. "QMRLC", "QNALO"). */
+  notamCode: string;
+  /** Two-letter NOTAM subject code from the Q-code (2nd and 3rd letters, e.g. "MR" for runway, "NA" for approach aids). */
+  subjectCode: string;
+  /** Two-letter NOTAM condition code from the Q-code (4th and 5th letters, e.g. "LC" for closed, "AS" for active). */
+  conditionCode: string;
+  /** Traffic type qualifier indicating which flight rules are affected. */
+  trafficType: NotamTrafficType;
+  /** Purpose codes as a raw string (e.g. "NBO", "BO", "N"). */
+  purpose: string;
+  /** Geographic scope of the NOTAM. */
+  scope: NotamScope;
+  /** Lower altitude limit in feet. Undefined when the lower limit is the surface. */
+  lowerFt?: number;
+  /** Upper altitude limit in feet. 99900 indicates unlimited. */
+  upperFt: number;
+  /** Center point coordinates of the NOTAM's area of applicability. */
+  coordinates: Coordinates;
+  /** Radius in nautical miles from the center point. */
+  radiusNm: number;
+}
+
+/**
+ * A date-time reference in a NOTAM effective period.
+ * Uses the NOTAM-specific 10-digit format (YYMMDDHHmm) which includes
+ * year and month information not present in the standard {@link DayTime}.
+ */
+export interface NotamDateTime {
+  /** Two-digit year (e.g. 24 for 2024, 26 for 2026). */
+  year: number;
+  /** Month (1-12). */
+  month: number;
+  /** Day of month (1-31). */
+  day: number;
+  /** Hour (UTC, 0-23). */
+  hour: number;
+  /** Minute (UTC, 0-59). */
+  minute: number;
+}
+
+/**
+ * A parsed ICAO-format NOTAM (Notice to Air Missions).
+ *
+ * NOTAMs provide advance notice of changes to any aeronautical facility,
+ * service, procedure, or hazard. This interface represents the structured
+ * fields parsed from the standard ICAO NOTAM format including the Q-line,
+ * items A through G, and header metadata.
+ *
+ * ```typescript
+ * import { parseNotam } from '@squawk/notams';
+ *
+ * const notam = parseNotam(rawNotamString);
+ * console.log(notam.id);                     // "A1242/24"
+ * console.log(notam.action);                 // "NEW"
+ * console.log(notam.qualifier?.fir);          // "KZNY"
+ * console.log(notam.locationCode);           // "KJFK"
+ * console.log(notam.text);                   // "RWY 09L/27R CLSD DUE TO RESURFACING"
+ * ```
+ */
+export interface Notam {
+  /** The original raw NOTAM string as provided to the parser. */
+  raw: string;
+  /** NOTAM series and number identifier (e.g. "A1242/24", "C0156/26"). */
+  id: string;
+  /** Action type indicating whether this is a new, replacement, or cancellation NOTAM. */
+  action: NotamAction;
+  /** The NOTAM ID being replaced or cancelled (present when action is REPLACE or CANCEL). */
+  referencedId?: string;
+  /** Parsed Q-line qualifier data. */
+  qualifier?: NotamQualifier;
+  /** Item A: Affected location ICAO code(s) (e.g. "KJFK", "KZNY"). Multiple codes are space-separated. */
+  locationCode: string;
+  /** Item B: Start of the effective period (UTC). */
+  effectiveFrom: NotamDateTime;
+  /** Item C: End of the effective period (UTC). Undefined when the NOTAM is permanent (PERM) or until further notice (UFN). */
+  effectiveUntil?: NotamDateTime;
+  /** True when the end time is estimated rather than definite (EST suffix on Item C). */
+  isEstimatedEnd: boolean;
+  /** True when the NOTAM is permanent with no expiration (PERM in Item C). */
+  isPermanent: boolean;
+  /** True when the NOTAM is effective until further notice (UFN in Item C). */
+  isUntilFurtherNotice: boolean;
+  /** Item D: Schedule for intermittent or recurring activity (e.g. "MON-FRI 0700-1600", "H24", "SR-SS"). */
+  schedule?: string;
+  /** Item E: Free-text description of the NOTAM condition or hazard. */
+  text: string;
+  /** Item F: Lower altitude limit as a raw string (e.g. "SFC", "FL050", "3000FT"). */
+  lowerLimit?: string;
+  /** Item G: Upper altitude limit as a raw string (e.g. "UNL", "FL180", "450FT"). */
+  upperLimit?: string;
+}
