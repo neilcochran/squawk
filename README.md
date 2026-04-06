@@ -13,7 +13,7 @@ TypeScript libraries for building aviation applications - ADS-B ingestion, airsp
 | [`@squawk/adsb-stream`](packages/adsb-stream)               | ADS-B ingestion and normalization from dump1090/readsb or external APIs            |
 | [`@squawk/icao-registry`](packages/icao-registry)           | ICAO hex to N-number and aircraft info lookup with FAA parsing utilities           |
 | [`@squawk/icao-registry-data`](packages/icao-registry-data) | Pre-processed FAA ReleasableAircraft snapshot for use with `@squawk/icao-registry` |
-| [`@squawk/airspace`](packages/airspace)                     | Point-in-airspace queries for Class B/C/D and Special Use Airspace                 |
+| [`@squawk/airspace`](packages/airspace)                     | Point-in-airspace queries for Class B/C/D/E and Special Use Airspace               |
 | [`@squawk/airspace-data`](packages/airspace-data)           | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`   |
 | [`@squawk/airports`](packages/airports)                     | Airport queries by identifier, location, or name/city search                       |
 | [`@squawk/airport-data`](packages/airport-data)             | Pre-processed FAA NASR airport snapshot with runways, frequencies, and ILS data    |

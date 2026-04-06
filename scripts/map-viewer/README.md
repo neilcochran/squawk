@@ -41,7 +41,7 @@ data file has not been generated yet, that layer is automatically skipped.
 ## Features
 
 - **Layer toggles** - enable/disable each data layer independently
-- **Type filters** - filter by airspace type (Class B/C/D, MOA, restricted, etc.),
+- **Type filters** - filter by airspace type (Class B/C/D/E, MOA, restricted, etc.),
   facility type, navaid type, fix use code, airway type, or procedure type (SID/STAR)
 - **Search** - filter across all layers by name, identifier, ICAO code, designation, or city
 - **Popups** - click any feature for full details including runways, frequencies,
@@ -60,7 +60,7 @@ scripts/map-viewer/
     shared.js            Map instance, canvas renderer, shared state, helpers
     controls.js          Layer toggle checkboxes and search input
     layers/
-      airspace.js        Airspace polygons (Class B/C/D, MOA, SUA)
+      airspace.js        Airspace polygons (Class B/C/D/E, MOA, SUA)
       airports.js        Airport circle markers by facility type
       navaids.js         Navaid circle markers by type (VOR, NDB, TACAN, etc.)
       fixes.js           Fix/waypoint dots by use code
