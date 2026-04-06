@@ -1,0 +1,55 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { close } from './test-utils.js';
+import { glide } from './index.js';
+
+describe('glideDistance', () => {
+  it('computes glide distance for a known ratio', () => {
+    // 5000 ft AGL, 10:1 glide ratio = 50,000 ft = ~8.23 NM.
+    const d = glide.glideDistance(5000, 10);
+    assert.ok(close(d, 8.23, 0.01), `expected ~8.23 NM, got ${d}`);
+  });
+
+  it('returns zero at zero altitude', () => {
+    assert.ok(close(glide.glideDistance(0, 10), 0, 0.001));
+  });
+
+  it('increases with altitude', () => {
+    const low = glide.glideDistance(3000, 8);
+    const high = glide.glideDistance(6000, 8);
+    assert.ok(close(high, low * 2, 0.001), `expected high (${high}) = 2 * low (${low})`);
+  });
+
+  it('increases with better glide ratio', () => {
+    const poor = glide.glideDistance(5000, 8);
+    const good = glide.glideDistance(5000, 12);
+    assert.ok(good > poor, `expected good ratio (${good}) > poor (${poor})`);
+  });
+});
+
+describe('glideDistanceWithWind', () => {
+  it('matches no-wind distance when headwind is zero', () => {
+    const noWind = glide.glideDistance(5000, 10);
+    const withWind = glide.glideDistanceWithWind(5000, 10, 80, 0);
+    assert.ok(close(withWind, noWind, 0.001), `expected ${noWind}, got ${withWind}`);
+  });
+
+  it('reduces distance with a headwind', () => {
+    const noWind = glide.glideDistance(5000, 10);
+    const withHeadwind = glide.glideDistanceWithWind(5000, 10, 80, 20);
+    assert.ok(withHeadwind < noWind, `expected headwind (${withHeadwind}) < no wind (${noWind})`);
+  });
+
+  it('extends distance with a tailwind', () => {
+    const noWind = glide.glideDistance(5000, 10);
+    const withTailwind = glide.glideDistanceWithWind(5000, 10, 80, -20);
+    assert.ok(withTailwind > noWind, `expected tailwind (${withTailwind}) > no wind (${noWind})`);
+  });
+
+  it('scales correctly by groundspeed/TAS ratio', () => {
+    // 80 kt TAS, 20 kt headwind: GS = 60, ratio = 60/80 = 0.75.
+    const noWind = glide.glideDistance(5000, 10);
+    const withWind = glide.glideDistanceWithWind(5000, 10, 80, 20);
+    assert.ok(close(withWind, noWind * 0.75, 0.001), `expected ${noWind * 0.75}, got ${withWind}`);
+  });
+});
