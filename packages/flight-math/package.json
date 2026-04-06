@@ -1,0 +1,39 @@
+{
+  "name": "@squawk/flight-math",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Aviation flight computer calculations - the programmatic equivalent of an E6B",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neilcochran/squawk.git",
+    "directory": "packages/flight-math"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@squawk/types": "*",
+    "@squawk/units": "*"
+  }
+}
