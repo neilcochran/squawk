@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@squawk/fix-data": "*",
-    "@types/node": "^25.5.0"
+    "@types/node": "^25.5.2"
   },
   "publishConfig": {
     "access": "public"
