@@ -1,9 +1,9 @@
 # @squawk/weather
 
 Pure parsing library for aviation weather strings. Parses raw METAR, SPECI, TAF,
-SIGMET, and AIRMET text into fully typed, structured objects. Contains no network
-calls or data fetching - consumers provide raw weather strings however they
-obtain them (ADDS API, AVWX, local feed, file dump) and the package returns
+SIGMET, AIRMET, and PIREP text into fully typed, structured objects. Contains no
+network calls or data fetching - consumers provide raw weather strings however
+they obtain them (ADDS API, AVWX, local feed, file dump) and the package returns
 structured results.
 
 ## Usage
@@ -120,6 +120,31 @@ Sierra (IFR, mountain obscuration), Tango (turbulence, strong surface winds,
 LLWS), and Zulu (icing, freezing levels) series. Accepts both WMO-wrapped
 and body-only bulletins.
 
+### `parsePirep(raw)`
+
+Parses a raw PIREP (Pilot Report) string into a structured `Pirep` object.
+Handles both routine (UA) and urgent (UUA) reports with all standard
+slash-delimited fields: location (/OV) with station, radial/distance, route,
+and lat/lon variants; time (/TM); flight level (/FL); aircraft type (/TP);
+sky condition (/SK) with standard and compact notation; weather/visibility (/WX);
+temperature (/TA); wind (/WV, magnetic); turbulence (/TB) with intensity ranges,
+types, frequencies, and BLO/ABV modifiers; icing (/IC) with intensity ranges and
+types; and free-text remarks (/RM).
+
+```typescript
+import { parsePirep } from '@squawk/weather';
+
+const pirep = parsePirep(
+  'UA /OV OKC063015/TM 1522/FL085/TP C172/SK BKN065-TOP090/TB LGT/IC LGT RIME/RM SMOOTH',
+);
+
+console.log(pirep.type); // "UA"
+console.log(pirep.altitudeFtMsl); // 8500
+console.log(pirep.aircraftType); // "C172"
+console.log(pirep.turbulence?.[0]?.intensity); // "LGT"
+console.log(pirep.icing?.[0]?.type); // "RIME"
+```
+
 ### `deriveFlightCategory(visibilityStatuteMiles, isLessThan, sky, isCavok)`
 
 Derives the flight category (VFR, MVFR, IFR, LIFR) from visibility and ceiling
@@ -133,3 +158,4 @@ conditions.
 | TAF         | Done   |
 | SIGMET      | Done   |
 | AIRMET      | Done   |
+| PIREP       | Done   |
