@@ -25,6 +25,15 @@ describe('glideDistance', () => {
     const good = glide.glideDistance(5000, 12);
     assert.ok(good > poor, `expected good ratio (${good}) > poor (${poor})`);
   });
+
+  it('returns zero for zero glide ratio', () => {
+    assert.ok(close(glide.glideDistance(5000, 0), 0, 0.001));
+  });
+
+  it('returns negative distance for negative altitude (nonsensical but mathematically consistent)', () => {
+    const d = glide.glideDistance(-1000, 10);
+    assert.ok(d < 0, `expected negative distance for negative altitude, got ${d}`);
+  });
 });
 
 describe('glideDistanceWithWind', () => {

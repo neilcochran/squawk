@@ -46,6 +46,14 @@ describe('turnRadius', () => {
     const r = turn.turnRadius(120, 25);
     assert.ok(r > 0.3 && r < 1.0, `expected 0.3-1.0 NM, got ${r}`);
   });
+
+  it('matches a known reference value', () => {
+    // Turn radius formula: r = V^2 / (g * tan(bank)).
+    // 100 kt = 168.78 ft/s. r = 168.78^2 / (32.174 * tan(30)) = 28492 / 18.574 = 1533.7 ft.
+    // 1533.7 / 6076.11549 = 0.2524 NM.
+    const r = turn.turnRadius(100, 30);
+    assert.ok(close(r, 0.2524, 0.001), `expected ~0.2524 NM, got ${r}`);
+  });
 });
 
 describe('standardRateTurnRadius', () => {
@@ -55,6 +63,14 @@ describe('standardRateTurnRadius', () => {
     const expected = turn.turnRadius(tas, bank);
     const actual = turn.standardRateTurnRadius(tas);
     assert.ok(close(actual, expected, 0.001), `expected ${expected}, got ${actual}`);
+  });
+
+  it('produces a radius consistent with 360 degrees in 2 minutes', () => {
+    // At standard rate (3 deg/sec), a full turn takes 120 sec.
+    // Circumference = TAS * time. Radius = circumference / (2 * pi).
+    // 120 kt = 2 NM/min. Circumference = 2 * 2 = 4 NM. Radius = 4 / (2 * pi) = ~0.637 NM.
+    const r = turn.standardRateTurnRadius(120);
+    assert.ok(close(r, 0.637, 0.01), `expected ~0.637 NM, got ${r}`);
   });
 });
 

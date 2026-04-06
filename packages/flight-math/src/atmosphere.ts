@@ -44,21 +44,35 @@ export function densityAltitude(
  * pressure levels are displaced vertically and the indicated altitude diverges
  * from the true altitude. This function corrects for that displacement.
  *
- * The correction uses the ratio of actual to ISA temperature at the computed
- * pressure altitude, which is the standard E6B flight computer method.
+ * When `stationElevationFt` is provided, the temperature correction is applied
+ * only to the altitude above the station. The air column below the station does
+ * not contribute to altimeter error, so restricting the correction to the
+ * measured column produces a more accurate result.
+ *
+ * When `stationElevationFt` is omitted, the correction ratio is applied to the
+ * full indicated altitude, which matches the standard E6B flight computer method.
  *
  * @param indicatedAltitudeFt - Indicated altitude in feet (altimeter set to local QNH).
  * @param altimeterSettingInHg - Current altimeter setting (QNH) in inches of mercury.
  * @param oatCelsius - Outside air temperature in degrees Celsius.
+ * @param stationElevationFt - Elevation of the station providing the altimeter setting, in feet MSL. When provided, the temperature correction is applied only to the altitude above this elevation.
  * @returns True altitude above MSL in feet.
  */
 export function trueAltitude(
   indicatedAltitudeFt: number,
   altimeterSettingInHg: number,
   oatCelsius: number,
+  stationElevationFt?: number,
 ): number {
   const pa = pressure.pressureAltitudeFeet(indicatedAltitudeFt, altimeterSettingInHg);
   const isaTempK = isa.isaTemperatureCelsius(pa) + 273.15;
   const oatK = oatCelsius + 273.15;
-  return pa * (oatK / isaTempK);
+  const tempRatio = oatK / isaTempK;
+
+  if (stationElevationFt !== undefined) {
+    const altAboveStation = indicatedAltitudeFt - stationElevationFt;
+    return stationElevationFt + altAboveStation * tempRatio;
+  }
+
+  return indicatedAltitudeFt * tempRatio;
 }

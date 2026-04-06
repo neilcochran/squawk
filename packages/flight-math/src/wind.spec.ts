@@ -64,6 +64,20 @@ describe('solveWindTriangle', () => {
     assert.ok(typeof result.groundspeedKt === 'number', 'should return a numeric groundspeed');
     assert.ok(typeof result.windCorrectionAngleDeg === 'number', 'should return a numeric WCA');
   });
+
+  it('computes correct WCA and GS for a quartering wind', () => {
+    // TAS 120 kt, course 360, wind from 045 at 20 kt.
+    // E6B reference: WCA ~+6.8 deg, GS ~106 kt.
+    const result = wind.solveWindTriangle(120, 360, 45, 20);
+    assert.ok(
+      close(result.windCorrectionAngleDeg, 6.8, 1.0),
+      `expected WCA ~6.8, got ${result.windCorrectionAngleDeg}`,
+    );
+    assert.ok(
+      result.groundspeedKt > 100 && result.groundspeedKt < 115,
+      `expected GS 100-115, got ${result.groundspeedKt}`,
+    );
+  });
 });
 
 describe('headwindCrosswind', () => {
@@ -123,6 +137,21 @@ describe('headwindCrosswind', () => {
       `expected crosswind ~10, got ${result.crosswindKt}`,
     );
   });
+
+  it('works correctly for a non-north heading (runway 27)', () => {
+    // Heading 270, wind from 300 at 15 kt.
+    // delta = 300 - 270 = 30 degrees.
+    // Headwind = 15 * cos(30) = 12.99, crosswind = 15 * sin(30) = 7.5 (from right).
+    const result = wind.headwindCrosswind(300, 15, 270);
+    assert.ok(
+      close(result.headwindKt, 12.99, 0.1),
+      `expected headwind ~12.99, got ${result.headwindKt}`,
+    );
+    assert.ok(
+      close(result.crosswindKt, 7.5, 0.1),
+      `expected crosswind ~7.5, got ${result.crosswindKt}`,
+    );
+  });
 });
 
 describe('findWind', () => {
@@ -164,6 +193,18 @@ describe('findWind', () => {
     assert.ok(
       close(recovered.directionDeg, knownWind.directionDeg, 1),
       `expected direction ~${knownWind.directionDeg}, got ${recovered.directionDeg}`,
+    );
+  });
+
+  it('detects a crosswind when heading and track diverge', () => {
+    // Heading 360 but tracking 010: the aircraft is being pushed right.
+    // TAS 150, GS 148: slight headwind component too.
+    const result = wind.findWind(148, 150, 360, 10);
+    assert.ok(result.speedKt > 0, `expected nonzero wind speed, got ${result.speedKt}`);
+    // Wind should be from roughly the left (west-ish) to push the track right.
+    assert.ok(
+      result.directionDeg > 240 && result.directionDeg < 360,
+      `expected wind from west-ish, got ${result.directionDeg}`,
     );
   });
 });
