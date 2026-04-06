@@ -113,6 +113,13 @@ format from content and returns one of three variants:
 
 Accepts both raw WMO-wrapped messages and body-only messages.
 
+### `parseAirmet(raw)`
+
+Parses an AIRMET bulletin string into a structured `Airmet` object. Handles
+Sierra (IFR, mountain obscuration), Tango (turbulence, strong surface winds,
+LLWS), and Zulu (icing, freezing levels) series. Accepts both WMO-wrapped
+and body-only bulletins.
+
 ### `deriveFlightCategory(visibilityStatuteMiles, isLessThan, sky, isCavok)`
 
 Derives the flight category (VFR, MVFR, IFR, LIFR) from visibility and ceiling
@@ -120,9 +127,9 @@ conditions.
 
 ## Implementation Status
 
-| Format      | Status  |
-| ----------- | ------- |
-| METAR/SPECI | Done    |
-| TAF         | Done    |
-| SIGMET      | Done    |
-| AIRMET      | Planned |
+| Format      | Status |
+| ----------- | ------ |
+| METAR/SPECI | Done   |
+| TAF         | Done   |
+| SIGMET      | Done   |
+| AIRMET      | Done   |
