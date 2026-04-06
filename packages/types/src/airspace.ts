@@ -23,13 +23,28 @@ export interface AltitudeBound {
 
 /**
  * The type or class designation of an airspace feature.
- * CLASS_B, CLASS_C, and CLASS_D are controlled airspace.
+ *
+ * CLASS_B, CLASS_C, CLASS_D, and CLASS_E variants are controlled airspace.
+ * Class E subtypes follow FAA NASR LOCAL_TYPE designations:
+ * - CLASS_E2: Surface area (SFC floor) around airports without an operating control tower
+ * - CLASS_E3: Airspace extending to SFC for instrument approach procedures
+ * - CLASS_E4: Transition area with a 1,200 ft AGL floor
+ * - CLASS_E5: Surface area with a 700 ft AGL floor (most common)
+ * - CLASS_E6: Transition area (miscellaneous)
+ * - CLASS_E7: Federal airway extensions
+ *
  * All remaining values are Special Use Airspace (SUA) types.
  */
 export type AirspaceType =
   | 'CLASS_B'
   | 'CLASS_C'
   | 'CLASS_D'
+  | 'CLASS_E2'
+  | 'CLASS_E3'
+  | 'CLASS_E4'
+  | 'CLASS_E5'
+  | 'CLASS_E6'
+  | 'CLASS_E7'
   | 'MOA'
   | 'RESTRICTED'
   | 'PROHIBITED'

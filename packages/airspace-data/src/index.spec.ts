@@ -4,7 +4,7 @@ import { usBundledAirspace } from './index.js';
 
 describe('usBundledAirspace', () => {
   it('loads with a reasonable number of features', () => {
-    assert.ok(usBundledAirspace.features.length > 2000);
+    assert.ok(usBundledAirspace.features.length > 6000);
   });
 
   it('has metadata with nasrCycleDate, generatedAt, and featureCount', () => {
@@ -43,11 +43,17 @@ describe('usBundledAirspace', () => {
     assert.equal(typeof props.ceiling.reference, 'string');
   });
 
-  it('includes Class B, C, and D airspace', () => {
+  it('includes Class B, C, D, and E airspace', () => {
     const types = new Set(usBundledAirspace.features.map((f) => f.properties?.type));
     assert.ok(types.has('CLASS_B'));
     assert.ok(types.has('CLASS_C'));
     assert.ok(types.has('CLASS_D'));
+    assert.ok(types.has('CLASS_E2'));
+    assert.ok(types.has('CLASS_E3'));
+    assert.ok(types.has('CLASS_E4'));
+    assert.ok(types.has('CLASS_E5'));
+    assert.ok(types.has('CLASS_E6'));
+    assert.ok(types.has('CLASS_E7'));
   });
 
   it('includes Special Use Airspace types', () => {
@@ -84,6 +90,16 @@ describe('usBundledAirspace', () => {
     assert.ok(jfk.properties !== null);
     assert.ok(jfk.properties.name.includes('NEW YORK'));
     assert.equal(jfk.properties.state, 'NY');
+  });
+
+  it('can find a known Class E2 airspace by identifier', () => {
+    const gnv = usBundledAirspace.features.find(
+      (f) => f.properties?.type === 'CLASS_E2' && f.properties.identifier === 'GNV',
+    );
+    assert.ok(gnv !== undefined);
+    assert.ok(gnv.properties !== null);
+    assert.ok(gnv.properties.name.includes('GAINESVILLE'));
+    assert.equal(gnv.properties.state, 'FL');
   });
 
   it('has valid polygon coordinates', () => {

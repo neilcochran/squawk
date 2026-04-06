@@ -6,9 +6,8 @@ GeoJSON dataset at initialization. For zero-config use, pair with `@squawk/airsp
 
 ## Coverage
 
-- Class B, C, and D controlled airspace
+- Class B, C, D, and E controlled airspace (E2 through E7 subtypes)
 - Special Use Airspace: MOAs, restricted, prohibited, warning, alert, and national security areas
-- Class E is excluded
 
 ## Usage
 
@@ -90,7 +89,7 @@ Creates a resolver function from a GeoJSON dataset.
 | `types`      | ReadonlySet\<AirspaceType> | Optional. When provided, only features of these types are returned |
 
 ```typescript
-// Only query controlled airspace
+// Only query tower-controlled airspace (exclude Class E and SUA)
 const controlled = resolve({
   lat: 33.9425,
   lon: -118.4081,

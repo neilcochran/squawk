@@ -11,9 +11,10 @@ const SHAPEFILE_UNDEFINED_VAL = '-9998';
 const FT_PER_FL = 100;
 
 /**
- * Normalizes a Class B/C/D shapefile altitude field triplet into an AltitudeBound.
- * Handles the LOWER_VAL/LOWER_UOM/LOWER_CODE and UPPER_VAL/UPPER_UOM/UPPER_CODE
- * field sets from the Class_Airspace.dbf attribute table.
+ * Normalizes a Class_Airspace shapefile altitude field triplet into an
+ * AltitudeBound. Handles the LOWER_VAL/LOWER_UOM/LOWER_CODE and
+ * UPPER_VAL/UPPER_UOM/UPPER_CODE field sets from the Class_Airspace.dbf
+ * attribute table.
  */
 export function normalizeShapefileAltitude(
   /** Raw string value from VAL field (e.g. "0", "4800", "-9998"). */
@@ -24,6 +25,10 @@ export function normalizeShapefileAltitude(
   code: string | null,
 ): AltitudeBound {
   if (code === 'SFC') {
+    const numVal = val !== null ? parseInt(val, 10) : 0;
+    if (numVal > 0) {
+      return { valueFt: numVal, reference: 'AGL' };
+    }
     return { valueFt: 0, reference: 'SFC' };
   }
 
