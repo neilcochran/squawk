@@ -9,3 +9,4 @@ export { parseSigmet, parseSigmetBulletin } from './sigmet-parser.js';
 export { parseAirmet } from './airmet-parser.js';
 export { parsePirep } from './pirep-parser.js';
 export { deriveFlightCategory } from './flight-category.js';
+export * from './types/index.js';

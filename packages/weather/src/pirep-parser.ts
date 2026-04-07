@@ -1,6 +1,6 @@
+import type { Coordinates } from '@squawk/types';
 import type {
   CloudCoverage,
-  Coordinates,
   DayTime,
   IcingType,
   Pirep,
@@ -17,7 +17,7 @@ import type {
   TurbulenceType,
   Visibility,
   WeatherPhenomenon,
-} from '@squawk/types';
+} from './types/index.js';
 import { isWeatherToken, parseVisibility, parseWeatherPhenomenon } from './weather-utils.js';
 
 /** Valid PIREP turbulence intensity codes. */

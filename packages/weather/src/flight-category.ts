@@ -1,4 +1,4 @@
-import type { FlightCategory, SkyCondition } from '@squawk/types';
+import type { FlightCategory, SkyCondition } from './types/index.js';
 
 /**
  * Derives the flight category (VFR, MVFR, IFR, LIFR) from visibility and

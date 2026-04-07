@@ -150,6 +150,14 @@ console.log(pirep.icing?.[0]?.type); // "RIME"
 Derives the flight category (VFR, MVFR, IFR, LIFR) from visibility and ceiling
 conditions.
 
+## Types
+
+This package exports all weather-related type definitions directly. Import types from `@squawk/weather` rather than `@squawk/types`:
+
+```typescript
+import type { Metar, Taf, Sigmet, Airmet, Pirep, FlightCategory } from '@squawk/weather';
+```
+
 ## Implementation Status
 
 | Format      | Status |
