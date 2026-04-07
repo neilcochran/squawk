@@ -54,3 +54,11 @@ Parses the Q-line qualifier and items A through G:
 
 Accepts both multi-line and single-line NOTAM input. Gracefully handles
 NOTAMs without a Q-line when items A through E are present.
+
+## Types
+
+This package exports all NOTAM-related type definitions directly. Import types from `@squawk/notams` rather than `@squawk/types`:
+
+```typescript
+import type { Notam, NotamQualifier, FaaNotam, FaaNotamKeyword } from '@squawk/notams';
+```

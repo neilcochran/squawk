@@ -1,5 +1,5 @@
+import type { Coordinates } from '@squawk/types';
 import type {
-  Coordinates,
   ConvectiveSigmet,
   ConvectiveSigmetOutlook,
   ConvectiveSigmetRegion,
@@ -12,7 +12,7 @@ import type {
   SigmetObservationStatus,
   SigmetSeriesName,
   SigmetTops,
-} from '@squawk/types';
+} from './types/index.js';
 import {
   parseAltitudeRange,
   parseIcaoPosition,

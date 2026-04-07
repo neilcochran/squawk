@@ -5,3 +5,4 @@
  */
 export { parseNotam } from './notam-parser.js';
 export { parseFaaNotam } from './faa-notam-parser.js';
+export * from './types/index.js';
