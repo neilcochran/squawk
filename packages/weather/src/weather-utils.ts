@@ -8,7 +8,7 @@ import type {
   WeatherPhenomenon,
   WeatherPhenomenonCode,
   Wind,
-} from '@squawk/types';
+} from './types/index.js';
 
 /** Set of valid two-character weather phenomenon codes. */
 export const PHENOMENON_CODES = new Set<string>([

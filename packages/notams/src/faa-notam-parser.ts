@@ -3,7 +3,7 @@ import type {
   FaaNotamClassification,
   FaaNotamKeyword,
   NotamDateTime,
-} from '@squawk/types';
+} from './types/index.js';
 
 /** The set of valid FAA NOTAM keywords. */
 const VALID_KEYWORDS = new Set<string>([

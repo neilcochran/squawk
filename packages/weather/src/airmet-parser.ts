@@ -9,7 +9,7 @@ import type {
   DayTime,
   FreezingLevelBoundary,
   FreezingLevelContour,
-} from '@squawk/types';
+} from './types/index.js';
 import { parseAltitudeFt, parseAltitudeRange, parseTimeString } from './advisory-utils.js';
 
 /**

@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { deriveFlightCategory } from './flight-category.js';
-import type { SkyCondition } from '@squawk/types';
+import type { SkyCondition } from './types/index.js';
 
 describe('deriveFlightCategory', () => {
   it('returns VFR for high ceiling and good visibility', () => {
