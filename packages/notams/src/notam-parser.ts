@@ -1,5 +1,5 @@
+import type { Coordinates } from '@squawk/types';
 import type {
-  Coordinates,
   Notam,
   NotamAction,
   NotamConditionCode,
@@ -9,8 +9,8 @@ import type {
   NotamScope,
   NotamSubjectCode,
   NotamTrafficType,
-} from '@squawk/types';
-import { NOTAM_CONDITION_CODE_MAP, NOTAM_SUBJECT_CODE_MAP } from '@squawk/types';
+} from './types/index.js';
+import { NOTAM_CONDITION_CODE_MAP, NOTAM_SUBJECT_CODE_MAP } from './types/index.js';
 
 /**
  * Parses a NOTAM datetime string in YYMMDDHHmm format into a {@link NotamDateTime}.

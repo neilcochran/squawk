@@ -10,7 +10,7 @@ import type {
   Visibility,
   WeatherPhenomenon,
   Wind,
-} from '@squawk/types';
+} from './types/index.js';
 import { parseRemarks } from './remarks-parser.js';
 import { deriveFlightCategory } from './flight-category.js';
 import {

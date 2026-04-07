@@ -13,7 +13,7 @@ import type {
   Visibility,
   WeatherPhenomenon,
   Wind,
-} from '@squawk/types';
+} from './types/index.js';
 import {
   isWindToken,
   parseWind,

@@ -25,7 +25,7 @@ import type {
   VariableVisibility,
   VirgaObservation,
   WeatherPhenomenonCode,
-} from '@squawk/types';
+} from './types/index.js';
 
 /** Valid cloud coverage codes for matching in remarks. */
 const COVERAGE_CODES = new Set(['FEW', 'SCT', 'BKN', 'OVC']);

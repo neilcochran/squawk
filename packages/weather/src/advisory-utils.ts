@@ -1,4 +1,5 @@
-import type { AltitudeRange, CompassDirection, Coordinates, DayTime } from '@squawk/types';
+import type { Coordinates } from '@squawk/types';
+import type { AltitudeRange, CompassDirection, DayTime } from './types/index.js';
 
 /** Set of valid 16-point compass directions. */
 export const COMPASS_DIRECTIONS = new Set<string>([
