@@ -38,6 +38,17 @@
     "@squawk/procedure-data": "*",
     "@types/node": "^25.5.2"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "sid",
+    "star",
+    "instrument-procedure",
+    "departure",
+    "arrival",
+    "faa",
+    "nasr"
+  ],
   "publishConfig": {
     "access": "public"
   }

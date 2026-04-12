@@ -34,6 +34,13 @@
   "dependencies": {
     "@types/geojson": "^7946.0.16"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "types",
+    "flight",
+    "aircraft"
+  ],
   "publishConfig": {
     "access": "public"
   },

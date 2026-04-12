@@ -35,6 +35,14 @@
   "dependencies": {
     "@squawk/types": "*"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "fix",
+    "waypoint",
+    "faa",
+    "nasr"
+  ],
   "publishConfig": {
     "access": "public"
   },

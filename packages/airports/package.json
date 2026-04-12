@@ -39,6 +39,16 @@
     "@squawk/airport-data": "*",
     "@types/node": "^25.5.2"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "airport",
+    "runway",
+    "frequency",
+    "ils",
+    "faa",
+    "nasr"
+  ],
   "publishConfig": {
     "access": "public"
   }

@@ -31,6 +31,14 @@
     "test": "node --test 'dist/**/*.spec.js'",
     "lint": "tsc --noEmit && eslint src"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "unit-conversion",
+    "knots",
+    "feet",
+    "nautical-miles"
+  ],
   "publishConfig": {
     "access": "public"
   },

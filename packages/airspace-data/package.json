@@ -35,6 +35,14 @@
   "dependencies": {
     "@types/geojson": "^7946.0.16"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "airspace",
+    "geojson",
+    "faa",
+    "nasr"
+  ],
   "publishConfig": {
     "access": "public"
   },

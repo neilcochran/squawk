@@ -35,6 +35,13 @@
   "dependencies": {
     "@squawk/types": "*"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "airport",
+    "faa",
+    "nasr"
+  ],
   "publishConfig": {
     "access": "public"
   },
