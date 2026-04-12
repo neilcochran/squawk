@@ -166,8 +166,8 @@ function parseQLine(qLine: string): NotamQualifier | undefined {
 
   const lowerRaw = parseInt(parts[5]!, 10);
   const upperRaw = parseInt(parts[6]!, 10);
-  const lowerFt = isNaN(lowerRaw) ? undefined : lowerRaw * 100;
-  const upperFt = isNaN(upperRaw) ? 99900 : upperRaw * 100;
+  const lowerAltitudeFt = isNaN(lowerRaw) ? undefined : lowerRaw * 100;
+  const upperAltitudeFt = isNaN(upperRaw) ? 99900 : upperRaw * 100;
 
   const coordResult = parseQLineCoordinates(parts[7]!);
   if (!coordResult) {
@@ -182,8 +182,8 @@ function parseQLine(qLine: string): NotamQualifier | undefined {
     trafficType,
     purposes,
     scope,
-    ...(lowerFt !== undefined && lowerFt !== 0 ? { lowerFt } : {}),
-    upperFt,
+    ...(lowerAltitudeFt !== undefined && lowerAltitudeFt !== 0 ? { lowerAltitudeFt } : {}),
+    upperAltitudeFt,
     coordinates: coordResult.coordinates,
     radiusNm: coordResult.radiusNm,
   };
