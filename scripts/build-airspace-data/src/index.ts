@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import { loadAirportStates } from './load-airport-states.js';
 import { parseClassAirspace } from './parse-class-airspace.js';
 import { parseSua } from './parse-sua.js';
+import { resolveInput } from './resolve-input.js';
 import { writeOutput } from './write-output.js';
 
 /** Relative path from the script root to the default output file. */
@@ -33,7 +34,7 @@ function printUsageAndExit(): never {
   process.stderr.write(
     'Usage: node dist/index.js --local <nasr-subscription-dir> [--output <output-path>]\n\n' +
       'Options:\n' +
-      '  --local <path>   Path to an extracted NASR subscription directory.\n' +
+      '  --local <path>   Path to a NASR subscription .zip file or extracted directory.\n' +
       '  --output <path>  Path to write the output GeoJSON file.\n' +
       `                   Defaults to: ${DEFAULT_OUTPUT_PATH}\n`,
   );
@@ -79,14 +80,14 @@ async function extractAptBaseCsv(subscriptionDir: string): Promise<string> {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
-  let subscriptionDir: string | undefined;
+  let inputPath: string | undefined;
   let outputPath: string = resolve(import.meta.dirname, DEFAULT_OUTPUT_PATH);
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const next = args[i + 1];
     if (arg === '--local' && next) {
-      subscriptionDir = resolve(next);
+      inputPath = resolve(next);
       i++;
     } else if (arg === '--output' && next) {
       outputPath = resolve(next);
@@ -97,51 +98,57 @@ async function main(): Promise<void> {
     }
   }
 
-  if (!subscriptionDir) {
+  if (!inputPath) {
     process.stderr.write('Error: --local <path> is required.\n');
     printUsageAndExit();
   }
 
-  // Extract NASR cycle date from the subscription directory name.
-  const dirName = basename(subscriptionDir);
-  const cycleMatch = dirName.match(CYCLE_DATE_PATTERN);
-  if (!cycleMatch) {
-    throw new Error(
-      `Cannot determine NASR cycle date from directory name "${dirName}". ` +
-        `Expected pattern: 28DaySubscription_Effective_YYYY-MM-DD`,
-    );
-  }
-  const nasrCycleDate = cycleMatch[1] ?? '';
-  console.log(`[index] NASR cycle date: ${nasrCycleDate}`);
+  const { subscriptionDir, cleanup } = resolveInput(inputPath);
 
-  const shpPath = join(subscriptionDir, CLASS_AIRSPACE_SHP);
-  const saaZipPath = join(subscriptionDir, SAA_ZIP_PATH);
-
-  // Extract APT_BASE.csv from the nested CSV ZIP to a temp file.
-  let tempCsvPath: string | undefined;
   try {
-    tempCsvPath = await extractAptBaseCsv(subscriptionDir);
-
-    console.log('[index] Loading airport states...');
-    const airportStates = await loadAirportStates(tempCsvPath);
-    console.log(`[index] Loaded ${airportStates.size} airport state entries.`);
-
-    console.log('[index] Parsing Class B/C/D/E airspace...');
-    const classFeatures = await parseClassAirspace(shpPath, airportStates);
-    console.log(`[index] Parsed ${classFeatures.length} Class B/C/D/E features.`);
-
-    console.log('[index] Parsing SUA airspace...');
-    const suaFeatures = parseSua(saaZipPath);
-    console.log(`[index] Parsed ${suaFeatures.length} SUA features.`);
-
-    const allFeatures = [...classFeatures, ...suaFeatures];
-    console.log(`[index] Total features: ${allFeatures.length}`);
-
-    await writeOutput(allFeatures, outputPath, nasrCycleDate);
-  } finally {
-    if (tempCsvPath) {
-      await unlink(tempCsvPath).catch(() => undefined);
+    // Extract NASR cycle date from the subscription directory name.
+    const dirName = basename(subscriptionDir);
+    const cycleMatch = dirName.match(CYCLE_DATE_PATTERN);
+    if (!cycleMatch) {
+      throw new Error(
+        `Cannot determine NASR cycle date from directory name "${dirName}". ` +
+          `Expected pattern: 28DaySubscription_Effective_YYYY-MM-DD`,
+      );
     }
+    const nasrCycleDate = cycleMatch[1] ?? '';
+    console.log(`[index] NASR cycle date: ${nasrCycleDate}`);
+
+    const shpPath = join(subscriptionDir, CLASS_AIRSPACE_SHP);
+    const saaZipPath = join(subscriptionDir, SAA_ZIP_PATH);
+
+    // Extract APT_BASE.csv from the nested CSV ZIP to a temp file.
+    let tempCsvPath: string | undefined;
+    try {
+      tempCsvPath = await extractAptBaseCsv(subscriptionDir);
+
+      console.log('[index] Loading airport states...');
+      const airportStates = await loadAirportStates(tempCsvPath);
+      console.log(`[index] Loaded ${airportStates.size} airport state entries.`);
+
+      console.log('[index] Parsing Class B/C/D/E airspace...');
+      const classFeatures = await parseClassAirspace(shpPath, airportStates);
+      console.log(`[index] Parsed ${classFeatures.length} Class B/C/D/E features.`);
+
+      console.log('[index] Parsing SUA airspace...');
+      const suaFeatures = parseSua(saaZipPath);
+      console.log(`[index] Parsed ${suaFeatures.length} SUA features.`);
+
+      const allFeatures = [...classFeatures, ...suaFeatures];
+      console.log(`[index] Total features: ${allFeatures.length}`);
+
+      await writeOutput(allFeatures, outputPath, nasrCycleDate);
+    } finally {
+      if (tempCsvPath) {
+        await unlink(tempCsvPath).catch(() => undefined);
+      }
+    }
+  } finally {
+    cleanup();
   }
 }
 

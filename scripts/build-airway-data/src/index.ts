@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
 import { parseAwy1, parseAwy2, buildWaypoint } from './parse-awy.js';
 import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
+import { resolveInput } from './resolve-input.js';
 import { writeOutput } from './write-output.js';
 import type { Airway, AirwayType, AirwayRegion, AirwayWaypoint } from '@squawk/types';
 import { AWY_TYPE_MAP, ATS_TYPE_MAP, AIRWAY_REGION_MAP } from '@squawk/types';
@@ -23,7 +24,7 @@ function printUsageAndExit(): never {
   process.stderr.write(
     'Usage: node dist/index.js --local <nasr-subscription-dir> [--output <output-path>]\n\n' +
       'Options:\n' +
-      '  --local <path>   Path to an extracted NASR subscription directory.\n' +
+      '  --local <path>   Path to a NASR subscription .zip file or extracted directory.\n' +
       '  --output <path>  Path to write the output .json.gz file.\n' +
       `                   Defaults to: ${DEFAULT_OUTPUT_PATH}\n`,
   );
@@ -223,14 +224,14 @@ function parseAtsFile(filePath: string): Airway[] {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
-  let subscriptionDir: string | undefined;
+  let inputPath: string | undefined;
   let outputPath: string = resolve(import.meta.dirname, DEFAULT_OUTPUT_PATH);
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const next = args[i + 1];
     if (arg === '--local' && next) {
-      subscriptionDir = resolve(next);
+      inputPath = resolve(next);
       i++;
     } else if (arg === '--output' && next) {
       outputPath = resolve(next);
@@ -241,46 +242,52 @@ async function main(): Promise<void> {
     }
   }
 
-  if (!subscriptionDir) {
+  if (!inputPath) {
     process.stderr.write('Error: --local <path> is required.\n');
     printUsageAndExit();
   }
 
-  const dirName = basename(subscriptionDir);
-  const cycleMatch = dirName.match(CYCLE_DATE_PATTERN);
-  if (!cycleMatch) {
-    throw new Error(
-      `Cannot determine NASR cycle date from directory name "${dirName}". ` +
-        `Expected pattern: 28DaySubscription_Effective_YYYY-MM-DD`,
+  const { subscriptionDir, cleanup } = resolveInput(inputPath);
+
+  try {
+    const dirName = basename(subscriptionDir);
+    const cycleMatch = dirName.match(CYCLE_DATE_PATTERN);
+    if (!cycleMatch) {
+      throw new Error(
+        `Cannot determine NASR cycle date from directory name "${dirName}". ` +
+          `Expected pattern: 28DaySubscription_Effective_YYYY-MM-DD`,
+      );
+    }
+    const nasrCycleDate = cycleMatch[1] ?? '';
+    console.log(`[index] NASR cycle date: ${nasrCycleDate}`);
+
+    // Parse AWY.txt (Victor, Jet, RNAV Q/T, Green, Red, Amber, Blue routes).
+    const awyPath = join(subscriptionDir, AWY_FILE);
+    console.log(`[index] Parsing ${AWY_FILE}...`);
+    const awyAirways = parseAwyFile(awyPath);
+    const awyWpCount = awyAirways.reduce((sum, a) => sum + a.waypoints.length, 0);
+    console.log(
+      `[index] Parsed ${awyAirways.length} airways (${awyWpCount} waypoints) from ${AWY_FILE}.`,
     );
+
+    // Parse ATS.txt (Atlantic, Bahama, Pacific, Puerto Rico routes).
+    const atsPath = join(subscriptionDir, ATS_FILE);
+    console.log(`[index] Parsing ${ATS_FILE}...`);
+    const atsAirways = parseAtsFile(atsPath);
+    const atsWpCount = atsAirways.reduce((sum, a) => sum + a.waypoints.length, 0);
+    console.log(
+      `[index] Parsed ${atsAirways.length} airways (${atsWpCount} waypoints) from ${ATS_FILE}.`,
+    );
+
+    const allAirways = [...awyAirways, ...atsAirways];
+    allAirways.sort((a, b) => a.designation.localeCompare(b.designation));
+
+    console.log(`[index] Total: ${allAirways.length} airways.`);
+
+    await writeOutput(allAirways, nasrCycleDate, outputPath);
+  } finally {
+    cleanup();
   }
-  const nasrCycleDate = cycleMatch[1] ?? '';
-  console.log(`[index] NASR cycle date: ${nasrCycleDate}`);
-
-  // Parse AWY.txt (Victor, Jet, RNAV Q/T, Green, Red, Amber, Blue routes).
-  const awyPath = join(subscriptionDir, AWY_FILE);
-  console.log(`[index] Parsing ${AWY_FILE}...`);
-  const awyAirways = parseAwyFile(awyPath);
-  const awyWpCount = awyAirways.reduce((sum, a) => sum + a.waypoints.length, 0);
-  console.log(
-    `[index] Parsed ${awyAirways.length} airways (${awyWpCount} waypoints) from ${AWY_FILE}.`,
-  );
-
-  // Parse ATS.txt (Atlantic, Bahama, Pacific, Puerto Rico routes).
-  const atsPath = join(subscriptionDir, ATS_FILE);
-  console.log(`[index] Parsing ${ATS_FILE}...`);
-  const atsAirways = parseAtsFile(atsPath);
-  const atsWpCount = atsAirways.reduce((sum, a) => sum + a.waypoints.length, 0);
-  console.log(
-    `[index] Parsed ${atsAirways.length} airways (${atsWpCount} waypoints) from ${ATS_FILE}.`,
-  );
-
-  const allAirways = [...awyAirways, ...atsAirways];
-  allAirways.sort((a, b) => a.designation.localeCompare(b.designation));
-
-  console.log(`[index] Total: ${allAirways.length} airways.`);
-
-  await writeOutput(allAirways, nasrCycleDate, outputPath);
 }
 
 main().catch((err) => {
