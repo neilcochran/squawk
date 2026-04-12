@@ -11,6 +11,7 @@
     "scripts/build-navaid-data",
     "scripts/build-fix-data",
     "scripts/build-airway-data",
+    "scripts/build-procedure-data",
     "scripts/map-viewer"
   ],
   "scripts": {
