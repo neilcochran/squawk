@@ -2,7 +2,7 @@
   "name": "@squawk/weather",
   "version": "0.1.0",
   "type": "module",
-  "description": "Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET) into structured objects",
+  "description": "Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP) into structured objects",
   "author": "Neil Cochran",
   "license": "MIT",
   "homepage": "https://github.com/neilcochran/squawk",
@@ -37,6 +37,17 @@
   "devDependencies": {
     "@types/node": "^25.5.2"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "metar",
+    "taf",
+    "sigmet",
+    "airmet",
+    "pirep",
+    "weather",
+    "parser"
+  ],
   "publishConfig": {
     "access": "public"
   }

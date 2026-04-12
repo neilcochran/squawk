@@ -31,6 +31,15 @@
     "test": "node --test 'dist/**/*.spec.js'",
     "lint": "tsc --noEmit && eslint src"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "e6b",
+    "flight-computer",
+    "wind-correction",
+    "true-airspeed",
+    "density-altitude"
+  ],
   "publishConfig": {
     "access": "public"
   },

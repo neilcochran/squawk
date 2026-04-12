@@ -47,6 +47,14 @@
     "@squawk/procedures": "*",
     "@types/node": "^25.5.2"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "flight-plan",
+    "route",
+    "navigation",
+    "ifr"
+  ],
   "publishConfig": {
     "access": "public"
   }
