@@ -590,7 +590,7 @@ describe('parseSigmet', () => {
       assert.deepEqual(result.areaPoints, ['40W TUS', '60S PHX', '30NW ELP', '40W TUS']);
       assert.equal(result.hazards.length, 1);
       assert.equal(result.hazards[0]!.hazardType, 'DUST_SANDSTORM');
-      assert.equal(result.hazards[0]!.visibilityBelow, 3);
+      assert.equal(result.hazards[0]!.visibilityBelowSm, 3);
       assert.equal(result.hazards[0]!.altitudeRange?.baseFt, undefined);
       assert.equal(result.hazards[0]!.altitudeRange?.topFt, 10000);
       assert.equal(result.movement?.directionDeg, 240);
@@ -1002,7 +1002,7 @@ describe('parseSigmet', () => {
       }
 
       assert.equal(result.movement?.directionCompass, 'NE');
-      assert.equal(result.movement?.speedKmh, 40);
+      assert.equal(result.movement?.speedKmPerHr, 40);
       assert.equal(result.movement?.speedKt, undefined);
     });
 

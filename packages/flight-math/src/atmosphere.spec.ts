@@ -35,11 +35,11 @@ describe('densityAltitude', () => {
     assert.ok(da > 300, `expected DA > 300, got ${da}`);
   });
 
-  it('matches isa.densityAltitudeFeet when given pressure altitude directly', () => {
+  it('matches isa.densityAltitudeFt when given pressure altitude directly', () => {
     // When altimeter is 29.92, indicated = pressure altitude.
-    // densityAltitude(5000, 29.92, 20) should match isa.densityAltitudeFeet(5000, 20).
+    // densityAltitude(5000, 29.92, 20) should match isa.densityAltitudeFt(5000, 20).
     const da = atmosphere.densityAltitude(5000, 29.92, 20);
-    const expected = isa.densityAltitudeFeet(5000, 20);
+    const expected = isa.densityAltitudeFt(5000, 20);
     assert.ok(close(da, expected, 5), `expected ~${expected}, got ${da}`);
   });
 

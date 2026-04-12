@@ -105,7 +105,7 @@ export function buildNavaid(rec: CsvRecord): Navaid | undefined {
 
   const magVar = parseOptFloat(rec.MAG_VARN);
   if (magVar !== undefined) {
-    navaid.magneticVariation = magVar;
+    navaid.magneticVariationDeg = magVar;
   }
   if (rec.MAG_VARN_HEMIS) {
     navaid.magneticVariationDirection = rec.MAG_VARN_HEMIS;

@@ -21,35 +21,35 @@ export interface Awy1Record {
   /** Distance to next point in nautical miles. */
   distanceToNextNm: number | undefined;
   /** Segment magnetic course. */
-  magneticCourse: number | undefined;
+  magneticCourseDeg: number | undefined;
   /** Segment magnetic course - opposite direction. */
-  magneticCourseOpposite: number | undefined;
+  magneticCourseOppositeDeg: number | undefined;
   /** Segment distance in NM (second distance field). */
   segmentDistanceNm: number | undefined;
   /** MEA in feet. */
-  mea: number | undefined;
+  minimumEnrouteAltitudeFt: number | undefined;
   /** MEA direction. */
-  meaDirection: string | undefined;
+  minimumEnrouteAltitudeDirection: string | undefined;
   /** MEA opposite direction altitude. */
-  meaOpposite: number | undefined;
+  minimumEnrouteAltitudeOppositeFt: number | undefined;
   /** MEA opposite direction qualifier. */
-  meaOppositeDirection: string | undefined;
+  minimumEnrouteAltitudeOppositeDirection: string | undefined;
   /** Maximum authorized altitude. */
-  maa: number | undefined;
+  maximumAuthorizedAltitudeFt: number | undefined;
   /** MOCA in feet. */
-  moca: number | undefined;
+  minimumObstructionClearanceAltitudeFt: number | undefined;
   /** Airway gap flag. */
   discontinued: boolean;
   /** Changeover distance in NM. */
-  changeoverDistance: number | undefined;
+  changeoverDistanceNm: number | undefined;
   /** Minimum crossing altitude. */
-  mca: number | undefined;
+  minimumCrossingAltitudeFt: number | undefined;
   /** MCA direction. */
-  mcaDirection: string | undefined;
+  minimumCrossingAltitudeDirection: string | undefined;
   /** MCA opposite direction altitude. */
-  mcaOpposite: number | undefined;
+  minimumCrossingAltitudeOppositeFt: number | undefined;
   /** MCA opposite direction qualifier. */
-  mcaOppositeDirection: string | undefined;
+  minimumCrossingAltitudeOppositeDirection: string | undefined;
   /** Gap in signal coverage. */
   signalGap: boolean;
   /** US airspace only indicator. */
@@ -57,13 +57,13 @@ export interface Awy1Record {
   /** ARTCC identifier. */
   artccId: string | undefined;
   /** GNSS MEA. */
-  gnssMea: number | undefined;
+  gnssMinimumEnrouteAltitudeFt: number | undefined;
   /** GNSS MEA direction. */
-  gnssMeaDirection: string | undefined;
+  gnssMinimumEnrouteAltitudeDirection: string | undefined;
   /** GNSS MEA opposite. */
-  gnssMeaOpposite: number | undefined;
+  gnssMinimumEnrouteAltitudeOppositeFt: number | undefined;
   /** GNSS MEA opposite direction. */
-  gnssMeaOppositeDirection: string | undefined;
+  gnssMinimumEnrouteAltitudeOppositeDirection: string | undefined;
   /** Dogleg indicator. */
   dogleg: boolean;
 }
@@ -93,7 +93,7 @@ export interface Awy2Record {
   /** Longitude string (DMS format). */
   lonStr: string;
   /** Minimum reception altitude. */
-  minimumReceptionAltitude: number | undefined;
+  minimumReceptionAltitudeFt: number | undefined;
   /** Navaid identifier. */
   navaidIdentifier: string;
 }
@@ -177,28 +177,29 @@ export function parseAwy1(line: string): Awy1Record {
     airwayTypeChar: field(line, 10, 1),
     sequenceNumber: parseInt(field(line, 11, 5), 10),
     distanceToNextNm: numField(line, 45, 6),
-    magneticCourse: numField(line, 57, 6),
-    magneticCourseOpposite: numField(line, 63, 6),
+    magneticCourseDeg: numField(line, 57, 6),
+    magneticCourseOppositeDeg: numField(line, 63, 6),
     segmentDistanceNm: numField(line, 69, 6),
-    mea: intField(line, 75, 5),
-    meaDirection: strField(line, 80, 6),
-    meaOpposite: intField(line, 86, 5),
-    meaOppositeDirection: strField(line, 91, 6),
-    maa: intField(line, 97, 5),
-    moca: strField(line, 102, 5) !== undefined ? intField(line, 102, 5) : undefined,
+    minimumEnrouteAltitudeFt: intField(line, 75, 5),
+    minimumEnrouteAltitudeDirection: strField(line, 80, 6),
+    minimumEnrouteAltitudeOppositeFt: intField(line, 86, 5),
+    minimumEnrouteAltitudeOppositeDirection: strField(line, 91, 6),
+    maximumAuthorizedAltitudeFt: intField(line, 97, 5),
+    minimumObstructionClearanceAltitudeFt:
+      strField(line, 102, 5) !== undefined ? intField(line, 102, 5) : undefined,
     discontinued: field(line, 107, 1) === 'X',
-    changeoverDistance: intField(line, 108, 3),
-    mca: intField(line, 111, 5),
-    mcaDirection: strField(line, 116, 7),
-    mcaOpposite: intField(line, 123, 5),
-    mcaOppositeDirection: strField(line, 128, 7),
+    changeoverDistanceNm: intField(line, 108, 3),
+    minimumCrossingAltitudeFt: intField(line, 111, 5),
+    minimumCrossingAltitudeDirection: strField(line, 116, 7),
+    minimumCrossingAltitudeOppositeFt: intField(line, 123, 5),
+    minimumCrossingAltitudeOppositeDirection: strField(line, 128, 7),
     signalGap: field(line, 135, 1) === 'Y',
     usAirspaceOnly: field(line, 136, 1) === 'Y',
     artccId: strField(line, 142, 3),
-    gnssMea: intField(line, 218, 5),
-    gnssMeaDirection: strField(line, 223, 6),
-    gnssMeaOpposite: intField(line, 229, 5),
-    gnssMeaOppositeDirection: strField(line, 234, 6),
+    gnssMinimumEnrouteAltitudeFt: intField(line, 218, 5),
+    gnssMinimumEnrouteAltitudeDirection: strField(line, 223, 6),
+    gnssMinimumEnrouteAltitudeOppositeFt: intField(line, 229, 5),
+    gnssMinimumEnrouteAltitudeOppositeDirection: strField(line, 234, 6),
     dogleg: field(line, 302, 1) === 'Y',
   };
 }
@@ -218,7 +219,7 @@ export function parseAwy2(line: string): Awy2Record {
     icaoRegionCode: field(line, 82, 2),
     latStr: field(line, 84, 14),
     lonStr: field(line, 98, 14),
-    minimumReceptionAltitude: intField(line, 112, 5),
+    minimumReceptionAltitudeFt: intField(line, 112, 5),
     navaidIdentifier: field(line, 117, 4),
   };
 }
@@ -306,64 +307,65 @@ export function buildWaypoint(awy1: Awy1Record, awy2: Awy2Record): AirwayWaypoin
   if (awy1.artccId) {
     wp.artccId = awy1.artccId;
   }
-  if (awy2.minimumReceptionAltitude !== undefined) {
-    wp.minimumReceptionAltitude = awy2.minimumReceptionAltitude;
+  if (awy2.minimumReceptionAltitudeFt !== undefined) {
+    wp.minimumReceptionAltitudeFt = awy2.minimumReceptionAltitudeFt;
   }
-  if (awy1.mea !== undefined) {
-    wp.mea = awy1.mea;
+  if (awy1.minimumEnrouteAltitudeFt !== undefined) {
+    wp.minimumEnrouteAltitudeFt = awy1.minimumEnrouteAltitudeFt;
   }
-  if (awy1.meaDirection) {
-    wp.meaDirection = awy1.meaDirection;
+  if (awy1.minimumEnrouteAltitudeDirection) {
+    wp.minimumEnrouteAltitudeDirection = awy1.minimumEnrouteAltitudeDirection;
   }
-  if (awy1.meaOpposite !== undefined) {
-    wp.meaOpposite = awy1.meaOpposite;
+  if (awy1.minimumEnrouteAltitudeOppositeFt !== undefined) {
+    wp.minimumEnrouteAltitudeOppositeFt = awy1.minimumEnrouteAltitudeOppositeFt;
   }
-  if (awy1.meaOppositeDirection) {
-    wp.meaOppositeDirection = awy1.meaOppositeDirection;
+  if (awy1.minimumEnrouteAltitudeOppositeDirection) {
+    wp.minimumEnrouteAltitudeOppositeDirection = awy1.minimumEnrouteAltitudeOppositeDirection;
   }
-  if (awy1.maa !== undefined) {
-    wp.maa = awy1.maa;
+  if (awy1.maximumAuthorizedAltitudeFt !== undefined) {
+    wp.maximumAuthorizedAltitudeFt = awy1.maximumAuthorizedAltitudeFt;
   }
-  if (awy1.moca !== undefined) {
-    wp.moca = awy1.moca;
+  if (awy1.minimumObstructionClearanceAltitudeFt !== undefined) {
+    wp.minimumObstructionClearanceAltitudeFt = awy1.minimumObstructionClearanceAltitudeFt;
   }
-  if (awy1.gnssMea !== undefined) {
-    wp.gnssMea = awy1.gnssMea;
+  if (awy1.gnssMinimumEnrouteAltitudeFt !== undefined) {
+    wp.gnssMinimumEnrouteAltitudeFt = awy1.gnssMinimumEnrouteAltitudeFt;
   }
-  if (awy1.gnssMeaDirection) {
-    wp.gnssMeaDirection = awy1.gnssMeaDirection;
+  if (awy1.gnssMinimumEnrouteAltitudeDirection) {
+    wp.gnssMinimumEnrouteAltitudeDirection = awy1.gnssMinimumEnrouteAltitudeDirection;
   }
-  if (awy1.gnssMeaOpposite !== undefined) {
-    wp.gnssMeaOpposite = awy1.gnssMeaOpposite;
+  if (awy1.gnssMinimumEnrouteAltitudeOppositeFt !== undefined) {
+    wp.gnssMinimumEnrouteAltitudeOppositeFt = awy1.gnssMinimumEnrouteAltitudeOppositeFt;
   }
-  if (awy1.gnssMeaOppositeDirection) {
-    wp.gnssMeaOppositeDirection = awy1.gnssMeaOppositeDirection;
+  if (awy1.gnssMinimumEnrouteAltitudeOppositeDirection) {
+    wp.gnssMinimumEnrouteAltitudeOppositeDirection =
+      awy1.gnssMinimumEnrouteAltitudeOppositeDirection;
   }
-  if (awy1.mca !== undefined) {
-    wp.mca = awy1.mca;
+  if (awy1.minimumCrossingAltitudeFt !== undefined) {
+    wp.minimumCrossingAltitudeFt = awy1.minimumCrossingAltitudeFt;
   }
-  if (awy1.mcaDirection) {
-    wp.mcaDirection = awy1.mcaDirection;
+  if (awy1.minimumCrossingAltitudeDirection) {
+    wp.minimumCrossingAltitudeDirection = awy1.minimumCrossingAltitudeDirection;
   }
-  if (awy1.mcaOpposite !== undefined) {
-    wp.mcaOpposite = awy1.mcaOpposite;
+  if (awy1.minimumCrossingAltitudeOppositeFt !== undefined) {
+    wp.minimumCrossingAltitudeOppositeFt = awy1.minimumCrossingAltitudeOppositeFt;
   }
-  if (awy1.mcaOppositeDirection) {
-    wp.mcaOppositeDirection = awy1.mcaOppositeDirection;
+  if (awy1.minimumCrossingAltitudeOppositeDirection) {
+    wp.minimumCrossingAltitudeOppositeDirection = awy1.minimumCrossingAltitudeOppositeDirection;
   }
   if (awy1.distanceToNextNm !== undefined) {
     wp.distanceToNextNm = awy1.distanceToNextNm;
   } else if (awy1.segmentDistanceNm !== undefined) {
     wp.distanceToNextNm = awy1.segmentDistanceNm;
   }
-  if (awy1.magneticCourse !== undefined) {
-    wp.magneticCourse = awy1.magneticCourse;
+  if (awy1.magneticCourseDeg !== undefined) {
+    wp.magneticCourseDeg = awy1.magneticCourseDeg;
   }
-  if (awy1.magneticCourseOpposite !== undefined) {
-    wp.magneticCourseOpposite = awy1.magneticCourseOpposite;
+  if (awy1.magneticCourseOppositeDeg !== undefined) {
+    wp.magneticCourseOppositeDeg = awy1.magneticCourseOppositeDeg;
   }
-  if (awy1.changeoverDistance !== undefined) {
-    wp.changeoverDistance = awy1.changeoverDistance;
+  if (awy1.changeoverDistanceNm !== undefined) {
+    wp.changeoverDistanceNm = awy1.changeoverDistanceNm;
   }
   if (awy1.signalGap) {
     wp.signalGap = true;

@@ -190,7 +190,7 @@ function buildIlsSystem(
 
   const course = parseOptFloat(baseRec.APCH_BEAR);
   if (course !== undefined) {
-    ils.localizerCourseDeg = course;
+    ils.localizerMagneticCourseDeg = course;
   }
 
   // Glide slope data from ILS_GS record.
@@ -233,7 +233,7 @@ function buildRunwayEnd(rec: CsvRecord, ils: IlsSystem | undefined): RunwayEnd {
 
   const hdg = parseOptInt(rec.TRUE_ALIGNMENT);
   if (hdg !== undefined) {
-    end.trueHeading = hdg;
+    end.trueHeadingDeg = hdg;
   }
   if (ils) {
     end.ils = ils;
@@ -277,7 +277,7 @@ function buildRunwayEnd(rec: CsvRecord, ils: IlsSystem | undefined): RunwayEnd {
   }
   const gpa = parseOptFloat(rec.VISUAL_GLIDE_PATH_ANGLE);
   if (gpa !== undefined) {
-    end.glidepathAngle = gpa;
+    end.glidepathAngleDeg = gpa;
   }
   const dispLen = parseOptInt(rec.DISPLACED_THR_LEN);
   if (dispLen !== undefined) {
@@ -285,7 +285,7 @@ function buildRunwayEnd(rec: CsvRecord, ils: IlsSystem | undefined): RunwayEnd {
   }
   const dispElev = parseOptFloat(rec.DISPLACED_THR_ELEV);
   if (dispElev !== undefined) {
-    end.displacedThresholdElevFt = dispElev;
+    end.displacedThresholdElevationFt = dispElev;
   }
   const tdzElev = parseOptFloat(rec.TDZ_ELEV);
   if (tdzElev !== undefined) {
@@ -535,7 +535,7 @@ export function buildAirport(
   }
   const magVar = parseOptFloat(base.MAG_VARN);
   if (magVar !== undefined) {
-    airport.magneticVariation = magVar;
+    airport.magneticVariationDeg = magVar;
   }
   if (base.MAG_HEMIS) {
     airport.magneticVariationDirection = base.MAG_HEMIS;

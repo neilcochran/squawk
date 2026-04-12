@@ -104,43 +104,43 @@ export interface AirwayWaypoint {
   /** ARTCC identifier for this waypoint (e.g. "ZNY", "ZBW"). */
   artccId?: string;
   /** Minimum reception altitude in feet at this point, if published. */
-  minimumReceptionAltitude?: number;
+  minimumReceptionAltitudeFt?: number;
   /** Segment MEA (Minimum Enroute Altitude) in feet for the segment starting at this waypoint. */
-  mea?: number;
+  minimumEnrouteAltitudeFt?: number;
   /** Direction qualifier for the MEA (e.g. "E BND", "W BND"). */
-  meaDirection?: string;
+  minimumEnrouteAltitudeDirection?: string;
   /** MEA in the opposite direction in feet, if different from the primary MEA. */
-  meaOpposite?: number;
+  minimumEnrouteAltitudeOppositeFt?: number;
   /** Direction qualifier for the opposite MEA. */
-  meaOppositeDirection?: string;
+  minimumEnrouteAltitudeOppositeDirection?: string;
   /** Maximum authorized altitude (MAA) in feet for this segment. */
-  maa?: number;
+  maximumAuthorizedAltitudeFt?: number;
   /** Minimum obstruction clearance altitude (MOCA) in feet for this segment. */
-  moca?: number;
+  minimumObstructionClearanceAltitudeFt?: number;
   /** GNSS MEA in feet for this segment, if published. */
-  gnssMea?: number;
+  gnssMinimumEnrouteAltitudeFt?: number;
   /** Direction qualifier for the GNSS MEA. */
-  gnssMeaDirection?: string;
+  gnssMinimumEnrouteAltitudeDirection?: string;
   /** GNSS MEA in the opposite direction in feet. */
-  gnssMeaOpposite?: number;
+  gnssMinimumEnrouteAltitudeOppositeFt?: number;
   /** Direction qualifier for the opposite GNSS MEA. */
-  gnssMeaOppositeDirection?: string;
+  gnssMinimumEnrouteAltitudeOppositeDirection?: string;
   /** Minimum crossing altitude (MCA) in feet at this point. */
-  mca?: number;
+  minimumCrossingAltitudeFt?: number;
   /** Direction of the minimum crossing altitude. */
-  mcaDirection?: string;
+  minimumCrossingAltitudeDirection?: string;
   /** Minimum crossing altitude in the opposite direction. */
-  mcaOpposite?: number;
+  minimumCrossingAltitudeOppositeFt?: number;
   /** Direction for the opposite minimum crossing altitude. */
-  mcaOppositeDirection?: string;
+  minimumCrossingAltitudeOppositeDirection?: string;
   /** Distance in nautical miles from this waypoint to the next waypoint along the airway. */
   distanceToNextNm?: number;
   /** Magnetic course in degrees from this waypoint to the next. */
-  magneticCourse?: number;
+  magneticCourseDeg?: number;
   /** Magnetic course in degrees in the opposite direction. */
-  magneticCourseOpposite?: number;
+  magneticCourseOppositeDeg?: number;
   /** Distance in nautical miles from this waypoint to the changeover point. */
-  changeoverDistance?: number;
+  changeoverDistanceNm?: number;
   /** Whether there is a gap in navigation signal coverage on this segment. */
   signalGap?: boolean;
   /** Whether altitude data applies only to US airspace on this segment. */

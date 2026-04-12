@@ -47,17 +47,17 @@ export interface Aircraft {
   /** Current geospatial position. */
   position?: Position;
   /** Ground speed in knots. */
-  groundSpeedKts?: number;
+  groundSpeedKt?: number;
   /** Indicated airspeed in knots. */
-  iasKts?: number;
+  indicatedAirspeedKt?: number;
   /** True airspeed in knots. */
-  tasKts?: number;
+  trueAirspeedKt?: number;
   /** Track over ground in degrees true. */
-  trackDeg?: number;
+  trueTrackDeg?: number;
   /** Magnetic heading in degrees. */
   magneticHeadingDeg?: number;
   /** Vertical rate in feet per minute. */
-  verticalRateFpm?: number;
+  verticalRateFtPerMin?: number;
   /** Squawk transponder code. */
   squawk?: string;
   /** True if aircraft is on the ground. */

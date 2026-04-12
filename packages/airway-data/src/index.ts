@@ -166,61 +166,61 @@ function expandWaypoint(c: CompactWaypoint): AirwayWaypoint {
     wp.artccId = c.art;
   }
   if (c.mra !== undefined) {
-    wp.minimumReceptionAltitude = c.mra;
+    wp.minimumReceptionAltitudeFt = c.mra;
   }
   if (c.mea !== undefined) {
-    wp.mea = c.mea;
+    wp.minimumEnrouteAltitudeFt = c.mea;
   }
   if (c.md !== undefined) {
-    wp.meaDirection = c.md;
+    wp.minimumEnrouteAltitudeDirection = c.md;
   }
   if (c.meao !== undefined) {
-    wp.meaOpposite = c.meao;
+    wp.minimumEnrouteAltitudeOppositeFt = c.meao;
   }
   if (c.modo !== undefined) {
-    wp.meaOppositeDirection = c.modo;
+    wp.minimumEnrouteAltitudeOppositeDirection = c.modo;
   }
   if (c.maa !== undefined) {
-    wp.maa = c.maa;
+    wp.maximumAuthorizedAltitudeFt = c.maa;
   }
   if (c.moca !== undefined) {
-    wp.moca = c.moca;
+    wp.minimumObstructionClearanceAltitudeFt = c.moca;
   }
   if (c.gmea !== undefined) {
-    wp.gnssMea = c.gmea;
+    wp.gnssMinimumEnrouteAltitudeFt = c.gmea;
   }
   if (c.gmd !== undefined) {
-    wp.gnssMeaDirection = c.gmd;
+    wp.gnssMinimumEnrouteAltitudeDirection = c.gmd;
   }
   if (c.gmeao !== undefined) {
-    wp.gnssMeaOpposite = c.gmeao;
+    wp.gnssMinimumEnrouteAltitudeOppositeFt = c.gmeao;
   }
   if (c.gmodo !== undefined) {
-    wp.gnssMeaOppositeDirection = c.gmodo;
+    wp.gnssMinimumEnrouteAltitudeOppositeDirection = c.gmodo;
   }
   if (c.mca !== undefined) {
-    wp.mca = c.mca;
+    wp.minimumCrossingAltitudeFt = c.mca;
   }
   if (c.mcad !== undefined) {
-    wp.mcaDirection = c.mcad;
+    wp.minimumCrossingAltitudeDirection = c.mcad;
   }
   if (c.mcao !== undefined) {
-    wp.mcaOpposite = c.mcao;
+    wp.minimumCrossingAltitudeOppositeFt = c.mcao;
   }
   if (c.mcaod !== undefined) {
-    wp.mcaOppositeDirection = c.mcaod;
+    wp.minimumCrossingAltitudeOppositeDirection = c.mcaod;
   }
   if (c.dtn !== undefined) {
     wp.distanceToNextNm = c.dtn;
   }
   if (c.mc !== undefined) {
-    wp.magneticCourse = c.mc;
+    wp.magneticCourseDeg = c.mc;
   }
   if (c.mco !== undefined) {
-    wp.magneticCourseOpposite = c.mco;
+    wp.magneticCourseOppositeDeg = c.mco;
   }
   if (c.cod !== undefined) {
-    wp.changeoverDistance = c.cod;
+    wp.changeoverDistanceNm = c.cod;
   }
   if (c.sg === true) {
     wp.signalGap = true;

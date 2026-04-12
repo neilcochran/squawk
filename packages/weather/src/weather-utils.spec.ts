@@ -97,7 +97,7 @@ describe('parseVisibility', () => {
   it('parses whole statute miles (10SM)', () => {
     const result = parseVisibility(['10SM'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.statuteMiles, 10);
+    assert.equal(result.visibility.visibilitySm, 10);
     assert.equal(result.visibility.isLessThan, false);
     assert.equal(result.visibility.isMoreThan, false);
     assert.equal(result.nextPos, 1);
@@ -106,7 +106,7 @@ describe('parseVisibility', () => {
   it('parses fractional visibility (1 1/2SM)', () => {
     const result = parseVisibility(['1', '1/2SM'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.statuteMiles, 1.5);
+    assert.equal(result.visibility.visibilitySm, 1.5);
     assert.equal(result.visibility.isLessThan, false);
     assert.equal(result.visibility.isMoreThan, false);
     assert.equal(result.nextPos, 2);
@@ -115,7 +115,7 @@ describe('parseVisibility', () => {
   it('parses less-than visibility (M1/4SM)', () => {
     const result = parseVisibility(['M1/4SM'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.statuteMiles, 0.25);
+    assert.equal(result.visibility.visibilitySm, 0.25);
     assert.equal(result.visibility.isLessThan, true);
     assert.equal(result.visibility.isMoreThan, false);
   });
@@ -123,26 +123,26 @@ describe('parseVisibility', () => {
   it('parses fraction-only visibility (1/4SM)', () => {
     const result = parseVisibility(['1/4SM'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.statuteMiles, 0.25);
+    assert.equal(result.visibility.visibilitySm, 0.25);
     assert.equal(result.visibility.isLessThan, false);
   });
 
   it('parses half-mile visibility (1/2SM)', () => {
     const result = parseVisibility(['1/2SM'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.statuteMiles, 0.5);
+    assert.equal(result.visibility.visibilitySm, 0.5);
   });
 
   it('parses three-quarter-mile visibility (3/4SM)', () => {
     const result = parseVisibility(['3/4SM'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.statuteMiles, 0.75);
+    assert.equal(result.visibility.visibilitySm, 0.75);
   });
 
   it('parses plus visibility (P6SM)', () => {
     const result = parseVisibility(['P6SM'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.statuteMiles, 6);
+    assert.equal(result.visibility.visibilitySm, 6);
     assert.equal(result.visibility.isMoreThan, true);
     assert.equal(result.visibility.isLessThan, false);
   });
@@ -150,8 +150,8 @@ describe('parseVisibility', () => {
   it('parses ICAO meters visibility (9999)', () => {
     const result = parseVisibility(['9999'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.meters, 9999);
-    assert.equal(result.visibility.statuteMiles, undefined);
+    assert.equal(result.visibility.visibilityM, 9999);
+    assert.equal(result.visibility.visibilitySm, undefined);
     assert.equal(result.visibility.isLessThan, false);
     assert.equal(result.visibility.isMoreThan, false);
   });
@@ -159,13 +159,13 @@ describe('parseVisibility', () => {
   it('parses ICAO low visibility (0800)', () => {
     const result = parseVisibility(['0800'], 0);
     assert.ok(result);
-    assert.equal(result.visibility.meters, 800);
+    assert.equal(result.visibility.visibilityM, 800);
   });
 
   it('parses from non-zero position', () => {
     const result = parseVisibility(['21010KT', '5SM', 'BR'], 1);
     assert.ok(result);
-    assert.equal(result.visibility.statuteMiles, 5);
+    assert.equal(result.visibility.visibilitySm, 5);
     assert.equal(result.nextPos, 2);
   });
 
@@ -399,7 +399,7 @@ describe('parseCloudLayer', () => {
     const layer = parseCloudLayer('FEW250');
     assert.ok(layer);
     assert.equal(layer.coverage, 'FEW');
-    assert.equal(layer.altitudeFt, 25000);
+    assert.equal(layer.altitudeFtAgl, 25000);
     assert.equal(layer.type, undefined);
   });
 
@@ -407,28 +407,28 @@ describe('parseCloudLayer', () => {
     const layer = parseCloudLayer('SCT040');
     assert.ok(layer);
     assert.equal(layer.coverage, 'SCT');
-    assert.equal(layer.altitudeFt, 4000);
+    assert.equal(layer.altitudeFtAgl, 4000);
   });
 
   it('parses BKN layer', () => {
     const layer = parseCloudLayer('BKN020');
     assert.ok(layer);
     assert.equal(layer.coverage, 'BKN');
-    assert.equal(layer.altitudeFt, 2000);
+    assert.equal(layer.altitudeFtAgl, 2000);
   });
 
   it('parses OVC layer', () => {
     const layer = parseCloudLayer('OVC120');
     assert.ok(layer);
     assert.equal(layer.coverage, 'OVC');
-    assert.equal(layer.altitudeFt, 12000);
+    assert.equal(layer.altitudeFtAgl, 12000);
   });
 
   it('parses CB cloud type', () => {
     const layer = parseCloudLayer('BKN020CB');
     assert.ok(layer);
     assert.equal(layer.coverage, 'BKN');
-    assert.equal(layer.altitudeFt, 2000);
+    assert.equal(layer.altitudeFtAgl, 2000);
     assert.equal(layer.type, 'CB');
   });
 
@@ -436,14 +436,14 @@ describe('parseCloudLayer', () => {
     const layer = parseCloudLayer('FEW025TCU');
     assert.ok(layer);
     assert.equal(layer.coverage, 'FEW');
-    assert.equal(layer.altitudeFt, 2500);
+    assert.equal(layer.altitudeFtAgl, 2500);
     assert.equal(layer.type, 'TCU');
   });
 
   it('parses low altitude layer', () => {
     const layer = parseCloudLayer('OVC003');
     assert.ok(layer);
-    assert.equal(layer.altitudeFt, 300);
+    assert.equal(layer.altitudeFtAgl, 300);
   });
 
   it('returns undefined for invalid token', () => {

@@ -18,9 +18,9 @@
  * The constant 11.3 arises from converting knots to ft/s and dividing by g:
  * (1 kt = 1.6878 ft/s), so (1.6878)^2 / 32.174 = 0.08852, and 1/0.08852 = 11.3.
  *
- * @param groundspeedKt - Groundspeed in knots.
+ * @param groundSpeedKt - Groundspeed in knots.
  * @returns Pivotal altitude in feet AGL.
  */
-export function pivotalAltitude(groundspeedKt: number): number {
-  return (groundspeedKt * groundspeedKt) / 11.3;
+export function pivotalAltitude(groundSpeedKt: number): number {
+  return (groundSpeedKt * groundSpeedKt) / 11.3;
 }

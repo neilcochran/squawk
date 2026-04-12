@@ -11,8 +11,8 @@ export interface WindTriangleResult {
   trueHeadingDeg: number;
   /** Wind correction angle in degrees. Positive means crab right, negative means crab left. */
   windCorrectionAngleDeg: number;
-  /** Groundspeed in knots. */
-  groundspeedKt: number;
+  /** Ground speed in knots. */
+  groundSpeedKt: number;
 }
 
 /**

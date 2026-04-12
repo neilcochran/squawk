@@ -235,8 +235,8 @@ function compactIls(ils: IlsSystem): CompactIls {
   if (ils.localizerFrequencyMhz !== undefined) {
     c.lf = ils.localizerFrequencyMhz;
   }
-  if (ils.localizerCourseDeg !== undefined) {
-    c.lc = ils.localizerCourseDeg;
+  if (ils.localizerMagneticCourseDeg !== undefined) {
+    c.lc = ils.localizerMagneticCourseDeg;
   }
   if (ils.glideSlopeAngleDeg !== undefined) {
     c.ga = ils.glideSlopeAngleDeg;
@@ -255,8 +255,8 @@ function compactIls(ils: IlsSystem): CompactIls {
  */
 function compactEnd(end: RunwayEnd): CompactRunwayEnd {
   const c: CompactRunwayEnd = { id: end.id };
-  if (end.trueHeading !== undefined) {
-    c.hdg = end.trueHeading;
+  if (end.trueHeadingDeg !== undefined) {
+    c.hdg = end.trueHeadingDeg;
   }
   if (end.ils !== undefined) {
     c.ils = compactIls(end.ils);
@@ -282,14 +282,14 @@ function compactEnd(end: RunwayEnd): CompactRunwayEnd {
   if (end.thresholdCrossingHeightFt !== undefined) {
     c.tch = end.thresholdCrossingHeightFt;
   }
-  if (end.glidepathAngle !== undefined) {
-    c.gpa = end.glidepathAngle;
+  if (end.glidepathAngleDeg !== undefined) {
+    c.gpa = end.glidepathAngleDeg;
   }
   if (end.displacedThresholdFt !== undefined) {
     c.dt = end.displacedThresholdFt;
   }
-  if (end.displacedThresholdElevFt !== undefined) {
-    c.dte = end.displacedThresholdElevFt;
+  if (end.displacedThresholdElevationFt !== undefined) {
+    c.dte = end.displacedThresholdElevationFt;
   }
   if (end.tdzElevationFt !== undefined) {
     c.tdz = end.tdzElevationFt;
@@ -412,8 +412,8 @@ function compactAirport(apt: Airport): CompactAirport {
   if (apt.elevationFt !== undefined) {
     c.elev = apt.elevationFt;
   }
-  if (apt.magneticVariation !== undefined) {
-    c.mv = apt.magneticVariation;
+  if (apt.magneticVariationDeg !== undefined) {
+    c.mv = apt.magneticVariationDeg;
   }
   if (apt.magneticVariationDirection !== undefined) {
     c.mvd = apt.magneticVariationDirection;

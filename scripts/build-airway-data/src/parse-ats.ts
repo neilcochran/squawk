@@ -20,35 +20,35 @@ export interface Ats1Record {
   /** Distance to next point in nautical miles. */
   distanceToNextNm: number | undefined;
   /** Segment magnetic course. */
-  magneticCourse: number | undefined;
+  magneticCourseDeg: number | undefined;
   /** Segment magnetic course - opposite direction. */
-  magneticCourseOpposite: number | undefined;
+  magneticCourseOppositeDeg: number | undefined;
   /** Segment distance in NM. */
   segmentDistanceNm: number | undefined;
   /** MEA in feet. */
-  mea: number | undefined;
+  minimumEnrouteAltitudeFt: number | undefined;
   /** MEA direction. */
-  meaDirection: string | undefined;
+  minimumEnrouteAltitudeDirection: string | undefined;
   /** MEA opposite direction altitude. */
-  meaOpposite: number | undefined;
+  minimumEnrouteAltitudeOppositeFt: number | undefined;
   /** MEA opposite direction qualifier. */
-  meaOppositeDirection: string | undefined;
+  minimumEnrouteAltitudeOppositeDirection: string | undefined;
   /** Maximum authorized altitude. */
-  maa: number | undefined;
+  maximumAuthorizedAltitudeFt: number | undefined;
   /** MOCA in feet. */
-  moca: number | undefined;
+  minimumObstructionClearanceAltitudeFt: number | undefined;
   /** Airway gap flag. */
   discontinued: boolean;
   /** Changeover distance in NM. */
-  changeoverDistance: number | undefined;
+  changeoverDistanceNm: number | undefined;
   /** Minimum crossing altitude. */
-  mca: number | undefined;
+  minimumCrossingAltitudeFt: number | undefined;
   /** MCA direction. */
-  mcaDirection: string | undefined;
+  minimumCrossingAltitudeDirection: string | undefined;
   /** MCA opposite direction altitude. */
-  mcaOpposite: number | undefined;
+  minimumCrossingAltitudeOppositeFt: number | undefined;
   /** MCA opposite direction qualifier. */
-  mcaOppositeDirection: string | undefined;
+  minimumCrossingAltitudeOppositeDirection: string | undefined;
   /** Gap in signal coverage. */
   signalGap: boolean;
   /** US airspace only indicator. */
@@ -56,13 +56,13 @@ export interface Ats1Record {
   /** ARTCC identifier. */
   artccId: string | undefined;
   /** GNSS MEA. */
-  gnssMea: number | undefined;
+  gnssMinimumEnrouteAltitudeFt: number | undefined;
   /** GNSS MEA direction. */
-  gnssMeaDirection: string | undefined;
+  gnssMinimumEnrouteAltitudeDirection: string | undefined;
   /** GNSS MEA opposite. */
-  gnssMeaOpposite: number | undefined;
+  gnssMinimumEnrouteAltitudeOppositeFt: number | undefined;
   /** GNSS MEA opposite direction. */
-  gnssMeaOppositeDirection: string | undefined;
+  gnssMinimumEnrouteAltitudeOppositeDirection: string | undefined;
   /** Dogleg indicator. */
   dogleg: boolean;
 }
@@ -92,7 +92,7 @@ export interface Ats2Record {
   /** Longitude string. */
   lonStr: string;
   /** Minimum reception altitude. */
-  minimumReceptionAltitude: number | undefined;
+  minimumReceptionAltitudeFt: number | undefined;
   /** Navaid identifier. */
   navaidIdentifier: string;
 }
@@ -150,28 +150,29 @@ export function parseAts1(line: string): Ats1Record {
     airwayTypeChar: field(line, 20, 1),
     sequenceNumber: parseInt(field(line, 21, 5), 10),
     distanceToNextNm: numField(line, 55, 6),
-    magneticCourse: numField(line, 67, 6),
-    magneticCourseOpposite: numField(line, 73, 6),
+    magneticCourseDeg: numField(line, 67, 6),
+    magneticCourseOppositeDeg: numField(line, 73, 6),
     segmentDistanceNm: numField(line, 79, 6),
-    mea: intField(line, 85, 5),
-    meaDirection: strField(line, 90, 7),
-    meaOpposite: intField(line, 97, 5),
-    meaOppositeDirection: strField(line, 102, 7),
-    maa: intField(line, 109, 5),
-    moca: strField(line, 114, 5) !== undefined ? intField(line, 114, 5) : undefined,
+    minimumEnrouteAltitudeFt: intField(line, 85, 5),
+    minimumEnrouteAltitudeDirection: strField(line, 90, 7),
+    minimumEnrouteAltitudeOppositeFt: intField(line, 97, 5),
+    minimumEnrouteAltitudeOppositeDirection: strField(line, 102, 7),
+    maximumAuthorizedAltitudeFt: intField(line, 109, 5),
+    minimumObstructionClearanceAltitudeFt:
+      strField(line, 114, 5) !== undefined ? intField(line, 114, 5) : undefined,
     discontinued: field(line, 119, 1) === 'X',
-    changeoverDistance: intField(line, 120, 3),
-    mca: intField(line, 123, 5),
-    mcaDirection: strField(line, 128, 7),
-    mcaOpposite: intField(line, 135, 5),
-    mcaOppositeDirection: strField(line, 140, 7),
+    changeoverDistanceNm: intField(line, 120, 3),
+    minimumCrossingAltitudeFt: intField(line, 123, 5),
+    minimumCrossingAltitudeDirection: strField(line, 128, 7),
+    minimumCrossingAltitudeOppositeFt: intField(line, 135, 5),
+    minimumCrossingAltitudeOppositeDirection: strField(line, 140, 7),
     signalGap: field(line, 147, 1) === 'Y',
     usAirspaceOnly: field(line, 148, 1) === 'Y',
     artccId: strField(line, 154, 3),
-    gnssMea: intField(line, 247, 5),
-    gnssMeaDirection: strField(line, 252, 7),
-    gnssMeaOpposite: intField(line, 259, 5),
-    gnssMeaOppositeDirection: strField(line, 264, 7),
+    gnssMinimumEnrouteAltitudeFt: intField(line, 247, 5),
+    gnssMinimumEnrouteAltitudeDirection: strField(line, 252, 7),
+    gnssMinimumEnrouteAltitudeOppositeFt: intField(line, 259, 5),
+    gnssMinimumEnrouteAltitudeOppositeDirection: strField(line, 264, 7),
     dogleg: field(line, 343, 1) === 'Y',
   };
 }
@@ -193,7 +194,7 @@ export function parseAts2(line: string): Ats2Record {
     icaoRegionCode: field(line, 108, 2),
     latStr: field(line, 110, 14),
     lonStr: field(line, 124, 14),
-    minimumReceptionAltitude: intField(line, 138, 5),
+    minimumReceptionAltitudeFt: intField(line, 138, 5),
     navaidIdentifier: field(line, 143, 4),
   };
 }
@@ -236,64 +237,65 @@ export function buildAtsWaypoint(ats1: Ats1Record, ats2: Ats2Record): AirwayWayp
   if (ats1.artccId) {
     wp.artccId = ats1.artccId;
   }
-  if (ats2.minimumReceptionAltitude !== undefined) {
-    wp.minimumReceptionAltitude = ats2.minimumReceptionAltitude;
+  if (ats2.minimumReceptionAltitudeFt !== undefined) {
+    wp.minimumReceptionAltitudeFt = ats2.minimumReceptionAltitudeFt;
   }
-  if (ats1.mea !== undefined) {
-    wp.mea = ats1.mea;
+  if (ats1.minimumEnrouteAltitudeFt !== undefined) {
+    wp.minimumEnrouteAltitudeFt = ats1.minimumEnrouteAltitudeFt;
   }
-  if (ats1.meaDirection) {
-    wp.meaDirection = ats1.meaDirection;
+  if (ats1.minimumEnrouteAltitudeDirection) {
+    wp.minimumEnrouteAltitudeDirection = ats1.minimumEnrouteAltitudeDirection;
   }
-  if (ats1.meaOpposite !== undefined) {
-    wp.meaOpposite = ats1.meaOpposite;
+  if (ats1.minimumEnrouteAltitudeOppositeFt !== undefined) {
+    wp.minimumEnrouteAltitudeOppositeFt = ats1.minimumEnrouteAltitudeOppositeFt;
   }
-  if (ats1.meaOppositeDirection) {
-    wp.meaOppositeDirection = ats1.meaOppositeDirection;
+  if (ats1.minimumEnrouteAltitudeOppositeDirection) {
+    wp.minimumEnrouteAltitudeOppositeDirection = ats1.minimumEnrouteAltitudeOppositeDirection;
   }
-  if (ats1.maa !== undefined) {
-    wp.maa = ats1.maa;
+  if (ats1.maximumAuthorizedAltitudeFt !== undefined) {
+    wp.maximumAuthorizedAltitudeFt = ats1.maximumAuthorizedAltitudeFt;
   }
-  if (ats1.moca !== undefined) {
-    wp.moca = ats1.moca;
+  if (ats1.minimumObstructionClearanceAltitudeFt !== undefined) {
+    wp.minimumObstructionClearanceAltitudeFt = ats1.minimumObstructionClearanceAltitudeFt;
   }
-  if (ats1.gnssMea !== undefined) {
-    wp.gnssMea = ats1.gnssMea;
+  if (ats1.gnssMinimumEnrouteAltitudeFt !== undefined) {
+    wp.gnssMinimumEnrouteAltitudeFt = ats1.gnssMinimumEnrouteAltitudeFt;
   }
-  if (ats1.gnssMeaDirection) {
-    wp.gnssMeaDirection = ats1.gnssMeaDirection;
+  if (ats1.gnssMinimumEnrouteAltitudeDirection) {
+    wp.gnssMinimumEnrouteAltitudeDirection = ats1.gnssMinimumEnrouteAltitudeDirection;
   }
-  if (ats1.gnssMeaOpposite !== undefined) {
-    wp.gnssMeaOpposite = ats1.gnssMeaOpposite;
+  if (ats1.gnssMinimumEnrouteAltitudeOppositeFt !== undefined) {
+    wp.gnssMinimumEnrouteAltitudeOppositeFt = ats1.gnssMinimumEnrouteAltitudeOppositeFt;
   }
-  if (ats1.gnssMeaOppositeDirection) {
-    wp.gnssMeaOppositeDirection = ats1.gnssMeaOppositeDirection;
+  if (ats1.gnssMinimumEnrouteAltitudeOppositeDirection) {
+    wp.gnssMinimumEnrouteAltitudeOppositeDirection =
+      ats1.gnssMinimumEnrouteAltitudeOppositeDirection;
   }
-  if (ats1.mca !== undefined) {
-    wp.mca = ats1.mca;
+  if (ats1.minimumCrossingAltitudeFt !== undefined) {
+    wp.minimumCrossingAltitudeFt = ats1.minimumCrossingAltitudeFt;
   }
-  if (ats1.mcaDirection) {
-    wp.mcaDirection = ats1.mcaDirection;
+  if (ats1.minimumCrossingAltitudeDirection) {
+    wp.minimumCrossingAltitudeDirection = ats1.minimumCrossingAltitudeDirection;
   }
-  if (ats1.mcaOpposite !== undefined) {
-    wp.mcaOpposite = ats1.mcaOpposite;
+  if (ats1.minimumCrossingAltitudeOppositeFt !== undefined) {
+    wp.minimumCrossingAltitudeOppositeFt = ats1.minimumCrossingAltitudeOppositeFt;
   }
-  if (ats1.mcaOppositeDirection) {
-    wp.mcaOppositeDirection = ats1.mcaOppositeDirection;
+  if (ats1.minimumCrossingAltitudeOppositeDirection) {
+    wp.minimumCrossingAltitudeOppositeDirection = ats1.minimumCrossingAltitudeOppositeDirection;
   }
   if (ats1.distanceToNextNm !== undefined) {
     wp.distanceToNextNm = ats1.distanceToNextNm;
   } else if (ats1.segmentDistanceNm !== undefined) {
     wp.distanceToNextNm = ats1.segmentDistanceNm;
   }
-  if (ats1.magneticCourse !== undefined) {
-    wp.magneticCourse = ats1.magneticCourse;
+  if (ats1.magneticCourseDeg !== undefined) {
+    wp.magneticCourseDeg = ats1.magneticCourseDeg;
   }
-  if (ats1.magneticCourseOpposite !== undefined) {
-    wp.magneticCourseOpposite = ats1.magneticCourseOpposite;
+  if (ats1.magneticCourseOppositeDeg !== undefined) {
+    wp.magneticCourseOppositeDeg = ats1.magneticCourseOppositeDeg;
   }
-  if (ats1.changeoverDistance !== undefined) {
-    wp.changeoverDistance = ats1.changeoverDistance;
+  if (ats1.changeoverDistanceNm !== undefined) {
+    wp.changeoverDistanceNm = ats1.changeoverDistanceNm;
   }
   if (ats1.signalGap) {
     wp.signalGap = true;
