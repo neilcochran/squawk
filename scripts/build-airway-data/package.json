@@ -1,6 +1,6 @@
 {
   "name": "@squawk/build-airway-data",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Internal build script: processes FAA NASR airway data into the airway dataset",
