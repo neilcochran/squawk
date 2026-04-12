@@ -35,7 +35,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@squawk/types": "*",
     "@squawk/units": "*"
   }
 }
