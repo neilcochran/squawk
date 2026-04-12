@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Cross-platform clean script
-const packagesDir = path.join(__dirname, '..', 'packages');
+const packagesDir = path.join(import.meta.dirname, '..', 'packages');
 
 try {
   const packages = fs.readdirSync(packagesDir);
