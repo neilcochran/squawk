@@ -39,6 +39,17 @@
     "@squawk/navaid-data": "*",
     "@types/node": "^25.5.2"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "navaid",
+    "vor",
+    "ndb",
+    "dme",
+    "tacan",
+    "faa",
+    "nasr"
+  ],
   "publishConfig": {
     "access": "public"
   }

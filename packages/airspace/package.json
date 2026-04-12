@@ -38,6 +38,17 @@
     "@squawk/airspace-data": "*",
     "@types/node": "^25.5.2"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "airspace",
+    "geojson",
+    "class-b",
+    "class-c",
+    "sua",
+    "faa",
+    "nasr"
+  ],
   "publishConfig": {
     "access": "public"
   }
