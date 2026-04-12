@@ -8,7 +8,7 @@
   "homepage": "https://github.com/neilcochran/squawk",
   "repository": {
     "type": "git",
-    "url": "https://github.com/neilcochran/squawk.git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
     "directory": "packages/navaids"
   },
   "engines": {
@@ -24,7 +24,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.spec.*"
   ],
   "scripts": {
     "build": "tsc",

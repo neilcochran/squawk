@@ -1,6 +1,6 @@
 # @squawk/types
 
-Shared TypeScript type definitions used across multiple `@squawk` packages. Contains types for core domain models that cross the logic/data/build-script boundary: aircraft, position, airports, navaids, fixes, airways, procedures, airspace, ADS-B sources, and flight-math results.
+Shared TypeScript type definitions used across multiple `@squawk` packages. Contains types for core domain models that cross the logic/data/build-script boundary: aircraft, position, airports, navaids, fixes, airways, procedures, airspace, and flight-math results.
 
 Domain-specific types that are produced and consumed by a single package live in that package instead:
 
