@@ -8,7 +8,7 @@
   "homepage": "https://github.com/neilcochran/squawk",
   "repository": {
     "type": "git",
-    "url": "https://github.com/neilcochran/squawk.git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
     "directory": "packages/airway-data"
   },
   "engines": {
@@ -25,7 +25,8 @@
   },
   "files": [
     "dist",
-    "data"
+    "data",
+    "!dist/**/*.spec.*"
   ],
   "scripts": {
     "build": "tsc",
