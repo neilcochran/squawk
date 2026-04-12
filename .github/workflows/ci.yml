@@ -24,3 +24,6 @@ jobs:
       - run: npm run build
 
       - run: npm run test
+
+      - name: Check README data dates
+        run: node scripts/check-readme-dates.js

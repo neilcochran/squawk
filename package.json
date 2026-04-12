@@ -1,6 +1,7 @@
 {
   "name": "squawk",
   "private": true,
+  "type": "module",
   "description": "Modular TypeScript libraries for building aviation applications - airspace geometry, weather parsing, flight planning, and more.",
   "packageManager": "npm@11.12.1",
   "workspaces": [

@@ -1,10 +1,14 @@
-# @squawk/fix-data
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/fix-data</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/fix-data)](https://www.npmjs.com/package/@squawk/fix-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pre-processed snapshot of US fix/waypoint data derived from the FAA NASR 28-day
 subscription cycle. Data only - no query logic, no dependency on
 `@squawk/fixes`.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_fix-data.html)**
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Coverage
 
@@ -46,24 +50,28 @@ pass any compatible Fix array at initialization.
 
 Each record is a full `Fix` object from `@squawk/types`. Key fields:
 
-| Property                   | Type                       | Description                                          |
-| -------------------------- | -------------------------- | ---------------------------------------------------- |
-| `identifier`               | string                     | Fix identifier (e.g. "MERIT", "BOSCO")               |
-| `icaoRegionCode`           | string                     | ICAO region code (e.g. "K6", "K7")                   |
-| `lat`, `lon`               | number                     | Decimal degrees                                      |
-| `state`, `country`         | string                     | Two-letter codes                                     |
-| `useCode`                  | FixUseCode                 | WP, RP, VFR, NRS, MW, MR, or RADAR                   |
-| `highArtccId`              | string or undefined        | High-altitude ARTCC (e.g. "ZNY")                     |
-| `lowArtccId`               | string or undefined        | Low-altitude ARTCC                                   |
-| `compulsory`               | FixCompulsory or undefined | HIGH, LOW, or LOW/HIGH                               |
-| `pitch`                    | boolean                    | Pitch designation                                    |
-| `catch`                    | boolean                    | Catch designation                                    |
-| `suaAtcaa`                 | boolean                    | Special Use Airspace / ATCAA association             |
-| `minimumReceptionAltitude` | number or undefined        | MRA in feet                                          |
-| `chartTypes`               | string[]                   | Charts the fix appears on (IAP, STAR, ENROUTE, etc.) |
-| `navaidAssociations`       | FixNavaidAssociation[]     | Bearing/distance from nearby navaids                 |
+| Property                     | Type                       | Description                                          |
+| ---------------------------- | -------------------------- | ---------------------------------------------------- |
+| `identifier`                 | string                     | Fix identifier (e.g. "MERIT", "BOSCO")               |
+| `icaoRegionCode`             | string                     | ICAO region code (e.g. "K6", "K7")                   |
+| `lat`, `lon`                 | number                     | Decimal degrees                                      |
+| `state`, `country`           | string                     | Two-letter codes                                     |
+| `useCode`                    | FixUseCode                 | WP, RP, VFR, NRS, MW, MR, or RADAR                   |
+| `highArtccId`                | string or undefined        | High-altitude ARTCC (e.g. "ZNY")                     |
+| `lowArtccId`                 | string or undefined        | Low-altitude ARTCC                                   |
+| `compulsory`                 | FixCompulsory or undefined | HIGH, LOW, or LOW/HIGH                               |
+| `pitch`                      | boolean                    | Pitch designation                                    |
+| `catch`                      | boolean                    | Catch designation                                    |
+| `suaAtcaa`                   | boolean                    | Special Use Airspace / ATCAA association             |
+| `minimumReceptionAltitudeFt` | number or undefined        | MRA in feet                                          |
+| `chartTypes`                 | string[]                   | Charts the fix appears on (IAP, STAR, ENROUTE, etc.) |
+| `navaidAssociations`         | FixNavaidAssociation[]     | Bearing/distance from nearby navaids                 |
 
 ## Data source
+
+The bundled snapshot is built from the **2026-01-22** NASR cycle. The FAA publishes
+updated NASR data every 28 days. To update, re-run the build pipeline below against
+a newer cycle.
 
 All data is derived from the FAA National Airspace System Resource (NASR) 28-day
 subscription, which is public domain. Fix data comes from FIX_BASE.csv,
