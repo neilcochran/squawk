@@ -1,6 +1,6 @@
 {
   "name": "@squawk/map-viewer",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Internal dev tool: interactive Leaflet map for viewing Squawk data packages",

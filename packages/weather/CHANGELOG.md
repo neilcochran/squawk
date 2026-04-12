@@ -1,11 +1,17 @@
-# @squawk/icao-registry
+# @squawk/weather
 
 ## 0.2.0
 
 ### Minor Changes
 
-- 2bdf6be: Add @squawk/icon-registry and @squawk/icao-registry-data
-- c7edad0: Add @squawk/airport-data package
+- feaa9ab: Add squawk/weather with METAR and SPECI support
+- 005c963: Add TAF types and parsing to squawk/weather
+- f9cb361: Add AIRMET support to squawk/weather
+- 303997a: Add SIGMET parsing and shared types for DayTime and Coordinates
+- 5860a4e: Increase parsing abilities of SIGMETs
+- c4b7790: Add PIREP support to squawk/weather
+- a76df6f: Standardize naming of properties/funcs and abbreviations
+- 062f661: Move package specific types from squawk/types to their respective packages
 
 ### Patch Changes
 
@@ -28,11 +34,3 @@
 - Updated dependencies [a76df6f]
 - Updated dependencies [062f661]
   - @squawk/types@0.2.0
-
-## 0.1.1
-
-### Patch Changes
-
-- a8026d4: Update minimum Node.js requirement to v22
-- Updated dependencies [a8026d4]
-  - @squawk/types@0.1.1
