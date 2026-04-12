@@ -1,4 +1,4 @@
-# @squawk/icao-registry
+# @squawk/icao-registry-data
 
 ## 0.2.0
 
@@ -28,11 +28,3 @@
 - Updated dependencies [a76df6f]
 - Updated dependencies [062f661]
   - @squawk/types@0.2.0
-
-## 0.1.1
-
-### Patch Changes
-
-- a8026d4: Update minimum Node.js requirement to v22
-- Updated dependencies [a8026d4]
-  - @squawk/types@0.1.1

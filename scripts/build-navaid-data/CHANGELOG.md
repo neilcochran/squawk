@@ -1,11 +1,12 @@
-# @squawk/icao-registry
+# @squawk/build-navaid-data
 
-## 0.2.0
+## 0.1.0
 
 ### Minor Changes
 
-- 2bdf6be: Add @squawk/icon-registry and @squawk/icao-registry-data
-- c7edad0: Add @squawk/airport-data package
+- ec14992: Add squawk/fixes and squawk/fix-data
+- 893af47: Add squawk Navaid packages
+- a76df6f: Standardize naming of properties/funcs and abbreviations
 
 ### Patch Changes
 
@@ -28,11 +29,3 @@
 - Updated dependencies [a76df6f]
 - Updated dependencies [062f661]
   - @squawk/types@0.2.0
-
-## 0.1.1
-
-### Patch Changes
-
-- a8026d4: Update minimum Node.js requirement to v22
-- Updated dependencies [a8026d4]
-  - @squawk/types@0.1.1
