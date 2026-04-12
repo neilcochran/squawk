@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import type { Airway, AirwayWaypoint } from '@squawk/types';
 
@@ -252,4 +252,23 @@ export async function writeOutput(
   console.log(
     `[write-output] Wrote ${output.meta.recordCount} airways (${waypointCount} waypoints) to ${outputPath} (${sizeMb} MB gzipped)`,
   );
+
+  const readmePath = resolve(dirname(outputPath), '..', 'README.md');
+  await updateReadmeDate(readmePath, nasrCycleDate);
+}
+
+/**
+ * Updates the bolded date in the "Data source" section of a README to match
+ * the cycle date of the data that was just built.
+ */
+async function updateReadmeDate(readmePath: string, date: string): Promise<void> {
+  const readme = await readFile(readmePath, 'utf-8');
+  const updated = readme.replace(
+    /The bundled snapshot is built from the \*\*\d{4}-\d{2}-\d{2}\*\*/,
+    `The bundled snapshot is built from the **${date}**`,
+  );
+  if (updated !== readme) {
+    await writeFile(readmePath, updated, 'utf-8');
+    console.log(`[write-output] Updated README date to ${date}`);
+  }
 }

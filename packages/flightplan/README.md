@@ -1,10 +1,14 @@
-# @squawk/flightplan
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/flightplan</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/flightplan)](https://www.npmjs.com/package/@squawk/flightplan) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for parsing flight plan route strings into structured,
 coordinate-resolved route elements. Composes airport, navaid, fix, airway,
 and procedure resolvers to classify and resolve each token in a route string.
 Contains no bundled data - accepts resolver instances at initialization. For
 zero-config use, pair with the companion data and resolver packages.
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Usage
 

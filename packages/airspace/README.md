@@ -1,8 +1,12 @@
-# @squawk/airspace
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/airspace</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airspace)](https://www.npmjs.com/package/@squawk/airspace) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US airspace geometry. Given a position and altitude,
 returns all applicable airspace designations. Contains no bundled data - accepts a
 GeoJSON dataset at initialization. For zero-config use, pair with `@squawk/airspace-data`.
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Coverage
 
