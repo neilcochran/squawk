@@ -1,10 +1,14 @@
-# @squawk/procedures
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/procedures</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/procedures)](https://www.npmjs.com/package/@squawk/procedures) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US instrument procedure data. Look up SIDs
 and STARs by computer code, find procedures by airport, filter by type, expand
 route segments with transitions, or search by name. Contains no bundled data -
 accepts an array of Procedure records at initialization. For zero-config use,
 pair with `@squawk/procedure-data`.
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Usage
 

@@ -271,7 +271,7 @@ function extractItem(
  * console.log(notam.id);               // "A1242/24"
  * console.log(notam.action);           // "NEW"
  * console.log(notam.qualifier?.fir);    // "KZNY"
- * console.log(notam.locationCode);     // "KJFK"
+ * console.log(notam.locationCodes);    // ["KJFK"]
  * console.log(notam.text);             // "RWY 09L/27R CLSD DUE TO RESURFACING"
  * ```
  *

@@ -1,9 +1,13 @@
-# @squawk/fixes
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/fixes</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/fixes)](https://www.npmjs.com/package/@squawk/fixes) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US fix/waypoint data. Look up fixes by
 identifier, geographic proximity, or identifier search. Contains no bundled
 data - accepts an array of Fix records at initialization. For zero-config use,
 pair with `@squawk/fix-data`.
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Usage
 

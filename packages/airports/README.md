@@ -1,8 +1,12 @@
-# @squawk/airports
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/airports</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airports)](https://www.npmjs.com/package/@squawk/airports) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US airport data. Look up airports by FAA ID, ICAO code,
 geographic proximity, or name/city search. Contains no bundled data - accepts an array of
 Airport records at initialization. For zero-config use, pair with `@squawk/airport-data`.
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Usage
 

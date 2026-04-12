@@ -1,8 +1,12 @@
-# @squawk/units
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/units</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/units)](https://www.npmjs.com/package/@squawk/units) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Aviation-aware unit conversion and formatting utilities. Conversions and formatters for speed, distance, altitude, pressure, temperature, and angle—plus ISA standard atmosphere calculations and compressible-flow aerodynamics.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_units.html)**
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Installation
 
