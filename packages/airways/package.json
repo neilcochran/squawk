@@ -39,6 +39,15 @@
     "@squawk/airway-data": "*",
     "@types/node": "^25.5.2"
   },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "airway",
+    "victor",
+    "jet-route",
+    "faa",
+    "nasr"
+  ],
   "publishConfig": {
     "access": "public"
   }
