@@ -1,10 +1,14 @@
-# @squawk/airways
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/airways</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airways)](https://www.npmjs.com/package/@squawk/airways) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US airway data. Look up airways by
 designation, expand route segments between fixes, find airways through a
 specific fix, or search by designation. Contains no bundled data - accepts
 an array of Airway records at initialization. For zero-config use, pair with
 `@squawk/airway-data`.
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Usage
 

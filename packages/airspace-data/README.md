@@ -1,8 +1,12 @@
-# @squawk/airspace-data
+<h1><img src="../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/airspace-data</h1>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airspace-data)](https://www.npmjs.com/package/@squawk/airspace-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pre-processed GeoJSON snapshot of US airspace geometry derived from the FAA NASR
 28-day subscription cycle. Data only - no query logic, no dependency on
 `@squawk/airspace`.
+
+Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
 ## Coverage
 
@@ -46,6 +50,10 @@ representing one airspace boundary. Feature properties include:
 `AltitudeBound` is `{ valueFt: number, reference: 'MSL' | 'AGL' | 'SFC' }`.
 
 ## Data source
+
+The bundled snapshot is built from the **2026-01-22** NASR cycle. The FAA publishes
+updated NASR data every 28 days. To update, re-run the build pipeline below against
+a newer cycle.
 
 All geometry and metadata is derived from the FAA National Airspace System Resource
 (NASR) 28-day subscription, which is public domain. Class B/C/D/E boundaries come
