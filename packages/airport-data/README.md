@@ -54,7 +54,7 @@ Each record is a full `Airport` object from `@squawk/types`. Key fields:
 | `city`, `state`, `country` | string              | Location identifiers                               |
 | `lat`, `lon`               | number              | Decimal degrees                                    |
 | `elevationFt`              | number or undefined | Field elevation in feet MSL                        |
-| `magneticVariation`        | number or undefined | Magnetic variation in degrees                      |
+| `magneticVariationDeg`     | number or undefined | Magnetic variation in degrees                      |
 | `towerType`                | string or undefined | e.g. "ATCT", "NON-ATCT"                            |
 | `fuelTypes`                | string or undefined | e.g. "100LL,A"                                     |
 | `runways`                  | Runway[]            | Runway details (see below)                         |
@@ -77,7 +77,7 @@ Each record is a full `Airport` object from `@squawk/types`. Key fields:
 | Property                              | Type                   | Description                          |
 | ------------------------------------- | ---------------------- | ------------------------------------ |
 | `id`                                  | string                 | Designator (e.g. "04L", "22R")       |
-| `trueHeading`                         | number or undefined    | True heading in degrees              |
+| `trueHeadingDeg`                      | number or undefined    | True heading in degrees              |
 | `ils`                                 | IlsSystem or undefined | Structured ILS data (see below)      |
 | `toraFt`, `todaFt`, `asdaFt`, `ldaFt` | number or undefined    | Declared distances in feet           |
 | `displacedThresholdFt`                | number or undefined    | Displaced threshold distance in feet |
@@ -86,16 +86,16 @@ Each record is a full `Airport` object from `@squawk/types`. Key fields:
 
 ### IlsSystem
 
-| Property                | Type                     | Description                                                          |
-| ----------------------- | ------------------------ | -------------------------------------------------------------------- |
-| `systemType`            | IlsSystemType            | ILS, ILS/DME, LOCALIZER, LOC/DME, LOC/GS, LDA, LDA/DME, SDF, SDF/DME |
-| `identifier`            | string or undefined      | Facility identifier (e.g. "I-JFK")                                   |
-| `category`              | IlsCategory or undefined | Approach category (I, II, III, IIIA, IIIB, IIIC)                     |
-| `localizerFrequencyMhz` | number or undefined      | Localizer frequency in MHz (108-112)                                 |
-| `localizerCourseDeg`    | number or undefined      | Front course bearing in magnetic degrees                             |
-| `glideSlopeAngleDeg`    | number or undefined      | Glide slope angle in degrees (typically ~3.0)                        |
-| `glideSlopeType`        | string or undefined      | Glide slope class (GLIDE SLOPE, GLIDE SLOPE/DME)                     |
-| `dmeChannel`            | string or undefined      | DME channel (e.g. "032X", "046X")                                    |
+| Property                     | Type                     | Description                                                          |
+| ---------------------------- | ------------------------ | -------------------------------------------------------------------- |
+| `systemType`                 | IlsSystemType            | ILS, ILS/DME, LOCALIZER, LOC/DME, LOC/GS, LDA, LDA/DME, SDF, SDF/DME |
+| `identifier`                 | string or undefined      | Facility identifier (e.g. "I-JFK")                                   |
+| `category`                   | IlsCategory or undefined | Approach category (I, II, III, IIIA, IIIB, IIIC)                     |
+| `localizerFrequencyMhz`      | number or undefined      | Localizer frequency in MHz (108-112)                                 |
+| `localizerMagneticCourseDeg` | number or undefined      | Front course bearing in magnetic degrees                             |
+| `glideSlopeAngleDeg`         | number or undefined      | Glide slope angle in degrees (typically ~3.0)                        |
+| `glideSlopeType`             | string or undefined      | Glide slope class (GLIDE SLOPE, GLIDE SLOPE/DME)                     |
+| `dmeChannel`                 | string or undefined      | DME channel (e.g. "032X", "046X")                                    |
 
 ### AirportFrequency
 

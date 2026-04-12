@@ -46,22 +46,22 @@ pass any compatible Fix array at initialization.
 
 Each record is a full `Fix` object from `@squawk/types`. Key fields:
 
-| Property                   | Type                       | Description                                          |
-| -------------------------- | -------------------------- | ---------------------------------------------------- |
-| `identifier`               | string                     | Fix identifier (e.g. "MERIT", "BOSCO")               |
-| `icaoRegionCode`           | string                     | ICAO region code (e.g. "K6", "K7")                   |
-| `lat`, `lon`               | number                     | Decimal degrees                                      |
-| `state`, `country`         | string                     | Two-letter codes                                     |
-| `useCode`                  | FixUseCode                 | WP, RP, VFR, NRS, MW, MR, or RADAR                   |
-| `highArtccId`              | string or undefined        | High-altitude ARTCC (e.g. "ZNY")                     |
-| `lowArtccId`               | string or undefined        | Low-altitude ARTCC                                   |
-| `compulsory`               | FixCompulsory or undefined | HIGH, LOW, or LOW/HIGH                               |
-| `pitch`                    | boolean                    | Pitch designation                                    |
-| `catch`                    | boolean                    | Catch designation                                    |
-| `suaAtcaa`                 | boolean                    | Special Use Airspace / ATCAA association             |
-| `minimumReceptionAltitude` | number or undefined        | MRA in feet                                          |
-| `chartTypes`               | string[]                   | Charts the fix appears on (IAP, STAR, ENROUTE, etc.) |
-| `navaidAssociations`       | FixNavaidAssociation[]     | Bearing/distance from nearby navaids                 |
+| Property                     | Type                       | Description                                          |
+| ---------------------------- | -------------------------- | ---------------------------------------------------- |
+| `identifier`                 | string                     | Fix identifier (e.g. "MERIT", "BOSCO")               |
+| `icaoRegionCode`             | string                     | ICAO region code (e.g. "K6", "K7")                   |
+| `lat`, `lon`                 | number                     | Decimal degrees                                      |
+| `state`, `country`           | string                     | Two-letter codes                                     |
+| `useCode`                    | FixUseCode                 | WP, RP, VFR, NRS, MW, MR, or RADAR                   |
+| `highArtccId`                | string or undefined        | High-altitude ARTCC (e.g. "ZNY")                     |
+| `lowArtccId`                 | string or undefined        | Low-altitude ARTCC                                   |
+| `compulsory`                 | FixCompulsory or undefined | HIGH, LOW, or LOW/HIGH                               |
+| `pitch`                      | boolean                    | Pitch designation                                    |
+| `catch`                      | boolean                    | Catch designation                                    |
+| `suaAtcaa`                   | boolean                    | Special Use Airspace / ATCAA association             |
+| `minimumReceptionAltitudeFt` | number or undefined        | MRA in feet                                          |
+| `chartTypes`                 | string[]                   | Charts the fix appears on (IAP, STAR, ENROUTE, etc.) |
+| `navaidAssociations`         | FixNavaidAssociation[]     | Bearing/distance from nearby navaids                 |
 
 ## Data source
 

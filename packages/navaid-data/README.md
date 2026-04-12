@@ -56,7 +56,7 @@ Each record is a full `Navaid` object from `@squawk/types`. Key fields:
 | `frequencyMhz`               | number or undefined  | VOR-family frequency in MHz (108.0-117.95)                  |
 | `frequencyKhz`               | number or undefined  | NDB-family frequency in kHz                                 |
 | `tacanChannel`               | string or undefined  | TACAN/DME channel (e.g. "84X")                              |
-| `magneticVariation`          | number or undefined  | Magnetic variation in degrees                               |
+| `magneticVariationDeg`       | number or undefined  | Magnetic variation in degrees                               |
 | `magneticVariationDirection` | string or undefined  | "E" or "W"                                                  |
 | `lowArtccId`                 | string or undefined  | Low-altitude ARTCC (e.g. "ZBW")                             |
 | `highArtccId`                | string or undefined  | High-altitude ARTCC                                         |

@@ -58,17 +58,17 @@ Each record is a full `Airway` object from `@squawk/types`. Key fields:
 
 Each `AirwayWaypoint` contains:
 
-| Property           | Type                | Description                             |
-| ------------------ | ------------------- | --------------------------------------- |
-| `name`             | string              | Waypoint name                           |
-| `identifier`       | string or undefined | Short identifier (e.g. "BOS", "MERIT")  |
-| `waypointType`     | AirwayWaypointType  | NAVAID, FIX, WAYPOINT, BORDER, or OTHER |
-| `lat`, `lon`       | number              | Decimal degrees                         |
-| `mea`              | number or undefined | Minimum Enroute Altitude in feet        |
-| `maa`              | number or undefined | Maximum Authorized Altitude in feet     |
-| `moca`             | number or undefined | Minimum Obstruction Clearance Altitude  |
-| `distanceToNextNm` | number or undefined | Distance to next waypoint in NM         |
-| `magneticCourse`   | number or undefined | Magnetic course to next waypoint        |
+| Property                                | Type                | Description                             |
+| --------------------------------------- | ------------------- | --------------------------------------- |
+| `name`                                  | string              | Waypoint name                           |
+| `identifier`                            | string or undefined | Short identifier (e.g. "BOS", "MERIT")  |
+| `waypointType`                          | AirwayWaypointType  | NAVAID, FIX, WAYPOINT, BORDER, or OTHER |
+| `lat`, `lon`                            | number              | Decimal degrees                         |
+| `minimumEnrouteAltitudeFt`              | number or undefined | Minimum Enroute Altitude in feet        |
+| `maximumAuthorizedAltitudeFt`           | number or undefined | Maximum Authorized Altitude in feet     |
+| `minimumObstructionClearanceAltitudeFt` | number or undefined | Minimum Obstruction Clearance Altitude  |
+| `distanceToNextNm`                      | number or undefined | Distance to next waypoint in NM         |
+| `magneticCourseDeg`                     | number or undefined | Magnetic course to next waypoint        |
 
 ## Data source
 

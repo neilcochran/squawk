@@ -24,7 +24,7 @@ const da = atmosphere.densityAltitude(5000, 29.92, 35); // field elev, altimeter
 const ta = atmosphere.trueAltitude(10000, 29.85, -10);
 
 // CAS from TAS (inverse of isa.trueAirspeedFromCalibratedKt in @squawk/units)
-const cas = airspeed.casFromTas(250, 20000);
+const cas = airspeed.calibratedAirspeedFromTrueAirspeed(250, 20000);
 
 // E6B wind triangle: find heading and groundspeed for a desired course
 const wt = wind.solveWindTriangle(150, 270, 310, 25); // TAS, course, wind dir, wind speed
@@ -48,17 +48,17 @@ This package complements `@squawk/units`, which provides unit conversions, forma
 
 Functions that already exist in `@squawk/units` are not re-exported. Import them directly:
 
-| Calculation                                | Package                                              |
-| ------------------------------------------ | ---------------------------------------------------- |
-| Pressure altitude from indicated alt + QNH | `@squawk/units` (`pressure.pressureAltitudeFt`)      |
-| Density altitude from PA + OAT             | `@squawk/units` (`isa.densityAltitudeFt`)            |
-| TAS from CAS                               | `@squawk/units` (`isa.trueAirspeedFromCalibratedKt`) |
-| Mach from TAS                              | `@squawk/units` (`isa.machFromTrueAirspeedKt`)       |
-| TAS from Mach                              | `@squawk/units` (`isa.trueAirspeedFromMachKt`)       |
-| Density altitude from field observations   | `@squawk/flight-math` (`atmosphere.densityAltitude`) |
-| True altitude correction                   | `@squawk/flight-math` (`atmosphere.trueAltitude`)    |
-| CAS from TAS                               | `@squawk/flight-math` (`airspeed.casFromTas`)        |
-| Wind triangle / components                 | `@squawk/flight-math` (`wind.*`)                     |
+| Calculation                                | Package                                                               |
+| ------------------------------------------ | --------------------------------------------------------------------- |
+| Pressure altitude from indicated alt + QNH | `@squawk/units` (`pressure.pressureAltitudeFt`)                       |
+| Density altitude from PA + OAT             | `@squawk/units` (`isa.densityAltitudeFt`)                             |
+| TAS from CAS                               | `@squawk/units` (`isa.trueAirspeedFromCalibratedKt`)                  |
+| Mach from TAS                              | `@squawk/units` (`isa.machFromTrueAirspeedKt`)                        |
+| TAS from Mach                              | `@squawk/units` (`isa.trueAirspeedFromMachKt`)                        |
+| Density altitude from field observations   | `@squawk/flight-math` (`atmosphere.densityAltitude`)                  |
+| True altitude correction                   | `@squawk/flight-math` (`atmosphere.trueAltitude`)                     |
+| CAS from TAS                               | `@squawk/flight-math` (`airspeed.calibratedAirspeedFromTrueAirspeed`) |
+| Wind triangle / components                 | `@squawk/flight-math` (`wind.*`)                                      |
 
 ## Namespaces
 

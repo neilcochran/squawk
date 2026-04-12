@@ -27,7 +27,7 @@ console.log(notam.action); // "NEW"
 console.log(notam.qualifier?.fir); // "EGLL"
 console.log(notam.qualifier?.subjectCode); // "MR"
 console.log(notam.qualifier?.conditionCode); // "LC"
-console.log(notam.locationCode); // "EGLL"
+console.log(notam.locationCodes); // ["EGLL"]
 console.log(notam.text); // "RWY 09L/27R CLSD DUE TO RESURFACING CONSTRUCTION"
 console.log(notam.effectiveFrom); // { year: 24, month: 4, day: 20, hour: 14, minute: 0 }
 console.log(notam.lowerLimit); // "SFC"
