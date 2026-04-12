@@ -7,7 +7,7 @@
  * for dates between 1901 and 2099.
  */
 
-import type { SolarTimes } from '@squawk/types';
+import type { SolarTimes } from './types/solar.js';
 
 /** Standard zenith angle for sunrise/sunset: 90.833 degrees.
  * Accounts for atmospheric refraction (0.567 degrees) and the sun's

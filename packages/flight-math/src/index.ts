@@ -9,6 +9,7 @@
  * combine multiple inputs: wind triangles, density altitude from field
  * observations, descent planning, and more.
  */
+export * from './types/index.js';
 export * as atmosphere from './atmosphere.js';
 export * as airspeed from './airspeed.js';
 export * as wind from './wind.js';
