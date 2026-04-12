@@ -1,11 +1,10 @@
-# @squawk/icao-registry
+# @squawk/procedure-data
 
 ## 0.2.0
 
 ### Minor Changes
 
-- 2bdf6be: Add @squawk/icon-registry and @squawk/icao-registry-data
-- c7edad0: Add @squawk/airport-data package
+- 95863cd: Add squawk/procedures and squawk/procedure-data packages
 
 ### Patch Changes
 
@@ -28,11 +27,3 @@
 - Updated dependencies [a76df6f]
 - Updated dependencies [062f661]
   - @squawk/types@0.2.0
-
-## 0.1.1
-
-### Patch Changes
-
-- a8026d4: Update minimum Node.js requirement to v22
-- Updated dependencies [a8026d4]
-  - @squawk/types@0.1.1

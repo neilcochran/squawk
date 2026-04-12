@@ -1,6 +1,6 @@
 {
   "name": "@squawk/build-airport-data",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Internal build script: processes FAA NASR airport data into the airport dataset",
