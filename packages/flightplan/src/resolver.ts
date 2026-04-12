@@ -183,9 +183,9 @@ export interface SpeedAltitudeRouteElement {
   /** Raw token from the route string. */
   raw: string;
   /** Speed in knots, if specified with N prefix. */
-  speedKnots?: number;
+  speedKt?: number;
   /** Speed in km/h, if specified with K prefix. */
-  speedKmh?: number;
+  speedKmPerHr?: number;
   /** Mach number (e.g. 0.82), if specified with M prefix. */
   mach?: number;
   /** Flight level (e.g. 350 for FL350), if specified with F prefix. */
@@ -348,9 +348,9 @@ function parseSpeedAltitude(token: string): SpeedAltitudeRouteElement | undefine
   };
 
   if (speedPrefix === 'N') {
-    result.speedKnots = speedValue;
+    result.speedKt = speedValue;
   } else if (speedPrefix === 'K') {
-    result.speedKmh = speedValue;
+    result.speedKmPerHr = speedValue;
   } else {
     result.mach = speedValue / 100;
   }

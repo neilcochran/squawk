@@ -12,7 +12,8 @@ import type {
   PrecipitationEvent,
   PressureTendency,
   PressureTendencyCharacter,
-  SecondLocationObservation,
+  SecondLocationCeiling,
+  SecondLocationVisibility,
   SectorVisibility,
   SignificantCloudReport,
   SignificantCloudType,
@@ -223,7 +224,7 @@ export function parseRemarks(raw: string, observationHour: number): MetarRemarks
         }
         remarks.towerSurfaceVisibility.push({
           source: token as 'TWR' | 'SFC',
-          statuteMiles: visValue.value,
+          visibilitySm: visValue.value,
         } satisfies TowerSurfaceVisibility);
         i = visValue.nextPos;
         continue;
@@ -236,8 +237,8 @@ export function parseRemarks(raw: string, observationHour: number): MetarRemarks
       const visVarMatch = tokens[i + 1]!.match(/^(\d+(?:\/\d+)?)V(\d+(?:\/\d+)?)$/);
       if (visVarMatch) {
         remarks.variableVisibility = {
-          minStatuteMiles: parseFraction(visVarMatch[1]!),
-          maxStatuteMiles: parseFraction(visVarMatch[2]!),
+          minVisibilitySm: parseFraction(visVarMatch[1]!),
+          maxVisibilitySm: parseFraction(visVarMatch[2]!),
         } satisfies VariableVisibility;
         i += 2;
         continue;
@@ -251,7 +252,7 @@ export function parseRemarks(raw: string, observationHour: number): MetarRemarks
         }
         remarks.sectorVisibility.push({
           direction: sectorMatch[1]! as CompassDirection,
-          statuteMiles: parseFraction(sectorMatch[2]!),
+          visibilitySm: parseFraction(sectorMatch[2]!),
         } satisfies SectorVisibility);
         i += 2;
         continue;
@@ -267,9 +268,9 @@ export function parseRemarks(raw: string, observationHour: number): MetarRemarks
           }
           remarks.secondLocationObservations.push({
             type: 'VIS',
-            value: visSecondLocValue.value,
+            visibilitySm: visSecondLocValue.value,
             location: locToken,
-          } satisfies SecondLocationObservation);
+          } satisfies SecondLocationVisibility);
           i = visSecondLocValue.nextPos + 1;
           continue;
         }
@@ -283,8 +284,8 @@ export function parseRemarks(raw: string, observationHour: number): MetarRemarks
         const cigVarMatch = tokens[i + 1]!.match(/^(\d{3})V(\d{3})$/);
         if (cigVarMatch) {
           remarks.variableCeiling = {
-            minFt: parseInt(cigVarMatch[1]!, 10) * 100,
-            maxFt: parseInt(cigVarMatch[2]!, 10) * 100,
+            minFtAgl: parseInt(cigVarMatch[1]!, 10) * 100,
+            maxFtAgl: parseInt(cigVarMatch[2]!, 10) * 100,
           } satisfies VariableCeiling;
           i += 2;
           continue;
@@ -300,9 +301,9 @@ export function parseRemarks(raw: string, observationHour: number): MetarRemarks
             }
             remarks.secondLocationObservations.push({
               type: 'CIG',
-              value: parseInt(cigHgtMatch[1]!, 10) * 100,
+              ceilingFtAgl: parseInt(cigHgtMatch[1]!, 10) * 100,
               location: locToken,
-            } satisfies SecondLocationObservation);
+            } satisfies SecondLocationCeiling);
             i += 3;
             continue;
           }
@@ -434,7 +435,7 @@ export function parseRemarks(raw: string, observationHour: number): MetarRemarks
         remarks.variableSkyCondition.push({
           coverageLow: varSkyMatch[1]! as CloudCoverage,
           coverageHigh: tokens[i + 2]! as CloudCoverage,
-          altitudeFt: parseInt(varSkyMatch[2]!, 10) * 100,
+          altitudeFtAgl: parseInt(varSkyMatch[2]!, 10) * 100,
         } satisfies VariableSkyCondition);
         i += 3;
         continue;
@@ -473,7 +474,7 @@ export function parseRemarks(raw: string, observationHour: number): MetarRemarks
         remarks.obscurations.push({
           phenomenon: token as WeatherPhenomenonCode,
           coverage: obscMatch[1]! as CloudCoverage,
-          altitudeFt: parseInt(obscMatch[2]!, 10) * 100,
+          altitudeFtAgl: parseInt(obscMatch[2]!, 10) * 100,
         } satisfies ObscurationReport);
         i += 2;
         continue;

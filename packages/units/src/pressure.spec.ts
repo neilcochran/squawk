@@ -10,7 +10,7 @@ import {
   millimetersOfMercuryToInchesOfMercury,
   qnhToQfe,
   qfeToQnh,
-  pressureAltitudeFeet,
+  pressureAltitudeFt,
   ISA_P0_HPA,
   ISA_P0_INHG,
 } from './pressure.js';
@@ -71,16 +71,16 @@ describe('pressure conversions', () => {
     });
   });
 
-  describe('pressureAltitudeFeet', () => {
+  describe('pressureAltitudeFt', () => {
     it('returns indicated altitude unchanged when QNH equals standard pressure (29.92126 inHg)', () => {
-      assert.ok(close(pressureAltitudeFeet(10000, ISA_P0_INHG), 10000, 1));
+      assert.ok(close(pressureAltitudeFt(10000, ISA_P0_INHG), 10000, 1));
     });
     it('returns higher pressure altitude when QNH is below standard (low pressure)', () => {
-      const pa = pressureAltitudeFeet(10000, 29.42);
+      const pa = pressureAltitudeFt(10000, 29.42);
       assert.ok(pa > 10000, `expected PA (${pa}) > indicated (10000)`);
     });
     it('returns lower pressure altitude when QNH is above standard (high pressure)', () => {
-      const pa = pressureAltitudeFeet(10000, 30.42);
+      const pa = pressureAltitudeFt(10000, 30.42);
       assert.ok(pa < 10000, `expected PA (${pa}) < indicated (10000)`);
     });
   });
@@ -120,9 +120,9 @@ describe('pressure conversions', () => {
     });
     it('pressure altitude is reasonable at extremes', () => {
       // Very low QNH = higher PA (worse)
-      const paLow = pressureAltitudeFeet(5000, 28.92);
+      const paLow = pressureAltitudeFt(5000, 28.92);
       // Very high QNH = lower PA (better)
-      const paHigh = pressureAltitudeFeet(5000, 30.92);
+      const paHigh = pressureAltitudeFt(5000, 30.92);
       assert.ok(paLow > paHigh, 'low QNH should give higher PA than high QNH');
     });
   });
@@ -133,7 +133,7 @@ describe('pressure conversions', () => {
       assert.ok(close(qnhToQfe(qnh, 0), qnh, 0.01));
     });
     it('pressure altitude is 0 ft when indicated is 0 ft at standard QNH', () => {
-      assert.ok(close(pressureAltitudeFeet(0, ISA_P0_INHG), 0, 1));
+      assert.ok(close(pressureAltitudeFt(0, ISA_P0_INHG), 0, 1));
     });
   });
 

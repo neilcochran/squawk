@@ -144,7 +144,7 @@ function expandNavaid(c: CompactNavaid): Navaid {
     navaid.tacanChannel = c.ch;
   }
   if (c.mv !== undefined) {
-    navaid.magneticVariation = c.mv;
+    navaid.magneticVariationDeg = c.mv;
   }
   if (c.mvd !== undefined) {
     navaid.magneticVariationDirection = c.mvd;

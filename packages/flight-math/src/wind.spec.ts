@@ -11,8 +11,8 @@ describe('solveWindTriangle', () => {
       `expected WCA ~0, got ${result.windCorrectionAngleDeg}`,
     );
     assert.ok(
-      close(result.groundspeedKt, 150, 0.1),
-      `expected GS ~150, got ${result.groundspeedKt}`,
+      close(result.groundSpeedKt, 150, 0.1),
+      `expected GS ~150, got ${result.groundSpeedKt}`,
     );
     assert.ok(
       close(result.trueHeadingDeg, 360 % 360, 0.01) || close(result.trueHeadingDeg, 360, 0.01),
@@ -45,7 +45,7 @@ describe('solveWindTriangle', () => {
   it('reduces groundspeed with a direct headwind', () => {
     // Course 360, wind from 360 (direct headwind) at 20 kt, TAS 120.
     const result = wind.solveWindTriangle(120, 360, 360, 20);
-    assert.ok(close(result.groundspeedKt, 100, 1), `expected GS ~100, got ${result.groundspeedKt}`);
+    assert.ok(close(result.groundSpeedKt, 100, 1), `expected GS ~100, got ${result.groundSpeedKt}`);
     assert.ok(
       close(result.windCorrectionAngleDeg, 0, 0.5),
       `expected WCA ~0, got ${result.windCorrectionAngleDeg}`,
@@ -55,13 +55,13 @@ describe('solveWindTriangle', () => {
   it('increases groundspeed with a direct tailwind', () => {
     // Course 360, wind from 180 (direct tailwind) at 20 kt, TAS 120.
     const result = wind.solveWindTriangle(120, 360, 180, 20);
-    assert.ok(close(result.groundspeedKt, 140, 1), `expected GS ~140, got ${result.groundspeedKt}`);
+    assert.ok(close(result.groundSpeedKt, 140, 1), `expected GS ~140, got ${result.groundSpeedKt}`);
   });
 
   it('handles wind stronger than TAS by clamping WCA', () => {
     // Wind exceeds TAS: aircraft cannot maintain course.
     const result = wind.solveWindTriangle(50, 360, 90, 80);
-    assert.ok(typeof result.groundspeedKt === 'number', 'should return a numeric groundspeed');
+    assert.ok(typeof result.groundSpeedKt === 'number', 'should return a numeric groundspeed');
     assert.ok(typeof result.windCorrectionAngleDeg === 'number', 'should return a numeric WCA');
   });
 
@@ -74,8 +74,8 @@ describe('solveWindTriangle', () => {
       `expected WCA ~6.8, got ${result.windCorrectionAngleDeg}`,
     );
     assert.ok(
-      result.groundspeedKt > 100 && result.groundspeedKt < 115,
-      `expected GS 100-115, got ${result.groundspeedKt}`,
+      result.groundSpeedKt > 100 && result.groundSpeedKt < 115,
+      `expected GS 100-115, got ${result.groundSpeedKt}`,
     );
   });
 });
@@ -185,7 +185,7 @@ describe('findWind', () => {
     // Start with known wind, solve forward, then reverse to recover the wind.
     const knownWind = { directionDeg: 240, speedKt: 25 };
     const forward = wind.solveWindTriangle(180, 90, knownWind.directionDeg, knownWind.speedKt);
-    const recovered = wind.findWind(forward.groundspeedKt, 180, forward.trueHeadingDeg, 90);
+    const recovered = wind.findWind(forward.groundSpeedKt, 180, forward.trueHeadingDeg, 90);
     assert.ok(
       close(recovered.speedKt, knownWind.speedKt, 0.5),
       `expected speed ~${knownWind.speedKt}, got ${recovered.speedKt}`,

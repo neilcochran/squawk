@@ -47,8 +47,8 @@ const radians = angle.degreesToRadians(45);
 
 // ISA standard atmosphere
 const isaTemp = isa.isaTemperatureCelsius(35000);
-const tas = isa.tasFromCasKnots(250, 35000); // CAS to TAS at altitude
-const da = isa.densityAltitudeFeet(5000, 30); // Pressure altitude + OAT
+const tas = isa.trueAirspeedFromCalibratedKt(250, 35000); // CAS to TAS at altitude
+const da = isa.densityAltitudeFt(5000, 30); // Pressure altitude + OAT
 
 // Formatting with locale support
 const altLabel = format.formatAltitude(3500); // "3,500 ft"

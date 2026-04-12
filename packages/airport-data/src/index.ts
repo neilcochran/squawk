@@ -276,7 +276,7 @@ function expandIls(c: CompactIls): IlsSystem {
     ils.localizerFrequencyMhz = c.lf;
   }
   if (c.lc !== undefined) {
-    ils.localizerCourseDeg = c.lc;
+    ils.localizerMagneticCourseDeg = c.lc;
   }
   if (c.ga !== undefined) {
     ils.glideSlopeAngleDeg = c.ga;
@@ -296,7 +296,7 @@ function expandIls(c: CompactIls): IlsSystem {
 function expandRunwayEnd(c: CompactRunwayEnd): RunwayEnd {
   const end: RunwayEnd = { id: c.id };
   if (c.hdg !== undefined) {
-    end.trueHeading = c.hdg;
+    end.trueHeadingDeg = c.hdg;
   }
   if (c.ils !== undefined) {
     end.ils = expandIls(c.ils);
@@ -323,13 +323,13 @@ function expandRunwayEnd(c: CompactRunwayEnd): RunwayEnd {
     end.thresholdCrossingHeightFt = c.tch;
   }
   if (c.gpa !== undefined) {
-    end.glidepathAngle = c.gpa;
+    end.glidepathAngleDeg = c.gpa;
   }
   if (c.dt !== undefined) {
     end.displacedThresholdFt = c.dt;
   }
   if (c.dte !== undefined) {
-    end.displacedThresholdElevFt = c.dte;
+    end.displacedThresholdElevationFt = c.dte;
   }
   if (c.tdz !== undefined) {
     end.tdzElevationFt = c.tdz;
@@ -455,7 +455,7 @@ function expandAirport(c: CompactAirport): Airport {
     apt.elevationFt = c.elev;
   }
   if (c.mv !== undefined) {
-    apt.magneticVariation = c.mv;
+    apt.magneticVariationDeg = c.mv;
   }
   if (c.mvd !== undefined) {
     apt.magneticVariationDirection = c.mvd;

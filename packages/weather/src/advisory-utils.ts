@@ -25,17 +25,17 @@ export const COMPASS_DIRECTIONS = new Set<string>([
  * Parses an altitude string like "FL350" or "040" or "SFC" into feet.
  * Returns undefined for SFC.
  *
- * @param alt - The altitude string to parse.
+ * @param altitude - The altitude string to parse.
  * @returns The altitude in feet, or undefined for SFC.
  */
-export function parseAltitudeFt(alt: string): number | undefined {
-  if (alt === 'SFC' || alt === 'FRZLVL') {
+export function parseAltitudeFt(altitude: string): number | undefined {
+  if (altitude === 'SFC' || altitude === 'FRZLVL') {
     return undefined;
   }
-  if (alt.startsWith('FL')) {
-    return parseInt(alt.substring(2), 10) * 100;
+  if (altitude.startsWith('FL')) {
+    return parseInt(altitude.substring(2), 10) * 100;
   }
-  return parseInt(alt, 10) * 100;
+  return parseInt(altitude, 10) * 100;
 }
 
 /**
@@ -117,7 +117,7 @@ export function parseMovement(text: string):
       directionDeg?: number;
       directionCompass?: CompassDirection;
       speedKt?: number;
-      speedKmh?: number;
+      speedKmPerHr?: number;
     }
   | undefined {
   // Domestic format: MOV FROM dddssKT or MOVG FROM dddssKT or MOVING FROM dddssKT
@@ -126,7 +126,7 @@ export function parseMovement(text: string):
     const speed = parseInt(domesticMatch[2]!, 10);
     return {
       directionDeg: parseInt(domesticMatch[1]!, 10),
-      ...(domesticMatch[3] === 'KMH' ? { speedKmh: speed } : { speedKt: speed }),
+      ...(domesticMatch[3] === 'KMH' ? { speedKmPerHr: speed } : { speedKt: speed }),
     };
   }
 
@@ -138,7 +138,7 @@ export function parseMovement(text: string):
     const speed = parseInt(intlMatch[2]!, 10);
     return {
       directionCompass: intlMatch[1]! as CompassDirection,
-      ...(intlMatch[3] === 'KMH' ? { speedKmh: speed } : { speedKt: speed }),
+      ...(intlMatch[3] === 'KMH' ? { speedKmPerHr: speed } : { speedKt: speed }),
     };
   }
 

@@ -92,7 +92,7 @@ export interface Fix {
   /** Whether this fix is associated with Special Use Airspace or an ATCAA. */
   suaAtcaa: boolean;
   /** Minimum reception altitude in feet, if published. */
-  minimumReceptionAltitude?: number;
+  minimumReceptionAltitudeFt?: number;
   /** Compulsory reporting designation, if applicable. */
   compulsory?: FixCompulsory;
   /** Previous fix identifier, if the fix was renamed. */

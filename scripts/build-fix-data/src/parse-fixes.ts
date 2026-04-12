@@ -82,7 +82,7 @@ export function buildFix(rec: CsvRecord): Fix | undefined {
 
   const mra = parseOptInt(rec.MIN_RECEP_ALT);
   if (mra !== undefined) {
-    fix.minimumReceptionAltitude = mra;
+    fix.minimumReceptionAltitudeFt = mra;
   }
 
   const compulsoryRaw = rec.COMPULSORY?.trim();

@@ -5,12 +5,12 @@ import type { SkyCondition } from './types/index.js';
 
 describe('deriveFlightCategory', () => {
   it('returns VFR for high ceiling and good visibility', () => {
-    const sky: SkyCondition = { layers: [{ coverage: 'FEW', altitudeFt: 25000 }] };
+    const sky: SkyCondition = { layers: [{ coverage: 'FEW', altitudeFtAgl: 25000 }] };
     assert.equal(deriveFlightCategory(10, false, sky, false), 'VFR');
   });
 
   it('returns MVFR for ceiling 1000-3000 ft', () => {
-    const sky: SkyCondition = { layers: [{ coverage: 'BKN', altitudeFt: 2000 }] };
+    const sky: SkyCondition = { layers: [{ coverage: 'BKN', altitudeFtAgl: 2000 }] };
     assert.equal(deriveFlightCategory(10, false, sky, false), 'MVFR');
   });
 
@@ -20,7 +20,7 @@ describe('deriveFlightCategory', () => {
   });
 
   it('returns IFR for ceiling 500-999 ft', () => {
-    const sky: SkyCondition = { layers: [{ coverage: 'OVC', altitudeFt: 800 }] };
+    const sky: SkyCondition = { layers: [{ coverage: 'OVC', altitudeFtAgl: 800 }] };
     assert.equal(deriveFlightCategory(10, false, sky, false), 'IFR');
   });
 
@@ -30,7 +30,7 @@ describe('deriveFlightCategory', () => {
   });
 
   it('returns LIFR for ceiling below 500 ft', () => {
-    const sky: SkyCondition = { layers: [{ coverage: 'OVC', altitudeFt: 200 }] };
+    const sky: SkyCondition = { layers: [{ coverage: 'OVC', altitudeFtAgl: 200 }] };
     assert.equal(deriveFlightCategory(10, false, sky, false), 'LIFR');
   });
 
@@ -40,7 +40,7 @@ describe('deriveFlightCategory', () => {
   });
 
   it('returns most restrictive of ceiling and visibility', () => {
-    const sky: SkyCondition = { layers: [{ coverage: 'OVC', altitudeFt: 300 }] };
+    const sky: SkyCondition = { layers: [{ coverage: 'OVC', altitudeFtAgl: 300 }] };
     assert.equal(deriveFlightCategory(4, false, sky, false), 'LIFR');
   });
 
@@ -50,12 +50,12 @@ describe('deriveFlightCategory', () => {
   });
 
   it('uses vertical visibility as ceiling', () => {
-    const sky: SkyCondition = { layers: [], verticalVisibilityFt: 500 };
+    const sky: SkyCondition = { layers: [], verticalVisibilityFtAgl: 500 };
     assert.equal(deriveFlightCategory(10, false, sky, false), 'IFR');
   });
 
   it('ignores FEW and SCT for ceiling determination', () => {
-    const sky: SkyCondition = { layers: [{ coverage: 'SCT', altitudeFt: 500 }] };
+    const sky: SkyCondition = { layers: [{ coverage: 'SCT', altitudeFtAgl: 500 }] };
     assert.equal(deriveFlightCategory(10, false, sky, false), 'VFR');
   });
 

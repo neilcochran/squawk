@@ -132,62 +132,62 @@ function compactWaypoint(wp: AirwayWaypoint): CompactWaypoint {
   if (wp.artccId !== undefined) {
     c.art = wp.artccId;
   }
-  if (wp.minimumReceptionAltitude !== undefined) {
-    c.mra = wp.minimumReceptionAltitude;
+  if (wp.minimumReceptionAltitudeFt !== undefined) {
+    c.mra = wp.minimumReceptionAltitudeFt;
   }
-  if (wp.mea !== undefined) {
-    c.mea = wp.mea;
+  if (wp.minimumEnrouteAltitudeFt !== undefined) {
+    c.mea = wp.minimumEnrouteAltitudeFt;
   }
-  if (wp.meaDirection !== undefined) {
-    c.md = wp.meaDirection;
+  if (wp.minimumEnrouteAltitudeDirection !== undefined) {
+    c.md = wp.minimumEnrouteAltitudeDirection;
   }
-  if (wp.meaOpposite !== undefined) {
-    c.meao = wp.meaOpposite;
+  if (wp.minimumEnrouteAltitudeOppositeFt !== undefined) {
+    c.meao = wp.minimumEnrouteAltitudeOppositeFt;
   }
-  if (wp.meaOppositeDirection !== undefined) {
-    c.modo = wp.meaOppositeDirection;
+  if (wp.minimumEnrouteAltitudeOppositeDirection !== undefined) {
+    c.modo = wp.minimumEnrouteAltitudeOppositeDirection;
   }
-  if (wp.maa !== undefined) {
-    c.maa = wp.maa;
+  if (wp.maximumAuthorizedAltitudeFt !== undefined) {
+    c.maa = wp.maximumAuthorizedAltitudeFt;
   }
-  if (wp.moca !== undefined) {
-    c.moca = wp.moca;
+  if (wp.minimumObstructionClearanceAltitudeFt !== undefined) {
+    c.moca = wp.minimumObstructionClearanceAltitudeFt;
   }
-  if (wp.gnssMea !== undefined) {
-    c.gmea = wp.gnssMea;
+  if (wp.gnssMinimumEnrouteAltitudeFt !== undefined) {
+    c.gmea = wp.gnssMinimumEnrouteAltitudeFt;
   }
-  if (wp.gnssMeaDirection !== undefined) {
-    c.gmd = wp.gnssMeaDirection;
+  if (wp.gnssMinimumEnrouteAltitudeDirection !== undefined) {
+    c.gmd = wp.gnssMinimumEnrouteAltitudeDirection;
   }
-  if (wp.gnssMeaOpposite !== undefined) {
-    c.gmeao = wp.gnssMeaOpposite;
+  if (wp.gnssMinimumEnrouteAltitudeOppositeFt !== undefined) {
+    c.gmeao = wp.gnssMinimumEnrouteAltitudeOppositeFt;
   }
-  if (wp.gnssMeaOppositeDirection !== undefined) {
-    c.gmodo = wp.gnssMeaOppositeDirection;
+  if (wp.gnssMinimumEnrouteAltitudeOppositeDirection !== undefined) {
+    c.gmodo = wp.gnssMinimumEnrouteAltitudeOppositeDirection;
   }
-  if (wp.mca !== undefined) {
-    c.mca = wp.mca;
+  if (wp.minimumCrossingAltitudeFt !== undefined) {
+    c.mca = wp.minimumCrossingAltitudeFt;
   }
-  if (wp.mcaDirection !== undefined) {
-    c.mcad = wp.mcaDirection;
+  if (wp.minimumCrossingAltitudeDirection !== undefined) {
+    c.mcad = wp.minimumCrossingAltitudeDirection;
   }
-  if (wp.mcaOpposite !== undefined) {
-    c.mcao = wp.mcaOpposite;
+  if (wp.minimumCrossingAltitudeOppositeFt !== undefined) {
+    c.mcao = wp.minimumCrossingAltitudeOppositeFt;
   }
-  if (wp.mcaOppositeDirection !== undefined) {
-    c.mcaod = wp.mcaOppositeDirection;
+  if (wp.minimumCrossingAltitudeOppositeDirection !== undefined) {
+    c.mcaod = wp.minimumCrossingAltitudeOppositeDirection;
   }
   if (wp.distanceToNextNm !== undefined) {
     c.dtn = wp.distanceToNextNm;
   }
-  if (wp.magneticCourse !== undefined) {
-    c.mc = wp.magneticCourse;
+  if (wp.magneticCourseDeg !== undefined) {
+    c.mc = wp.magneticCourseDeg;
   }
-  if (wp.magneticCourseOpposite !== undefined) {
-    c.mco = wp.magneticCourseOpposite;
+  if (wp.magneticCourseOppositeDeg !== undefined) {
+    c.mco = wp.magneticCourseOppositeDeg;
   }
-  if (wp.changeoverDistance !== undefined) {
-    c.cod = wp.changeoverDistance;
+  if (wp.changeoverDistanceNm !== undefined) {
+    c.cod = wp.changeoverDistanceNm;
   }
   if (wp.signalGap) {
     c.sg = true;

@@ -352,7 +352,7 @@ function parseWindField(value: string): PirepWind | undefined {
   }
 
   return {
-    directionDegMagnetic: parseInt(match[1]!, 10),
+    magneticDirectionDeg: parseInt(match[1]!, 10),
     speedKt: parseInt(match[2]!, 10),
   };
 }
