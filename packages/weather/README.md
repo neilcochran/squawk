@@ -20,7 +20,7 @@ const metar = parseMetar(
 console.log(metar.stationId); // "KJFK"
 console.log(metar.observationTime); // { day: 4, hour: 18, minute: 53 }
 console.log(metar.wind?.speedKt); // 10
-console.log(metar.visibility?.statuteMiles); // 10
+console.log(metar.visibility?.visibilitySm); // 10
 console.log(metar.flightCategory); // "VFR"
 console.log(metar.remarks?.seaLevelPressureMb); // 1020.3
 ```

@@ -91,8 +91,8 @@ describe('usBundledAirports', () => {
     const end = rwy.ends[0];
     assert.ok(end !== undefined);
     assert.equal(typeof end.id, 'string');
-    assert.ok(end.trueHeading !== undefined);
-    assert.ok(end.trueHeading >= 0 && end.trueHeading <= 360);
+    assert.ok(end.trueHeadingDeg !== undefined);
+    assert.ok(end.trueHeadingDeg >= 0 && end.trueHeadingDeg <= 360);
     assert.equal(typeof end.lat, 'number');
     assert.equal(typeof end.lon, 'number');
   });
@@ -147,8 +147,8 @@ describe('usBundledAirports', () => {
         ils.localizerFrequencyMhz >= 108 && ils.localizerFrequencyMhz <= 112,
         `localizer frequency ${ils.localizerFrequencyMhz} outside 108-112 MHz range`,
       );
-      assert.ok(ils.localizerCourseDeg !== undefined);
-      assert.ok(ils.localizerCourseDeg >= 0 && ils.localizerCourseDeg <= 360);
+      assert.ok(ils.localizerMagneticCourseDeg !== undefined);
+      assert.ok(ils.localizerMagneticCourseDeg >= 0 && ils.localizerMagneticCourseDeg <= 360);
     }
   });
 

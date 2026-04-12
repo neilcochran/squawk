@@ -246,19 +246,19 @@ describe('parsePirep', () => {
     it('parses visibility in statute miles', () => {
       const pirep = parsePirep('UA /OV OKC/TM 1530/FL085/TP C172/WX 5SM');
       assert.ok(pirep.visibility);
-      assert.equal(pirep.visibility.statuteMiles, 5);
+      assert.equal(pirep.visibility.visibilitySm, 5);
     });
 
     it('parses fractional visibility', () => {
       const pirep = parsePirep('UA /OV OKC/TM 1530/FL085/TP C172/WX 1/2SM');
       assert.ok(pirep.visibility);
-      assert.equal(pirep.visibility.statuteMiles, 0.5);
+      assert.equal(pirep.visibility.visibilitySm, 0.5);
     });
 
     it('parses visibility with weather phenomena', () => {
       const pirep = parsePirep('UA /OV OKC/TM 1530/FL085/TP C172/WX 3SM -RA BR');
       assert.ok(pirep.visibility);
-      assert.equal(pirep.visibility.statuteMiles, 3);
+      assert.equal(pirep.visibility.visibilitySm, 3);
       assert.ok(pirep.weatherPhenomena);
       assert.equal(pirep.weatherPhenomena.length, 2);
       assert.equal(pirep.weatherPhenomena[0]!.intensity, 'LIGHT');
@@ -269,14 +269,14 @@ describe('parsePirep', () => {
     it('parses P6SM (greater than 6 SM)', () => {
       const pirep = parsePirep('UA /OV OKC/TM 1530/FL085/TP C172/WX P6SM');
       assert.ok(pirep.visibility);
-      assert.equal(pirep.visibility.statuteMiles, 6);
+      assert.equal(pirep.visibility.visibilitySm, 6);
       assert.equal(pirep.visibility.isMoreThan, true);
     });
 
     it('parses less-than visibility (M prefix)', () => {
       const pirep = parsePirep('UA /OV OKC/TM 1530/FL085/TP C172/WX M1/4SM FG');
       assert.ok(pirep.visibility);
-      assert.equal(pirep.visibility.statuteMiles, 0.25);
+      assert.equal(pirep.visibility.visibilitySm, 0.25);
       assert.equal(pirep.visibility.isLessThan, true);
       assert.ok(pirep.weatherPhenomena);
       assert.equal(pirep.weatherPhenomena.length, 1);
@@ -286,7 +286,7 @@ describe('parsePirep', () => {
     it('parses mixed number visibility', () => {
       const pirep = parsePirep('UA /OV OKC/TM 1530/FL085/TP C172/WX 1 1/2SM');
       assert.ok(pirep.visibility);
-      assert.equal(pirep.visibility.statuteMiles, 1.5);
+      assert.equal(pirep.visibility.visibilitySm, 1.5);
     });
 
     it('parses weather phenomena without visibility', () => {
@@ -325,14 +325,14 @@ describe('parsePirep', () => {
     it('parses wind direction and speed', () => {
       const pirep = parsePirep('UA /OV OKC/TM 1530/FL085/TP C172/WV 27045');
       assert.ok(pirep.wind);
-      assert.equal(pirep.wind.directionDegMagnetic, 270);
+      assert.equal(pirep.wind.magneticDirectionDeg, 270);
       assert.equal(pirep.wind.speedKt, 45);
     });
 
     it('parses wind with KT suffix', () => {
       const pirep = parsePirep('UA /OV OKC/TM 1530/FL085/TP C172/WV 27045KT');
       assert.ok(pirep.wind);
-      assert.equal(pirep.wind.directionDegMagnetic, 270);
+      assert.equal(pirep.wind.magneticDirectionDeg, 270);
       assert.equal(pirep.wind.speedKt, 45);
     });
   });
@@ -578,7 +578,7 @@ describe('parsePirep', () => {
       assert.equal(pirep.skyCondition[0]!.topFtMsl, 9000);
 
       assert.ok(pirep.visibility);
-      assert.equal(pirep.visibility.statuteMiles, 5);
+      assert.equal(pirep.visibility.visibilitySm, 5);
 
       assert.ok(pirep.weatherPhenomena);
       assert.equal(pirep.weatherPhenomena.length, 1);
@@ -587,7 +587,7 @@ describe('parsePirep', () => {
       assert.equal(pirep.temperatureC, -5);
 
       assert.ok(pirep.wind);
-      assert.equal(pirep.wind.directionDegMagnetic, 270);
+      assert.equal(pirep.wind.magneticDirectionDeg, 270);
       assert.equal(pirep.wind.speedKt, 45);
 
       assert.ok(pirep.turbulence);

@@ -204,7 +204,7 @@ describe('parseTaf - base forecast', () => {
   it('parses P6SM visibility as more-than 6 statute miles', () => {
     const result = parseTaf('TAF KJFK 041730Z 0418/0524 21012KT P6SM FEW250');
     const base = result.forecast[0]!;
-    assert.equal(base.visibility?.statuteMiles, 6);
+    assert.equal(base.visibility?.visibilitySm, 6);
     assert.equal(base.visibility?.isMoreThan, true);
     assert.equal(base.visibility?.isLessThan, false);
   });
@@ -212,14 +212,14 @@ describe('parseTaf - base forecast', () => {
   it('parses regular statute mile visibility', () => {
     const result = parseTaf('TAF KMSP 041730Z 0418/0524 21015G25KT 4SM -TSRA BKN030CB OVC060');
     const base = result.forecast[0]!;
-    assert.equal(base.visibility?.statuteMiles, 4);
+    assert.equal(base.visibility?.visibilitySm, 4);
     assert.equal(base.visibility?.isMoreThan, false);
   });
 
   it('parses ICAO meter visibility', () => {
     const result = parseTaf('TAF EGLL 042254Z 0500/0606 22018G35KT 9999 SCT035');
     const base = result.forecast[0]!;
-    assert.equal(base.visibility?.meters, 9999);
+    assert.equal(base.visibility?.visibilityM, 9999);
     assert.equal(base.visibility?.isMoreThan, false);
   });
 
@@ -228,16 +228,16 @@ describe('parseTaf - base forecast', () => {
     const base = result.forecast[0]!;
     assert.equal(base.sky.layers.length, 2);
     assert.equal(base.sky.layers[0]!.coverage, 'SCT');
-    assert.equal(base.sky.layers[0]!.altitudeFt, 5000);
+    assert.equal(base.sky.layers[0]!.altitudeFtAgl, 5000);
     assert.equal(base.sky.layers[1]!.coverage, 'BKN');
-    assert.equal(base.sky.layers[1]!.altitudeFt, 10000);
+    assert.equal(base.sky.layers[1]!.altitudeFtAgl, 10000);
   });
 
   it('parses cloud layers with CB type', () => {
     const result = parseTaf('TAF KMSP 041730Z 0418/0524 21015G25KT 4SM -TSRA BKN030CB OVC060');
     const base = result.forecast[0]!;
     assert.equal(base.sky.layers[0]!.type, 'CB');
-    assert.equal(base.sky.layers[0]!.altitudeFt, 3000);
+    assert.equal(base.sky.layers[0]!.altitudeFtAgl, 3000);
   });
 
   it('parses weather phenomena', () => {
@@ -282,7 +282,7 @@ describe('parseTaf - FM groups', () => {
     assert.equal(fm1.wind?.directionDeg, 240);
     assert.equal(fm1.wind?.speedKt, 15);
     assert.equal(fm1.wind?.gustKt, 25);
-    assert.equal(fm1.visibility?.statuteMiles, 6);
+    assert.equal(fm1.visibility?.visibilitySm, 6);
     assert.equal(fm1.visibility?.isMoreThan, true);
   });
 
@@ -326,7 +326,7 @@ describe('parseTaf - TEMPO and BECMG groups', () => {
     assert.equal(tempo.start!.hour, 18);
     assert.equal(tempo.end!.day, 4);
     assert.equal(tempo.end!.hour, 22);
-    assert.equal(tempo.visibility?.statuteMiles, 5);
+    assert.equal(tempo.visibility?.visibilitySm, 5);
     assert.equal(tempo.weather[0]!.intensity, 'LIGHT');
     assert.equal(tempo.weather[0]!.descriptor, 'TS');
     assert.deepEqual(tempo.weather[0]!.phenomena, ['RA']);
@@ -398,7 +398,7 @@ describe('parseTaf - PROB groups', () => {
     assert.equal(prob30.start!.hour, 20);
     assert.equal(prob30.end!.day, 4);
     assert.equal(prob30.end!.hour, 24);
-    assert.equal(prob30.visibility?.statuteMiles, 3);
+    assert.equal(prob30.visibility?.visibilitySm, 3);
   });
 
   it('parses PROB40 TEMPO combined group', () => {
@@ -411,7 +411,7 @@ describe('parseTaf - PROB groups', () => {
     assert.equal(prob40tempo.start!.hour, 6);
     assert.equal(prob40tempo.end!.day, 5);
     assert.equal(prob40tempo.end!.hour, 10);
-    assert.equal(prob40tempo.visibility?.statuteMiles, 2);
+    assert.equal(prob40tempo.visibility?.visibilitySm, 2);
     assert.deepEqual(prob40tempo.weather[0]!.phenomena, ['BR']);
   });
 
@@ -422,7 +422,7 @@ describe('parseTaf - PROB groups', () => {
     const probTempo = result.forecast[2]!;
     assert.equal(probTempo.probability, 30);
     assert.equal(probTempo.changeType, 'TEMPO');
-    assert.equal(probTempo.visibility?.meters, 6000);
+    assert.equal(probTempo.visibility?.visibilityM, 6000);
     assert.deepEqual(probTempo.weather[0]!.phenomena, ['RA']);
     assert.equal(probTempo.weather[0]!.descriptor, 'SH');
   });
@@ -434,7 +434,7 @@ describe('parseTaf - PROB groups', () => {
     const prob = result.forecast[5]!;
     assert.equal(prob.probability, 30);
     assert.equal(prob.changeType, undefined);
-    assert.equal(prob.visibility?.meters, 8000);
+    assert.equal(prob.visibility?.visibilityM, 8000);
     assert.equal(prob.weather.length, 0);
   });
 });
@@ -449,7 +449,7 @@ describe('parseTaf - wind shear', () => {
 
     const base = result.forecast[0]!;
     assert.ok(base.windShear, 'expected wind shear on base forecast');
-    assert.equal(base.windShear.altitudeFt, 2000);
+    assert.equal(base.windShear.altitudeFtAgl, 2000);
     assert.equal(base.windShear.directionDeg, 270);
     assert.equal(base.windShear.speedKt, 50);
   });
@@ -515,7 +515,7 @@ describe('parseTaf - CAVOK and NSW', () => {
     // BECMG 0508/0510 18008KT 8000 NSW SCT015
     const becmg = result.forecast[3]!;
     assert.equal(becmg.isNoSignificantWeather, true);
-    assert.equal(becmg.visibility?.meters, 8000);
+    assert.equal(becmg.visibility?.visibilityM, 8000);
   });
 });
 
@@ -528,7 +528,7 @@ describe('parseTaf - international formats', () => {
     const result = parseTaf(INTL_CAVOK);
 
     const base = result.forecast[0]!;
-    assert.equal(base.visibility?.meters, 9999);
+    assert.equal(base.visibility?.visibilityM, 9999);
     assert.equal(base.visibility?.isMoreThan, false);
   });
 
@@ -537,7 +537,7 @@ describe('parseTaf - international formats', () => {
 
     // FM050200 VRB02KT 1500 FG OVC003
     const fm = result.forecast[2]!;
-    assert.equal(fm.visibility?.meters, 1500);
+    assert.equal(fm.visibility?.visibilityM, 1500);
     assert.deepEqual(fm.weather[0]!.phenomena, ['FG']);
   });
 
@@ -551,7 +551,7 @@ describe('parseTaf - international formats', () => {
     const base = result.forecast[0]!;
     assert.equal(base.wind?.speedKt, 18);
     assert.equal(base.wind?.gustKt, 35);
-    assert.equal(base.visibility?.meters, 9999);
+    assert.equal(base.visibility?.visibilityM, 9999);
   });
 });
 
@@ -581,7 +581,7 @@ describe('parseTaf - real-world TAFs', () => {
     // FM051200 VRB03KT 6SM -SHSN OVC030
     const fm2 = result.forecast[2]!;
     assert.equal(fm2.wind?.isVariable, true);
-    assert.equal(fm2.visibility?.statuteMiles, 6);
+    assert.equal(fm2.visibility?.visibilitySm, 6);
     assert.equal(fm2.weather[0]!.intensity, 'LIGHT');
     assert.equal(fm2.weather[0]!.descriptor, 'SH');
     assert.deepEqual(fm2.weather[0]!.phenomena, ['SN']);
@@ -596,10 +596,10 @@ describe('parseTaf - real-world TAFs', () => {
 
     // FM050300 VRB03KT 3SM BR OVC006
     const fm2 = result.forecast[2]!;
-    assert.equal(fm2.visibility?.statuteMiles, 3);
+    assert.equal(fm2.visibility?.visibilitySm, 3);
     assert.deepEqual(fm2.weather[0]!.phenomena, ['BR']);
     assert.equal(fm2.sky.layers[0]!.coverage, 'OVC');
-    assert.equal(fm2.sky.layers[0]!.altitudeFt, 600);
+    assert.equal(fm2.sky.layers[0]!.altitudeFtAgl, 600);
   });
 
   it('parses corrected TAF', () => {
@@ -611,7 +611,7 @@ describe('parseTaf - real-world TAFs', () => {
     // FM042100 07015G25KT 5SM -RA OVC015
     const fm1 = result.forecast[1]!;
     assert.equal(fm1.wind?.gustKt, 25);
-    assert.equal(fm1.visibility?.statuteMiles, 5);
+    assert.equal(fm1.visibility?.visibilitySm, 5);
     assert.equal(fm1.weather[0]!.intensity, 'LIGHT');
     assert.deepEqual(fm1.weather[0]!.phenomena, ['RA']);
   });
@@ -631,9 +631,9 @@ describe('parseTaf - NSW and SKC in FM group', () => {
     // TEMPO 0420/0424 3SM BR BKN012
     const tempo = result.forecast[2]!;
     assert.equal(tempo.changeType, 'TEMPO');
-    assert.equal(tempo.visibility?.statuteMiles, 3);
+    assert.equal(tempo.visibility?.visibilitySm, 3);
     assert.deepEqual(tempo.weather[0]!.phenomena, ['BR']);
     assert.equal(tempo.sky.layers[0]!.coverage, 'BKN');
-    assert.equal(tempo.sky.layers[0]!.altitudeFt, 1200);
+    assert.equal(tempo.sky.layers[0]!.altitudeFtAgl, 1200);
   });
 });

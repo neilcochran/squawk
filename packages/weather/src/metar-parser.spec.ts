@@ -155,7 +155,7 @@ describe('parseMetar - visibility', () => {
       'METAR KJFK 041853Z 21010KT 10SM FEW250 18/06 A3012 RMK AO2 SLP203 T01830061',
     );
     assert.ok(result.visibility);
-    assert.equal(result.visibility.statuteMiles, 10);
+    assert.equal(result.visibility.visibilitySm, 10);
     assert.equal(result.visibility.isLessThan, false);
   });
 
@@ -164,7 +164,7 @@ describe('parseMetar - visibility', () => {
       'METAR KBOS 041854Z 05009KT 1 1/2SM BR SCT008 OVC015 09/08 A2991 RMK AO2 SLP132 T00890078',
     );
     assert.ok(result.visibility);
-    assert.equal(result.visibility.statuteMiles, 1.5);
+    assert.equal(result.visibility.visibilitySm, 1.5);
   });
 
   it('parses less-than visibility (M1/4SM)', () => {
@@ -172,7 +172,7 @@ describe('parseMetar - visibility', () => {
       'METAR KPHL 041856Z 00000KT M1/4SM FG VV002 08/08 A3005 RMK AO2 VIS 1/4V1 SLP178 T00830078',
     );
     assert.ok(result.visibility);
-    assert.equal(result.visibility.statuteMiles, 0.25);
+    assert.equal(result.visibility.visibilitySm, 0.25);
     assert.equal(result.visibility.isLessThan, true);
   });
 
@@ -181,7 +181,7 @@ describe('parseMetar - visibility', () => {
       'METAR KGRK 041855Z 22055G105KT 1/4SM +TSRA FEW005CB BKN015 OVC030 20/18 A2938 RMK AO2 PK WND 22115/1842 TORNADO B40 2 W MOV E PRESRR SLP918 P0088 T02000178',
     );
     assert.ok(result.visibility);
-    assert.equal(result.visibility.statuteMiles, 0.25);
+    assert.equal(result.visibility.visibilitySm, 0.25);
   });
 
   it('parses half-mile visibility (1/2SM)', () => {
@@ -189,7 +189,7 @@ describe('parseMetar - visibility', () => {
       'METAR KBIS 041856Z 33025G38KT 1/2SM BLSN VV010 M15/M18 A3066 RMK AO2 PK WND 33045/1832 SLP400 T11501178',
     );
     assert.ok(result.visibility);
-    assert.equal(result.visibility.statuteMiles, 0.5);
+    assert.equal(result.visibility.visibilitySm, 0.5);
   });
 
   it('parses CAVOK', () => {
@@ -201,8 +201,8 @@ describe('parseMetar - visibility', () => {
   it('parses ICAO meters visibility', () => {
     const result = parseMetar('METAR LFPG 041830Z 27008KT 0800 FG BKN002 OVC005 08/08 Q1022');
     assert.ok(result.visibility);
-    assert.equal(result.visibility.meters, 800);
-    assert.equal(result.visibility.statuteMiles, undefined);
+    assert.equal(result.visibility.visibilityM, 800);
+    assert.equal(result.visibility.visibilitySm, undefined);
     assert.equal(result.visibility.isLessThan, false);
   });
 });
@@ -595,9 +595,9 @@ describe('parseMetar - sky condition', () => {
     );
     assert.equal(result.sky.layers.length, 4);
     assert.equal(result.sky.layers[0]!.coverage, 'FEW');
-    assert.equal(result.sky.layers[0]!.altitudeFt, 2000);
+    assert.equal(result.sky.layers[0]!.altitudeFtAgl, 2000);
     assert.equal(result.sky.layers[3]!.coverage, 'OVC');
-    assert.equal(result.sky.layers[3]!.altitudeFt, 12000);
+    assert.equal(result.sky.layers[3]!.altitudeFtAgl, 12000);
   });
 
   it('parses CB cloud type', () => {
@@ -618,7 +618,7 @@ describe('parseMetar - sky condition', () => {
     const result = parseMetar(
       'METAR KSEA 041853Z 16005KT 1/4SM FG VV005 08/08 A3010 RMK AO2 SLP198 T00830078',
     );
-    assert.equal(result.sky.verticalVisibilityFt, 500);
+    assert.equal(result.sky.verticalVisibilityFtAgl, 500);
     assert.equal(result.sky.layers.length, 0);
   });
 
@@ -925,8 +925,8 @@ describe('parseMetar - remarks', () => {
     );
     assert.ok(result.remarks);
     assert.ok(result.remarks.variableVisibility);
-    assert.equal(result.remarks.variableVisibility.minStatuteMiles, 0.5);
-    assert.equal(result.remarks.variableVisibility.maxStatuteMiles, 2);
+    assert.equal(result.remarks.variableVisibility.minVisibilitySm, 0.5);
+    assert.equal(result.remarks.variableVisibility.maxVisibilitySm, 2);
   });
 
   it('parses variable ceiling', () => {
@@ -935,8 +935,8 @@ describe('parseMetar - remarks', () => {
     );
     assert.ok(result.remarks);
     assert.ok(result.remarks.variableCeiling);
-    assert.equal(result.remarks.variableCeiling.minFt, 300);
-    assert.equal(result.remarks.variableCeiling.maxFt, 800);
+    assert.equal(result.remarks.variableCeiling.minFtAgl, 300);
+    assert.equal(result.remarks.variableCeiling.maxFtAgl, 800);
   });
 
   it('parses sector visibility', () => {
@@ -948,7 +948,7 @@ describe('parseMetar - remarks', () => {
     assert.ok(result.remarks.sectorVisibility.length >= 2);
     const north = result.remarks.sectorVisibility.find((s) => s.direction === 'N');
     assert.ok(north);
-    assert.equal(north.statuteMiles, 2);
+    assert.equal(north.visibilitySm, 2);
   });
 
   it('parses sensor status codes', () => {
@@ -1060,10 +1060,10 @@ describe('parseMetar - remarks', () => {
     assert.equal(result.remarks.towerSurfaceVisibility.length, 2);
     const twr = result.remarks.towerSurfaceVisibility.find((v) => v.source === 'TWR');
     assert.ok(twr);
-    assert.equal(twr.statuteMiles, 3);
+    assert.equal(twr.visibilitySm, 3);
     const sfc = result.remarks.towerSurfaceVisibility.find((v) => v.source === 'SFC');
     assert.ok(sfc);
-    assert.equal(sfc.statuteMiles, 1);
+    assert.equal(sfc.visibilitySm, 1);
   });
 
   it('parses lightning', () => {
@@ -1104,7 +1104,7 @@ describe('parseMetar - remarks', () => {
     assert.equal(result.remarks.variableSkyCondition.length, 1);
     assert.equal(result.remarks.variableSkyCondition[0]!.coverageLow, 'BKN');
     assert.equal(result.remarks.variableSkyCondition[0]!.coverageHigh, 'OVC');
-    assert.equal(result.remarks.variableSkyCondition[0]!.altitudeFt, 1500);
+    assert.equal(result.remarks.variableSkyCondition[0]!.altitudeFtAgl, 1500);
   });
 
   it('parses significant cloud types in remarks', () => {
@@ -1127,7 +1127,7 @@ describe('parseMetar - remarks', () => {
     const fg = result.remarks.obscurations.find((o) => o.phenomenon === 'FG');
     assert.ok(fg);
     assert.equal(fg.coverage, 'SCT');
-    assert.equal(fg.altitudeFt, 0);
+    assert.equal(fg.altitudeFtAgl, 0);
   });
 
   it('parses visibility and ceiling at second location', () => {
@@ -1139,11 +1139,11 @@ describe('parseMetar - remarks', () => {
     assert.equal(result.remarks.secondLocationObservations.length, 2);
     const vis = result.remarks.secondLocationObservations.find((o) => o.type === 'VIS');
     assert.ok(vis);
-    assert.equal(vis.value, 0.75);
+    assert.equal(vis.visibilitySm, 0.75);
     assert.equal(vis.location, 'RWY15');
     const cig = result.remarks.secondLocationObservations.find((o) => o.type === 'CIG');
     assert.ok(cig);
-    assert.equal(cig.value, 1300);
+    assert.equal(cig.ceilingFtAgl, 1300);
     assert.equal(cig.location, 'RWY15');
   });
 });

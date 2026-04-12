@@ -160,7 +160,7 @@ export interface SigmetMovement {
   /** Movement speed in knots. Present when the speed is reported in knots. */
   speedKt?: number;
   /** Movement speed in kilometers per hour. Present when the speed is reported in KMH (some international MWOs). */
-  speedKmh?: number;
+  speedKmPerHr?: number;
 }
 
 /**
@@ -187,7 +187,7 @@ export interface SigmetHazard {
   /** Cause of the hazard as stated in the DUE TO clause (e.g. "JTST", "FZRA", "WNDSHR ASSOCD WITH JTST"). */
   cause?: string;
   /** Visibility below a threshold in statute miles, for dust/sandstorm SIGMETs (VIS BLW 3SM). */
-  visibilityBelow?: number;
+  visibilityBelowSm?: number;
 }
 
 /**

@@ -24,10 +24,10 @@ export const ISA_SEA_LEVEL_DENSITY_KGM3 = 1.225;
 export const ISA_LAPSE_RATE_K_PER_M = 0.0065;
 
 /** Tropopause altitude in feet (above which temperature is constant in the lower stratosphere). */
-export const ISA_TROPOPAUSE_ALT_FT = 36089.24;
+export const ISA_TROPOPAUSE_ALTITUDE_FT = 36089.24;
 
 /** Tropopause altitude in metres. */
-export const ISA_TROPOPAUSE_ALT_M = 11000;
+export const ISA_TROPOPAUSE_ALTITUDE_M = 11000;
 
 /** Constant temperature in the lower stratosphere: -56.5 degrees C = 216.65 K. */
 export const ISA_STRATOSPHERE_TEMP_K = 216.65;
@@ -54,7 +54,7 @@ const PRESSURE_EXPONENT = G / (R * ISA_LAPSE_RATE_K_PER_M);
  * Speed of sound at ISA sea-level conditions in knots.
  * Derived from sqrt(gamma * R * T0) = 340.294 m/s = 661.479 kt.
  */
-export const ISA_SPEED_OF_SOUND_SEA_LEVEL_KNOTS = 661.4788;
+export const ISA_SPEED_OF_SOUND_SEA_LEVEL_KT = 661.4788;
 
 /**
  * Returns the ISA standard temperature in Celsius at a given pressure altitude.
@@ -69,7 +69,7 @@ export const ISA_SPEED_OF_SOUND_SEA_LEVEL_KNOTS = 661.4788;
  * @returns ISA standard temperature in degrees Celsius.
  */
 export function isaTemperatureCelsius(pressureAltitudeFt: number): number {
-  if (pressureAltitudeFt <= ISA_TROPOPAUSE_ALT_FT) {
+  if (pressureAltitudeFt <= ISA_TROPOPAUSE_ALTITUDE_FT) {
     return ISA_SEA_LEVEL_TEMP_C - ISA_LAPSE_RATE_C_PER_1000FT * (pressureAltitudeFt / 1000);
   }
   return -56.5;
@@ -95,7 +95,7 @@ export function pressureAtAltitudeHectopascals(
 ): number {
   const altM = altitudeFt * FT_TO_M;
 
-  if (altitudeFt <= ISA_TROPOPAUSE_ALT_FT) {
+  if (altitudeFt <= ISA_TROPOPAUSE_ALTITUDE_FT) {
     // Troposphere: pressure decreases with the ISA lapse rate.
     return (
       seaLevelPressureHpa *
@@ -105,10 +105,10 @@ export function pressureAtAltitudeHectopascals(
 
   // Lower stratosphere: isothermal layer, exponential pressure decrease.
   const tropopausePressure = pressureAtAltitudeHectopascals(
-    ISA_TROPOPAUSE_ALT_FT,
+    ISA_TROPOPAUSE_ALTITUDE_FT,
     seaLevelPressureHpa,
   );
-  const deltaAltM = (altitudeFt - ISA_TROPOPAUSE_ALT_FT) * FT_TO_M;
+  const deltaAltM = (altitudeFt - ISA_TROPOPAUSE_ALTITUDE_FT) * FT_TO_M;
   return tropopausePressure * Math.exp((-G * deltaAltM) / (R * ISA_STRATOSPHERE_TEMP_K));
 }
 
@@ -121,13 +121,13 @@ export function pressureAtAltitudeHectopascals(
  * Assumes the resulting density altitude falls within the troposphere (below 36,089 ft).
  * Density altitudes above the tropopause are uncommon in practice but are not validated.
  *
- * @param pressureAltFt - Pressure altitude in feet.
+ * @param pressureAltitudeFt - Pressure altitude in feet.
  * @param oatCelsius - Outside air temperature (OAT) in degrees Celsius.
  * @returns Density altitude in feet.
  */
-export function densityAltitudeFeet(pressureAltFt: number, oatCelsius: number): number {
+export function densityAltitudeFt(pressureAltitudeFt: number, oatCelsius: number): number {
   const T0 = ISA_SEA_LEVEL_TEMP_K;
-  const T_isa = isaTemperatureCelsius(pressureAltFt) + 273.15;
+  const T_isa = isaTemperatureCelsius(pressureAltitudeFt) + 273.15;
   const T_actual = oatCelsius + 273.15;
 
   // Actual density ratio relative to ISA sea-level: σ = (P/P0) * (T0/T_actual).
@@ -148,9 +148,9 @@ export function densityAltitudeFeet(pressureAltFt: number, oatCelsius: number): 
  * @param temperatureCelsius - Air temperature in degrees Celsius.
  * @returns Speed of sound in knots.
  */
-export function speedOfSoundKnots(temperatureCelsius: number): number {
+export function speedOfSoundKt(temperatureCelsius: number): number {
   const tempK = temperatureCelsius + 273.15;
-  return ISA_SPEED_OF_SOUND_SEA_LEVEL_KNOTS * Math.sqrt(tempK / ISA_SEA_LEVEL_TEMP_K);
+  return ISA_SPEED_OF_SOUND_SEA_LEVEL_KT * Math.sqrt(tempK / ISA_SEA_LEVEL_TEMP_K);
 }
 
 /**
@@ -169,31 +169,31 @@ export function speedOfSoundKnots(temperatureCelsius: number): number {
  *
  * If oatCelsius is not provided, ISA standard temperature at the given altitude is used.
  *
- * @param casKnots - Calibrated airspeed in knots.
- * @param pressureAltFt - Pressure altitude in feet.
+ * @param calibratedAirspeedKt - Calibrated airspeed in knots.
+ * @param pressureAltitudeFt - Pressure altitude in feet.
  * @param oatCelsius - Outside air temperature in degrees Celsius (optional, defaults to ISA).
  * @returns True airspeed (TAS) in knots.
  */
-export function tasFromCasKnots(
-  casKnots: number,
-  pressureAltFt: number,
+export function trueAirspeedFromCalibratedKt(
+  calibratedAirspeedKt: number,
+  pressureAltitudeFt: number,
   oatCelsius?: number,
 ): number {
-  const a0 = ISA_SPEED_OF_SOUND_SEA_LEVEL_KNOTS;
+  const a0 = ISA_SPEED_OF_SOUND_SEA_LEVEL_KT;
   const P0 = ISA_SEA_LEVEL_PRESSURE_HPA;
 
   // Static pressure at the pressure altitude on the standard datum.
-  const P = pressureAtAltitudeHectopascals(pressureAltFt);
+  const P = pressureAtAltitudeHectopascals(pressureAltitudeFt);
 
   // Temperature at altitude (OAT if provided, else ISA standard).
-  const tempC = oatCelsius !== undefined ? oatCelsius : isaTemperatureCelsius(pressureAltFt);
+  const tempC = oatCelsius !== undefined ? oatCelsius : isaTemperatureCelsius(pressureAltitudeFt);
   const tempK = tempC + 273.15;
 
   // Speed of sound at altitude temperature.
   const a = a0 * Math.sqrt(tempK / ISA_SEA_LEVEL_TEMP_K);
 
   // Impact pressure from CAS using sea-level ISA conditions (compressible flow).
-  const qc = P0 * (Math.pow(1 + (casKnots / a0) ** 2 / 5, 3.5) - 1);
+  const qc = P0 * (Math.pow(1 + (calibratedAirspeedKt / a0) ** 2 / 5, 3.5) - 1);
 
   // TAS from impact pressure and actual altitude conditions.
   return a * Math.sqrt(5 * (Math.pow(qc / P + 1, 2 / 7) - 1));
@@ -204,12 +204,12 @@ export function tasFromCasKnots(
  * Mach number is the ratio of TAS to the local speed of sound, which varies
  * with temperature (and thus altitude in ISA conditions).
  *
- * @param tasKnots - True airspeed in knots.
+ * @param trueAirspeedKt - True airspeed in knots.
  * @param oatCelsius - Outside air temperature in degrees Celsius.
  * @returns Mach number (dimensionless).
  */
-export function machFromTasKnots(tasKnots: number, oatCelsius: number): number {
-  return tasKnots / speedOfSoundKnots(oatCelsius);
+export function machFromTrueAirspeedKt(trueAirspeedKt: number, oatCelsius: number): number {
+  return trueAirspeedKt / speedOfSoundKt(oatCelsius);
 }
 
 /**
@@ -219,6 +219,6 @@ export function machFromTasKnots(tasKnots: number, oatCelsius: number): number {
  * @param oatCelsius - Outside air temperature in degrees Celsius.
  * @returns True airspeed (TAS) in knots.
  */
-export function tasFromMachKnots(mach: number, oatCelsius: number): number {
-  return mach * speedOfSoundKnots(oatCelsius);
+export function trueAirspeedFromMachKt(mach: number, oatCelsius: number): number {
+  return mach * speedOfSoundKt(oatCelsius);
 }

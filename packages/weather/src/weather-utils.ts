@@ -84,7 +84,7 @@ export function parseVisibility(
   if (plusMatch) {
     return {
       visibility: {
-        statuteMiles: parseInt(plusMatch[1]!, 10),
+        visibilitySm: parseInt(plusMatch[1]!, 10),
         isLessThan: false,
         isMoreThan: true,
       },
@@ -102,7 +102,7 @@ export function parseVisibility(
       const denominator = parseInt(fracMatch[2]!, 10);
       return {
         visibility: {
-          statuteMiles: whole + numerator / denominator,
+          visibilitySm: whole + numerator / denominator,
           isLessThan: false,
           isMoreThan: false,
         },
@@ -118,7 +118,7 @@ export function parseVisibility(
     const denominator = parseInt(mFracMatch[2]!, 10);
     return {
       visibility: {
-        statuteMiles: numerator / denominator,
+        visibilitySm: numerator / denominator,
         isLessThan: true,
         isMoreThan: false,
       },
@@ -133,7 +133,7 @@ export function parseVisibility(
     const denominator = parseInt(fracOnlyMatch[2]!, 10);
     return {
       visibility: {
-        statuteMiles: numerator / denominator,
+        visibilitySm: numerator / denominator,
         isLessThan: false,
         isMoreThan: false,
       },
@@ -146,7 +146,7 @@ export function parseVisibility(
   if (wholeMatch) {
     return {
       visibility: {
-        statuteMiles: parseInt(wholeMatch[1]!, 10),
+        visibilitySm: parseInt(wholeMatch[1]!, 10),
         isLessThan: false,
         isMoreThan: false,
       },
@@ -159,7 +159,7 @@ export function parseVisibility(
   if (metersMatch) {
     return {
       visibility: {
-        meters: parseInt(metersMatch[1]!, 10),
+        visibilityM: parseInt(metersMatch[1]!, 10),
         isLessThan: false,
         isMoreThan: false,
       },
@@ -281,7 +281,7 @@ export function parseCloudLayer(token: string): CloudLayer | undefined {
 
   return {
     coverage: match[1] as CloudCoverage,
-    altitudeFt: parseInt(match[2]!, 10) * 100,
+    altitudeFtAgl: parseInt(match[2]!, 10) * 100,
     ...(match[3] ? { type: match[3] as CloudType } : {}),
   };
 }

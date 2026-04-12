@@ -142,7 +142,7 @@ export interface IlsSystem {
   /** Localizer frequency in MHz (e.g. 110.9). */
   localizerFrequencyMhz?: number;
   /** Localizer front course bearing in magnetic degrees. */
-  localizerCourseDeg?: number;
+  localizerMagneticCourseDeg?: number;
   /** Glide slope angle in degrees (typically around 3.0). */
   glideSlopeAngleDeg?: number;
   /** Glide slope class/type code (e.g. "GS" for standard glide slope, "GD" for glide slope with DME). */
@@ -159,7 +159,7 @@ export interface RunwayEnd {
   /** Runway end designator (e.g. "04L", "22R", "09"). */
   id: string;
   /** True heading in degrees. */
-  trueHeading?: number;
+  trueHeadingDeg?: number;
   /** Instrument Landing System installed at this runway end. */
   ils?: IlsSystem;
   /** Whether right-hand traffic pattern is in effect for this end. */
@@ -177,11 +177,11 @@ export interface RunwayEnd {
   /** Threshold crossing height in feet AGL. */
   thresholdCrossingHeightFt?: number;
   /** Visual glide path angle in degrees. */
-  glidepathAngle?: number;
+  glidepathAngleDeg?: number;
   /** Displaced threshold distance in feet from the runway end. */
   displacedThresholdFt?: number;
   /** Displaced threshold elevation in feet MSL. */
-  displacedThresholdElevFt?: number;
+  displacedThresholdElevationFt?: number;
   /** Touchdown zone elevation in feet MSL. */
   tdzElevationFt?: number;
   /** Type of visual glide slope indicator. */
@@ -290,7 +290,7 @@ export interface Airport {
   /** Field elevation in feet MSL. */
   elevationFt?: number;
   /** Magnetic variation in degrees. */
-  magneticVariation?: number;
+  magneticVariationDeg?: number;
   /** Magnetic variation direction ("E" or "W"). */
   magneticVariationDirection?: string;
   /** Year the magnetic variation was last determined. */

@@ -139,7 +139,7 @@ function expandFix(c: CompactFix): Fix {
     fix.lowArtccId = c.lart;
   }
   if (c.mra !== undefined) {
-    fix.minimumReceptionAltitude = c.mra;
+    fix.minimumReceptionAltitudeFt = c.mra;
   }
   if (c.cmp !== undefined) {
     fix.compulsory = c.cmp;

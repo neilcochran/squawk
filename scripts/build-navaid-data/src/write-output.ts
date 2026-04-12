@@ -118,8 +118,8 @@ function compactNavaid(nav: Navaid): CompactNavaid {
   if (nav.tacanChannel !== undefined) {
     c.ch = nav.tacanChannel;
   }
-  if (nav.magneticVariation !== undefined) {
-    c.mv = nav.magneticVariation;
+  if (nav.magneticVariationDeg !== undefined) {
+    c.mv = nav.magneticVariationDeg;
   }
   if (nav.magneticVariationDirection !== undefined) {
     c.mvd = nav.magneticVariationDirection;

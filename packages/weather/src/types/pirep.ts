@@ -224,7 +224,7 @@ export interface PirepIcing {
  */
 export interface PirepWind {
   /** Wind direction in degrees magnetic (0-360). */
-  directionDegMagnetic: number;
+  magneticDirectionDeg: number;
   /** Wind speed in knots. */
   speedKt: number;
 }

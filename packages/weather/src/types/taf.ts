@@ -32,7 +32,7 @@ export const TAF_CHANGE_TYPE_MAP: Record<TafChangeType, string> = {
  */
 export interface TafWindShear {
   /** Altitude of the wind shear layer in feet AGL (hundreds of feet multiplied by 100). */
-  altitudeFt: number;
+  altitudeFtAgl: number;
   /** Wind direction in degrees true at the shear altitude. */
   directionDeg: number;
   /** Wind speed in knots at the shear altitude. */

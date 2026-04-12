@@ -219,7 +219,7 @@ describe('parse', () => {
     const el = result.elements[0]!;
     assert.equal(el.type, 'speedAltitude');
     if (el.type === 'speedAltitude') {
-      assert.equal(el.speedKnots, 450);
+      assert.equal(el.speedKt, 450);
       assert.equal(el.flightLevel, 350);
     }
   });
@@ -230,7 +230,7 @@ describe('parse', () => {
     const el = result.elements[0]!;
     assert.equal(el.type, 'speedAltitude');
     if (el.type === 'speedAltitude') {
-      assert.equal(el.speedKmh, 830);
+      assert.equal(el.speedKmPerHr, 830);
       assert.equal(el.flightLevel, 350);
     }
   });
@@ -252,7 +252,7 @@ describe('parse', () => {
     const el = result.elements[0]!;
     assert.equal(el.type, 'speedAltitude');
     if (el.type === 'speedAltitude') {
-      assert.equal(el.speedKnots, 250);
+      assert.equal(el.speedKt, 250);
       assert.equal(el.altitudeFt, 6500);
     }
   });

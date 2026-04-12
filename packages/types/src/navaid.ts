@@ -80,7 +80,7 @@ export interface Navaid {
   /** TACAN/DME channel designation (e.g. "84X", "77X"). */
   tacanChannel?: string;
   /** Magnetic variation in degrees (absolute value). */
-  magneticVariation?: number;
+  magneticVariationDeg?: number;
   /** Magnetic variation direction ("E" or "W"). */
   magneticVariationDirection?: string;
   /** Year the magnetic variation was last determined. */

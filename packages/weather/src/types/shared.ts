@@ -73,9 +73,9 @@ export interface Wind {
  */
 export interface Visibility {
   /** Prevailing visibility in statute miles (US format). */
-  statuteMiles?: number;
+  visibilitySm?: number;
   /** Prevailing visibility in meters (ICAO format). */
-  meters?: number;
+  visibilityM?: number;
   /** True when visibility is reported as less than the stated value (M prefix in US METARs). */
   isLessThan: boolean;
   /** True when visibility is reported as greater than the stated value (P prefix, e.g. P6SM in TAFs). */
@@ -256,7 +256,7 @@ export interface CloudLayer {
   /** Cloud coverage amount for this layer. */
   coverage: CloudCoverage;
   /** Cloud base altitude in feet AGL (hundreds of feet as reported, multiplied by 100). */
-  altitudeFt: number;
+  altitudeFtAgl: number;
   /** Significant cloud type modifier, if reported. */
   type?: CloudType;
 }
@@ -277,7 +277,7 @@ export interface SkyCondition {
   /** Cloud layers reported, ordered by ascending altitude. Empty when sky is clear or only vertical visibility is reported. */
   layers: CloudLayer[];
   /** Vertical visibility in feet AGL, reported when the sky is obscured (VVxxx). */
-  verticalVisibilityFt?: number;
+  verticalVisibilityFtAgl?: number;
   /** Clear sky indicator, if reported. */
   clear?: SkyClearType;
 }
