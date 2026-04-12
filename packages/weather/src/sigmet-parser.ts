@@ -784,7 +784,7 @@ function parseNonConvectiveHazards(content: string): SigmetHazard[] {
         hazardType: 'DUST_SANDSTORM',
         isOccasional: false,
         ...(altRange ? { altitudeRange: altRange } : {}),
-        ...(visMatch ? { visibilityBelow: parseInt(visMatch[1]!, 10) } : {}),
+        ...(visMatch ? { visibilityBelowSm: parseInt(visMatch[1]!, 10) } : {}),
       });
     }
   }
@@ -816,7 +816,7 @@ function parseSingleHazard(text: string): SigmetHazard | undefined {
     isOccasional,
     ...(altitudeRange ? { altitudeRange } : {}),
     ...(causeMatch ? { cause: causeMatch[1]!.trim() } : {}),
-    ...(visMatch ? { visibilityBelow: parseInt(visMatch[1]!, 10) } : {}),
+    ...(visMatch ? { visibilityBelowSm: parseInt(visMatch[1]!, 10) } : {}),
   };
 }
 

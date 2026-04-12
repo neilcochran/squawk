@@ -23,11 +23,11 @@ const STANDARD_RATE_DEG_PER_SEC = 3;
  * rate. The formula is derived from the balance of centripetal force and the
  * horizontal component of lift in a coordinated turn.
  *
- * @param tasKt - True airspeed in knots.
+ * @param trueAirspeedKt - True airspeed in knots.
  * @returns Bank angle in degrees required for a 3 deg/sec standard rate turn.
  */
-export function standardRateBankAngle(tasKt: number): number {
-  const vFps = tasKt * KT_TO_FPS;
+export function standardRateBankAngle(trueAirspeedKt: number): number {
+  const vFps = trueAirspeedKt * KT_TO_FPS;
   const turnRateRadPerSec = angle.degreesToRadians(STANDARD_RATE_DEG_PER_SEC);
   return angle.radiansToDegrees(Math.atan((vFps * turnRateRadPerSec) / G_FT_S2));
 }
@@ -35,12 +35,12 @@ export function standardRateBankAngle(tasKt: number): number {
 /**
  * Computes the turn radius for a given true airspeed and bank angle.
  *
- * @param tasKt - True airspeed in knots.
+ * @param trueAirspeedKt - True airspeed in knots.
  * @param bankAngleDeg - Bank angle in degrees.
  * @returns Turn radius in nautical miles.
  */
-export function turnRadius(tasKt: number, bankAngleDeg: number): number {
-  const vFps = tasKt * KT_TO_FPS;
+export function turnRadius(trueAirspeedKt: number, bankAngleDeg: number): number {
+  const vFps = trueAirspeedKt * KT_TO_FPS;
   const bankRad = angle.degreesToRadians(bankAngleDeg);
   const radiusFt = (vFps * vFps) / (G_FT_S2 * Math.tan(bankRad));
   return radiusFt / 6076.11549;
@@ -50,11 +50,11 @@ export function turnRadius(tasKt: number, bankAngleDeg: number): number {
  * Computes the turn radius for a standard rate turn (3 degrees per second)
  * at a given true airspeed.
  *
- * @param tasKt - True airspeed in knots.
+ * @param trueAirspeedKt - True airspeed in knots.
  * @returns Turn radius in nautical miles.
  */
-export function standardRateTurnRadius(tasKt: number): number {
-  return turnRadius(tasKt, standardRateBankAngle(tasKt));
+export function standardRateTurnRadius(trueAirspeedKt: number): number {
+  return turnRadius(trueAirspeedKt, standardRateBankAngle(trueAirspeedKt));
 }
 
 /**

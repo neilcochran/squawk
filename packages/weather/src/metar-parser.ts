@@ -157,7 +157,7 @@ export function parseMetar(raw: string): Metar {
       } else if (token.startsWith('VV')) {
         const vvMatch = token.match(/^VV(\d{3})$/);
         if (vvMatch) {
-          sky.verticalVisibilityFt = parseInt(vvMatch[1]!, 10) * 100;
+          sky.verticalVisibilityFtAgl = parseInt(vvMatch[1]!, 10) * 100;
         }
         pos++;
       } else if (/^(FEW|SCT|BKN|OVC)\d{3}/.test(token)) {
@@ -204,7 +204,7 @@ export function parseMetar(raw: string): Metar {
 
   // Derive flight category
   const flightCategory = deriveFlightCategory(
-    visibility?.statuteMiles,
+    visibility?.visibilitySm,
     visibility?.isLessThan ?? false,
     sky,
     isCavok,

@@ -45,7 +45,7 @@ describe('usBundledAirways', () => {
 
   it('contains airways with MEA data on waypoints', () => {
     const withMea = usBundledAirways.records.find((a) =>
-      a.waypoints.some((wp) => wp.mea !== undefined),
+      a.waypoints.some((wp) => wp.minimumEnrouteAltitudeFt !== undefined),
     );
     assert.ok(withMea !== undefined, 'expected at least one airway with MEA data');
   });

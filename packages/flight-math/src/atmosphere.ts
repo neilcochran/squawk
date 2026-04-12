@@ -18,7 +18,7 @@ import { isa, pressure } from '@squawk/units';
  * altitude degrades engine power, propeller/rotor efficiency, and aerodynamic lift.
  *
  * For the two-input form (pressure altitude + OAT already known), use
- * `isa.densityAltitudeFeet()` from `@squawk/units` directly.
+ * `isa.densityAltitudeFt()` from `@squawk/units` directly.
  *
  * @param fieldElevationFt - Field elevation above MSL in feet.
  * @param altimeterSettingInHg - Current altimeter setting (QNH) in inches of mercury.
@@ -30,8 +30,8 @@ export function densityAltitude(
   altimeterSettingInHg: number,
   oatCelsius: number,
 ): number {
-  const pa = pressure.pressureAltitudeFeet(fieldElevationFt, altimeterSettingInHg);
-  return isa.densityAltitudeFeet(pa, oatCelsius);
+  const pa = pressure.pressureAltitudeFt(fieldElevationFt, altimeterSettingInHg);
+  return isa.densityAltitudeFt(pa, oatCelsius);
 }
 
 /**
@@ -64,7 +64,7 @@ export function trueAltitude(
   oatCelsius: number,
   stationElevationFt?: number,
 ): number {
-  const pa = pressure.pressureAltitudeFeet(indicatedAltitudeFt, altimeterSettingInHg);
+  const pa = pressure.pressureAltitudeFt(indicatedAltitudeFt, altimeterSettingInHg);
   const isaTempK = isa.isaTemperatureCelsius(pa) + 273.15;
   const oatK = oatCelsius + 273.15;
   const tempRatio = oatK / isaTempK;

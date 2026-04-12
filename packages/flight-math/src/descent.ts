@@ -19,17 +19,17 @@ const GS_FPM_FACTOR = FT_PER_NM / 60;
  * The result is the horizontal distance in nautical miles from the target
  * point at which the descent should begin.
  *
- * @param currentAltFt - Current altitude in feet MSL.
- * @param targetAltFt - Target altitude in feet MSL.
+ * @param currentAltitudeFt - Current altitude in feet MSL.
+ * @param targetAltitudeFt - Target altitude in feet MSL.
  * @param descentAngleDeg - Desired descent angle in degrees (positive value).
  * @returns Distance from the target to begin descent, in nautical miles.
  */
 export function topOfDescent(
-  currentAltFt: number,
-  targetAltFt: number,
+  currentAltitudeFt: number,
+  targetAltitudeFt: number,
   descentAngleDeg: number,
 ): number {
-  const altToLose = currentAltFt - targetAltFt;
+  const altToLose = currentAltitudeFt - targetAltitudeFt;
   const angleRad = angle.degreesToRadians(descentAngleDeg);
   return altToLose / (Math.tan(angleRad) * FT_PER_NM);
 }
@@ -38,21 +38,21 @@ export function topOfDescent(
  * Computes the distance from the target at which to begin a descent, given a
  * desired descent rate in feet per minute and a groundspeed.
  *
- * @param currentAltFt - Current altitude in feet MSL.
- * @param targetAltFt - Target altitude in feet MSL.
- * @param descentRateFpm - Desired descent rate in feet per minute (positive value).
- * @param groundspeedKt - Groundspeed in knots.
+ * @param currentAltitudeFt - Current altitude in feet MSL.
+ * @param targetAltitudeFt - Target altitude in feet MSL.
+ * @param descentRateFtPerMin - Desired descent rate in feet per minute (positive value).
+ * @param groundSpeedKt - Groundspeed in knots.
  * @returns Distance from the target to begin descent, in nautical miles.
  */
 export function topOfDescentFromRate(
-  currentAltFt: number,
-  targetAltFt: number,
-  descentRateFpm: number,
-  groundspeedKt: number,
+  currentAltitudeFt: number,
+  targetAltitudeFt: number,
+  descentRateFtPerMin: number,
+  groundSpeedKt: number,
 ): number {
-  const altToLose = currentAltFt - targetAltFt;
-  const timeMin = altToLose / descentRateFpm;
-  return groundspeedKt * (timeMin / 60);
+  const altToLose = currentAltitudeFt - targetAltitudeFt;
+  const timeMin = altToLose / descentRateFtPerMin;
+  return groundSpeedKt * (timeMin / 60);
 }
 
 /**
@@ -60,19 +60,19 @@ export function topOfDescentFromRate(
  * given distance at a given groundspeed.
  *
  * @param distanceNm - Distance to the target point in nautical miles.
- * @param currentAltFt - Current altitude in feet MSL.
- * @param targetAltFt - Target altitude in feet MSL.
- * @param groundspeedKt - Groundspeed in knots.
+ * @param currentAltitudeFt - Current altitude in feet MSL.
+ * @param targetAltitudeFt - Target altitude in feet MSL.
+ * @param groundSpeedKt - Groundspeed in knots.
  * @returns Required descent rate in feet per minute (positive value).
  */
 export function requiredDescentRate(
   distanceNm: number,
-  currentAltFt: number,
-  targetAltFt: number,
-  groundspeedKt: number,
+  currentAltitudeFt: number,
+  targetAltitudeFt: number,
+  groundSpeedKt: number,
 ): number {
-  const altToLose = currentAltFt - targetAltFt;
-  const timeMin = (distanceNm / groundspeedKt) * 60;
+  const altToLose = currentAltitudeFt - targetAltitudeFt;
+  const timeMin = (distanceNm / groundSpeedKt) * 60;
   return altToLose / timeMin;
 }
 
@@ -81,19 +81,19 @@ export function requiredDescentRate(
  * given distance at a given groundspeed.
  *
  * @param distanceNm - Distance available for climbing in nautical miles.
- * @param currentAltFt - Current altitude in feet MSL.
- * @param targetAltFt - Target altitude in feet MSL.
- * @param groundspeedKt - Groundspeed in knots.
+ * @param currentAltitudeFt - Current altitude in feet MSL.
+ * @param targetAltitudeFt - Target altitude in feet MSL.
+ * @param groundSpeedKt - Groundspeed in knots.
  * @returns Required climb rate in feet per minute (positive value).
  */
 export function requiredClimbRate(
   distanceNm: number,
-  currentAltFt: number,
-  targetAltFt: number,
-  groundspeedKt: number,
+  currentAltitudeFt: number,
+  targetAltitudeFt: number,
+  groundSpeedKt: number,
 ): number {
-  const altToGain = targetAltFt - currentAltFt;
-  const timeMin = (distanceNm / groundspeedKt) * 60;
+  const altToGain = targetAltitudeFt - currentAltitudeFt;
+  const timeMin = (distanceNm / groundSpeedKt) * 60;
   return altToGain / timeMin;
 }
 
@@ -101,13 +101,16 @@ export function requiredClimbRate(
  * Converts a vertical speed (feet per minute) to a flight path gradient angle
  * in degrees at a given groundspeed.
  *
- * @param verticalSpeedFpm - Vertical speed in feet per minute.
- * @param groundspeedKt - Groundspeed in knots.
+ * @param verticalSpeedFtPerMin - Vertical speed in feet per minute.
+ * @param groundSpeedKt - Groundspeed in knots.
  * @returns Flight path angle in degrees.
  */
-export function verticalSpeedToGradient(verticalSpeedFpm: number, groundspeedKt: number): number {
-  const horizontalFpm = groundspeedKt * GS_FPM_FACTOR;
-  return angle.radiansToDegrees(Math.atan(verticalSpeedFpm / horizontalFpm));
+export function verticalSpeedToGradient(
+  verticalSpeedFtPerMin: number,
+  groundSpeedKt: number,
+): number {
+  const horizontalFpm = groundSpeedKt * GS_FPM_FACTOR;
+  return angle.radiansToDegrees(Math.atan(verticalSpeedFtPerMin / horizontalFpm));
 }
 
 /**
@@ -115,11 +118,11 @@ export function verticalSpeedToGradient(verticalSpeedFpm: number, groundspeedKt:
  * per minute) at a given groundspeed.
  *
  * @param gradientDeg - Flight path angle in degrees.
- * @param groundspeedKt - Groundspeed in knots.
+ * @param groundSpeedKt - Groundspeed in knots.
  * @returns Vertical speed in feet per minute.
  */
-export function gradientToVerticalSpeed(gradientDeg: number, groundspeedKt: number): number {
-  const horizontalFpm = groundspeedKt * GS_FPM_FACTOR;
+export function gradientToVerticalSpeed(gradientDeg: number, groundSpeedKt: number): number {
+  const horizontalFpm = groundSpeedKt * GS_FPM_FACTOR;
   return Math.tan(angle.degreesToRadians(gradientDeg)) * horizontalFpm;
 }
 

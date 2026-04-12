@@ -161,7 +161,7 @@ export function qfeToQnh(qfeHpa: number, airfieldElevationFt: number): number {
  * @param qnhInHg - QNH altimeter setting in inches of mercury.
  * @returns Pressure altitude in feet.
  */
-export function pressureAltitudeFeet(indicatedAltitudeFt: number, qnhInHg: number): number {
+export function pressureAltitudeFt(indicatedAltitudeFt: number, qnhInHg: number): number {
   const qnhHpa = qnhInHg * INHG_TO_HPA;
   const indicatedAltM = indicatedAltitudeFt * FT_TO_M;
 

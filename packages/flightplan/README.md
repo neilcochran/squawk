@@ -77,17 +77,17 @@ the configured lookup providers.
 
 Each element has a `type` discriminant and a `raw` field with the original token.
 
-| Type            | Description                               | Key fields                                                 |
-| --------------- | ----------------------------------------- | ---------------------------------------------------------- |
-| `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                  |
-| `sid`           | Standard Instrument Departure             | `procedure`, `waypoints`                                   |
-| `star`          | Standard Terminal Arrival Route           | `procedure`, `waypoints`                                   |
-| `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`               |
-| `direct`        | DCT (direct) indicator                    | -                                                          |
-| `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                        |
-| `coordinate`    | Lat/lon specified in the route string     | `lat`, `lon`                                               |
-| `speedAltitude` | Speed/altitude group (e.g. N0450F350)     | `speedKnots`/`speedKmh`/`mach`, `flightLevel`/`altitudeFt` |
-| `unresolved`    | Token that could not be resolved          | -                                                          |
+| Type            | Description                               | Key fields                                                  |
+| --------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                   |
+| `sid`           | Standard Instrument Departure             | `procedure`, `waypoints`                                    |
+| `star`          | Standard Terminal Arrival Route           | `procedure`, `waypoints`                                    |
+| `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`                |
+| `direct`        | DCT (direct) indicator                    | -                                                           |
+| `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                         |
+| `coordinate`    | Lat/lon specified in the route string     | `lat`, `lon`                                                |
+| `speedAltitude` | Speed/altitude group (e.g. N0450F350)     | `speedKt`/`speedKmPerHr`/`mach`, `flightLevel`/`altitudeFt` |
+| `unresolved`    | Token that could not be resolved          | -                                                           |
 
 ### Coordinate formats
 

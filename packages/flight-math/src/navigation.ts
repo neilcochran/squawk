@@ -70,16 +70,16 @@ export function holdingPatternEntry(
  * not specified.
  *
  * @param arcRadiusNm - DME arc radius in nautical miles.
- * @param tasKt - True airspeed in knots.
+ * @param trueAirspeedKt - True airspeed in knots.
  * @param bankAngleDeg - Bank angle for the turn in degrees (default 25).
  * @returns Lead angle in degrees of radial change.
  */
 export function dmeArcLeadRadial(
   arcRadiusNm: number,
-  tasKt: number,
+  trueAirspeedKt: number,
   bankAngleDeg: number = 25,
 ): number {
-  const vFps = tasKt * KT_TO_FPS;
+  const vFps = trueAirspeedKt * KT_TO_FPS;
   const bankRad = angle.degreesToRadians(bankAngleDeg);
   const turnRadiusFt = (vFps * vFps) / (G_FT_S2 * Math.tan(bankRad));
   const turnRadiusNm = turnRadiusFt / FT_PER_NM;

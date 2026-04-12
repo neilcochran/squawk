@@ -354,7 +354,7 @@ function parseForecastFields(
       } else if (token.startsWith('VV')) {
         const vvMatch = token.match(/^VV(\d{3})$/);
         if (vvMatch) {
-          sky.verticalVisibilityFt = parseInt(vvMatch[1]!, 10) * 100;
+          sky.verticalVisibilityFtAgl = parseInt(vvMatch[1]!, 10) * 100;
         }
         pos++;
       } else if (/^(FEW|SCT|BKN|OVC)\d{3}/.test(token)) {
@@ -427,7 +427,7 @@ function parseWindShear(token: string): TafWindShear | undefined {
   }
 
   return {
-    altitudeFt: parseInt(match[1]!, 10) * 100,
+    altitudeFtAgl: parseInt(match[1]!, 10) * 100,
     directionDeg: parseInt(match[2]!, 10),
     speedKt: parseInt(match[3]!, 10),
   };

@@ -117,8 +117,8 @@ function compactFix(fix: Fix): CompactFix {
   if (fix.suaAtcaa) {
     c.sua = true;
   }
-  if (fix.minimumReceptionAltitude !== undefined) {
-    c.mra = fix.minimumReceptionAltitude;
+  if (fix.minimumReceptionAltitudeFt !== undefined) {
+    c.mra = fix.minimumReceptionAltitudeFt;
   }
   if (fix.compulsory !== undefined) {
     c.cmp = fix.compulsory;

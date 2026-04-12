@@ -18,18 +18,18 @@ import type { FlightCategory, SkyCondition } from './types/index.js';
  * ```typescript
  * import { deriveFlightCategory } from '@squawk/weather';
  *
- * const category = deriveFlightCategory(10, false, { layers: [{ coverage: 'FEW', altitudeFt: 25000 }] }, false);
+ * const category = deriveFlightCategory(10, false, { layers: [{ coverage: 'FEW', altitudeFtAgl: 25000 }] }, false);
  * // Returns 'VFR'
  * ```
  *
- * @param visibilityStatuteMiles - Prevailing visibility in statute miles, or undefined if unknown.
+ * @param visibilitySm - Prevailing visibility in statute miles, or undefined if unknown.
  * @param isLessThan - True when visibility is reported as less than the stated value.
  * @param sky - Sky condition with cloud layers and/or vertical visibility.
  * @param isCavok - True when CAVOK is reported (implies VFR conditions).
  * @returns The derived flight category, or undefined if insufficient data to determine.
  */
 export function deriveFlightCategory(
-  visibilityStatuteMiles: number | undefined,
+  visibilitySm: number | undefined,
   isLessThan: boolean,
   sky: SkyCondition,
   isCavok: boolean,
@@ -43,15 +43,15 @@ export function deriveFlightCategory(
 
   for (const layer of sky.layers) {
     if (layer.coverage === 'BKN' || layer.coverage === 'OVC') {
-      if (ceilingFt === undefined || layer.altitudeFt < ceilingFt) {
-        ceilingFt = layer.altitudeFt;
+      if (ceilingFt === undefined || layer.altitudeFtAgl < ceilingFt) {
+        ceilingFt = layer.altitudeFtAgl;
       }
     }
   }
 
-  if (sky.verticalVisibilityFt !== undefined) {
-    if (ceilingFt === undefined || sky.verticalVisibilityFt < ceilingFt) {
-      ceilingFt = sky.verticalVisibilityFt;
+  if (sky.verticalVisibilityFtAgl !== undefined) {
+    if (ceilingFt === undefined || sky.verticalVisibilityFtAgl < ceilingFt) {
+      ceilingFt = sky.verticalVisibilityFtAgl;
     }
   }
 
@@ -71,8 +71,8 @@ export function deriveFlightCategory(
 
   // Determine category from visibility
   let visCategory: FlightCategory | undefined;
-  if (visibilityStatuteMiles !== undefined) {
-    const effectiveVis = isLessThan ? visibilityStatuteMiles - 0.01 : visibilityStatuteMiles;
+  if (visibilitySm !== undefined) {
+    const effectiveVis = isLessThan ? visibilitySm - 0.01 : visibilitySm;
     if (effectiveVis < 1) {
       visCategory = 'LIFR';
     } else if (effectiveVis < 3) {

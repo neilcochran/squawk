@@ -31,14 +31,14 @@ function normalizeDeg(deg: number): number {
  * to the maximum correctable angle and the resulting ground track will not match
  * the requested true course.
  *
- * @param tasKt - True airspeed in knots.
+ * @param trueAirspeedKt - True airspeed in knots.
  * @param trueCourseDeg - Desired ground track (true course) in degrees (0-360).
  * @param windDirectionDeg - Direction the wind is blowing FROM in degrees true (0-360).
  * @param windSpeedKt - Wind speed in knots.
  * @returns The computed heading, wind correction angle, and groundspeed.
  */
 export function solveWindTriangle(
-  tasKt: number,
+  trueAirspeedKt: number,
   trueCourseDeg: number,
   windDirectionDeg: number,
   windSpeedKt: number,
@@ -48,7 +48,7 @@ export function solveWindTriangle(
 
   // Wind correction angle via the law of sines on the wind triangle.
   // sin(WCA) = (windSpeed / TAS) * sin(windDirection - trueCourse)
-  const sinWca = (windSpeedKt / tasKt) * Math.sin(wdRad - tcRad);
+  const sinWca = (windSpeedKt / trueAirspeedKt) * Math.sin(wdRad - tcRad);
 
   // Clamp to [-1, 1] to handle edge cases where wind exceeds TAS.
   const wca = Math.asin(Math.max(-1, Math.min(1, sinWca)));
@@ -59,14 +59,14 @@ export function solveWindTriangle(
 
   // Groundspeed from vector components: ground = air + wind.
   // Wind FROM direction means velocity is towards (WD + 180).
-  const gsE = tasKt * Math.sin(thRad) - windSpeedKt * Math.sin(wdRad);
-  const gsN = tasKt * Math.cos(thRad) - windSpeedKt * Math.cos(wdRad);
+  const gsE = trueAirspeedKt * Math.sin(thRad) - windSpeedKt * Math.sin(wdRad);
+  const gsN = trueAirspeedKt * Math.cos(thRad) - windSpeedKt * Math.cos(wdRad);
   const gs = Math.sqrt(gsE * gsE + gsN * gsN);
 
   return {
     trueHeadingDeg: thDeg,
     windCorrectionAngleDeg: wcaDeg,
-    groundspeedKt: gs,
+    groundSpeedKt: gs,
   };
 }
 
@@ -104,15 +104,15 @@ export function headwindCrosswind(
  * This is the inverse of {@link solveWindTriangle}: instead of finding the heading
  * needed for a given wind, it finds the wind from observed heading and track data.
  *
- * @param groundspeedKt - Observed groundspeed in knots.
- * @param tasKt - True airspeed in knots.
+ * @param groundSpeedKt - Observed groundspeed in knots.
+ * @param trueAirspeedKt - True airspeed in knots.
  * @param trueHeadingDeg - True heading in degrees (0-360).
  * @param trueTrackDeg - True ground track in degrees (0-360).
  * @returns Wind direction (FROM) and speed.
  */
 export function findWind(
-  groundspeedKt: number,
-  tasKt: number,
+  groundSpeedKt: number,
+  trueAirspeedKt: number,
   trueHeadingDeg: number,
   trueTrackDeg: number,
 ): WindVector {
@@ -121,8 +121,8 @@ export function findWind(
 
   // Wind vector = ground vector - air vector.
   // Wind velocity is the direction the wind is GOING (towards), not from.
-  const windToE = groundspeedKt * Math.sin(tkRad) - tasKt * Math.sin(thRad);
-  const windToN = groundspeedKt * Math.cos(tkRad) - tasKt * Math.cos(thRad);
+  const windToE = groundSpeedKt * Math.sin(tkRad) - trueAirspeedKt * Math.sin(thRad);
+  const windToN = groundSpeedKt * Math.cos(tkRad) - trueAirspeedKt * Math.cos(thRad);
 
   const windSpeed = Math.sqrt(windToE * windToE + windToN * windToN);
 

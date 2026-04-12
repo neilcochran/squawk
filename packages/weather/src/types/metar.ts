@@ -78,9 +78,9 @@ export interface PeakWind {
  */
 export interface VariableVisibility {
   /** Minimum visibility in statute miles. */
-  minStatuteMiles: number;
+  minVisibilitySm: number;
   /** Maximum visibility in statute miles. */
-  maxStatuteMiles: number;
+  maxVisibilitySm: number;
 }
 
 /**
@@ -88,9 +88,9 @@ export interface VariableVisibility {
  */
 export interface VariableCeiling {
   /** Minimum ceiling in feet AGL (hundreds of feet multiplied by 100). */
-  minFt: number;
+  minFtAgl: number;
   /** Maximum ceiling in feet AGL (hundreds of feet multiplied by 100). */
-  maxFt: number;
+  maxFtAgl: number;
 }
 
 /**
@@ -110,7 +110,7 @@ export interface SectorVisibility {
   /** Compass direction of the sector. */
   direction: CompassDirection;
   /** Visibility in statute miles for this sector. */
-  statuteMiles: number;
+  visibilitySm: number;
 }
 
 /**
@@ -238,7 +238,7 @@ export interface VariableSkyCondition {
   /** Higher cloud coverage amount. */
   coverageHigh: CloudCoverage;
   /** Cloud layer altitude in feet AGL. */
-  altitudeFt: number;
+  altitudeFtAgl: number;
 }
 
 /**
@@ -272,20 +272,38 @@ export interface TowerSurfaceVisibility {
   /** The source of the visibility observation ("TWR" for tower, "SFC" for surface). */
   source: 'TWR' | 'SFC';
   /** Visibility in statute miles. */
-  statuteMiles: number;
+  visibilitySm: number;
+}
+
+/**
+ * Visibility observation at a secondary location (e.g. a specific runway).
+ */
+export interface SecondLocationVisibility {
+  /** Discriminant for visibility observations. */
+  type: 'VIS';
+  /** Visibility in statute miles. */
+  visibilitySm: number;
+  /** Location identifier (e.g. "RWY11", "RWY06"). */
+  location: string;
+}
+
+/**
+ * Ceiling observation at a secondary location (e.g. a specific runway).
+ */
+export interface SecondLocationCeiling {
+  /** Discriminant for ceiling observations. */
+  type: 'CIG';
+  /** Ceiling height in feet AGL. */
+  ceilingFtAgl: number;
+  /** Location identifier (e.g. "RWY11", "RWY06"). */
+  location: string;
 }
 
 /**
  * Visibility or ceiling observation at a secondary location (e.g. a specific runway).
+ * Discriminated on the `type` field.
  */
-export interface SecondLocationObservation {
-  /** The type of observation ("VIS" for visibility, "CIG" for ceiling). */
-  type: 'VIS' | 'CIG';
-  /** Value in statute miles (for VIS) or feet AGL (for CIG). */
-  value: number;
-  /** Location identifier (e.g. "RWY11", "RWY06"). */
-  location: string;
-}
+export type SecondLocationObservation = SecondLocationVisibility | SecondLocationCeiling;
 
 /**
  * Surface-based obscuration observed and reported in the METAR remarks section.
@@ -297,7 +315,7 @@ export interface ObscurationReport {
   /** Cloud coverage amount of the obscuration. */
   coverage: CloudCoverage;
   /** Height of the obscuration layer in feet AGL. */
-  altitudeFt: number;
+  altitudeFtAgl: number;
 }
 
 /**
