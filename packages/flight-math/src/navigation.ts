@@ -4,7 +4,7 @@
  * corrections.
  */
 
-import type { HoldingPatternEntryType } from '@squawk/types';
+import type { HoldingPatternEntryType } from './types/navigation.js';
 import { angle, distance } from '@squawk/units';
 
 /** Standard acceleration of gravity in ft/s^2. */
