@@ -558,15 +558,15 @@ describe('parseNotam - Q-line qualifier', () => {
   it('parses non-zero lower and upper altitude limits', () => {
     const result = parseNotam(WITH_SCHEDULE);
     assert.ok(result.qualifier);
-    assert.equal(result.qualifier.lowerFt, 5000);
-    assert.equal(result.qualifier.upperFt, 35000);
+    assert.equal(result.qualifier.lowerAltitudeFt, 5000);
+    assert.equal(result.qualifier.upperAltitudeFt, 35000);
   });
 
-  it('omits lowerFt when surface (000) and parses 999 as 99900', () => {
+  it('omits lowerAltitudeFt when surface (000) and parses 999 as 99900', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
     assert.ok(result.qualifier);
-    assert.equal(result.qualifier.lowerFt, undefined);
-    assert.equal(result.qualifier.upperFt, 99900);
+    assert.equal(result.qualifier.lowerAltitudeFt, undefined);
+    assert.equal(result.qualifier.upperAltitudeFt, 99900);
   });
 
   it('parses northern/western hemisphere coordinates', () => {

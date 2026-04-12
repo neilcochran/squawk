@@ -730,9 +730,9 @@ export interface NotamQualifier {
   /** Geographic scope of the NOTAM. */
   scope: NotamScope;
   /** Lower altitude limit in feet. Undefined when the lower limit is the surface. */
-  lowerFt?: number;
+  lowerAltitudeFt?: number;
   /** Upper altitude limit in feet. 99900 indicates unlimited. */
-  upperFt: number;
+  upperAltitudeFt: number;
   /** Center point coordinates of the NOTAM's area of applicability. */
   coordinates: Coordinates;
   /** Radius in nautical miles from the center point. */
