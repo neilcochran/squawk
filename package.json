@@ -21,6 +21,7 @@
     "lint": "turbo run lint",
     "dev": "turbo run dev",
     "docs": "typedoc",
+    "build:data": "node scripts/build-data.js",
     "clean": "node scripts/clean.js",
     "publish": "changeset publish",
     "format": "prettier --write .",

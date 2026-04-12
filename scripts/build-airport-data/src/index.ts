@@ -4,6 +4,7 @@ import AdmZip from 'adm-zip';
 import { parseCsv } from './parse-csv.js';
 import type { CsvRecord } from './parse-csv.js';
 import { buildAirport } from './parse-airports.js';
+import { resolveInput } from './resolve-input.js';
 import { writeOutput } from './write-output.js';
 import type { Airport } from '@squawk/types';
 
@@ -32,7 +33,7 @@ function printUsageAndExit(): never {
   process.stderr.write(
     'Usage: node dist/index.js --local <nasr-subscription-dir> [--output <output-path>]\n\n' +
       'Options:\n' +
-      '  --local <path>   Path to an extracted NASR subscription directory.\n' +
+      '  --local <path>   Path to a NASR subscription .zip file or extracted directory.\n' +
       '  --output <path>  Path to write the output .json.gz file.\n' +
       `                   Defaults to: ${DEFAULT_OUTPUT_PATH}\n`,
   );
@@ -64,14 +65,14 @@ function readCsvFromZip(zip: AdmZip, filename: string): CsvRecord[] {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
-  let subscriptionDir: string | undefined;
+  let inputPath: string | undefined;
   let outputPath: string = resolve(import.meta.dirname, DEFAULT_OUTPUT_PATH);
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const next = args[i + 1];
     if (arg === '--local' && next) {
-      subscriptionDir = resolve(next);
+      inputPath = resolve(next);
       i++;
     } else if (arg === '--output' && next) {
       outputPath = resolve(next);
@@ -82,164 +83,170 @@ async function main(): Promise<void> {
     }
   }
 
-  if (!subscriptionDir) {
+  if (!inputPath) {
     process.stderr.write('Error: --local <path> is required.\n');
     printUsageAndExit();
   }
 
-  // Extract NASR cycle date from the subscription directory name.
-  const dirName = basename(subscriptionDir);
-  const cycleMatch = dirName.match(CYCLE_DATE_PATTERN);
-  if (!cycleMatch) {
-    throw new Error(
-      `Cannot determine NASR cycle date from directory name "${dirName}". ` +
-        `Expected pattern: 28DaySubscription_Effective_YYYY-MM-DD`,
-    );
-  }
-  const nasrCycleDate = cycleMatch[1] ?? '';
-  console.log(`[index] NASR cycle date: ${nasrCycleDate}`);
+  const { subscriptionDir, cleanup } = resolveInput(inputPath);
 
-  // Locate and open the CSV data ZIP.
-  const csvDataDir = join(subscriptionDir, CSV_DATA_DIR);
-  const zipFiles = readdirSync(csvDataDir).filter((f) => f.endsWith('.zip'));
-  const firstZip = zipFiles[0];
-  if (!firstZip) {
-    throw new Error(`No ZIP file found in ${csvDataDir}`);
-  }
-  const csvZipPath = join(csvDataDir, firstZip);
-  console.log(`[index] Opening ${basename(csvZipPath)}`);
-  const csvZip = new AdmZip(csvZipPath);
+  try {
+    // Extract NASR cycle date from the subscription directory name.
+    const dirName = basename(subscriptionDir);
+    const cycleMatch = dirName.match(CYCLE_DATE_PATTERN);
+    if (!cycleMatch) {
+      throw new Error(
+        `Cannot determine NASR cycle date from directory name "${dirName}". ` +
+          `Expected pattern: 28DaySubscription_Effective_YYYY-MM-DD`,
+      );
+    }
+    const nasrCycleDate = cycleMatch[1] ?? '';
+    console.log(`[index] NASR cycle date: ${nasrCycleDate}`);
 
-  // Parse all CSV files from the ZIP.
-  const baseRecords = readCsvFromZip(csvZip, APT_BASE_CSV);
-  const rwyRecords = readCsvFromZip(csvZip, APT_RWY_CSV);
-  const rwyEndRecords = readCsvFromZip(csvZip, APT_RWY_END_CSV);
-  const freqRecords = readCsvFromZip(csvZip, FRQ_CSV);
-  const ilsBaseRecords = readCsvFromZip(csvZip, ILS_BASE_CSV);
-  const ilsGsRecords = readCsvFromZip(csvZip, ILS_GS_CSV);
-  const ilsDmeRecords = readCsvFromZip(csvZip, ILS_DME_CSV);
+    // Locate and open the CSV data ZIP.
+    const csvDataDir = join(subscriptionDir, CSV_DATA_DIR);
+    const zipFiles = readdirSync(csvDataDir).filter((f) => f.endsWith('.zip'));
+    const firstZip = zipFiles[0];
+    if (!firstZip) {
+      throw new Error(`No ZIP file found in ${csvDataDir}`);
+    }
+    const csvZipPath = join(csvDataDir, firstZip);
+    console.log(`[index] Opening ${basename(csvZipPath)}`);
+    const csvZip = new AdmZip(csvZipPath);
 
-  // Index runway and runway-end records by SITE_NO for efficient lookup.
-  const rwyBySite = new Map<string, CsvRecord[]>();
-  for (const rec of rwyRecords) {
-    const siteNo = rec.SITE_NO;
-    if (siteNo) {
-      let arr = rwyBySite.get(siteNo);
-      if (!arr) {
-        arr = [];
-        rwyBySite.set(siteNo, arr);
+    // Parse all CSV files from the ZIP.
+    const baseRecords = readCsvFromZip(csvZip, APT_BASE_CSV);
+    const rwyRecords = readCsvFromZip(csvZip, APT_RWY_CSV);
+    const rwyEndRecords = readCsvFromZip(csvZip, APT_RWY_END_CSV);
+    const freqRecords = readCsvFromZip(csvZip, FRQ_CSV);
+    const ilsBaseRecords = readCsvFromZip(csvZip, ILS_BASE_CSV);
+    const ilsGsRecords = readCsvFromZip(csvZip, ILS_GS_CSV);
+    const ilsDmeRecords = readCsvFromZip(csvZip, ILS_DME_CSV);
+
+    // Index runway and runway-end records by SITE_NO for efficient lookup.
+    const rwyBySite = new Map<string, CsvRecord[]>();
+    for (const rec of rwyRecords) {
+      const siteNo = rec.SITE_NO;
+      if (siteNo) {
+        let arr = rwyBySite.get(siteNo);
+        if (!arr) {
+          arr = [];
+          rwyBySite.set(siteNo, arr);
+        }
+        arr.push(rec);
       }
-      arr.push(rec);
     }
-  }
 
-  const rwyEndBySite = new Map<string, CsvRecord[]>();
-  for (const rec of rwyEndRecords) {
-    const siteNo = rec.SITE_NO;
-    if (siteNo) {
-      let arr = rwyEndBySite.get(siteNo);
-      if (!arr) {
-        arr = [];
-        rwyEndBySite.set(siteNo, arr);
+    const rwyEndBySite = new Map<string, CsvRecord[]>();
+    for (const rec of rwyEndRecords) {
+      const siteNo = rec.SITE_NO;
+      if (siteNo) {
+        let arr = rwyEndBySite.get(siteNo);
+        if (!arr) {
+          arr = [];
+          rwyEndBySite.set(siteNo, arr);
+        }
+        arr.push(rec);
       }
-      arr.push(rec);
     }
-  }
 
-  // Index frequency records by SERVICED_FACILITY (falls back to FACILITY).
-  const freqByFacility = new Map<string, CsvRecord[]>();
-  for (const rec of freqRecords) {
-    const key = rec.SERVICED_FACILITY ?? rec.FACILITY;
-    if (key) {
-      let arr = freqByFacility.get(key);
-      if (!arr) {
-        arr = [];
-        freqByFacility.set(key, arr);
+    // Index frequency records by SERVICED_FACILITY (falls back to FACILITY).
+    const freqByFacility = new Map<string, CsvRecord[]>();
+    for (const rec of freqRecords) {
+      const key = rec.SERVICED_FACILITY ?? rec.FACILITY;
+      if (key) {
+        let arr = freqByFacility.get(key);
+        if (!arr) {
+          arr = [];
+          freqByFacility.set(key, arr);
+        }
+        arr.push(rec);
       }
-      arr.push(rec);
     }
-  }
 
-  // Index ILS records by SITE_NO for efficient lookup.
-  const ilsBaseBySite = new Map<string, CsvRecord[]>();
-  for (const rec of ilsBaseRecords) {
-    const siteNo = rec.SITE_NO;
-    if (siteNo) {
-      let arr = ilsBaseBySite.get(siteNo);
-      if (!arr) {
-        arr = [];
-        ilsBaseBySite.set(siteNo, arr);
+    // Index ILS records by SITE_NO for efficient lookup.
+    const ilsBaseBySite = new Map<string, CsvRecord[]>();
+    for (const rec of ilsBaseRecords) {
+      const siteNo = rec.SITE_NO;
+      if (siteNo) {
+        let arr = ilsBaseBySite.get(siteNo);
+        if (!arr) {
+          arr = [];
+          ilsBaseBySite.set(siteNo, arr);
+        }
+        arr.push(rec);
       }
-      arr.push(rec);
     }
-  }
 
-  const ilsGsBySite = new Map<string, CsvRecord[]>();
-  for (const rec of ilsGsRecords) {
-    const siteNo = rec.SITE_NO;
-    if (siteNo) {
-      let arr = ilsGsBySite.get(siteNo);
-      if (!arr) {
-        arr = [];
-        ilsGsBySite.set(siteNo, arr);
+    const ilsGsBySite = new Map<string, CsvRecord[]>();
+    for (const rec of ilsGsRecords) {
+      const siteNo = rec.SITE_NO;
+      if (siteNo) {
+        let arr = ilsGsBySite.get(siteNo);
+        if (!arr) {
+          arr = [];
+          ilsGsBySite.set(siteNo, arr);
+        }
+        arr.push(rec);
       }
-      arr.push(rec);
     }
-  }
 
-  const ilsDmeBySite = new Map<string, CsvRecord[]>();
-  for (const rec of ilsDmeRecords) {
-    const siteNo = rec.SITE_NO;
-    if (siteNo) {
-      let arr = ilsDmeBySite.get(siteNo);
-      if (!arr) {
-        arr = [];
-        ilsDmeBySite.set(siteNo, arr);
+    const ilsDmeBySite = new Map<string, CsvRecord[]>();
+    for (const rec of ilsDmeRecords) {
+      const siteNo = rec.SITE_NO;
+      if (siteNo) {
+        let arr = ilsDmeBySite.get(siteNo);
+        if (!arr) {
+          arr = [];
+          ilsDmeBySite.set(siteNo, arr);
+        }
+        arr.push(rec);
       }
-      arr.push(rec);
     }
+
+    // Build Airport objects from the indexed data.
+    console.log('[index] Building airport records...');
+    const airports: Airport[] = [];
+    let skipped = 0;
+
+    for (const base of baseRecords) {
+      // Only include open facilities.
+      if ((base.ARPT_STATUS ?? '') !== 'O') {
+        skipped++;
+        continue;
+      }
+
+      const siteNo = base.SITE_NO ?? '';
+      const faaId = base.ARPT_ID ?? '';
+      const siteRwys = rwyBySite.get(siteNo) ?? [];
+      const siteRwyEnds = rwyEndBySite.get(siteNo) ?? [];
+      const siteFreqs = freqByFacility.get(faaId) ?? [];
+      const siteIlsBase = ilsBaseBySite.get(siteNo) ?? [];
+      const siteIlsGs = ilsGsBySite.get(siteNo) ?? [];
+      const siteIlsDme = ilsDmeBySite.get(siteNo) ?? [];
+
+      const airport = buildAirport(
+        base,
+        siteRwys,
+        siteRwyEnds,
+        siteFreqs,
+        siteIlsBase,
+        siteIlsGs,
+        siteIlsDme,
+      );
+      if (airport) {
+        airports.push(airport);
+      } else {
+        skipped++;
+      }
+    }
+
+    console.log(`[index] Built ${airports.length} airport records (skipped ${skipped}).`);
+
+    await writeOutput(airports, nasrCycleDate, outputPath);
+  } finally {
+    cleanup();
   }
-
-  // Build Airport objects from the indexed data.
-  console.log('[index] Building airport records...');
-  const airports: Airport[] = [];
-  let skipped = 0;
-
-  for (const base of baseRecords) {
-    // Only include open facilities.
-    if ((base.ARPT_STATUS ?? '') !== 'O') {
-      skipped++;
-      continue;
-    }
-
-    const siteNo = base.SITE_NO ?? '';
-    const faaId = base.ARPT_ID ?? '';
-    const siteRwys = rwyBySite.get(siteNo) ?? [];
-    const siteRwyEnds = rwyEndBySite.get(siteNo) ?? [];
-    const siteFreqs = freqByFacility.get(faaId) ?? [];
-    const siteIlsBase = ilsBaseBySite.get(siteNo) ?? [];
-    const siteIlsGs = ilsGsBySite.get(siteNo) ?? [];
-    const siteIlsDme = ilsDmeBySite.get(siteNo) ?? [];
-
-    const airport = buildAirport(
-      base,
-      siteRwys,
-      siteRwyEnds,
-      siteFreqs,
-      siteIlsBase,
-      siteIlsGs,
-      siteIlsDme,
-    );
-    if (airport) {
-      airports.push(airport);
-    } else {
-      skipped++;
-    }
-  }
-
-  console.log(`[index] Built ${airports.length} airport records (skipped ${skipped}).`);
-
-  await writeOutput(airports, nasrCycleDate, outputPath);
 }
 
 main().catch((err) => {
