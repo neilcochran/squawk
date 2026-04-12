@@ -8,7 +8,7 @@
  * ```ts
  * import { speed, isa, format } from '@squawk/units';
  *
- * const kmh = speed.ktsToKmh(250);
+ * const kmh = speed.knotsToKilometersPerHour(250);
  * const da = isa.densityAltitudeFt(5000, 30);
  * const label = format.formatAltitude(3500);
  * ```
