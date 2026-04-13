@@ -28,7 +28,7 @@ const aircraft = registry.lookup('A004B3');
 
 ## Data source
 
-The bundled snapshot is built from the **2026-03-31** FAA ReleasableAircraft
+The bundled snapshot is built from the **2026-04-13** FAA ReleasableAircraft
 database. The FAA updates this database periodically. To update, re-run the build
 pipeline with a newer download.
 
