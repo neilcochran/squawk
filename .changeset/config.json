@@ -15,7 +15,6 @@
     "@squawk/build-icao-registry-data",
     "@squawk/build-navaid-data",
     "@squawk/build-procedure-data",
-    "@squawk/build-shared",
-    "@squawk/map-viewer"
+    "@squawk/build-shared"
   ]
 }
