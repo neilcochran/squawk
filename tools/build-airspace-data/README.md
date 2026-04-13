@@ -31,15 +31,6 @@ structural issues, geographic anomalies, and altitude bound errors:
 npm run validate
 ```
 
-### Visual inspection
-
-A standalone interactive map viewer is available at `tools/map-viewer/`. See
-its README for usage. The legacy single-file viewer can also be used:
-
-```bash
-npm run viewer
-```
-
 ## How it works
 
 1. Parses Class B/C/D/E airspace polygons from the NASR ESRI Shapefile
