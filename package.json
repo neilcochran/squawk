@@ -13,8 +13,7 @@
     "tools/build-navaid-data",
     "tools/build-fix-data",
     "tools/build-airway-data",
-    "tools/build-procedure-data",
-    "tools/map-viewer"
+    "tools/build-procedure-data"
   ],
   "scripts": {
     "build": "turbo run build",

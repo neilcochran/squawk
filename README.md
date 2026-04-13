@@ -54,7 +54,6 @@ The `tools/` directory contains the build pipelines that produce the data packag
 | [`build-fix-data`](tools/build-fix-data)                     | Processes FAA NASR FIX CSVs into fix/waypoint JSON                    |
 | [`build-airway-data`](tools/build-airway-data)               | Processes FAA NASR AWY.txt and ATS.txt into airway JSON               |
 | [`build-procedure-data`](tools/build-procedure-data)         | Processes FAA NASR STARDP.txt into procedure JSON                     |
-| [`map-viewer`](tools/map-viewer)                             | Interactive Leaflet map for viewing airspace and airport data         |
 
 ## License
 
