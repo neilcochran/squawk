@@ -34,4 +34,4 @@ pipeline with a newer download.
 
 All data is derived from the FAA ReleasableAircraft database, which is public
 domain. The build pipeline that produces this dataset lives in
-`scripts/build-icao-registry-data/`.
+[tools/build-icao-registry-data](https://github.com/neilcochran/squawk/tree/main/tools/build-icao-registry-data).

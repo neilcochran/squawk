@@ -78,4 +78,4 @@ a newer cycle.
 All data is derived from the FAA National Airspace System Resource (NASR) 28-day
 subscription, which is public domain. Procedure data comes from STARDP.txt, a
 fixed-width file encoding SID and STAR waypoint sequences. The build pipeline
-that produces this dataset lives in `scripts/build-procedure-data/`.
+that produces this dataset lives in [tools/build-procedure-data](https://github.com/neilcochran/squawk/tree/main/tools/build-procedure-data).

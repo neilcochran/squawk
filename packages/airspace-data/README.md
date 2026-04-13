@@ -58,4 +58,4 @@ a newer cycle.
 All geometry and metadata is derived from the FAA National Airspace System Resource
 (NASR) 28-day subscription, which is public domain. Class B/C/D/E boundaries come
 from the NASR ESRI Shapefile and SUA boundaries from the AIXM 5.0 XML files. The
-build pipeline that produces this dataset lives in `scripts/build-airspace-data/`.
+build pipeline that produces this dataset lives in [tools/build-airspace-data](https://github.com/neilcochran/squawk/tree/main/tools/build-airspace-data).

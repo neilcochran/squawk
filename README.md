@@ -41,21 +41,20 @@ npm run lint     # lint all packages
 npm run docs     # generate documentation
 ```
 
-## Scripts
+## Tools
 
-The `scripts/` directory contains internal tools for building data packages and
-inspecting their output. These are not published to npm.
+The `tools/` directory contains the build pipelines that produce the data packages from raw FAA source files. They are not published to npm but are fully usable if you want to rebuild data from a newer FAA cycle or customize the pipeline. Each tool accepts a NASR subscription `.zip` or extracted directory via `--local` and writes its output to the corresponding data package. See `npm run build:data -- --help` for the orchestrator that runs them all.
 
-| Script                                                         | Description                                                           |
-| -------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [`build-airspace-data`](scripts/build-airspace-data)           | Processes FAA NASR shapefiles and AIXM XML into airspace GeoJSON      |
-| [`build-icao-registry-data`](scripts/build-icao-registry-data) | Processes FAA ReleasableAircraft into ICAO registry JSON              |
-| [`build-airport-data`](scripts/build-airport-data)             | Processes FAA NASR airport, runway, frequency, and ILS CSVs into JSON |
-| [`build-navaid-data`](scripts/build-navaid-data)               | Processes FAA NASR NAV_BASE.csv into navaid JSON                      |
-| [`build-fix-data`](scripts/build-fix-data)                     | Processes FAA NASR FIX CSVs into fix/waypoint JSON                    |
-| [`build-airway-data`](scripts/build-airway-data)               | Processes FAA NASR AWY.txt and ATS.txt into airway JSON               |
-| [`build-procedure-data`](scripts/build-procedure-data)         | Processes FAA NASR STARDP.txt into procedure JSON                     |
-| [`map-viewer`](scripts/map-viewer)                             | Interactive Leaflet map for viewing airspace and airport data         |
+| Tool                                                         | Description                                                           |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- |
+| [`build-airspace-data`](tools/build-airspace-data)           | Processes FAA NASR shapefiles and AIXM XML into airspace GeoJSON      |
+| [`build-icao-registry-data`](tools/build-icao-registry-data) | Processes FAA ReleasableAircraft into ICAO registry JSON              |
+| [`build-airport-data`](tools/build-airport-data)             | Processes FAA NASR airport, runway, frequency, and ILS CSVs into JSON |
+| [`build-navaid-data`](tools/build-navaid-data)               | Processes FAA NASR NAV_BASE.csv into navaid JSON                      |
+| [`build-fix-data`](tools/build-fix-data)                     | Processes FAA NASR FIX CSVs into fix/waypoint JSON                    |
+| [`build-airway-data`](tools/build-airway-data)               | Processes FAA NASR AWY.txt and ATS.txt into airway JSON               |
+| [`build-procedure-data`](tools/build-procedure-data)         | Processes FAA NASR STARDP.txt into procedure JSON                     |
+| [`map-viewer`](tools/map-viewer)                             | Interactive Leaflet map for viewing airspace and airport data         |
 
 ## License
 

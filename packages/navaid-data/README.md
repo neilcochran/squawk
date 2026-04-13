@@ -78,4 +78,4 @@ a newer cycle.
 
 All data is derived from the FAA National Airspace System Resource (NASR) 28-day
 subscription, which is public domain. Navaid data comes from NAV_BASE.csv. The
-build pipeline that produces this dataset lives in `scripts/build-navaid-data/`.
+build pipeline that produces this dataset lives in [tools/build-navaid-data](https://github.com/neilcochran/squawk/tree/main/tools/build-navaid-data).
