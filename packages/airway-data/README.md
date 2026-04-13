@@ -2,8 +2,8 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airway-data)](https://www.npmjs.com/package/@squawk/airway-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed snapshot of US airway data derived from the FAA NASR 28-day
-subscription cycle. Data only - no query logic, no dependency on
+Pre-processed snapshot of US airway data from the **2026-04-16** FAA NASR
+cycle. Data only - no query logic, no dependency on
 `@squawk/airways`.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_airway-data.html)**
@@ -75,10 +75,6 @@ Each `AirwayWaypoint` contains:
 | `magneticCourseDeg`                     | number or undefined | Magnetic course to next waypoint        |
 
 ## Data source
-
-The bundled snapshot is built from the **2026-04-16** NASR cycle. The FAA publishes
-updated NASR data every 28 days. To update, re-run the build pipeline below against
-a newer cycle.
 
 All data is derived from the [FAA National Airspace System Resource (NASR)](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) 28-day
 subscription, which is public domain. Airway data comes from AWY.txt

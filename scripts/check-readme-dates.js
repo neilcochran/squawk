@@ -26,7 +26,7 @@ const nasrPackages = [
 /** ICAO registry uses generatedAt instead of nasrCycleDate. */
 const icaoPackage = { pkg: 'icao-registry-data', dataFile: 'data/icao-registry.json.gz' };
 
-const datePattern = /The bundled snapshot is built from the \*\*(\d{4}-\d{2}-\d{2})\*\*/;
+const datePattern = /from the \*\*(\d{4}-\d{2}-\d{2})\*\* FAA (NASR|ReleasableAircraft)/;
 
 let failures = 0;
 
