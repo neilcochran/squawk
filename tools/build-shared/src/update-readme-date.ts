@@ -2,8 +2,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 /**
- * Updates the bolded date in the "Data source" section of a data package's
- * README to match the cycle date of the data that was just built.
+ * Updates the bolded date in a data package's README description to match the
+ * cycle date of the data that was just built. The date appears in the opening
+ * paragraph as `from the **YYYY-MM-DD** FAA`.
  *
  * The README is located by navigating up one directory from the output data
  * file path (e.g. `packages/navaid-data/data/navaids.json.gz` resolves to
@@ -21,8 +22,8 @@ export async function updateReadmeDate(outputPath: string, date: string): Promis
   try {
     const readme = await readFile(readmePath, 'utf-8');
     const updated = readme.replace(
-      /The bundled snapshot is built from the \*\*\d{4}-\d{2}-\d{2}\*\*/,
-      `The bundled snapshot is built from the **${date}**`,
+      /from the \*\*\d{4}-\d{2}-\d{2}\*\* FAA (NASR|ReleasableAircraft)/,
+      `from the **${date}** FAA $1`,
     );
     if (updated !== readme) {
       await writeFile(readmePath, updated, 'utf-8');
