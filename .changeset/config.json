@@ -7,5 +7,15 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": []
+  "ignore": [
+    "@squawk/build-airport-data",
+    "@squawk/build-airspace-data",
+    "@squawk/build-airway-data",
+    "@squawk/build-fix-data",
+    "@squawk/build-icao-registry-data",
+    "@squawk/build-navaid-data",
+    "@squawk/build-procedure-data",
+    "@squawk/build-shared",
+    "@squawk/map-viewer"
+  ]
 }
