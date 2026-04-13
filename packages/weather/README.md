@@ -161,13 +161,3 @@ This package exports all weather-related type definitions directly. Import types
 ```typescript
 import type { Metar, Taf, Sigmet, Airmet, Pirep, FlightCategory } from '@squawk/weather';
 ```
-
-## Implementation Status
-
-| Format      | Status |
-| ----------- | ------ |
-| METAR/SPECI | Done   |
-| TAF         | Done   |
-| SIGMET      | Done   |
-| AIRMET      | Done   |
-| PIREP       | Done   |
