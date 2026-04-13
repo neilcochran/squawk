@@ -19,7 +19,6 @@
 '@squawk/types': patch
 '@squawk/units': patch
 '@squawk/weather': patch
-'@squawk/map-viewer': patch
 ---
 
 Correct READMEs and TSDoc
