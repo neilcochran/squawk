@@ -76,4 +76,4 @@ a newer cycle.
 All data is derived from the FAA National Airspace System Resource (NASR) 28-day
 subscription, which is public domain. Fix data comes from FIX_BASE.csv,
 FIX_CHRT.csv, and FIX_NAV.csv. The build pipeline that produces this dataset
-lives in `scripts/build-fix-data/`.
+lives in [tools/build-fix-data](https://github.com/neilcochran/squawk/tree/main/tools/build-fix-data).

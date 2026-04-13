@@ -8,5 +8,6 @@ docs/
 coverage/
 .env*
 reference-data/
+/tools/map-viewer/
 /scripts/heap-report.js
 /scripts/data-summary.js

@@ -1,0 +1,14 @@
+{
+  "name": "@squawk/build-shared",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Shared utilities for NASR data build scripts",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  }
+}
