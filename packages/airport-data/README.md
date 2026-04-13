@@ -2,8 +2,8 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airport-data)](https://www.npmjs.com/package/@squawk/airport-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed snapshot of US airport data derived from the FAA NASR 28-day
-subscription cycle. Data only - no query logic, no dependency on
+Pre-processed snapshot of US airport data from the **2026-04-16** FAA NASR
+cycle. Data only - no query logic, no dependency on
 `@squawk/airports`.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_airport-data.html)**
@@ -110,10 +110,6 @@ Each record is a full `Airport` object from `@squawk/types`. Key fields:
 | `sectorization` | string or undefined | Applicability (e.g. "RWY 04L/22R")      |
 
 ## Data source
-
-The bundled snapshot is built from the **2026-04-16** NASR cycle. The FAA publishes
-updated NASR data every 28 days. To update, re-run the build pipeline below against
-a newer cycle.
 
 All data is derived from the [FAA National Airspace System Resource (NASR)](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) 28-day
 subscription, which is public domain. Airport base data comes from APT_BASE.csv,
