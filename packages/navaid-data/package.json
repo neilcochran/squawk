@@ -1,6 +1,6 @@
 {
   "name": "@squawk/navaid-data",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Pre-processed FAA NASR navaid snapshot for use with @squawk/navaids",
   "author": "Neil Cochran",
