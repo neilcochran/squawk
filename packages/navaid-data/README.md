@@ -72,7 +72,7 @@ Each record is a full `Navaid` object from `@squawk/types`. Key fields:
 
 ## Data source
 
-The bundled snapshot is built from the **2026-04-16** NASR cycle. The FAA publishes
+The bundled snapshot is built from the **2026-01-22** NASR cycle. The FAA publishes
 updated NASR data every 28 days. To update, re-run the build pipeline below against
 a newer cycle.
 
