@@ -43,7 +43,7 @@ npm run docs     # generate documentation
 
 ## Tools
 
-The `tools/` directory contains the build pipelines that produce the data packages from raw FAA source files. They are not published to npm but are fully usable if you want to rebuild data from a newer FAA cycle or customize the pipeline. Each tool accepts a NASR subscription `.zip` or extracted directory via `--local` and writes its output to the corresponding data package. See `npm run build:data -- --help` for the orchestrator that runs them all.
+The `tools/` directory contains the build pipelines that produce the data packages from raw FAA source files. They are not published to npm but are fully usable if you want to rebuild data from a newer FAA cycle or customize the pipeline. Each tool accepts a [NASR subscription](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) `.zip` or extracted directory via `--local` and writes its output to the corresponding data package. The ICAO registry tool parses the [FAA ReleasableAircraft](https://registry.faa.gov/database/ReleasableAircraft.zip) database. See `npm run build:data -- --help` for the orchestrator that runs them all.
 
 | Tool                                                         | Description                                                           |
 | ------------------------------------------------------------ | --------------------------------------------------------------------- |

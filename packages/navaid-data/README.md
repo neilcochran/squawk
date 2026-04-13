@@ -72,10 +72,10 @@ Each record is a full `Navaid` object from `@squawk/types`. Key fields:
 
 ## Data source
 
-The bundled snapshot is built from the **2026-01-22** NASR cycle. The FAA publishes
+The bundled snapshot is built from the **2026-04-16** NASR cycle. The FAA publishes
 updated NASR data every 28 days. To update, re-run the build pipeline below against
 a newer cycle.
 
-All data is derived from the FAA National Airspace System Resource (NASR) 28-day
+All data is derived from the [FAA National Airspace System Resource (NASR)](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) 28-day
 subscription, which is public domain. Navaid data comes from NAV_BASE.csv. The
 build pipeline that produces this dataset lives in [tools/build-navaid-data](https://github.com/neilcochran/squawk/tree/main/tools/build-navaid-data).

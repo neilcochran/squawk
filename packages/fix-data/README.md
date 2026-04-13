@@ -69,11 +69,11 @@ Each record is a full `Fix` object from `@squawk/types`. Key fields:
 
 ## Data source
 
-The bundled snapshot is built from the **2026-01-22** NASR cycle. The FAA publishes
+The bundled snapshot is built from the **2026-04-16** NASR cycle. The FAA publishes
 updated NASR data every 28 days. To update, re-run the build pipeline below against
 a newer cycle.
 
-All data is derived from the FAA National Airspace System Resource (NASR) 28-day
+All data is derived from the [FAA National Airspace System Resource (NASR)](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) 28-day
 subscription, which is public domain. Fix data comes from FIX_BASE.csv,
 FIX_CHRT.csv, and FIX_NAV.csv. The build pipeline that produces this dataset
 lives in [tools/build-fix-data](https://github.com/neilcochran/squawk/tree/main/tools/build-fix-data).
