@@ -6,14 +6,15 @@
   "packageManager": "npm@11.12.1",
   "workspaces": [
     "packages/*",
-    "scripts/build-airspace-data",
-    "scripts/build-icao-registry-data",
-    "scripts/build-airport-data",
-    "scripts/build-navaid-data",
-    "scripts/build-fix-data",
-    "scripts/build-airway-data",
-    "scripts/build-procedure-data",
-    "scripts/map-viewer"
+    "tools/build-shared",
+    "tools/build-airspace-data",
+    "tools/build-icao-registry-data",
+    "tools/build-airport-data",
+    "tools/build-navaid-data",
+    "tools/build-fix-data",
+    "tools/build-airway-data",
+    "tools/build-procedure-data",
+    "tools/map-viewer"
   ],
   "scripts": {
     "build": "turbo run build",

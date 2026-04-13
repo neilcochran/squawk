@@ -18,12 +18,12 @@ import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 const NASR_SCRIPTS = [
-  { name: 'airports', pkg: 'scripts/build-airport-data' },
-  { name: 'navaids', pkg: 'scripts/build-navaid-data' },
-  { name: 'fixes', pkg: 'scripts/build-fix-data' },
-  { name: 'airways', pkg: 'scripts/build-airway-data' },
-  { name: 'airspace', pkg: 'scripts/build-airspace-data' },
-  { name: 'procedures', pkg: 'scripts/build-procedure-data' },
+  { name: 'airports', pkg: 'tools/build-airport-data' },
+  { name: 'navaids', pkg: 'tools/build-navaid-data' },
+  { name: 'fixes', pkg: 'tools/build-fix-data' },
+  { name: 'airways', pkg: 'tools/build-airway-data' },
+  { name: 'airspace', pkg: 'tools/build-airspace-data' },
+  { name: 'procedures', pkg: 'tools/build-procedure-data' },
 ];
 
 const ALL_NAMES = NASR_SCRIPTS.map((s) => s.name);
@@ -119,7 +119,7 @@ if (icaoMode) {
   console.log('='.repeat(60));
   const icaoArgs = icaoMode === 'fetch' ? '--fetch' : `--local "${icaoPath}"`;
   try {
-    execSync(`node scripts/build-icao-registry-data/dist/index.js ${icaoArgs}`, {
+    execSync(`node tools/build-icao-registry-data/dist/index.js ${icaoArgs}`, {
       stdio: 'inherit',
       cwd: resolve(import.meta.dirname, '..'),
     });

@@ -84,4 +84,4 @@ All data is derived from the FAA National Airspace System Resource (NASR) 28-day
 subscription, which is public domain. Airway data comes from AWY.txt
 (Victor, Jet, RNAV Q/T, colored airways) and ATS.txt (Atlantic, Bahama, Pacific,
 Puerto Rico oceanic routes). The build pipeline that produces this dataset
-lives in `scripts/build-airway-data/`.
+lives in [tools/build-airway-data](https://github.com/neilcochran/squawk/tree/main/tools/build-airway-data).

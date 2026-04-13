@@ -119,4 +119,4 @@ All data is derived from the FAA National Airspace System Resource (NASR) 28-day
 subscription, which is public domain. Airport base data comes from APT_BASE.csv,
 runway data from APT_RWY.csv and APT_RWY_END.csv, frequencies from FRQ.csv, and
 ILS data from ILS_BASE.csv, ILS_GS.csv, and ILS_DME.csv. The build pipeline that
-produces this dataset lives in `scripts/build-airport-data/`.
+produces this dataset lives in [tools/build-airport-data](https://github.com/neilcochran/squawk/tree/main/tools/build-airport-data).
