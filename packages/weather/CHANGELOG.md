@@ -1,5 +1,13 @@
 # @squawk/weather
 
+## 0.2.1
+
+### Patch Changes
+
+- 16d7bf1: Correct READMEs and TSDoc
+- Updated dependencies [16d7bf1]
+  - @squawk/types@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

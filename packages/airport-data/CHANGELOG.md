@@ -1,5 +1,17 @@
 # @squawk/airport-data
 
+## 0.3.0
+
+### Minor Changes
+
+- 6f91bf8: Update bundled data from FAA NASR cycle effective 2026-04-16
+
+### Patch Changes
+
+- 16d7bf1: Correct READMEs and TSDoc
+- Updated dependencies [16d7bf1]
+  - @squawk/types@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

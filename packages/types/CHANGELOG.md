@@ -1,5 +1,11 @@
 # @squawk/types
 
+## 0.2.1
+
+### Patch Changes
+
+- 16d7bf1: Correct READMEs and TSDoc
+
 ## 0.2.0
 
 ### Minor Changes
