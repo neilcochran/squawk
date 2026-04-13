@@ -115,7 +115,7 @@ The bundled snapshot is built from the **2026-04-16** NASR cycle. The FAA publis
 updated NASR data every 28 days. To update, re-run the build pipeline below against
 a newer cycle.
 
-All data is derived from the FAA National Airspace System Resource (NASR) 28-day
+All data is derived from the [FAA National Airspace System Resource (NASR)](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) 28-day
 subscription, which is public domain. Airport base data comes from APT_BASE.csv,
 runway data from APT_RWY.csv and APT_RWY_END.csv, frequencies from FRQ.csv, and
 ILS data from ILS_BASE.csv, ILS_GS.csv, and ILS_DME.csv. The build pipeline that

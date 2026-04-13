@@ -32,6 +32,6 @@ The bundled snapshot is built from the **2026-04-13** FAA ReleasableAircraft
 database. The FAA updates this database periodically. To update, re-run the build
 pipeline with a newer download.
 
-All data is derived from the FAA ReleasableAircraft database, which is public
+All data is derived from the [FAA ReleasableAircraft](https://registry.faa.gov/database/ReleasableAircraft.zip) database, which is public
 domain. The build pipeline that produces this dataset lives in
 [tools/build-icao-registry-data](https://github.com/neilcochran/squawk/tree/main/tools/build-icao-registry-data).
