@@ -1,5 +1,11 @@
 # @squawk/weather
 
+## 0.2.2
+
+### Patch Changes
+
+- dc77760: Remove implementation status from squawk/weather README
+
 ## 0.2.1
 
 ### Patch Changes
