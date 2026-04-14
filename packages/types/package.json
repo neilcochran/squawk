@@ -1,6 +1,6 @@
 {
   "name": "@squawk/types",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Shared TypeScript type definitions for the @squawk aviation libraries",
   "author": "Neil Cochran",
