@@ -75,3 +75,4 @@ Functions that already exist in `@squawk/units` are not re-exported. Import them
 - **glide** - Glide distance with and without wind correction
 - **pivotal** - Pivotal altitude for ground reference maneuvers
 - **solar** - Sunrise/sunset, civil twilight, day/night determination (NOAA algorithm)
+- **magnetic** - Magnetic declination and field components (WMM2025), true/magnetic bearing conversion
