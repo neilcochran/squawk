@@ -19,3 +19,4 @@ export * as turn from './turn.js';
 export * as glide from './glide.js';
 export * as pivotal from './pivotal.js';
 export * as solar from './solar.js';
+export * as magnetic from './magnetic.js';
