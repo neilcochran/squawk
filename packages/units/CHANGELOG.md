@@ -1,5 +1,11 @@
 # @squawk/units
 
+## 0.2.2
+
+### Patch Changes
+
+- d52b90b: Update internal npm dependencies
+
 ## 0.2.1
 
 ### Patch Changes
