@@ -1,5 +1,11 @@
 # @squawk/airspace-data
 
+## 0.3.2
+
+### Patch Changes
+
+- d52b90b: Update internal npm dependencies
+
 ## 0.3.1
 
 ### Patch Changes

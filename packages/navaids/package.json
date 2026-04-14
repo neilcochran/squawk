@@ -1,6 +1,6 @@
 {
   "name": "@squawk/navaids",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Navaid queries by identifier, frequency, type, location, or name search",
   "author": "Neil Cochran",
