@@ -1,6 +1,6 @@
 {
   "name": "@squawk/airport-data",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "description": "Pre-processed FAA NASR airport snapshot for use with @squawk/airports",
   "author": "Neil Cochran",

@@ -1,5 +1,13 @@
 # @squawk/icao-registry
 
+## 0.2.2
+
+### Patch Changes
+
+- d52b90b: Update internal npm dependencies
+- Updated dependencies [d52b90b]
+  - @squawk/types@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @squawk/flight-math
 
+## 0.3.1
+
+### Patch Changes
+
+- d52b90b: Update internal npm dependencies
+- Updated dependencies [d52b90b]
+  - @squawk/units@0.2.2
+
 ## 0.3.0
 
 ### Minor Changes
