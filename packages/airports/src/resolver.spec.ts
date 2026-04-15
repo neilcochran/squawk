@@ -129,6 +129,70 @@ describe('nearest', () => {
     assert.equal(results.length, 0);
   });
 
+  it('filters by minimum runway length', () => {
+    // JFK area - request only airports with runways >= 10000 ft (major airports)
+    const results = resolver.nearest({
+      lat: 40.6413,
+      lon: -73.7781,
+      maxDistanceNm: 30,
+      minRunwayLengthFt: 10000,
+    });
+    assert.ok(results.length > 0, 'expected results with long runways');
+    for (const r of results) {
+      const hasLongRunway = r.airport.runways.some(
+        (rwy) => rwy.lengthFt !== undefined && rwy.lengthFt >= 10000,
+      );
+      assert.ok(hasLongRunway, `${r.airport.faaId} should have a runway >= 10000 ft`);
+    }
+  });
+
+  it('filters by minimum runway length combined with facility type', () => {
+    const results = resolver.nearest({
+      lat: 40.6413,
+      lon: -73.7781,
+      maxDistanceNm: 50,
+      minRunwayLengthFt: 5000,
+      types: new Set<FacilityType>(['AIRPORT']),
+    });
+    for (const r of results) {
+      assert.equal(r.airport.facilityType, 'AIRPORT');
+      const meetsLength = r.airport.runways.some(
+        (rwy) => rwy.lengthFt !== undefined && rwy.lengthFt >= 5000,
+      );
+      assert.ok(meetsLength, `${r.airport.faaId} should have a runway >= 5000 ft`);
+    }
+  });
+
+  it('returns empty array when no airports meet runway length requirement', () => {
+    // No airport has a 100,000 ft runway
+    const results = resolver.nearest({
+      lat: 40.6413,
+      lon: -73.7781,
+      maxDistanceNm: 30,
+      minRunwayLengthFt: 100000,
+    });
+    assert.equal(results.length, 0);
+  });
+
+  it('excludes airports where all runways have undefined length', () => {
+    // Heliports typically have no runway length data - using a high minRunwayLengthFt of 1
+    // combined with heliport filter should return nothing since heliport "runways" lack lengthFt
+    const results = resolver.nearest({
+      lat: 40.6413,
+      lon: -73.7781,
+      maxDistanceNm: 50,
+      minRunwayLengthFt: 1,
+      types: new Set<FacilityType>(['HELIPORT']),
+    });
+    for (const r of results) {
+      const hasDefinedLength = r.airport.runways.some((rwy) => rwy.lengthFt !== undefined);
+      assert.ok(
+        hasDefinedLength,
+        `${r.airport.faaId} should not appear without a runway with defined length`,
+      );
+    }
+  });
+
   it('includes distanceNm rounded to two decimal places', () => {
     const results = resolver.nearest({ lat: 40.6413, lon: -73.7781, limit: 5 });
     for (const r of results) {

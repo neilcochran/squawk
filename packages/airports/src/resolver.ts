@@ -25,6 +25,8 @@ export interface NearestAirportQuery {
   limit?: number;
   /** Optional set of facility types to include. When omitted, all types are included. */
   types?: ReadonlySet<FacilityType>;
+  /** Minimum runway length in feet. When set, only airports with at least one runway meeting this length are included. */
+  minRunwayLengthFt?: number;
 }
 
 /**
@@ -143,6 +145,15 @@ export function createAirportResolver(options: AirportResolverOptions): AirportR
 
       for (const airport of airports) {
         if (query.types && !query.types.has(airport.facilityType)) {
+          continue;
+        }
+
+        if (
+          query.minRunwayLengthFt !== undefined &&
+          !airport.runways.some(
+            (rwy) => rwy.lengthFt !== undefined && rwy.lengthFt >= query.minRunwayLengthFt!,
+          )
+        ) {
           continue;
         }
 
