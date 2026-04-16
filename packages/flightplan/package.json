@@ -33,7 +33,8 @@
     "lint": "tsc --noEmit && eslint src"
   },
   "dependencies": {
-    "@squawk/types": "*"
+    "@squawk/types": "*",
+    "@squawk/units": "*"
   },
   "devDependencies": {
     "@squawk/airport-data": "*",
