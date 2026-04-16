@@ -25,3 +25,5 @@ export type {
   SpeedAltitudeRouteElement,
   UnresolvedRouteElement,
 } from './resolver.js';
+export { computeRouteDistance } from './route-distance.js';
+export type { RouteLeg, RouteDistanceResult } from './route-distance.js';
