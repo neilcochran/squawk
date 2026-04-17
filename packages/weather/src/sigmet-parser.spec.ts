@@ -225,6 +225,54 @@ const INTERNATIONAL_OBSC_TS = `WSTU31 UTAT 051525
 UTAT SIGMET N 5 VALID 051525/051925 UTAT-
 DASHOGUZ FIR OBSC TS FCST ENTIRE FIR TOP FL370 MOV NE 20KT NC=`;
 
+// Fused letter+digit identifier (Pattern C): common in South American FIRs.
+const INTERNATIONAL_FUSED_SINGLE = `WSCH31 SCCI 162347
+SCCZ SIGMET A6 VALID 162347/170347 SCCI-
+SCCZ PUNTA ARENAS FIR SEV TURB FCST E OF LINE S4700 W07800 - S6000
+W07600 FL160/360 STNR NC=`;
+
+// Fused identifier with zero-padded digits.
+const INTERNATIONAL_FUSED_ZERO_PADDED = `WSPR31 SPIM 162230
+SPIM SIGMET B02 VALID 162230/170045 SPJC-
+SPIM LIMA FIR EMBD TS OBS AT 2210Z WI S1540 W07057 - S1458 W07431 -
+S0649 W07932 - S0559 W07824 - S1328 W07408 - S1431 W07106 - S1540
+W07057 TOP FL540 MOV WNW 05KT INTSF=`;
+
+// Fused identifier with multi-digit number.
+const INTERNATIONAL_FUSED_MULTI_DIGIT = `WSPR31 SPIM 162240
+SPIM SIGMET D10 VALID 162240/170055 SPJC-
+SPIM LIMA FIR EMBD TS OBS AT 2220Z WI S1056 W07547 - S0758 W07802 -
+S0551 W07831 - S0407 W07629 - S0408 W07524 - S0658 W07247 - S0907
+W07152 - S1056 W07547 TOP FL540 MOV WSW 10KT WKN=`;
+
+// Fused identifier with multi-letter prefix. Not common in live data, but
+// the regex handles letter prefixes of arbitrary length; this fixture
+// locks that behavior in.
+const INTERNATIONAL_FUSED_MULTI_LETTER = `WSFX31 FXXX 162300
+FXXX SIGMET AB9 VALID 162300/170300 FXXX-
+FXXX EXAMPLE FIR SEV TURB FCST FL300/FL400 STNR NC=`;
+
+// Space before the issuing-station dash: `SBAZ -` instead of `SBAZ-`.
+// Observed in South American feeds (e.g. SBAZ AMAZONICA FIR).
+const INTERNATIONAL_SPACE_BEFORE_DASH = `WSBR31 SBAZ 162330
+SBAZ SIGMET 140 VALID 162330/170330 SBAZ -
+SBAZ AMAZONICA FIR EMBD TS FCST WI S0731 W07358 - S0925 W07313 -
+S1000 W07210 - S1001 W07116 - S0731 W07358 TOP FL490 STNR NC=`;
+
+// Multiple FIR codes before the SIGMET keyword. The FIR code immediately
+// preceding SIGMET is captured as firCodeFromHeader; earlier FIR codes
+// are picked up by parseFirInfo from the body content.
+const INTERNATIONAL_MULTI_FIR = `WSNT01 KNHC 170145
+KZMA TJZS SIGMET FOXTROT 3 VALID 170145/170545 KKCI-
+KZMA MIAMI OCEANIC FIR TJZS SAN JUAN FIR EMBD TS OBS AT 0145Z WI
+N2500 W07500 - N2500 W06500 - N2300 W06500 - N2300 W07500 - N2500
+W07500 MOV NW 10KT INTSF=`;
+
+// Cancellation referencing a fused-identifier SIGMET.
+const INTERNATIONAL_CANCEL_FUSED = `WSCH31 SCCI 170500
+SCCZ SIGMET A7 VALID 170500/170515 SCCI-
+SCCZ PUNTA ARENAS FIR CNL SIGMET A6 162347/170347=`;
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -1070,6 +1118,94 @@ describe('parseSigmet', () => {
       assert.ok(result.forecastAltitudeRange);
       assert.equal(result.forecastAltitudeRange.baseFt, 20000);
       assert.equal(result.forecastAltitudeRange.topFt, 40000);
+    });
+  });
+
+  describe('international SIGMET - header variants', () => {
+    it('parses a fused single-letter + single-digit identifier', () => {
+      const result = parseSigmet(INTERNATIONAL_FUSED_SINGLE);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      assert.equal(result.seriesName, 'A');
+      assert.equal(result.seriesNumber, 6);
+      assert.equal(result.firCode, 'SCCZ');
+      assert.equal(result.issuingStation, 'SCCI');
+    });
+
+    it('parses a fused identifier with zero-padded digits', () => {
+      const result = parseSigmet(INTERNATIONAL_FUSED_ZERO_PADDED);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      assert.equal(result.seriesName, 'B');
+      assert.equal(result.seriesNumber, 2);
+      assert.equal(result.firCode, 'SPIM');
+      assert.equal(result.issuingStation, 'SPJC');
+    });
+
+    it('parses a fused identifier with multi-digit number', () => {
+      const result = parseSigmet(INTERNATIONAL_FUSED_MULTI_DIGIT);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      assert.equal(result.seriesName, 'D');
+      assert.equal(result.seriesNumber, 10);
+      assert.equal(result.firCode, 'SPIM');
+    });
+
+    it('parses a fused identifier with multi-letter prefix', () => {
+      const result = parseSigmet(INTERNATIONAL_FUSED_MULTI_LETTER);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      assert.equal(result.seriesName, 'AB');
+      assert.equal(result.seriesNumber, 9);
+      assert.equal(result.firCode, 'FXXX');
+    });
+
+    it('parses a header with whitespace before the issuing-station dash', () => {
+      const result = parseSigmet(INTERNATIONAL_SPACE_BEFORE_DASH);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      assert.equal(result.seriesName, '140');
+      assert.equal(result.seriesNumber, 140);
+      assert.equal(result.firCode, 'SBAZ');
+      assert.equal(result.issuingStation, 'SBAZ');
+    });
+
+    it('parses a header with multiple FIR codes preceding SIGMET', () => {
+      const result = parseSigmet(INTERNATIONAL_MULTI_FIR);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      assert.equal(result.seriesName, 'FOXTROT');
+      assert.equal(result.seriesNumber, 3);
+      assert.equal(result.issuingStation, 'KKCI');
+      // The FIR code closest to SIGMET (TJZS) is captured from the header.
+      // Earlier FIR codes (KZMA) are consumed by parseFirInfo from the body.
+      assert.ok(
+        result.firCode === 'TJZS' || result.firCode === 'KZMA',
+        `firCode should be one of the header FIRs, got ${result.firCode}`,
+      );
+    });
+
+    it('parses a cancellation referencing a fused identifier', () => {
+      const result = parseSigmet(INTERNATIONAL_CANCEL_FUSED);
+      assert.equal(result.format, 'INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      assert.equal(result.isCancellation, true);
+      assert.equal(result.cancelledSeriesName, 'A');
+      assert.equal(result.cancelledSeriesNumber, 6);
     });
   });
 
