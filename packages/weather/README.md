@@ -3,10 +3,15 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/weather)](https://www.npmjs.com/package/@squawk/weather) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure parsing library for aviation weather strings. Parses raw METAR, SPECI, TAF,
-SIGMET, AIRMET, and PIREP text into fully typed, structured objects. Contains no
-network calls or data fetching - consumers provide raw weather strings however
-they obtain them (ADDS API, AVWX, local feed, file dump) and the package returns
-structured results.
+SIGMET, AIRMET, and PIREP text into fully typed, structured objects. The core
+`@squawk/weather` export contains no network calls - consumers provide raw
+weather strings however they obtain them (ADDS API, AVWX, local feed, file
+dump) and the package returns structured results.
+
+An opt-in fetch layer is available at `@squawk/weather/fetch` for consumers
+who want to pull live data directly from the Aviation Weather Center (AWC)
+text API. It uses the Node 22+ global `fetch`; pulling it in is a choice so
+the core parsing import graph stays network-free.
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
@@ -153,6 +158,99 @@ console.log(pirep.icing?.[0]?.type); // "RIME"
 
 Derives the flight category (VFR, MVFR, IFR, LIFR) from visibility and ceiling
 conditions.
+
+## Fetch integration
+
+Import from the `@squawk/weather/fetch` subpath to get fetch+parse helpers
+that hit the AWC text API. Each function issues a single HTTP request and
+returns parsed results alongside any per-record parse errors and the full
+raw body.
+
+```typescript
+import {
+  fetchMetar,
+  fetchTaf,
+  fetchPirep,
+  fetchSigmets,
+  fetchInternationalSigmets,
+} from '@squawk/weather/fetch';
+
+const { metars } = await fetchMetar(['KJFK', 'KLAX']);
+const { tafs } = await fetchTaf('KJFK');
+const { pireps } = await fetchPirep('KDEN');
+const { sigmets } = await fetchSigmets();
+const { sigmets: international } = await fetchInternationalSigmets();
+```
+
+`fetchMetar` and `fetchTaf` accept a single 4-letter ICAO identifier or an
+array of them (comma-joined into one request). `fetchPirep` takes a single
+4-letter ICAO identifier as the search center; the AWC endpoint rejects
+shorter forms (e.g. `DEN`) with a 400. `fetchSigmets` and
+`fetchInternationalSigmets` return the full current SIGMET set for their
+respective regions and take no ID argument:
+
+- `fetchSigmets` - domestic (CONUS) SIGMETs via `/api/data/airsigmet`.
+- `fetchInternationalSigmets` - international / ICAO-format SIGMETs via
+  `/api/data/isigmet`. Does not include SIGMETs issued by the US in
+  domestic format.
+
+AWC does not currently expose a raw-text AIRMET endpoint; `parseAirmet` is
+still available for callers who have AIRMET text from another source.
+
+### Endpoint-specific options
+
+`fetchPirep` accepts additional AWC filter parameters:
+
+```typescript
+await fetchPirep('KDEN', {
+  distance: 100, // nautical miles from the center station
+  age: 6, // hours back
+  level: 200, // altitude in hundreds of feet (+/-3000 ft)
+  inten: 'mod', // minimum intensity: 'lgt' | 'mod' | 'sev'
+});
+```
+
+`fetchSigmets` accepts a hazard filter:
+
+```typescript
+await fetchSigmets({ hazard: 'turb' }); // 'conv' | 'turb' | 'ice' | 'ifr'
+```
+
+### Options
+
+Every fetch function accepts an optional options object:
+
+```typescript
+await fetchMetar('KJFK', {
+  signal: controller.signal, // AbortController signal for cancellation
+  baseUrl: 'https://mirror.test/api', // override the AWC base URL
+});
+```
+
+### Error handling
+
+- **HTTP non-2xx**: throws `AwcFetchError` with `status`, `statusText`, `body`, and `url`.
+- **Network / abort errors**: rethrown as-is.
+- **Parse errors on an individual record**: captured in the `parseErrors`
+  array in the result, not thrown. Other records in the same response still
+  parse successfully.
+
+```typescript
+import { fetchMetar, AwcFetchError } from '@squawk/weather/fetch';
+
+try {
+  const { metars, parseErrors } = await fetchMetar('KJFK');
+  for (const { raw, error } of parseErrors) {
+    console.warn('Failed to parse:', raw, error);
+  }
+} catch (err) {
+  if (err instanceof AwcFetchError) {
+    console.error(`AWC ${err.status}: ${err.body}`);
+  } else {
+    throw err;
+  }
+}
+```
 
 ## Types
 
