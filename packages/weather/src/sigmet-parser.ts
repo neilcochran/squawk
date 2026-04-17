@@ -196,9 +196,11 @@ function parseConvectiveBulletin(normalized: string): Sigmet[] {
  * International SIGMETs use: SIGMET NAME # VALID dddddd/dddddd XXXX-
  * The trailing XXXX- (issuing station + dash) distinguishes them from
  * domestic range-validity SIGMETs (e.g. VALID dddddd/ddddddZ for volcanic ash).
+ * Some states emit the issuing station with whitespace before the dash
+ * (e.g. `SBAZ -`), which is tolerated here.
  */
 function isInternationalFormat(text: string): boolean {
-  return /\bSIGMET\s+[A-Z0-9]+(?:\s+\d+)?\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}-/.test(text);
+  return /\bSIGMET\s+[A-Z0-9]+(?:\s+\d+)?\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}\s*-/.test(text);
 }
 
 // ---------------------------------------------------------------------------
@@ -853,9 +855,10 @@ function parseNonConvectiveCancellation(body: string, raw: string): NonConvectiv
  */
 function stripInternationalHeaders(text: string): string {
   // Find the position of the SIGMET body by looking for FIR code(s) + SIGMET pattern
-  // or just SIGMET keyword with the ICAO validity format
+  // or just SIGMET keyword with the ICAO validity format. The trailing dash may
+  // be preceded by whitespace in some feeds (e.g. `SBAZ -`).
   const sigmetPattern =
-    /\b(?:[A-Z]{4}\s+)*SIGMET\s+\w+(?:\s+\d+)?\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}-/;
+    /\b(?:[A-Z]{4}\s+)*SIGMET\s+\w+(?:\s+\d+)?\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}\s*-/;
   const match = text.match(sigmetPattern);
   if (!match || match.index === undefined) {
     return text;
@@ -894,8 +897,20 @@ function stripInternationalHeaders(text: string): string {
 
 /**
  * Parses the header of an international SIGMET.
- * Handles both name+number (SIGMET ALFA 1 VALID...) and number-only (SIGMET 02 VALID...) formats,
- * with or without a leading FIR code.
+ *
+ * Handles three identifier shapes, with or without one-or-more leading FIR
+ * codes, and tolerates optional whitespace before the issuing-station dash:
+ *
+ * - Pattern A: `SIGMET NAME # VALID ...` (letter name and number separated by whitespace,
+ *   e.g. `SIGMET ALFA 1`, `SIGMET MIKE 3`)
+ * - Pattern C: `SIGMET <LETTERS><DIGITS> VALID ...` (letters and digits fused into a
+ *   single token with no whitespace, e.g. `SIGMET A9`, `SIGMET B02`, `SIGMET D10`,
+ *   `SIGMET AB9`). Common in South American and some oceanic FIR feeds.
+ * - Pattern B: `SIGMET ## VALID ...` (pure numeric identifier, e.g. `SIGMET 02`)
+ *
+ * When multiple FIR codes precede `SIGMET` (e.g. `KZMA TJZS SIGMET FOXTROT 3`),
+ * the FIR code closest to `SIGMET` is captured as `firCodeFromHeader`; earlier
+ * FIR codes are consumed by the body-level FIR parser downstream.
  */
 function parseInternationalHeader(body: string):
   | {
@@ -908,9 +923,9 @@ function parseInternationalHeader(body: string):
       headerLength: number;
     }
   | undefined {
-  // Pattern A: [XXXX] SIGMET NAME # VALID dddddd/dddddd XXXX- (name + number)
+  // Pattern A: [XXXX ...] SIGMET NAME # VALID dddddd/dddddd XXXX[-| -] (name + number)
   const withNumMatch = body.match(
-    /^(?:([A-Z]{4})\s+)?SIGMET\s+([A-Z0-9]+)\s+(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})-/,
+    /^(?:(?:[A-Z]{4}\s+)*([A-Z]{4})\s+)?SIGMET\s+([A-Z0-9]+)\s+(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})\s*-/,
   );
   if (withNumMatch) {
     return {
@@ -932,9 +947,34 @@ function parseInternationalHeader(body: string):
     };
   }
 
-  // Pattern B: [XXXX] SIGMET ## VALID dddddd/dddddd XXXX- (number-only, no separate name)
+  // Pattern C: [XXXX ...] SIGMET <LETTERS><DIGITS> VALID dddddd/dddddd XXXX[-| -]
+  // Fused identifier with no whitespace between letters and digits.
+  const fusedMatch = body.match(
+    /^(?:(?:[A-Z]{4}\s+)*([A-Z]{4})\s+)?SIGMET\s+([A-Z]+)(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})\s*-/,
+  );
+  if (fusedMatch) {
+    return {
+      firCodeFromHeader: fusedMatch[1],
+      seriesName: fusedMatch[2]!,
+      seriesNumber: parseInt(fusedMatch[3]!, 10),
+      validFrom: {
+        day: parseInt(fusedMatch[4]!, 10),
+        hour: parseInt(fusedMatch[5]!, 10),
+        minute: parseInt(fusedMatch[6]!, 10),
+      },
+      validTo: {
+        day: parseInt(fusedMatch[7]!, 10),
+        hour: parseInt(fusedMatch[8]!, 10),
+        minute: parseInt(fusedMatch[9]!, 10),
+      },
+      issuingStation: fusedMatch[10]!,
+      headerLength: fusedMatch[0].length,
+    };
+  }
+
+  // Pattern B: [XXXX ...] SIGMET ## VALID dddddd/dddddd XXXX[-| -] (number-only, no separate name)
   const numOnlyMatch = body.match(
-    /^(?:([A-Z]{4})\s+)?SIGMET\s+(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})-/,
+    /^(?:(?:[A-Z]{4}\s+)*([A-Z]{4})\s+)?SIGMET\s+(\d+)\s+VALID\s+(\d{2})(\d{2})(\d{2})\/(\d{2})(\d{2})(\d{2})\s+([A-Z]{4})\s*-/,
   );
   if (numOnlyMatch) {
     const numStr = numOnlyMatch[2]!;
@@ -1249,7 +1289,20 @@ function parseInternationalCancellation(
   validFrom: DayTime,
   validTo: DayTime,
 ): InternationalSigmet {
-  const cnlMatch = afterFirContent.match(/CNL\s+SIGMET\s+([A-Z0-9]+)\s+(\d+)\s+(\d{6})\/(\d{6})/);
+  // Accept the same three identifier shapes parseInternationalHeader does:
+  // space-separated name+num, fused letters+digits, or pure digits.
+  const cnlSpaceMatch = afterFirContent.match(
+    /CNL\s+SIGMET\s+([A-Z0-9]+)\s+(\d+)\s+(\d{6})\/(\d{6})/,
+  );
+  const cnlFusedMatch = !cnlSpaceMatch
+    ? afterFirContent.match(/CNL\s+SIGMET\s+([A-Z]+)(\d+)\s+(\d{6})\/(\d{6})/)
+    : null;
+  const cnlNumMatch =
+    !cnlSpaceMatch && !cnlFusedMatch
+      ? afterFirContent.match(/CNL\s+SIGMET\s+(\d+)\s+(\d{6})\/(\d{6})/)
+      : null;
+  const cnlMatch = cnlSpaceMatch ?? cnlFusedMatch ?? cnlNumMatch;
+  const cnlIsNumOnly = cnlMatch === cnlNumMatch && cnlNumMatch !== null;
 
   return {
     format: 'INTERNATIONAL',
@@ -1263,12 +1316,19 @@ function parseInternationalCancellation(
     validTo,
     isCancellation: true,
     ...(cnlMatch
-      ? {
-          cancelledSeriesName: cnlMatch[1]!,
-          cancelledSeriesNumber: parseInt(cnlMatch[2]!, 10),
-          cancelledValidStart: parseTimeString(cnlMatch[3]!)!,
-          cancelledValidEnd: parseTimeString(cnlMatch[4]!)!,
-        }
+      ? cnlIsNumOnly
+        ? {
+            cancelledSeriesName: cnlMatch[1]!,
+            cancelledSeriesNumber: parseInt(cnlMatch[1]!, 10),
+            cancelledValidStart: parseTimeString(cnlMatch[2]!)!,
+            cancelledValidEnd: parseTimeString(cnlMatch[3]!)!,
+          }
+        : {
+            cancelledSeriesName: cnlMatch[1]!,
+            cancelledSeriesNumber: parseInt(cnlMatch[2]!, 10),
+            cancelledValidStart: parseTimeString(cnlMatch[3]!)!,
+            cancelledValidEnd: parseTimeString(cnlMatch[4]!)!,
+          }
       : {}),
   };
 }
