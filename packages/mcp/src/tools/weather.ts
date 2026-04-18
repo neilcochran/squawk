@@ -23,6 +23,7 @@ import {
   type SigmetHazardFilter,
 } from '@squawk/weather/fetch';
 import { z } from 'zod';
+import { runParser } from './tool-helpers.js';
 
 /** Allowed values for the AWC SIGMET hazard filter. */
 const SIGMET_HAZARD_VALUES = [
@@ -38,39 +39,6 @@ const PIREP_INTENSITY_VALUES = [
   'mod',
   'sev',
 ] as const satisfies readonly PirepMinimumIntensity[];
-
-/**
- * Wraps a synchronous parser invocation. On success returns a structured tool
- * result containing the parsed record. On failure returns an MCP error result
- * (`isError: true`) so the model sees the parser message verbatim.
- */
-function runParser<T>(
-  raw: string,
-  parser: (raw: string) => T,
-  resultKey: string,
-): {
-  /** Standard MCP content blocks. */
-  content: { type: 'text'; text: string }[];
-  /** Structured payload exposed to the client. */
-  structuredContent: Record<string, T | null>;
-  /** Set when the parser threw. */
-  isError?: boolean;
-} {
-  try {
-    const parsed = parser(raw);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(parsed, null, 2) }],
-      structuredContent: { [resultKey]: parsed },
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return {
-      content: [{ type: 'text', text: `Parse failed: ${message}` }],
-      structuredContent: { [resultKey]: null },
-      isError: true,
-    };
-  }
-}
 
 /**
  * Registers weather parsing and live-fetch tools on the given MCP server.

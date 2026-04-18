@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -278,6 +278,166 @@ describe('createSquawkMcpServer', () => {
       assert.equal(parsed.result.legs.length, 1);
       assert.equal(parsed.result.legs[0]?.from, 'KJFK');
       assert.equal(parsed.result.legs[0]?.to, 'KLAX');
+    } finally {
+      await close();
+    }
+  });
+});
+
+/**
+ * Stubs `globalThis.fetch` so the live AWC weather tools can be exercised
+ * end-to-end through the MCP transport without making real network calls.
+ * Captures the URL the tool requested so each test can assert correct query
+ * parameter construction.
+ */
+interface FetchStub {
+  /** Most recent URL the stub was called with. */
+  lastUrl: string | undefined;
+  /** Body returned by the next call. */
+  body: string;
+  /** HTTP status returned by the next call. */
+  status: number;
+}
+
+describe('live weather fetch tools (mocked)', () => {
+  const originalFetch = globalThis.fetch;
+  const stub: FetchStub = { lastUrl: undefined, body: '', status: 200 };
+
+  beforeEach(() => {
+    stub.lastUrl = undefined;
+    stub.body = '';
+    stub.status = 200;
+    globalThis.fetch = ((input: Parameters<typeof fetch>[0]) => {
+      stub.lastUrl = typeof input === 'string' ? input : input.toString();
+      return Promise.resolve(
+        new Response(stub.body, {
+          status: stub.status,
+          statusText: stub.status === 200 ? 'OK' : 'Error',
+        }),
+      );
+    }) as typeof fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('fetch_metar requests the AWC metar endpoint and returns parsed records', async () => {
+    stub.body = 'KJFK 181851Z 19014KT 10SM FEW250 22/12 A3001 RMK AO2 SLP163\n';
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'fetch_metar',
+        arguments: { stations: ['KJFK'] },
+      });
+      const parsed = z
+        .object({
+          metars: z.array(z.object({ stationId: z.string() }).passthrough()),
+          parseErrors: z.array(z.unknown()),
+        })
+        .parse(result.structuredContent);
+      assert.equal(parsed.metars.length, 1);
+      assert.equal(parsed.metars[0]?.stationId, 'KJFK');
+      assert.equal(parsed.parseErrors.length, 0);
+      assert.ok(
+        stub.lastUrl?.includes('/metar?'),
+        `expected /metar? in ${stub.lastUrl ?? '<none>'}`,
+      );
+      assert.ok(stub.lastUrl?.includes('ids=KJFK'));
+      assert.ok(stub.lastUrl?.includes('format=raw'));
+    } finally {
+      await close();
+    }
+  });
+
+  it('fetch_metar surfaces per-record parse errors', async () => {
+    // First line is a valid METAR; second line is garbage that the parser
+    // will throw on. Both records are returned so the model can decide what
+    // to do with the partial failure.
+    stub.body = 'KJFK 181851Z 19014KT 10SM FEW250 22/12 A3001 RMK AO2 SLP163\nNOT_A_METAR\n';
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'fetch_metar',
+        arguments: { stations: ['KJFK'] },
+      });
+      const parsed = z
+        .object({
+          metars: z.array(z.object({ stationId: z.string() }).passthrough()),
+          parseErrors: z.array(z.object({ raw: z.string(), message: z.string() })),
+        })
+        .parse(result.structuredContent);
+      assert.equal(parsed.metars.length, 1);
+      assert.equal(parsed.metars[0]?.stationId, 'KJFK');
+      assert.equal(parsed.parseErrors.length, 1);
+      assert.equal(parsed.parseErrors[0]?.raw, 'NOT_A_METAR');
+      assert.ok(
+        parsed.parseErrors[0]?.message.length ?? 0 > 0,
+        'expected a non-empty parser message',
+      );
+    } finally {
+      await close();
+    }
+  });
+
+  it('fetch_taf splits multi-line TAF blocks separated by blank lines', async () => {
+    // AWC delivers TAFs as multi-line blocks separated by blank lines. The
+    // fetch wrapper hands each block to the parser intact (preserving the
+    // internal whitespace it depends on).
+    stub.body =
+      'TAF KJFK 181720Z 1818/1924 19012KT P6SM FEW250\n' +
+      '     FM190200 20008KT P6SM SCT250\n' +
+      '\n' +
+      'TAF KLAX 181720Z 1818/1924 27010KT P6SM SKC\n';
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'fetch_taf',
+        arguments: { stations: ['KJFK', 'KLAX'] },
+      });
+      const parsed = z
+        .object({
+          tafs: z.array(z.object({ stationId: z.string() }).passthrough()),
+          parseErrors: z.array(z.unknown()),
+        })
+        .parse(result.structuredContent);
+      assert.equal(parsed.tafs.length, 2);
+      assert.deepEqual(
+        parsed.tafs.map((t) => t.stationId),
+        ['KJFK', 'KLAX'],
+      );
+      assert.equal(parsed.parseErrors.length, 0);
+      assert.ok(stub.lastUrl?.includes('/taf?'));
+      assert.ok(
+        stub.lastUrl?.includes('ids=KJFK%2CKLAX') || stub.lastUrl?.includes('ids=KJFK,KLAX'),
+      );
+    } finally {
+      await close();
+    }
+  });
+
+  it('fetch_sigmets forwards the hazard filter on the request URL', async () => {
+    // AWC returns no SIGMETs when the filter matches nothing; an empty body
+    // exercises the URL construction without forcing the bulletin-splitting
+    // path (which is already covered by the @squawk/weather parser tests).
+    stub.body = '';
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'fetch_sigmets',
+        arguments: { hazard: 'turb' },
+      });
+      const parsed = z
+        .object({
+          sigmets: z.array(z.unknown()),
+          parseErrors: z.array(z.unknown()),
+        })
+        .parse(result.structuredContent);
+      assert.equal(parsed.sigmets.length, 0);
+      assert.equal(parsed.parseErrors.length, 0);
+      assert.ok(stub.lastUrl?.includes('/airsigmet?'));
+      assert.ok(stub.lastUrl?.includes('hazard=turb'));
+      assert.ok(stub.lastUrl?.includes('format=raw'));
     } finally {
       await close();
     }

@@ -7,39 +7,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { parseFaaNotam, parseNotam } from '@squawk/notams';
 import { z } from 'zod';
-
-/**
- * Wraps a synchronous parser invocation. On success returns a structured tool
- * result containing the parsed record; on failure returns an MCP error result
- * (`isError: true`) with the parser message verbatim.
- */
-function runParser<T>(
-  raw: string,
-  parser: (raw: string) => T,
-  resultKey: string,
-): {
-  /** Standard MCP content blocks. */
-  content: { type: 'text'; text: string }[];
-  /** Structured payload exposed to the client. */
-  structuredContent: Record<string, T | null>;
-  /** Set when the parser threw. */
-  isError?: boolean;
-} {
-  try {
-    const parsed = parser(raw);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(parsed, null, 2) }],
-      structuredContent: { [resultKey]: parsed },
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return {
-      content: [{ type: 'text', text: `Parse failed: ${message}` }],
-      structuredContent: { [resultKey]: null },
-      isError: true,
-    };
-  }
-}
+import { runParser } from './tool-helpers.js';
 
 /**
  * Registers NOTAM parsing tools on the given MCP server.
