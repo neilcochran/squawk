@@ -1,6 +1,6 @@
-import type { FeatureCollection, Feature, Polygon } from 'geojson';
+import type { FeatureCollection, Feature } from 'geojson';
 import type { AirspaceFeature, AirspaceType, AltitudeBound } from '@squawk/types';
-import { polygon as polygonGeo, type BoundingBox } from '@squawk/geo';
+import { polygon, type BoundingBox } from '@squawk/geo';
 import { altitudeMatches } from './vertical-filter.js';
 
 /**
@@ -63,8 +63,7 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
     return null;
   }
 
-  const polygon = geom as Polygon;
-  const ring = polygon.coordinates[0];
+  const ring = geom.coordinates[0];
   if (!ring || ring.length < 4) {
     return null;
   }
@@ -80,13 +79,13 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
     identifier: (props.identifier as string) ?? '',
     floor: props.floor as AltitudeBound,
     ceiling: props.ceiling as AltitudeBound,
-    boundary: polygon,
+    boundary: geom,
     state: (props.state as string) ?? null,
     controllingFacility: (props.controllingFacility as string) ?? null,
     scheduleDescription: (props.scheduleDescription as string) ?? null,
   };
 
-  return { feature, ring, boundingBox: polygonGeo.boundingBox(ring) };
+  return { feature, ring, boundingBox: polygon.boundingBox(ring) };
 }
 
 /**
@@ -132,10 +131,10 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
       if (types && !types.has(feature.type)) {
         continue;
       }
-      if (!polygonGeo.pointInBoundingBox(lon, lat, boundingBox)) {
+      if (!polygon.pointInBoundingBox(lon, lat, boundingBox)) {
         continue;
       }
-      if (!polygonGeo.pointInPolygon(lon, lat, ring)) {
+      if (!polygon.pointInPolygon(lon, lat, ring)) {
         continue;
       }
       if (!altitudeMatches(altitudeFt, feature.floor, feature.ceiling)) {
