@@ -12,6 +12,7 @@ TypeScript libraries for building aviation applications - airspace geometry, wea
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | [`@squawk/types`](packages/types)                           | Shared type definitions used across all packages                                   |
 | [`@squawk/units`](packages/units)                           | Aviation-aware unit conversion and formatting utilities                            |
+| [`@squawk/geo`](packages/geo)                               | Geospatial utilities: great-circle distance, bearing, midpoint, point-in-polygon   |
 | [`@squawk/flight-math`](packages/flight-math)               | Aviation flight computer calculations (E6B wind triangle, altitude, airspeed)      |
 | [`@squawk/icao-registry`](packages/icao-registry)           | ICAO hex to N-number and aircraft info lookup with FAA parsing utilities           |
 | [`@squawk/icao-registry-data`](packages/icao-registry-data) | Pre-processed FAA ReleasableAircraft snapshot for use with `@squawk/icao-registry` |
