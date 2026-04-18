@@ -1,6 +1,6 @@
 {
   "name": "@squawk/mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Model Context Protocol server exposing squawk's aviation libraries as tools for LLM clients",
   "author": "Neil Cochran",
