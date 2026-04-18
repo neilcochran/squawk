@@ -1,6 +1,6 @@
 {
   "name": "@squawk/units",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Aviation-aware unit conversion and formatting utilities",
   "author": "Neil Cochran",
