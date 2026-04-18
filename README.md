@@ -31,6 +31,7 @@ TypeScript libraries for building aviation applications - airspace geometry, wea
 | [`@squawk/flightplan`](packages/flightplan)                 | Flight plan route string parsing and resolution using composed resolvers           |
 | [`@squawk/weather`](packages/weather)                       | Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP)      |
 | [`@squawk/notams`](packages/notams)                         | Parse raw ICAO-format NOTAM strings into structured objects                        |
+| [`@squawk/mcp`](packages/mcp)                               | Model Context Protocol server exposing the squawk libraries as tools for LLMs      |
 
 ## Development
 
