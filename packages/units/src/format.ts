@@ -2,6 +2,7 @@ import { isaTemperatureCelsius } from './isa.js';
 import type { DistanceUnit } from './distance.js';
 import type { PressureUnit } from './pressure.js';
 import type { TemperatureUnit } from './temperature.js';
+import type { FuelUnit } from './fuel.js';
 
 /**
  * Speed unit string literals accepted by formatSpeed. Includes 'mach' in addition
@@ -136,6 +137,8 @@ export function formatQNH(value: number, unit: PressureUnit, options?: FormatOpt
     inHg: 2,
     hPa: 0,
     mmHg: 0,
+    mb: 0,
+    kPa: 2,
   };
   const precision = options?.precision ?? defaultPrecision[unit];
   const formatted = new Intl.NumberFormat(options?.locale, {
@@ -167,6 +170,35 @@ export function formatDistance(value: number, unit: DistanceUnit, options?: Form
     km: 1,
     m: 0,
     ft: 0,
+  };
+  const precision = options?.precision ?? defaultPrecision[unit];
+  const formatted = new Intl.NumberFormat(options?.locale, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  }).format(value);
+  return `${formatted} ${unit}`;
+}
+
+/**
+ * Formats a fuel quantity with its unit label.
+ *
+ * Default precision:
+ * - `gal`: 1 decimal place (e.g. "42.5 gal")
+ * - `L`: 1 decimal place
+ * - `lb`: 0 decimal places (pounds are typically reported as integers in POH weight-and-balance)
+ * - `kg`: 0 decimal places
+ *
+ * @param value - Fuel quantity in the given unit.
+ * @param unit - The fuel unit to display.
+ * @param options - Optional formatting overrides.
+ * @returns Formatted fuel string such as "42.5 gal" or "250 lb".
+ */
+export function formatFuel(value: number, unit: FuelUnit, options?: FormatOptions): string {
+  const defaultPrecision: Record<FuelUnit, number> = {
+    gal: 1,
+    L: 1,
+    lb: 0,
+    kg: 0,
   };
   const precision = options?.precision ?? defaultPrecision[unit];
   const formatted = new Intl.NumberFormat(options?.locale, {

@@ -7,6 +7,7 @@ import {
   formatSpeed,
   formatQNH,
   formatDistance,
+  formatFuel,
   formatTemperature,
 } from './format.js';
 
@@ -90,6 +91,12 @@ describe('format utilities', () => {
     it('formats mmHg as an integer', () => {
       assert.equal(formatQNH(760, 'mmHg'), '760 mmHg');
     });
+    it('formats mb as an integer (matches hPa precision)', () => {
+      assert.equal(formatQNH(1013, 'mb'), '1,013 mb');
+    });
+    it('formats kPa with two decimal places', () => {
+      assert.equal(formatQNH(101.32, 'kPa'), '101.32 kPa');
+    });
     it('respects precision override', () => {
       assert.equal(formatQNH(1013.25, 'hPa', { precision: 2 }), '1,013.25 hPa');
     });
@@ -110,6 +117,31 @@ describe('format utilities', () => {
     });
     it('formats sm with one decimal', () => {
       assert.equal(formatDistance(3.0, 'sm'), '3.0 sm');
+    });
+  });
+
+  describe('formatFuel', () => {
+    it('formats gal with one decimal', () => {
+      assert.equal(formatFuel(42.5, 'gal'), '42.5 gal');
+    });
+    it('formats L with one decimal', () => {
+      assert.equal(formatFuel(160.8, 'L'), '160.8 L');
+    });
+    it('formats lb as an integer', () => {
+      assert.equal(formatFuel(336, 'lb'), '336 lb');
+    });
+    it('formats kg as an integer', () => {
+      assert.equal(formatFuel(250, 'kg'), '250 kg');
+    });
+    it('applies thousands separator for large values', () => {
+      assert.equal(formatFuel(3220, 'lb'), '3,220 lb');
+    });
+    it('respects precision override', () => {
+      assert.equal(formatFuel(42, 'gal', { precision: 0 }), '42 gal');
+      assert.equal(formatFuel(336.7, 'lb', { precision: 1 }), '336.7 lb');
+    });
+    it('respects locale override', () => {
+      assert.equal(formatFuel(3220, 'lb', { locale: 'de-DE' }), '3.220 lb');
     });
   });
 

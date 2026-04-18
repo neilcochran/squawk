@@ -19,6 +19,7 @@ export * as distance from './distance.js';
 export * as altitude from './altitude.js';
 export * as pressure from './pressure.js';
 export * as temperature from './temperature.js';
+export * as fuel from './fuel.js';
 export * as angle from './angle.js';
 export * as isa from './isa.js';
 export * as format from './format.js';
