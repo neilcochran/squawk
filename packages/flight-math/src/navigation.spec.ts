@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { close } from './test-utils.js';
-import { distance } from '@squawk/units';
 import { navigation } from './index.js';
 
 describe('holdingPatternEntry', () => {
@@ -92,69 +91,6 @@ describe('dmeArcLeadRadial', () => {
       close(withDefault, withExplicit, 0.001),
       `expected ${withExplicit}, got ${withDefault}`,
     );
-  });
-});
-
-describe('greatCircleBearing', () => {
-  it('returns 0/360 for a due-north bearing', () => {
-    // From equator to north pole.
-    const brg = navigation.greatCircleBearing(0, 0, 90, 0);
-    assert.ok(close(brg, 0, 0.1) || close(brg, 360, 0.1), `expected ~0/360, got ${brg}`);
-  });
-
-  it('returns 180 for a due-south bearing', () => {
-    const brg = navigation.greatCircleBearing(45, 0, 0, 0);
-    assert.ok(close(brg, 180, 0.1), `expected ~180, got ${brg}`);
-  });
-
-  it('returns 90 for a due-east bearing from the equator', () => {
-    const brg = navigation.greatCircleBearing(0, 0, 0, 10);
-    assert.ok(close(brg, 90, 0.1), `expected ~90, got ${brg}`);
-  });
-
-  it('returns 270 for a due-west bearing from the equator', () => {
-    const brg = navigation.greatCircleBearing(0, 0, 0, -10);
-    assert.ok(close(brg, 270, 0.1), `expected ~270, got ${brg}`);
-  });
-
-  it('computes a realistic bearing for JFK to LAX', () => {
-    // JFK (40.6413, -73.7781) to LAX (33.9425, -118.4081).
-    // Expected initial bearing roughly 265-275 degrees (west-southwest).
-    const brg = navigation.greatCircleBearing(40.6413, -73.7781, 33.9425, -118.4081);
-    assert.ok(brg > 260 && brg < 280, `expected 260-280, got ${brg}`);
-  });
-
-  it('returns 0 for identical points (degenerate case)', () => {
-    // atan2(0, 0) = 0, normalized to 0.
-    const brg = navigation.greatCircleBearing(40.0, -74.0, 40.0, -74.0);
-    assert.ok(close(brg, 0, 0.001), `expected 0, got ${brg}`);
-  });
-
-  it('handles antipodal points', () => {
-    // From north pole to south pole: any meridian is valid, but the result
-    // should be a finite number in [0, 360).
-    const brg = navigation.greatCircleBearing(90, 0, -90, 0);
-    assert.ok(brg >= 0 && brg < 360, `expected 0-360, got ${brg}`);
-  });
-});
-
-describe('greatCircleBearingAndDistance', () => {
-  it('returns both bearing and distance', () => {
-    const result = navigation.greatCircleBearingAndDistance(0, 0, 0, 1);
-    assert.ok(close(result.bearingDeg, 90, 0.1), `expected bearing ~90, got ${result.bearingDeg}`);
-    assert.ok(close(result.distanceNm, 60, 0.5), `expected ~60 NM, got ${result.distanceNm}`);
-  });
-
-  it('matches individual bearing and distance functions', () => {
-    const lat1 = 40.6413;
-    const lon1 = -73.7781;
-    const lat2 = 33.9425;
-    const lon2 = -118.4081;
-    const result = navigation.greatCircleBearingAndDistance(lat1, lon1, lat2, lon2);
-    const expectedBrg = navigation.greatCircleBearing(lat1, lon1, lat2, lon2);
-    const expectedDist = distance.greatCircleDistanceNm(lat1, lon1, lat2, lon2);
-    assert.ok(close(result.bearingDeg, expectedBrg, 0.001));
-    assert.ok(close(result.distanceNm, expectedDist, 0.001));
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { distance } from '@squawk/units';
+import { greatCircle } from '@squawk/geo';
 import type { Airport, AirwayWaypoint } from '@squawk/types';
 import { computeRouteDistance } from './route-distance.js';
 import type {
@@ -172,7 +172,7 @@ describe('computeRouteDistance', () => {
       // JFK area to a point ~60 nm north
       const p1 = makeWaypoint('AAA', 40.0, -74.0);
       const p2 = makeWaypoint('BBB', 41.0, -74.0);
-      const expected = distance.greatCircleDistanceNm(40.0, -74.0, 41.0, -74.0);
+      const expected = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
 
       const result = computeRouteDistance(route([p1, p2]));
       assert.equal(result.legs.length, 1);
@@ -187,8 +187,8 @@ describe('computeRouteDistance', () => {
       const p1 = makeWaypoint('A', 40.0, -74.0);
       const p2 = makeWaypoint('B', 41.0, -74.0);
       const p3 = makeWaypoint('C', 42.0, -74.0);
-      const d1 = distance.greatCircleDistanceNm(40.0, -74.0, 41.0, -74.0);
-      const d2 = distance.greatCircleDistanceNm(41.0, -74.0, 42.0, -74.0);
+      const d1 = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
+      const d2 = greatCircle.distanceNm(41.0, -74.0, 42.0, -74.0);
 
       const result = computeRouteDistance(route([p1, p2, p3]));
       assert.equal(result.legs.length, 2);
@@ -200,7 +200,7 @@ describe('computeRouteDistance', () => {
     it('handles airport elements', () => {
       const p1 = makeAirport('KJFK', 40.6413, -73.7781);
       const p2 = makeAirport('KLGA', 40.7769, -73.874);
-      const expected = distance.greatCircleDistanceNm(40.6413, -73.7781, 40.7769, -73.874);
+      const expected = greatCircle.distanceNm(40.6413, -73.7781, 40.7769, -73.874);
 
       const result = computeRouteDistance(route([p1, p2]));
       assert.ok(close(result.totalDistanceNm, expected));
@@ -209,7 +209,7 @@ describe('computeRouteDistance', () => {
     it('handles coordinate elements', () => {
       const p1 = makeCoordinate('4000N07400W', 40.0, -74.0);
       const p2 = makeCoordinate('4100N07400W', 41.0, -74.0);
-      const expected = distance.greatCircleDistanceNm(40.0, -74.0, 41.0, -74.0);
+      const expected = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
 
       const result = computeRouteDistance(route([p1, p2]));
       assert.ok(close(result.totalDistanceNm, expected));
@@ -220,7 +220,7 @@ describe('computeRouteDistance', () => {
     it('skips DCT markers', () => {
       const p1 = makeWaypoint('A', 40.0, -74.0);
       const p2 = makeWaypoint('B', 41.0, -74.0);
-      const expected = distance.greatCircleDistanceNm(40.0, -74.0, 41.0, -74.0);
+      const expected = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
 
       const result = computeRouteDistance(route([p1, makeDirect(), p2]));
       assert.equal(result.legs.length, 1);
@@ -231,7 +231,7 @@ describe('computeRouteDistance', () => {
     it('skips speed/altitude groups', () => {
       const p1 = makeWaypoint('A', 40.0, -74.0);
       const p2 = makeWaypoint('B', 41.0, -74.0);
-      const expected = distance.greatCircleDistanceNm(40.0, -74.0, 41.0, -74.0);
+      const expected = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
 
       const result = computeRouteDistance(route([p1, makeSpeedAltitude(), p2]));
       assert.equal(result.legs.length, 1);
@@ -333,7 +333,7 @@ describe('computeRouteDistance', () => {
         { identifier: 'A', lat: 40.0, lon: -74.0 },
         { identifier: 'B', lat: 41.0, lon: -74.0 },
       ]);
-      const expected = distance.greatCircleDistanceNm(40.0, -74.0, 41.0, -74.0);
+      const expected = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
 
       const result = computeRouteDistance(route([awp]));
       assert.ok(close(result.totalDistanceNm, expected));
@@ -412,7 +412,7 @@ describe('computeRouteDistance', () => {
         { identifier: 'MERIT', lat: 40.5, lon: -74.0 },
         { identifier: 'MARTN', lat: 41.0, lon: -74.0 },
       ]);
-      const expected = distance.greatCircleDistanceNm(40.5, -74.0, 41.0, -74.0);
+      const expected = greatCircle.distanceNm(40.5, -74.0, 41.0, -74.0);
 
       const result = computeRouteDistance(route([wp, awp]));
       assert.equal(result.legs.length, 1);
@@ -505,7 +505,7 @@ describe('computeRouteDistance', () => {
       // Two points 60 nm apart at 120 kt = 0.5 hrs
       const p1 = makeWaypoint('A', 40.0, -74.0);
       const p2 = makeWaypoint('B', 41.0, -74.0);
-      const d = distance.greatCircleDistanceNm(40.0, -74.0, 41.0, -74.0);
+      const d = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
 
       const result = computeRouteDistance(route([p1, p2]), 120);
       assert.ok(result.estimatedTimeEnrouteHrs !== undefined);

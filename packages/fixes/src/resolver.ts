@@ -1,7 +1,5 @@
 import type { Fix, FixUseCode } from '@squawk/types';
-import { distance } from '@squawk/units';
-
-const { greatCircleDistanceNm } = distance;
+import { greatCircle } from '@squawk/geo';
 
 /**
  * Options for creating a fix resolver.
@@ -138,7 +136,7 @@ export function createFixResolver(options: FixResolverOptions): FixResolver {
           continue;
         }
 
-        const dist = greatCircleDistanceNm(query.lat, query.lon, fix.lat, fix.lon);
+        const dist = greatCircle.distanceNm(query.lat, query.lon, fix.lat, fix.lon);
         if (dist <= maxDist) {
           results.push({ fix, distanceNm: Math.round(dist * 100) / 100 });
         }

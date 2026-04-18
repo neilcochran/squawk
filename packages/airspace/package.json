@@ -33,6 +33,7 @@
     "lint": "tsc --noEmit && eslint src"
   },
   "dependencies": {
+    "@squawk/geo": "*",
     "@squawk/types": "*"
   },
   "devDependencies": {

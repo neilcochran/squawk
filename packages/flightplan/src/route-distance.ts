@@ -4,7 +4,7 @@
  * {@link ParsedRoute} and sums great-circle leg distances.
  */
 
-import { distance } from '@squawk/units';
+import { greatCircle } from '@squawk/geo';
 
 import type { ParsedRoute, RouteElement } from './resolver.js';
 
@@ -213,7 +213,7 @@ export function computeRouteDistance(
     const legDistanceNm =
       from.precomputedDistanceToNextNm !== undefined
         ? from.precomputedDistanceToNextNm
-        : distance.greatCircleDistanceNm(from.lat, from.lon, to.lat, to.lon);
+        : greatCircle.distanceNm(from.lat, from.lon, to.lat, to.lon);
 
     totalDistanceNm += legDistanceNm;
 

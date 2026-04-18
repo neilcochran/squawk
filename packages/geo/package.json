@@ -1,15 +1,15 @@
 {
-  "name": "@squawk/flightplan",
-  "version": "0.3.0",
+  "name": "@squawk/geo",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Flight plan route string parsing and resolution using composed navigation resolvers",
+  "description": "Geospatial utilities: great-circle distance, bearing, midpoint, destination point, and polygon containment",
   "author": "Neil Cochran",
   "license": "MIT",
   "homepage": "https://github.com/neilcochran/squawk",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/neilcochran/squawk.git",
-    "directory": "packages/flightplan"
+    "directory": "packages/geo"
   },
   "engines": {
     "node": ">=22"
@@ -25,39 +25,30 @@
   },
   "files": [
     "dist",
-    "!dist/**/*.spec.*"
+    "!dist/**/*.spec.*",
+    "!dist/test-utils.*"
   ],
   "scripts": {
     "build": "tsc",
     "test": "node --test 'dist/**/*.spec.js'",
     "lint": "tsc --noEmit && eslint src"
   },
-  "dependencies": {
-    "@squawk/geo": "*",
-    "@squawk/types": "*"
-  },
-  "devDependencies": {
-    "@squawk/airport-data": "*",
-    "@squawk/airports": "*",
-    "@squawk/airway-data": "*",
-    "@squawk/airways": "*",
-    "@squawk/fix-data": "*",
-    "@squawk/fixes": "*",
-    "@squawk/navaid-data": "*",
-    "@squawk/navaids": "*",
-    "@squawk/procedure-data": "*",
-    "@squawk/procedures": "*",
-    "@types/node": "^25.6.0"
-  },
   "keywords": [
     "aviation",
     "typescript",
-    "flight-plan",
-    "route",
-    "navigation",
-    "ifr"
+    "geospatial",
+    "great-circle",
+    "haversine",
+    "point-in-polygon"
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@squawk/types": "*",
+    "@squawk/units": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
   }
 }
