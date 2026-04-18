@@ -5,16 +5,84 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { z } from 'zod';
 import { createSquawkMcpServer } from './server.js';
 
+/** Tool names every freshly-constructed server is expected to register. */
 const EXPECTED_TOOLS: readonly string[] = [
+  // geo
   'great_circle_distance',
   'great_circle_bearing',
   'great_circle_bearing_and_distance',
   'great_circle_midpoint',
   'great_circle_destination',
+  // flight-math
+  'compute_density_altitude',
+  'compute_true_altitude',
+  'compute_calibrated_airspeed_from_true_airspeed',
+  'solve_wind_triangle',
+  'compute_headwind_crosswind',
+  'find_wind_from_track',
+  'compute_crosswind_component',
+  'compute_top_of_descent_distance',
+  'compute_top_of_descent_distance_from_rate',
+  'compute_required_descent_rate',
+  'compute_required_climb_rate',
+  'compute_visual_descent_point',
+  'recommend_holding_pattern_entry',
+  'compute_standard_rate_bank_angle',
+  'compute_turn_radius',
+  'compute_glide_distance_with_wind',
+  'compute_solar_times',
+  'is_daytime',
+  'compute_magnetic_declination',
+  'convert_true_to_magnetic_bearing',
+  'convert_magnetic_to_true_bearing',
+  'compute_fuel_required',
+  'compute_point_of_no_return',
+  'compute_equal_time_point',
+  // airports
   'get_airport_by_faa_id',
   'get_airport_by_icao',
   'find_nearest_airports',
   'search_airports',
+  // airspace
+  'query_airspace_at_position',
+  // navaids
+  'get_navaid_by_ident',
+  'find_navaids_by_frequency',
+  'find_nearest_navaids',
+  'search_navaids',
+  // fixes
+  'get_fix_by_ident',
+  'find_nearest_fixes',
+  'search_fixes',
+  // airways
+  'get_airway_by_designation',
+  'expand_airway_segment',
+  'find_airways_by_fix',
+  'search_airways',
+  // procedures
+  'get_procedure_by_code',
+  'find_procedures_by_airport',
+  'expand_procedure',
+  'search_procedures',
+  // icao-registry
+  'lookup_aircraft_by_icao_hex',
+  // weather
+  'parse_metar',
+  'parse_taf',
+  'parse_sigmet',
+  'parse_airmet',
+  'parse_pirep',
+  'fetch_metar',
+  'fetch_taf',
+  'fetch_pirep',
+  'fetch_sigmets',
+  'fetch_international_sigmets',
+  // notams
+  'parse_icao_notam',
+  'parse_faa_notam',
+  // flightplan
+  'parse_flightplan_route',
+  'compute_route_distance',
 ];
 
 async function connectTestClient(): Promise<{
@@ -89,6 +157,127 @@ describe('createSquawkMcpServer', () => {
       assert.ok(parsed.airport !== null, 'expected an airport for KJFK');
       assert.equal(parsed.airport.faaId, 'JFK');
       assert.equal(parsed.airport.icao, 'KJFK');
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes get_navaid_by_ident end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_navaid_by_ident',
+        arguments: { ident: 'BOS' },
+      });
+      const parsed = z
+        .object({
+          navaids: z.array(
+            z.object({
+              identifier: z.string(),
+              type: z.string(),
+            }),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.navaids.length > 0, 'expected at least one BOS navaid');
+      for (const navaid of parsed.navaids) {
+        assert.equal(navaid.identifier, 'BOS');
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes parse_metar end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'parse_metar',
+        arguments: {
+          raw: 'KJFK 181851Z 19014KT 10SM FEW250 22/12 A3001 RMK AO2 SLP163',
+        },
+      });
+      const parsed = z
+        .object({
+          metar: z
+            .object({
+              stationId: z.string(),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      assert.equal(parsed.metar.stationId, 'KJFK');
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes solve_wind_triangle end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'solve_wind_triangle',
+        arguments: {
+          trueAirspeedKt: 120,
+          trueCourseDeg: 90,
+          windDirectionDeg: 180,
+          windSpeedKt: 20,
+        },
+      });
+      const parsed = z
+        .object({
+          trueHeadingDeg: z.number(),
+          windCorrectionAngleDeg: z.number(),
+          groundSpeedKt: z.number(),
+        })
+        .parse(result.structuredContent);
+      // A south wind on an east course is a left crosswind, requiring a
+      // positive (right) wind correction angle. Sanity-check the magnitudes.
+      assert.ok(
+        parsed.windCorrectionAngleDeg > 0 && parsed.windCorrectionAngleDeg < 15,
+        `expected positive WCA under 15 deg, got ${parsed.windCorrectionAngleDeg}`,
+      );
+      assert.ok(
+        parsed.groundSpeedKt > 110 && parsed.groundSpeedKt < 125,
+        `expected GS roughly equal to TAS for pure crosswind, got ${parsed.groundSpeedKt}`,
+      );
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes compute_route_distance end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'compute_route_distance',
+        arguments: {
+          routeString: 'KJFK DCT KLAX',
+          groundSpeedKt: 450,
+        },
+      });
+      const parsed = z
+        .object({
+          result: z.object({
+            totalDistanceNm: z.number(),
+            estimatedTimeEnrouteHrs: z.number().nullable().optional(),
+            legs: z.array(
+              z.object({
+                from: z.string(),
+                to: z.string(),
+                distanceNm: z.number(),
+              }),
+            ),
+          }),
+        })
+        .parse(result.structuredContent);
+      assert.ok(
+        parsed.result.totalDistanceNm > 2100 && parsed.result.totalDistanceNm < 2200,
+        `expected JFK-LAX total around 2145 nm, got ${parsed.result.totalDistanceNm}`,
+      );
+      assert.equal(parsed.result.legs.length, 1);
+      assert.equal(parsed.result.legs[0]?.from, 'KJFK');
+      assert.equal(parsed.result.legs[0]?.to, 'KLAX');
     } finally {
       await close();
     }

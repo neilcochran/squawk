@@ -2,15 +2,14 @@
  * @packageDocumentation
  * MCP tool module wrapping `@squawk/airports` airport lookup methods, backed
  * by the US NASR snapshot in `@squawk/airport-data`. The dataset is loaded
- * and indexed eagerly when the tools are registered.
+ * and indexed eagerly when the shared {@link airportResolver} is imported.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { usBundledAirports } from '@squawk/airport-data';
 import type { AirportSearchQuery, NearestAirportQuery } from '@squawk/airports';
-import { createAirportResolver } from '@squawk/airports';
 import type { FacilityType } from '@squawk/types';
 import { z } from 'zod';
+import { airportResolver } from '../resolvers.js';
 
 /** All {@link FacilityType} values, used for input validation. */
 const FACILITY_TYPE_VALUES = [
@@ -24,13 +23,13 @@ const FACILITY_TYPE_VALUES = [
 
 /**
  * Registers airport lookup tools (by FAA ID, by ICAO code, nearest, text
- * search) on the given MCP server. The underlying airport resolver is built
- * once at registration time from the bundled US NASR dataset.
+ * search) on the given MCP server. Tools share the {@link airportResolver}
+ * singleton built at module load time from the bundled US NASR dataset.
  *
  * @param server - The MCP server instance to register tools on.
  */
 export function registerAirportTools(server: McpServer): void {
-  const resolver = createAirportResolver({ data: usBundledAirports.records });
+  const resolver = airportResolver;
 
   server.registerTool(
     'get_airport_by_faa_id',
