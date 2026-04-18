@@ -1,7 +1,12 @@
 /**
  * Typed unit string literals for pressure values to prevent unit confusion at the call site.
+ *
+ * `mb` (millibar) is numerically identical to `hPa` by SI definition (CGPM 1983,
+ * 1 mb = 100 Pa = 1 hPa). It is retained as a distinct unit so call sites can match
+ * whichever label the source data uses: METAR SLP groups report "mb", Q-code altimeter
+ * groups report "hPa".
  */
-export type PressureUnit = 'inHg' | 'hPa' | 'mmHg';
+export type PressureUnit = 'inHg' | 'hPa' | 'mmHg' | 'mb' | 'kPa';
 
 /**
  * Conversion factor: 1 inHg = 33.8639 hPa.
@@ -20,6 +25,9 @@ const INHG_TO_MMHG = 25.4;
  * Derived from: 760 mmHg / 1013.25 hPa.
  */
 const HPA_TO_MMHG = 760 / 1013.25;
+
+/** Conversion factor: 1 kPa = 10 hPa (exact, SI definition). */
+const KPA_TO_HPA = 10;
 
 /**
  * ISA sea-level standard pressure in hPa.
@@ -106,6 +114,145 @@ export function inchesOfMercuryToMillimetersOfMercury(inchesOfMercury: number): 
  */
 export function millimetersOfMercuryToInchesOfMercury(millimetersOfMercury: number): number {
   return millimetersOfMercury / INHG_TO_MMHG;
+}
+
+/**
+ * Converts hectopascals to kilopascals.
+ * @param hectopascals - Pressure in hPa.
+ * @returns Pressure in kPa.
+ */
+export function hectopascalsToKilopascals(hectopascals: number): number {
+  return hectopascals / KPA_TO_HPA;
+}
+
+/**
+ * Converts kilopascals to hectopascals.
+ * @param kilopascals - Pressure in kPa.
+ * @returns Pressure in hPa.
+ */
+export function kilopascalsToHectopascals(kilopascals: number): number {
+  return kilopascals * KPA_TO_HPA;
+}
+
+/**
+ * Converts hectopascals to millibars. Numerically an identity because 1 mb = 1 hPa
+ * by SI definition; exposed as a named pair so call sites can match the label their
+ * data source uses (e.g. METAR SLP reports "mb", Q-code altimeter groups report "hPa").
+ *
+ * @param hectopascals - Pressure in hPa.
+ * @returns Pressure in mb.
+ */
+export function hectopascalsToMillibars(hectopascals: number): number {
+  return hectopascals;
+}
+
+/**
+ * Converts millibars to hectopascals. Identity conversion; see
+ * {@link hectopascalsToMillibars}.
+ *
+ * @param millibars - Pressure in mb.
+ * @returns Pressure in hPa.
+ */
+export function millibarsToHectopascals(millibars: number): number {
+  return millibars;
+}
+
+/**
+ * Converts inches of mercury to kilopascals.
+ * @param inchesOfMercury - Pressure in inHg.
+ * @returns Pressure in kPa.
+ */
+export function inchesOfMercuryToKilopascals(inchesOfMercury: number): number {
+  return (inchesOfMercury * INHG_TO_HPA) / KPA_TO_HPA;
+}
+
+/**
+ * Converts kilopascals to inches of mercury.
+ * @param kilopascals - Pressure in kPa.
+ * @returns Pressure in inHg.
+ */
+export function kilopascalsToInchesOfMercury(kilopascals: number): number {
+  return (kilopascals * KPA_TO_HPA) / INHG_TO_HPA;
+}
+
+/**
+ * Converts inches of mercury to millibars. Numerically equivalent to
+ * {@link inchesOfMercuryToHectopascals}; exposed for call-site clarity when the
+ * source data uses the "mb" label.
+ *
+ * @param inchesOfMercury - Pressure in inHg.
+ * @returns Pressure in mb.
+ */
+export function inchesOfMercuryToMillibars(inchesOfMercury: number): number {
+  return inchesOfMercury * INHG_TO_HPA;
+}
+
+/**
+ * Converts millibars to inches of mercury. See {@link inchesOfMercuryToMillibars}.
+ *
+ * @param millibars - Pressure in mb.
+ * @returns Pressure in inHg.
+ */
+export function millibarsToInchesOfMercury(millibars: number): number {
+  return millibars / INHG_TO_HPA;
+}
+
+/**
+ * Converts kilopascals to millibars.
+ * @param kilopascals - Pressure in kPa.
+ * @returns Pressure in mb.
+ */
+export function kilopascalsToMillibars(kilopascals: number): number {
+  return kilopascals * KPA_TO_HPA;
+}
+
+/**
+ * Converts millibars to kilopascals.
+ * @param millibars - Pressure in mb.
+ * @returns Pressure in kPa.
+ */
+export function millibarsToKilopascals(millibars: number): number {
+  return millibars / KPA_TO_HPA;
+}
+
+/**
+ * Converts millibars to millimetres of mercury. Numerically equivalent to
+ * {@link hectopascalsToMillimetersOfMercury}; exposed for call-site clarity.
+ *
+ * @param millibars - Pressure in mb.
+ * @returns Pressure in mmHg.
+ */
+export function millibarsToMillimetersOfMercury(millibars: number): number {
+  return millibars * HPA_TO_MMHG;
+}
+
+/**
+ * Converts millimetres of mercury to millibars. See
+ * {@link millibarsToMillimetersOfMercury}.
+ *
+ * @param millimetersOfMercury - Pressure in mmHg.
+ * @returns Pressure in mb.
+ */
+export function millimetersOfMercuryToMillibars(millimetersOfMercury: number): number {
+  return millimetersOfMercury / HPA_TO_MMHG;
+}
+
+/**
+ * Converts kilopascals to millimetres of mercury.
+ * @param kilopascals - Pressure in kPa.
+ * @returns Pressure in mmHg.
+ */
+export function kilopascalsToMillimetersOfMercury(kilopascals: number): number {
+  return kilopascals * KPA_TO_HPA * HPA_TO_MMHG;
+}
+
+/**
+ * Converts millimetres of mercury to kilopascals.
+ * @param millimetersOfMercury - Pressure in mmHg.
+ * @returns Pressure in kPa.
+ */
+export function millimetersOfMercuryToKilopascals(millimetersOfMercury: number): number {
+  return millimetersOfMercury / HPA_TO_MMHG / KPA_TO_HPA;
 }
 
 /**
