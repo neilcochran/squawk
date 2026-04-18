@@ -1,6 +1,6 @@
 import type { FeatureCollection, Feature, Polygon } from 'geojson';
 import type { AirspaceFeature, AirspaceType, AltitudeBound } from '@squawk/types';
-import { pointInPolygon } from './point-in-polygon.js';
+import { polygon as polygonGeo, type BoundingBox } from '@squawk/geo';
 import { altitudeMatches } from './vertical-filter.js';
 
 /**
@@ -40,20 +40,6 @@ export interface AirspaceResolverOptions {
 export type AirspaceResolver = (query: AirspaceQuery) => AirspaceFeature[];
 
 /**
- * Axis-aligned bounding box for fast rejection before point-in-polygon.
- */
-interface BoundingBox {
-  /** Minimum longitude. */
-  minLon: number;
-  /** Maximum longitude. */
-  maxLon: number;
-  /** Minimum latitude. */
-  minLat: number;
-  /** Maximum latitude. */
-  maxLat: number;
-}
-
-/**
  * An airspace feature with its pre-parsed polygon coordinates and bounding
  * box stored alongside the original AirspaceFeature properties for query use.
  */
@@ -64,35 +50,6 @@ interface IndexedFeature {
   ring: number[][];
   /** Axis-aligned bounding box computed from the ring. */
   boundingBox: BoundingBox;
-}
-
-/**
- * Computes an axis-aligned bounding box from a polygon exterior ring.
- */
-function computeBoundingBox(ring: number[][]): BoundingBox {
-  let minLon = Infinity;
-  let maxLon = -Infinity;
-  let minLat = Infinity;
-  let maxLat = -Infinity;
-
-  for (const coord of ring) {
-    const lon = coord[0]!;
-    const lat = coord[1]!;
-    if (lon < minLon) {
-      minLon = lon;
-    }
-    if (lon > maxLon) {
-      maxLon = lon;
-    }
-    if (lat < minLat) {
-      minLat = lat;
-    }
-    if (lat > maxLat) {
-      maxLat = lat;
-    }
-  }
-
-  return { minLon, maxLon, minLat, maxLat };
 }
 
 /**
@@ -129,7 +86,7 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
     scheduleDescription: (props.scheduleDescription as string) ?? null,
   };
 
-  return { feature, ring, boundingBox: computeBoundingBox(ring) };
+  return { feature, ring, boundingBox: polygonGeo.boundingBox(ring) };
 }
 
 /**
@@ -175,15 +132,10 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
       if (types && !types.has(feature.type)) {
         continue;
       }
-      if (
-        lon < boundingBox.minLon ||
-        lon > boundingBox.maxLon ||
-        lat < boundingBox.minLat ||
-        lat > boundingBox.maxLat
-      ) {
+      if (!polygonGeo.pointInBoundingBox(lon, lat, boundingBox)) {
         continue;
       }
-      if (!pointInPolygon(lon, lat, ring)) {
+      if (!polygonGeo.pointInPolygon(lon, lat, ring)) {
         continue;
       }
       if (!altitudeMatches(altitudeFt, feature.floor, feature.ceiling)) {

@@ -22,7 +22,6 @@ import {
   feetToStatuteMiles,
   feetToMeters,
   metersToFeet,
-  greatCircleDistanceNm,
 } from './distance.js';
 
 describe('distance conversions', () => {
@@ -161,30 +160,6 @@ describe('distance conversions', () => {
     });
     it('1 statute mile equals exactly 5280 feet', () => {
       assert.equal(statuteMilesToFeet(1), 5280);
-    });
-  });
-
-  describe('greatCircleDistanceNm', () => {
-    it('returns 0 for the same point', () => {
-      assert.equal(greatCircleDistanceNm(40.6413, -73.7781, 40.6413, -73.7781), 0);
-    });
-
-    it('computes JFK to LAX as approximately 2145 nm', () => {
-      // JFK: 40.6413 N, 73.7781 W; LAX: 33.9425 N, 118.4081 W
-      const dist = greatCircleDistanceNm(40.6413, -73.7781, 33.9425, -118.4081);
-      assert.ok(close(dist, 2145, 5), `expected ~2145 nm, got ${dist}`);
-    });
-
-    it('computes a short distance accurately', () => {
-      // JFK to LGA: approximately 10 nm
-      const dist = greatCircleDistanceNm(40.6413, -73.7781, 40.7769, -73.874);
-      assert.ok(dist > 5 && dist < 15, `expected ~10 nm, got ${dist}`);
-    });
-
-    it('is symmetric', () => {
-      const d1 = greatCircleDistanceNm(40.6413, -73.7781, 33.9425, -118.4081);
-      const d2 = greatCircleDistanceNm(33.9425, -118.4081, 40.6413, -73.7781);
-      assert.equal(d1, d2);
     });
   });
 

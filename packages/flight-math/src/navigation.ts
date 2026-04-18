@@ -1,11 +1,10 @@
 /**
  * Navigation calculations: holding pattern entry, DME arc lead radial,
- * ETE/fuel planning, great-circle bearing, and 1-in-60 rule crosstrack
- * corrections.
+ * ETE/fuel planning, and 1-in-60 rule crosstrack corrections.
  */
 
 import type { HoldingPatternEntryType } from './types/navigation.js';
-import { angle, distance } from '@squawk/units';
+import { angle } from '@squawk/units';
 
 /** Standard acceleration of gravity in ft/s^2. */
 const G_FT_S2 = 32.174;
@@ -84,56 +83,6 @@ export function dmeArcLeadRadial(
   const turnRadiusFt = (vFps * vFps) / (G_FT_S2 * Math.tan(bankRad));
   const turnRadiusNm = turnRadiusFt / FT_PER_NM;
   return angle.radiansToDegrees(Math.asin(Math.min(turnRadiusNm / arcRadiusNm, 1)));
-}
-
-/**
- * Computes the initial great-circle bearing from one geographic position to
- * another. The bearing is the direction to travel from the start point to
- * reach the end point along the shortest path on the Earth's surface.
- *
- * This complements `distance.greatCircleDistanceNm()` in `@squawk/units`,
- * which provides the distance but not the bearing.
- *
- * @param lat1 - Latitude of the start point in decimal degrees.
- * @param lon1 - Longitude of the start point in decimal degrees.
- * @param lat2 - Latitude of the end point in decimal degrees.
- * @param lon2 - Longitude of the end point in decimal degrees.
- * @returns Initial bearing in degrees true (0-360).
- */
-export function greatCircleBearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const lat1Rad = angle.degreesToRadians(lat1);
-  const lat2Rad = angle.degreesToRadians(lat2);
-  const dLonRad = angle.degreesToRadians(lon2 - lon1);
-
-  const y = Math.sin(dLonRad) * Math.cos(lat2Rad);
-  const x =
-    Math.cos(lat1Rad) * Math.sin(lat2Rad) -
-    Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLonRad);
-
-  return normalizeDeg(angle.radiansToDegrees(Math.atan2(y, x)));
-}
-
-/**
- * Computes the initial great-circle bearing and distance from one geographic
- * position to another. Combines {@link greatCircleBearing} and
- * `distance.greatCircleDistanceNm()` from `@squawk/units` into a single call.
- *
- * @param lat1 - Latitude of the start point in decimal degrees.
- * @param lon1 - Longitude of the start point in decimal degrees.
- * @param lat2 - Latitude of the end point in decimal degrees.
- * @param lon2 - Longitude of the end point in decimal degrees.
- * @returns Object with `bearingDeg` (0-360) and `distanceNm`.
- */
-export function greatCircleBearingAndDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): { bearingDeg: number; distanceNm: number } {
-  return {
-    bearingDeg: greatCircleBearing(lat1, lon1, lat2, lon2),
-    distanceNm: distance.greatCircleDistanceNm(lat1, lon1, lat2, lon2),
-  };
 }
 
 /**

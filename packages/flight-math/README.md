@@ -70,7 +70,7 @@ Functions that already exist in `@squawk/units` are not re-exported. Import them
 - **airspeed** - Airspeed conversions not covered by `@squawk/units`
 - **wind** - E6B wind triangle, headwind/crosswind components, reverse wind triangle
 - **descent** - Top of descent, required descent/climb rate, gradient conversions, VDP
-- **navigation** - Holding pattern entry, DME arc lead, great-circle bearing, 1-in-60 rule
+- **navigation** - Holding pattern entry, DME arc lead, 1-in-60 rule
 - **turn** - Standard rate bank angle, turn radius, time to turn, load factor
 - **glide** - Glide distance with and without wind correction
 - **pivotal** - Pivotal altitude for ground reference maneuvers
