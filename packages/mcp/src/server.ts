@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { registerAirportTools } from './tools/airports.js';
 import { registerAirspaceTools } from './tools/airspace.js';
 import { registerAirwayTools } from './tools/airways.js';
+import { registerDatasetTools } from './tools/datasets.js';
 import { registerFixTools } from './tools/fixes.js';
 import { registerFlightMathTools } from './tools/flight-math.js';
 import { registerFlightplanTools } from './tools/flightplan.js';
@@ -22,7 +23,50 @@ import { registerProcedureTools } from './tools/procedures.js';
 import { registerWeatherTools } from './tools/weather.js';
 
 const packageJsonPath = resolve(dirname(fileURLToPath(import.meta.url)), '../package.json');
-const packageMeta: { version: string } = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+const packageMeta: { name: string; version: string } = JSON.parse(
+  readFileSync(packageJsonPath, 'utf-8'),
+);
+
+/**
+ * Ordered list of tool-module registrars invoked during server construction.
+ * Holding them in a single array keeps {@link createSquawkMcpServer} symmetric
+ * across modules and lets {@link TOOL_MODULE_COUNT} stay accurate without
+ * manual bookkeeping.
+ */
+const TOOL_MODULE_REGISTRARS: ((server: McpServer) => void)[] = [
+  registerGeoTools,
+  registerFlightMathTools,
+  registerAirportTools,
+  registerAirspaceTools,
+  registerNavaidTools,
+  registerFixTools,
+  registerAirwayTools,
+  registerProcedureTools,
+  registerIcaoRegistryTools,
+  registerWeatherTools,
+  registerNotamTools,
+  registerFlightplanTools,
+  registerDatasetTools,
+];
+
+/**
+ * Number of tool modules registered by {@link createSquawkMcpServer}. Exposed
+ * so the stdio entrypoint can include the count in its startup diagnostic
+ * without re-counting at runtime.
+ */
+export const TOOL_MODULE_COUNT: number = TOOL_MODULE_REGISTRARS.length;
+
+/**
+ * Package name as published to npm. Convenient for diagnostic logs that want
+ * to identify the running server without re-reading `package.json`.
+ */
+export const PACKAGE_NAME: string = packageMeta.name;
+
+/**
+ * Package version pulled from `package.json` at module load. Mirrored as the
+ * server's `version` field and reused by the stdio entrypoint diagnostic.
+ */
+export const PACKAGE_VERSION: string = packageMeta.version;
 
 /**
  * Creates an MCP server preloaded with every squawk aviation tool module.
@@ -47,22 +91,13 @@ const packageMeta: { version: string } = JSON.parse(readFileSync(packageJsonPath
  */
 export function createSquawkMcpServer(): McpServer {
   const server = new McpServer({
-    name: '@squawk/mcp',
-    version: packageMeta.version,
+    name: PACKAGE_NAME,
+    version: PACKAGE_VERSION,
   });
 
-  registerGeoTools(server);
-  registerFlightMathTools(server);
-  registerAirportTools(server);
-  registerAirspaceTools(server);
-  registerNavaidTools(server);
-  registerFixTools(server);
-  registerAirwayTools(server);
-  registerProcedureTools(server);
-  registerIcaoRegistryTools(server);
-  registerWeatherTools(server);
-  registerNotamTools(server);
-  registerFlightplanTools(server);
+  for (const register of TOOL_MODULE_REGISTRARS) {
+    register(server);
+  }
 
   return server;
 }

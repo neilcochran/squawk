@@ -10,10 +10,15 @@ and an E6B-style flight computer.
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
-## Quick start with Claude Desktop
+## Quick start
 
-Add an entry to `claude_desktop_config.json` (open it from Claude Desktop via Settings -> Developer ->
-Edit Config):
+Pick the snippet for your MCP client. Each one tells the host to spawn `npx @squawk/mcp` over stdio.
+After editing the config, restart the client; a `squawk` (or `@squawk/mcp`) entry should appear in
+the tool picker.
+
+### Claude Desktop
+
+Open `claude_desktop_config.json` via Settings -> Developer -> Edit Config:
 
 ```json
 {
@@ -26,9 +31,89 @@ Edit Config):
 }
 ```
 
-Restart Claude Desktop. The `squawk` connector will appear in the tool picker, and the model can then
-ask for things like "what airspace is over KJFK at 4500 feet?", "give me the live METAR for KSFO and
-KOAK", or "parse this route: KJFK DCT MERIT J60 MARTN DCT KLAX".
+### Cursor
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per-project) - same shape as Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "squawk": {
+      "command": "npx",
+      "args": ["-y", "@squawk/mcp"]
+    }
+  }
+}
+```
+
+### VS Code (GitHub Copilot Chat)
+
+VS Code 1.99+ ships an MCP runtime that GitHub Copilot Chat can call into agent mode.
+Add to `.vscode/mcp.json` in your workspace, or to the user-level config via the
+`MCP: Add Server` command:
+
+```json
+{
+  "servers": {
+    "squawk": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@squawk/mcp"]
+    }
+  }
+}
+```
+
+Note the schema differs from the other clients: VS Code uses `servers` (not `mcpServers`)
+and requires an explicit `"type": "stdio"`.
+
+### Continue.dev
+
+Continue exposes MCP via its experimental config block. In `~/.continue/config.json`:
+
+```json
+{
+  "experimental": {
+    "modelContextProtocolServers": [
+      {
+        "transport": {
+          "type": "stdio",
+          "command": "npx",
+          "args": ["-y", "@squawk/mcp"]
+        }
+      }
+    ]
+  }
+}
+```
+
+### Pinning a specific Node binary
+
+`npx` resolves `node` through whatever PATH the host launches with. On macOS, GUI apps often
+inherit a different PATH than your shell, so you may end up running an older Node than
+`which node` shows. Live weather fetch tools require Node >= 22 (for global `fetch`). If the
+startup log shows `WARNING: global fetch() is unavailable`, replace `"command": "npx"` with
+the absolute path to a modern node + the absolute path to the installed `bin.js`:
+
+```json
+{
+  "mcpServers": {
+    "squawk": {
+      "command": "/usr/local/bin/node",
+      "args": ["/absolute/path/to/node_modules/@squawk/mcp/dist/bin.js"]
+    }
+  }
+}
+```
+
+The server logs `[squawk-mcp] node <version> on <platform>/<arch>` and the tool-module count
+to stderr on every startup so you can verify the right runtime is being used.
+
+### Example prompts
+
+Once connected, the model can answer things like "what airspace is over KJFK at 4500 feet?",
+"give me the live METAR for KSFO and KOAK", "parse this route: KJFK DCT MERIT J60 MARTN DCT KLAX",
+or "look up the aircraft with ICAO hex AC82EC".
 
 ## Standalone CLI
 
@@ -191,13 +276,26 @@ left to the model itself.
 | `compute_point_of_no_return`                     | PNR with separate outbound/return groundspeeds                    |
 | `compute_equal_time_point`                       | ETP with separate continuing/returning groundspeeds               |
 
+### Server diagnostics
+
+| Tool                 | Purpose                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `get_dataset_status` | Report NASR cycle date, build timestamp, and record counts for every loaded snapshot (incl. lazy-load state) |
+
+## Configuration
+
+| Environment variable  | Effect                                                                                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SQUAWK_AWC_BASE_URL` | Override the Aviation Weather Center base URL used by every `fetch_*` tool. Defaults to `https://aviationweather.gov/api/data`. Useful for proxies and regional mirrors. |
+
 ## Notes
 
 - All NASR-derived data sources cover the contiguous United States plus the territories included in
-  the FAA NASR 28-day subscription. Outside the US the lookup tools will return empty results.
-- Live weather tools issue HTTPS requests to `https://aviationweather.gov/api/data/...`. They are the
-  only tools that touch the network at invocation time; everything else operates against bundled
-  snapshots in memory.
+  the FAA NASR 28-day subscription. Outside the US the lookup tools will return empty results. Use
+  `get_dataset_status` to confirm which NASR cycle the running server is serving.
+- Live weather tools issue HTTPS requests to `https://aviationweather.gov/api/data/...` (or the
+  override above). They are the only tools that touch the network at invocation time; everything
+  else operates against bundled snapshots in memory.
 - The bundled NASR snapshots are decompressed and indexed once when the server starts. Expect a few
   hundred milliseconds of startup time. The aircraft registration snapshot (the largest) is loaded
   lazily on the first `lookup_aircraft_by_icao_hex` call.

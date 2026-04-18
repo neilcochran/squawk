@@ -56,6 +56,13 @@ export const procedureResolver: ProcedureResolver = createProcedureResolver({
 let icaoRegistryInstance: IcaoRegistry | undefined;
 
 /**
+ * Cached metadata captured the first time the registry is loaded. Held
+ * separately from the registry instance so {@link getIcaoRegistryMetadata}
+ * can return it without forcing another import.
+ */
+let icaoRegistryMetadata: { generatedAt: string; recordCount: number } | undefined;
+
+/**
  * Returns the shared {@link IcaoRegistry} instance, decompressing and indexing
  * the bundled FAA aircraft registration snapshot on the first call. Subsequent
  * calls reuse the cached instance.
@@ -70,6 +77,32 @@ export async function getIcaoRegistry(): Promise<IcaoRegistry> {
   if (icaoRegistryInstance === undefined) {
     const { usBundledRegistry } = await import('@squawk/icao-registry-data');
     icaoRegistryInstance = createIcaoRegistry({ data: usBundledRegistry.records });
+    icaoRegistryMetadata = {
+      generatedAt: usBundledRegistry.properties.generatedAt,
+      recordCount: usBundledRegistry.properties.recordCount,
+    };
   }
   return icaoRegistryInstance;
+}
+
+/**
+ * Reports whether the lazily-loaded ICAO aircraft registry has been
+ * initialized in this process.
+ *
+ * @returns `true` once {@link getIcaoRegistry} has resolved at least once.
+ */
+export function isIcaoRegistryLoaded(): boolean {
+  return icaoRegistryInstance !== undefined;
+}
+
+/**
+ * Returns the cached metadata for the loaded ICAO registry, or `undefined`
+ * when the registry has not been initialized yet. Does not trigger a load.
+ *
+ * @returns The registry metadata if loaded, otherwise `undefined`.
+ */
+export function getIcaoRegistryMetadata():
+  | { generatedAt: string; recordCount: number }
+  | undefined {
+  return icaoRegistryMetadata;
 }

@@ -19,11 +19,12 @@ import {
   fetchTaf,
   type FetchPirepOptions,
   type FetchSigmetsOptions,
+  type FetchWeatherOptions,
   type PirepMinimumIntensity,
   type SigmetHazardFilter,
 } from '@squawk/weather/fetch';
 import { z } from 'zod';
-import { runParser } from './tool-helpers.js';
+import { runParser, summarizeParseErrors } from './tool-helpers.js';
 
 /** Allowed values for the AWC SIGMET hazard filter. */
 const SIGMET_HAZARD_VALUES = [
@@ -39,6 +40,31 @@ const PIREP_INTENSITY_VALUES = [
   'mod',
   'sev',
 ] as const satisfies readonly PirepMinimumIntensity[];
+
+/**
+ * Optional override for the Aviation Weather Center base URL. Read once at
+ * module load from the `SQUAWK_AWC_BASE_URL` environment variable. When set,
+ * every live `fetch_*` tool routes its request through the override - useful
+ * for proxies, regional mirrors, and pointing tests at a local stub server.
+ * Empty/whitespace values are treated as unset.
+ */
+const AWC_BASE_URL_OVERRIDE: string | undefined = (() => {
+  const raw = process.env.SQUAWK_AWC_BASE_URL;
+  if (raw === undefined) {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+})();
+
+/**
+ * Returns a fresh {@link FetchWeatherOptions} object pre-populated with the
+ * AWC base-URL override when one is configured. Each fetch tool spreads its
+ * own options on top of the result.
+ */
+function baseFetchOptions(): FetchWeatherOptions {
+  return AWC_BASE_URL_OVERRIDE !== undefined ? { baseUrl: AWC_BASE_URL_OVERRIDE } : {};
+}
 
 /**
  * Registers weather parsing and live-fetch tools on the given MCP server.
@@ -135,12 +161,8 @@ export function registerWeatherTools(server: McpServer): void {
       },
     },
     async ({ stations }) => {
-      const { metars, parseErrors } = await fetchMetar(stations);
-      const errorSummaries = parseErrors.map((err) => ({
-        raw: err.raw,
-        message: err.error instanceof Error ? err.error.message : String(err.error),
-      }));
-      const payload = { metars, parseErrors: errorSummaries };
+      const { metars, parseErrors } = await fetchMetar(stations, baseFetchOptions());
+      const payload = { metars, parseErrors: summarizeParseErrors(parseErrors) };
       return {
         content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
         structuredContent: payload,
@@ -162,12 +184,8 @@ export function registerWeatherTools(server: McpServer): void {
       },
     },
     async ({ stations }) => {
-      const { tafs, parseErrors } = await fetchTaf(stations);
-      const errorSummaries = parseErrors.map((err) => ({
-        raw: err.raw,
-        message: err.error instanceof Error ? err.error.message : String(err.error),
-      }));
-      const payload = { tafs, parseErrors: errorSummaries };
+      const { tafs, parseErrors } = await fetchTaf(stations, baseFetchOptions());
+      const payload = { tafs, parseErrors: summarizeParseErrors(parseErrors) };
       return {
         content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
         structuredContent: payload,
@@ -215,7 +233,7 @@ export function registerWeatherTools(server: McpServer): void {
       },
     },
     async ({ station, radiusNm, ageHours, levelHundredsFt, minimumIntensity }) => {
-      const options: FetchPirepOptions = {};
+      const options: FetchPirepOptions = baseFetchOptions();
       if (radiusNm !== undefined) {
         options.distance = radiusNm;
       }
@@ -229,11 +247,7 @@ export function registerWeatherTools(server: McpServer): void {
         options.inten = minimumIntensity;
       }
       const { pireps, parseErrors } = await fetchPirep(station, options);
-      const errorSummaries = parseErrors.map((err) => ({
-        raw: err.raw,
-        message: err.error instanceof Error ? err.error.message : String(err.error),
-      }));
-      const payload = { pireps, parseErrors: errorSummaries };
+      const payload = { pireps, parseErrors: summarizeParseErrors(parseErrors) };
       return {
         content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
         structuredContent: payload,
@@ -257,16 +271,12 @@ export function registerWeatherTools(server: McpServer): void {
       },
     },
     async ({ hazard }) => {
-      const options: FetchSigmetsOptions = {};
+      const options: FetchSigmetsOptions = baseFetchOptions();
       if (hazard !== undefined) {
         options.hazard = hazard;
       }
       const { sigmets, parseErrors } = await fetchSigmets(options);
-      const errorSummaries = parseErrors.map((err) => ({
-        raw: err.raw,
-        message: err.error instanceof Error ? err.error.message : String(err.error),
-      }));
-      const payload = { sigmets, parseErrors: errorSummaries };
+      const payload = { sigmets, parseErrors: summarizeParseErrors(parseErrors) };
       return {
         content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
         structuredContent: payload,
@@ -283,12 +293,8 @@ export function registerWeatherTools(server: McpServer): void {
       inputSchema: {},
     },
     async () => {
-      const { sigmets, parseErrors } = await fetchInternationalSigmets();
-      const errorSummaries = parseErrors.map((err) => ({
-        raw: err.raw,
-        message: err.error instanceof Error ? err.error.message : String(err.error),
-      }));
-      const payload = { sigmets, parseErrors: errorSummaries };
+      const { sigmets, parseErrors } = await fetchInternationalSigmets(baseFetchOptions());
+      const payload = { sigmets, parseErrors: summarizeParseErrors(parseErrors) };
       return {
         content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
         structuredContent: payload,

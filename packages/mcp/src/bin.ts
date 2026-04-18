@@ -9,20 +9,29 @@
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { createSquawkMcpServer } from './server.js';
+import {
+  createSquawkMcpServer,
+  PACKAGE_NAME,
+  PACKAGE_VERSION,
+  TOOL_MODULE_COUNT,
+} from './server.js';
 
 /**
- * Logs the Node.js version this process is running on and warns when the
- * environment is missing capabilities the live weather fetch tools require.
+ * Logs the Node.js version this process is running on, the running build's
+ * package version, the tool-module count, and warns when the environment is
+ * missing capabilities the live weather fetch tools require.
  *
  * GUI MCP hosts (Claude Desktop, etc.) often launch child processes with a
  * different PATH than the user's interactive shell, so `node` may resolve to
  * an older binary than `which node` suggests. Surfacing the actual runtime
- * version up front makes that mismatch easy to diagnose from the host's MCP
- * log without bisecting tool failures.
+ * version and the running package version up front makes mismatches easy to
+ * diagnose from the host's MCP log without bisecting tool failures.
  */
 function logRuntimeDiagnostics(): void {
   console.error(`[squawk-mcp] node ${process.version} on ${process.platform}/${process.arch}`);
+  console.error(
+    `[squawk-mcp] ${PACKAGE_NAME} v${PACKAGE_VERSION}, ${TOOL_MODULE_COUNT} tool modules registered`,
+  );
   if (typeof fetch !== 'function') {
     console.error(
       '[squawk-mcp] WARNING: global fetch() is unavailable in this Node runtime. ' +
