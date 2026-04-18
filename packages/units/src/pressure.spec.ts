@@ -8,6 +8,20 @@ import {
   millimetersOfMercuryToHectopascals,
   inchesOfMercuryToMillimetersOfMercury,
   millimetersOfMercuryToInchesOfMercury,
+  hectopascalsToKilopascals,
+  kilopascalsToHectopascals,
+  hectopascalsToMillibars,
+  millibarsToHectopascals,
+  inchesOfMercuryToKilopascals,
+  kilopascalsToInchesOfMercury,
+  inchesOfMercuryToMillibars,
+  millibarsToInchesOfMercury,
+  kilopascalsToMillibars,
+  millibarsToKilopascals,
+  millibarsToMillimetersOfMercury,
+  millimetersOfMercuryToMillibars,
+  kilopascalsToMillimetersOfMercury,
+  millimetersOfMercuryToKilopascals,
   qnhToQfe,
   qfeToQnh,
   pressureAltitudeFt,
@@ -52,6 +66,85 @@ describe('pressure conversions', () => {
           millimetersOfMercuryToInchesOfMercury(inchesOfMercuryToMillimetersOfMercury(28.5)),
           28.5,
         ),
+      );
+    });
+  });
+
+  describe('hectopascalsToKilopascals / kilopascalsToHectopascals', () => {
+    it('converts 1013.25 hPa to 101.325 kPa', () => {
+      assert.ok(close(hectopascalsToKilopascals(1013.25), 101.325));
+    });
+    it('converts 100 kPa to 1000 hPa (exact)', () => {
+      assert.equal(kilopascalsToHectopascals(100), 1000);
+    });
+    it('is invertible', () => {
+      assert.ok(close(kilopascalsToHectopascals(hectopascalsToKilopascals(1020)), 1020));
+    });
+  });
+
+  describe('hectopascalsToMillibars / millibarsToHectopascals (identity)', () => {
+    it('1 mb equals 1 hPa exactly', () => {
+      assert.equal(hectopascalsToMillibars(1), 1);
+      assert.equal(millibarsToHectopascals(1), 1);
+    });
+    it('ISA standard 1013.25 hPa equals 1013.25 mb', () => {
+      assert.equal(hectopascalsToMillibars(ISA_P0_HPA), 1013.25);
+    });
+    it('is invertible', () => {
+      assert.equal(millibarsToHectopascals(hectopascalsToMillibars(995.3)), 995.3);
+    });
+  });
+
+  describe('inchesOfMercuryToKilopascals / kilopascalsToInchesOfMercury', () => {
+    it('converts ISA standard 29.92126 inHg to ~101.325 kPa', () => {
+      assert.ok(close(inchesOfMercuryToKilopascals(ISA_P0_INHG), 101.325, 0.01));
+    });
+    it('is invertible', () => {
+      assert.ok(
+        close(kilopascalsToInchesOfMercury(inchesOfMercuryToKilopascals(30.12)), 30.12, 0.001),
+      );
+    });
+  });
+
+  describe('inchesOfMercuryToMillibars / millibarsToInchesOfMercury', () => {
+    it('converts ISA standard 29.92126 inHg to ~1013.25 mb', () => {
+      assert.ok(close(inchesOfMercuryToMillibars(ISA_P0_INHG), 1013.25, 0.1));
+    });
+    it('is invertible', () => {
+      assert.ok(close(millibarsToInchesOfMercury(inchesOfMercuryToMillibars(29.42)), 29.42));
+    });
+  });
+
+  describe('kilopascalsToMillibars / millibarsToKilopascals', () => {
+    it('converts 101.325 kPa to 1013.25 mb', () => {
+      assert.ok(close(kilopascalsToMillibars(101.325), 1013.25));
+    });
+    it('converts 1000 mb to 100 kPa (exact)', () => {
+      assert.equal(millibarsToKilopascals(1000), 100);
+    });
+    it('is invertible', () => {
+      assert.ok(close(millibarsToKilopascals(kilopascalsToMillibars(102.5)), 102.5));
+    });
+  });
+
+  describe('millibarsToMillimetersOfMercury / millimetersOfMercuryToMillibars', () => {
+    it('converts 1013.25 mb to 760 mmHg', () => {
+      assert.ok(close(millibarsToMillimetersOfMercury(1013.25), 760, 0.1));
+    });
+    it('is invertible', () => {
+      assert.ok(
+        close(millimetersOfMercuryToMillibars(millibarsToMillimetersOfMercury(1000)), 1000),
+      );
+    });
+  });
+
+  describe('kilopascalsToMillimetersOfMercury / millimetersOfMercuryToKilopascals', () => {
+    it('converts 101.325 kPa to 760 mmHg', () => {
+      assert.ok(close(kilopascalsToMillimetersOfMercury(101.325), 760, 0.1));
+    });
+    it('is invertible', () => {
+      assert.ok(
+        close(millimetersOfMercuryToKilopascals(kilopascalsToMillimetersOfMercury(100)), 100),
       );
     });
   });
