@@ -83,6 +83,8 @@ const EXPECTED_TOOLS: readonly string[] = [
   // flightplan
   'parse_flightplan_route',
   'compute_route_distance',
+  // datasets
+  'get_dataset_status',
 ];
 
 async function connectTestClient(): Promise<{
@@ -240,6 +242,51 @@ describe('createSquawkMcpServer', () => {
       assert.ok(
         parsed.groundSpeedKt > 110 && parsed.groundSpeedKt < 125,
         `expected GS roughly equal to TAS for pure crosswind, got ${parsed.groundSpeedKt}`,
+      );
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes get_dataset_status end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_dataset_status',
+        arguments: {},
+      });
+      const parsed = z
+        .object({
+          datasets: z.object({
+            airports: z.object({
+              nasrCycleDate: z.string(),
+              generatedAt: z.string(),
+              recordCount: z.number().positive(),
+            }),
+            airspace: z.object({
+              nasrCycleDate: z.string(),
+              generatedAt: z.string(),
+              featureCount: z.number().positive(),
+            }),
+            navaids: z.object({ recordCount: z.number().positive() }).passthrough(),
+            fixes: z.object({ recordCount: z.number().positive() }).passthrough(),
+            airways: z.object({ recordCount: z.number().positive() }).passthrough(),
+            procedures: z
+              .object({
+                sidCount: z.number().nonnegative(),
+                starCount: z.number().nonnegative(),
+              })
+              .passthrough(),
+            // The lazy ICAO registry should report `loaded: false` here -
+            // no other test in this suite triggers a tail-number lookup.
+            icaoRegistry: z.object({ loaded: z.literal(false) }),
+          }),
+        })
+        .parse(result.structuredContent);
+      assert.match(
+        parsed.datasets.airports.nasrCycleDate,
+        /^\d{4}-\d{2}-\d{2}$/,
+        'expected ISO-8601 date for the airports NASR cycle',
       );
     } finally {
       await close();

@@ -5,6 +5,46 @@
  */
 
 /**
+ * A single per-record parse failure as returned by the AWC fetch helpers.
+ * Captures the raw record text and the thrown error.
+ */
+export interface ParseRecordErrorLike {
+  /** The raw input record that failed to parse. */
+  raw: string;
+  /** The error thrown by the underlying parser. */
+  error: unknown;
+}
+
+/**
+ * Summary form of a per-record parse failure suitable for MCP tool output.
+ * The error is reduced to its message string so the structured payload
+ * round-trips cleanly through JSON.
+ */
+export interface ParseRecordErrorSummary {
+  /** The raw input record that failed to parse. */
+  raw: string;
+  /** Human-readable message extracted from the parser's thrown error. */
+  message: string;
+}
+
+/**
+ * Reduces an array of {@link ParseRecordErrorLike} entries to a JSON-friendly
+ * shape. Used by every weather fetch tool to surface partial parse failures
+ * in `structuredContent` without leaking thrown error objects.
+ *
+ * @param errors - Per-record parse errors as returned by `@squawk/weather/fetch`.
+ * @returns The errors with each `error` value reduced to its message string.
+ */
+export function summarizeParseErrors(
+  errors: readonly ParseRecordErrorLike[],
+): ParseRecordErrorSummary[] {
+  return errors.map((err) => ({
+    raw: err.raw,
+    message: err.error instanceof Error ? err.error.message : String(err.error),
+  }));
+}
+
+/**
  * Runs a synchronous parser inside a tool handler and packages the outcome
  * into the MCP result shape. On success the parsed record is returned as
  * pretty JSON in `content` and as `structuredContent[resultKey]`. On failure
