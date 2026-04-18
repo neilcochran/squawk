@@ -1,0 +1,61 @@
+{
+  "name": "@squawk/mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Model Context Protocol server exposing squawk's aviation libraries as tools for LLM clients",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/mcp"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "squawk-mcp": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/bin.js",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@squawk/airport-data": "*",
+    "@squawk/airports": "*",
+    "@squawk/geo": "*",
+    "@squawk/types": "*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "claude",
+    "anthropic"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
