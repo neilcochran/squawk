@@ -4,14 +4,14 @@
 
 ### Minor Changes
 
-- 3c224c1: ## Added
+- 3c224c1: ### Added
   - `@squawk/geo` package for shared geospatial utilities, grouping exports into `greatCircle` (`distanceNm`, `bearing`, `bearingAndDistance`, `midpoint`, `destination`) and `polygon` (`pointInPolygon`, `boundingBox`, `pointInBoundingBox`) namespaces. `greatCircle.midpoint` and `greatCircle.destination` are new capabilities; the rest are consolidated from existing packages.
 
-  ## Removed
+  ### Removed
   - `distance.greatCircleDistanceNm` from `@squawk/units`. Moved to `@squawk/geo` as `greatCircle.distanceNm`.
   - `navigation.greatCircleBearing` and `navigation.greatCircleBearingAndDistance` from `@squawk/flight-math`. Moved to `@squawk/geo` as `greatCircle.bearing` and `greatCircle.bearingAndDistance`.
 
-  ## Changed
+  ### Changed
   - `@squawk/airspace`, `@squawk/airports`, `@squawk/fixes`, `@squawk/navaids`, and `@squawk/flightplan` now import great-circle distance and polygon primitives from `@squawk/geo` instead of from `@squawk/units`/`@squawk/flight-math` or private internal helpers. Public APIs are unchanged.
 
 ### Patch Changes
@@ -38,7 +38,7 @@
 
 ### Minor Changes
 
-- 58c2e55: ## Added:
+- 58c2e55: ### Added:
   - magnetic namespace with World Magnetic Model 2025 (WMM2025) magnetic declination and field computations
     - trueToMagnetic() and magneticToTrue() bearing conversion helpers
     - dateToDecimalYear() utility for converting Date objects to decimal years
