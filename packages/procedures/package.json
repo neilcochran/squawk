@@ -1,6 +1,6 @@
 {
   "name": "@squawk/procedures",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "description": "Instrument procedure lookup and expansion for SIDs and STARs",
   "author": "Neil Cochran",
@@ -34,10 +34,10 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/types": "^0.3.0"
+    "@squawk/types": "^0.3.1"
   },
   "devDependencies": {
-    "@squawk/procedure-data": "^0.3.2",
+    "@squawk/procedure-data": "^0.3.3",
     "@types/node": "^25.6.0"
   },
   "keywords": [

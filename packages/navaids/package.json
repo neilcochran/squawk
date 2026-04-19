@@ -1,6 +1,6 @@
 {
   "name": "@squawk/navaids",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "description": "Navaid queries by identifier, frequency, type, location, or name search",
   "author": "Neil Cochran",
@@ -34,11 +34,11 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/geo": "^0.2.0",
-    "@squawk/types": "^0.3.0"
+    "@squawk/geo": "^0.2.1",
+    "@squawk/types": "^0.3.1"
   },
   "devDependencies": {
-    "@squawk/navaid-data": "^0.4.0",
+    "@squawk/navaid-data": "^0.4.1",
     "@types/node": "^25.6.0"
   },
   "keywords": [
