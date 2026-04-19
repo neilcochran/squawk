@@ -1,5 +1,15 @@
 # @squawk/weather
 
+## 0.3.3
+
+### Patch Changes
+
+- fd8f93a: - Resolve dotted `PROCCODE.TRANSITION` tokens (e.g. `NUBLE4.JJIMY`) in flight plan routes; previously the parser marked them as unresolved and `compute_route_distance` skipped the procedure entirely.
+  - Order SID transition expansions in departure order (common route then transition) so `procedures.expand()` and downstream route-distance calculations no longer backtrack through the procedure or duplicate the connecting fix.
+  - Split multi-station TAF responses correctly when AWC separates records with a single newline; previously the second station's forecast groups were attributed to the first station, leaving its own `forecast` array empty.
+- Updated dependencies [6fe3325]
+  - @squawk/types@0.3.0
+
 ## 0.3.2
 
 ### Patch Changes

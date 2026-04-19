@@ -1,5 +1,29 @@
 # @squawk/mcp
 
+## 0.4.0
+
+### Minor Changes
+
+- 6fe3325: - Change `state` to optional (`string | undefined`) on `Airport`, `Navaid`, and `Fix` in `@squawk/types`. Consumers that read `.state` must now handle `undefined` for non-US records.
+  - Include selected Canadian, Mexican, Caribbean, and Pacific facilities published by the FAA in `@squawk/airport-data`, `@squawk/navaid-data`, and `@squawk/fix-data` (+147 airports, +59 navaids, +645 fixes). Foreign records have `country` populated and `state` undefined.
+  - Export `lookupCode` from `@squawk/build-shared`, a classification-map lookup helper that logs a one-time warning on unknown NASR codes so future cycle additions do not silently drop records.
+
+### Patch Changes
+
+- fd8f93a: - Resolve dotted `PROCCODE.TRANSITION` tokens (e.g. `NUBLE4.JJIMY`) in flight plan routes; previously the parser marked them as unresolved and `compute_route_distance` skipped the procedure entirely.
+  - Order SID transition expansions in departure order (common route then transition) so `procedures.expand()` and downstream route-distance calculations no longer backtrack through the procedure or duplicate the connecting fix.
+  - Split multi-station TAF responses correctly when AWC separates records with a single newline; previously the second station's forecast groups were attributed to the first station, leaving its own `forecast` array empty.
+- Updated dependencies [fd8f93a]
+- Updated dependencies [6fe3325]
+  - @squawk/flightplan@0.3.2
+  - @squawk/procedures@0.2.3
+  - @squawk/weather@0.3.3
+  - @squawk/airport-data@0.4.0
+  - @squawk/navaid-data@0.4.0
+  - @squawk/airspace@0.4.0
+  - @squawk/fix-data@0.4.0
+  - @squawk/types@0.3.0
+
 ## 0.3.0
 
 ### Minor Changes

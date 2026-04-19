@@ -1,6 +1,6 @@
 {
   "name": "@squawk/flightplan",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "description": "Flight plan route string parsing and resolution using composed navigation resolvers",
   "author": "Neil Cochran",
