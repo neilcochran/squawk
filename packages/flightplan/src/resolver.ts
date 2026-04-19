@@ -388,6 +388,11 @@ function tryAirport(
 
 /**
  * Attempts to resolve a token as a SID or STAR procedure.
+ *
+ * Accepts both the bare computer code (e.g. "NUBLE4") and the dotted
+ * procedure-with-transition form (e.g. "NUBLE4.JJIMY"). When a transition
+ * is supplied, it is forwarded to the procedure resolver so that the
+ * transition's waypoints are merged into the expansion.
  */
 function tryProcedure(
   token: string,
@@ -397,12 +402,20 @@ function tryProcedure(
     return undefined;
   }
 
-  const proc = procedures.byName(token);
+  const dotIndex = token.indexOf('.');
+  const computerCode = dotIndex >= 0 ? token.slice(0, dotIndex) : token;
+  const transitionName = dotIndex >= 0 ? token.slice(dotIndex + 1) : undefined;
+
+  if (computerCode.length === 0) {
+    return undefined;
+  }
+
+  const proc = procedures.byName(computerCode);
   if (!proc) {
     return undefined;
   }
 
-  const expansion = procedures.expand(token);
+  const expansion = procedures.expand(computerCode, transitionName);
   const waypoints = expansion ? expansion.waypoints : [];
 
   if (proc.type === 'SID') {

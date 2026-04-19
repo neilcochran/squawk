@@ -7,8 +7,8 @@ import {
   parseRecords,
   requestAwcText,
   splitAwcBulletins,
-  splitBlocks,
   splitLines,
+  splitTafs,
 } from './client.js';
 
 afterEach(() => {
@@ -105,22 +105,53 @@ describe('splitLines', () => {
   });
 });
 
-describe('splitBlocks', () => {
+describe('splitTafs', () => {
   it('splits on one or more blank lines and trims each block', () => {
     const body = 'TAF KJFK ...\n  FM050000 ...\n\nTAF KLAX ...\n  FM050000 ...';
-    assert.deepEqual(splitBlocks(body), [
+    assert.deepEqual(splitTafs(body), [
       'TAF KJFK ...\n  FM050000 ...',
       'TAF KLAX ...\n  FM050000 ...',
     ]);
   });
 
-  it('returns an empty array when the body is only whitespace', () => {
-    assert.deepEqual(splitBlocks('\n\n   \r\n\r\n'), []);
+  it('splits on a single newline before a TAF header (AWC default format)', () => {
+    const body =
+      'TAF KBOS 190530Z 1906/2012 15003KT 2SM -DZ FG OVC003\n' +
+      '     FM200000 30012G21KT P6SM OVC035\n' +
+      'TAF KPWM 190520Z 1906/2006 VRB03KT 3SM BR OVC002\n' +
+      '     FM192100 33012KT 3SM -RA BR OVC012';
+    assert.deepEqual(splitTafs(body), [
+      'TAF KBOS 190530Z 1906/2012 15003KT 2SM -DZ FG OVC003\n     FM200000 30012G21KT P6SM OVC035',
+      'TAF KPWM 190520Z 1906/2006 VRB03KT 3SM BR OVC002\n     FM192100 33012KT 3SM -RA BR OVC012',
+    ]);
   });
 
-  it('handles CRLF line endings', () => {
-    const body = 'TAF KJFK ...\r\n  FM050000 ...\r\n\r\nTAF KLAX ...\r\n  FM050000 ...';
-    assert.deepEqual(splitBlocks(body), [
+  it('splits on a single newline before TAF AMD or TAF COR headers', () => {
+    const body =
+      'TAF KJFK 041730Z 0418/0524 21012KT P6SM FEW250\n' +
+      'TAF AMD KLAX 041800Z 0418/0524 25010KT P6SM SKC\n' +
+      'TAF COR KSFO 041830Z 0418/0524 27008KT P6SM SCT020';
+    const blocks = splitTafs(body);
+    assert.equal(blocks.length, 3);
+    assert.ok(blocks[0]?.startsWith('TAF KJFK'));
+    assert.ok(blocks[1]?.startsWith('TAF AMD KLAX'));
+    assert.ok(blocks[2]?.startsWith('TAF COR KSFO'));
+  });
+
+  it('returns an empty array when the body is only whitespace', () => {
+    assert.deepEqual(splitTafs('\n\n   \r\n\r\n'), []);
+  });
+
+  it('handles CRLF line endings for both blank-line and single-newline separators', () => {
+    const blankSeparated = 'TAF KJFK ...\r\n  FM050000 ...\r\n\r\nTAF KLAX ...\r\n  FM050000 ...';
+    assert.deepEqual(splitTafs(blankSeparated), [
+      'TAF KJFK ...\r\n  FM050000 ...',
+      'TAF KLAX ...\r\n  FM050000 ...',
+    ]);
+
+    const singleNewlineSeparated =
+      'TAF KJFK ...\r\n  FM050000 ...\r\nTAF KLAX ...\r\n  FM050000 ...';
+    assert.deepEqual(splitTafs(singleNewlineSeparated), [
       'TAF KJFK ...\r\n  FM050000 ...',
       'TAF KLAX ...\r\n  FM050000 ...',
     ]);
