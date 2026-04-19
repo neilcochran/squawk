@@ -25,5 +25,7 @@ jobs:
 
       - run: npm run test
 
+      - run: npm run lint:pack
+
       - name: Check README data dates
         run: node scripts/check-readme-dates.js

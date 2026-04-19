@@ -19,6 +19,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
+    "lint:pack": "turbo run lint:pack",
     "dev": "turbo run dev",
     "docs": "typedoc",
     "build:data": "node scripts/build-data.js",
@@ -31,11 +32,13 @@
     "node": ">=22"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
     "@changesets/cli": "^2.30.0",
     "@types/node": "^25.6.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.2",
+    "publint": "^0.3.18",
     "turbo": "^2.9.6",
     "typedoc": "^0.28.18",
     "typescript": "^5.4.0",
