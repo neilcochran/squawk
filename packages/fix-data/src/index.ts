@@ -26,8 +26,8 @@ interface CompactFix {
   id: string;
   /** ICAO region code. */
   icao: string;
-  /** State code. */
-  st: string;
+  /** State code (absent for non-US fixes). */
+  st?: string;
   /** Country code. */
   ctry: string;
   /** Latitude. */
@@ -120,7 +120,6 @@ function expandFix(c: CompactFix): Fix {
   const fix: Fix = {
     identifier: c.id,
     icaoRegionCode: c.icao,
-    state: c.st,
     country: c.ctry,
     lat: c.lat,
     lon: c.lon,
@@ -132,6 +131,9 @@ function expandFix(c: CompactFix): Fix {
     navaidAssociations: c.nav ? c.nav.map(expandNavaidAssociation) : [],
   };
 
+  if (c.st !== undefined) {
+    fix.state = c.st;
+  }
   if (c.hart !== undefined) {
     fix.highArtccId = c.hart;
   }
@@ -160,12 +162,16 @@ const raw: BundledData = JSON.parse(gunzipSync(readFileSync(dataPath)).toString(
 const records: Fix[] = raw.records.map(expandFix);
 
 /**
- * Pre-processed snapshot of US fix/waypoint data derived from the FAA NASR
+ * Pre-processed snapshot of fix/waypoint data derived from the FAA NASR
  * 28-day subscription cycle.
  *
  * Contains fix identification, location, usage category, ARTCC assignment,
- * chart associations, and navaid relationships for all non-CNF US named
- * fixes and waypoints.
+ * chart associations, and navaid relationships for every non-CNF named fix
+ * and waypoint published by the FAA. Includes selected Canadian, Mexican,
+ * Caribbean, and Pacific fixes that participate in US operations; their
+ * `state` field is undefined while `country` is populated with a two-letter
+ * code and `icaoRegionCode` reflects the foreign region (e.g. `CY` for
+ * Canada).
  *
  * Pass the `records` array directly to `createFixResolver()` from
  * `@squawk/fixes` for zero-config lookups:

@@ -277,8 +277,8 @@ export interface Airport {
   status: FacilityStatus;
   /** City where the facility is located. */
   city: string;
-  /** Two-letter state code (e.g. "NY", "CA"). */
-  state: string;
+  /** Two-letter state code (e.g. "NY", "CA"). Absent for non-US facilities. */
+  state?: string;
   /** Two-letter country code (e.g. "US"). */
   country: string;
   /** County name. */
