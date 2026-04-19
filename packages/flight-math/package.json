@@ -47,6 +47,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@squawk/units": "*"
+    "@squawk/units": "^0.4.0"
   }
 }
