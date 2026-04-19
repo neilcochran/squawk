@@ -98,20 +98,65 @@ describe('expand', () => {
     assert.equal(result.waypoints[0]!.fixIdentifier, 'AALLE');
   });
 
-  it('returns transition + common route when transition is specified', () => {
+  it('returns transition + common route in arrival order when transition is specified for a STAR', () => {
     const result = resolver.expand('AALLE4', 'BBOTL');
     assert.ok(result, 'expected expand result for AALLE4 BBOTL transition');
     assert.ok(result.waypoints.length > 0);
     assert.equal(result.waypoints[0]!.fixIdentifier, 'BBOTL');
+
+    const baseRoute = resolver.expand('AALLE4');
+    assert.ok(baseRoute);
+    const lastBase = baseRoute.waypoints[baseRoute.waypoints.length - 1]!.fixIdentifier;
+    assert.equal(
+      result.waypoints[result.waypoints.length - 1]!.fixIdentifier,
+      lastBase,
+      'expected STAR expansion to end at the common route terminus',
+    );
   });
 
-  it('deduplicates the connecting fix between transition and common route', () => {
+  it('returns common route + transition in departure order when transition is specified for a SID', () => {
+    const result = resolver.expand('NUBLE4', 'JJIMY');
+    assert.ok(result, 'expected expand result for NUBLE4 JJIMY transition');
+    assert.ok(result.waypoints.length > 0);
+
+    const baseRoute = resolver.expand('NUBLE4');
+    assert.ok(baseRoute);
+    assert.equal(
+      result.waypoints[0]!.fixIdentifier,
+      baseRoute.waypoints[0]!.fixIdentifier,
+      'expected SID expansion to start at the common route origin',
+    );
+    assert.equal(
+      result.waypoints[result.waypoints.length - 1]!.fixIdentifier,
+      'JJIMY',
+      'expected SID expansion to end at the transition terminus',
+    );
+  });
+
+  it('deduplicates the connecting fix on a STAR transition+route merge', () => {
     const withTransition = resolver.expand('AALLE4', 'BBOTL');
     assert.ok(withTransition);
 
     const identifiers = withTransition.waypoints.map((wp) => wp.fixIdentifier);
     const aalleCount = identifiers.filter((id) => id === 'AALLE').length;
     assert.ok(aalleCount <= 1, 'expected AALLE to appear at most once after dedup');
+  });
+
+  it('deduplicates the connecting fix on a SID route+transition merge', () => {
+    const withTransition = resolver.expand('NUBLE4', 'JJIMY');
+    assert.ok(withTransition);
+
+    const identifiers = withTransition.waypoints.map((wp) => wp.fixIdentifier);
+    const nubleCount = identifiers.filter((id) => id === 'NUBLE').length;
+    assert.equal(nubleCount, 1, 'expected NUBLE to appear exactly once after SID dedup');
+
+    const nubleIndex = identifiers.indexOf('NUBLE');
+    const rbelaIndex = identifiers.indexOf('RBELA');
+    const jjimyIndex = identifiers.indexOf('JJIMY');
+    assert.ok(
+      nubleIndex < rbelaIndex && rbelaIndex < jjimyIndex,
+      'expected NUBLE -> RBELA -> JJIMY ordering after the common route',
+    );
   });
 
   it('is case-insensitive for computer code', () => {
