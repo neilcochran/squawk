@@ -34,20 +34,20 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/geo": "*",
-    "@squawk/types": "*"
+    "@squawk/geo": "^0.2.0",
+    "@squawk/types": "^0.3.0"
   },
   "devDependencies": {
-    "@squawk/airport-data": "*",
-    "@squawk/airports": "*",
-    "@squawk/airway-data": "*",
-    "@squawk/airways": "*",
-    "@squawk/fix-data": "*",
-    "@squawk/fixes": "*",
-    "@squawk/navaid-data": "*",
-    "@squawk/navaids": "*",
-    "@squawk/procedure-data": "*",
-    "@squawk/procedures": "*",
+    "@squawk/airport-data": "^0.4.0",
+    "@squawk/airports": "^0.3.1",
+    "@squawk/airway-data": "^0.3.2",
+    "@squawk/airways": "^0.2.2",
+    "@squawk/fix-data": "^0.4.0",
+    "@squawk/fixes": "^0.1.3",
+    "@squawk/navaid-data": "^0.4.0",
+    "@squawk/navaids": "^0.2.3",
+    "@squawk/procedure-data": "^0.3.2",
+    "@squawk/procedures": "^0.2.3",
     "@types/node": "^25.6.0"
   },
   "keywords": [

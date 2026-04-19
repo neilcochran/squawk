@@ -34,11 +34,11 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/geo": "*",
-    "@squawk/types": "*"
+    "@squawk/geo": "^0.2.0",
+    "@squawk/types": "^0.3.0"
   },
   "devDependencies": {
-    "@squawk/airspace-data": "*",
+    "@squawk/airspace-data": "^0.3.2",
     "@types/node": "^25.6.0"
   },
   "keywords": [

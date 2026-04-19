@@ -34,10 +34,10 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/types": "*"
+    "@squawk/types": "^0.3.0"
   },
   "devDependencies": {
-    "@squawk/procedure-data": "*",
+    "@squawk/procedure-data": "^0.3.2",
     "@types/node": "^25.6.0"
   },
   "keywords": [

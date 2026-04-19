@@ -35,7 +35,7 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/types": "*"
+    "@squawk/types": "^0.3.0"
   },
   "keywords": [
     "aviation",
