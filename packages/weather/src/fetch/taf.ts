@@ -4,7 +4,7 @@ import {
   buildAwcUrl,
   parseRecords,
   requestAwcText,
-  splitBlocks,
+  splitTafs,
   type FetchWeatherOptions,
   type ParseRecordError,
 } from './client.js';
@@ -23,9 +23,10 @@ export interface FetchTafResult {
 
 /**
  * Fetches TAFs from the Aviation Weather Center text API and parses each
- * record. The AWC `taf` endpoint returns one multi-line TAF per block,
- * separated by blank lines; this function splits the response on blank lines
- * before parsing.
+ * record. Each TAF in the AWC response begins with a `TAF` token at the
+ * start of a line, followed by indented continuation lines for the base
+ * forecast and any change groups; records may be separated by either a
+ * blank line or a single newline.
  *
  * ```typescript
  * import { fetchTaf } from '@squawk/weather/fetch';
@@ -48,6 +49,6 @@ export async function fetchTaf(
     requestOptions.signal = options.signal;
   }
   const raw = await requestAwcText(url, requestOptions);
-  const { results, parseErrors } = parseRecords(splitBlocks(raw), parseTaf);
+  const { results, parseErrors } = parseRecords(splitTafs(raw), parseTaf);
   return { tafs: results, parseErrors, raw };
 }

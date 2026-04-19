@@ -139,15 +139,21 @@ export function splitLines(raw: string): string[] {
 }
 
 /**
- * Splits a response body into blocks separated by one or more blank lines.
- * Suitable for formats where each record spans multiple lines (TAF).
+ * Splits an AWC TAF response body into individual TAF records.
+ *
+ * The AWC TAF endpoint returns each record starting with a `TAF` token at
+ * the beginning of a line, followed by indented continuation lines for the
+ * base forecast and any change groups. Records may be separated by either a
+ * blank line or a single newline (with the next `TAF` line immediately
+ * following), so the splitter recognizes a `TAF` header at the start of a
+ * line as a record boundary in addition to blank lines.
  *
  * @param raw - The full response body.
- * @returns Non-empty blocks in input order, with internal whitespace preserved.
+ * @returns Non-empty TAF records in input order, with internal whitespace preserved.
  */
-export function splitBlocks(raw: string): string[] {
+export function splitTafs(raw: string): string[] {
   return raw
-    .split(/(?:\r?\n){2,}/)
+    .split(/(?:\r?\n){2,}|\r?\n(?=TAF\b)/)
     .map((block) => block.trim())
     .filter((block) => block.length > 0);
 }

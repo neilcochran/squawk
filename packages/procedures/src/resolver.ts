@@ -61,9 +61,17 @@ export interface ProcedureResolver {
    * Expands a procedure into an ordered waypoint sequence.
    *
    * When called without a transition name, returns the first common route.
-   * When called with a transition name, returns the matching transition's
-   * waypoints followed by the first common route's waypoints (with any
-   * overlapping connecting fix deduplicated).
+   *
+   * When called with a transition name, the transition's waypoints are
+   * merged with the first common route's waypoints in flying order:
+   * - For STARs the transition feeds into the common route, so the
+   *   transition waypoints come first followed by the common route.
+   * - For SIDs the common route departs the airport before joining the
+   *   transition, so the common route comes first followed by the
+   *   transition.
+   *
+   * In both cases the connecting fix where the transition meets the common
+   * route is deduplicated when present.
    *
    * Returns undefined if the procedure or transition is not found.
    */
@@ -176,7 +184,7 @@ export function createProcedureResolver(options: ProcedureResolverOptions): Proc
         };
       }
 
-      const waypoints = mergeTransitionAndRoute(transition.waypoints, firstRoute);
+      const waypoints = mergeTransitionAndRoute(transition.waypoints, firstRoute, proc.type);
       return {
         procedure: proc,
         waypoints,
@@ -213,13 +221,16 @@ export function createProcedureResolver(options: ProcedureResolverOptions): Proc
 }
 
 /**
- * Merges a transition's waypoints with a common route's waypoints.
- * If the last waypoint of the transition matches the first waypoint of the
- * common route (by fix identifier), the duplicate is removed.
+ * Merges a transition's waypoints with a common route's waypoints in the
+ * order aircraft fly the procedure. SIDs depart along the common route and
+ * then continue onto the transition; STARs fly the transition into the
+ * common route. The connecting fix where the two segments meet is
+ * deduplicated when present.
  */
 function mergeTransitionAndRoute(
   transitionWaypoints: ProcedureWaypoint[],
   route: ProcedureCommonRoute,
+  procedureType: ProcedureType,
 ): ProcedureWaypoint[] {
   if (transitionWaypoints.length === 0) {
     return route.waypoints;
@@ -228,12 +239,19 @@ function mergeTransitionAndRoute(
     return transitionWaypoints;
   }
 
+  if (procedureType === 'SID') {
+    const lastRoute = route.waypoints[route.waypoints.length - 1]!;
+    const firstTransition = transitionWaypoints[0]!;
+    if (lastRoute.fixIdentifier.toUpperCase() === firstTransition.fixIdentifier.toUpperCase()) {
+      return [...route.waypoints, ...transitionWaypoints.slice(1)];
+    }
+    return [...route.waypoints, ...transitionWaypoints];
+  }
+
   const lastTransition = transitionWaypoints[transitionWaypoints.length - 1]!;
   const firstRoute = route.waypoints[0]!;
-
   if (lastTransition.fixIdentifier.toUpperCase() === firstRoute.fixIdentifier.toUpperCase()) {
     return [...transitionWaypoints, ...route.waypoints.slice(1)];
   }
-
   return [...transitionWaypoints, ...route.waypoints];
 }

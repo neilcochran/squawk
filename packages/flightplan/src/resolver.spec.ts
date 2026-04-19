@@ -169,6 +169,79 @@ describe('parse', () => {
     }
   });
 
+  it('resolves a SID with a dotted transition in departure order', () => {
+    const result = resolver.parse('NUBLE4.JJIMY');
+    assert.equal(result.elements.length, 1);
+    const el = result.elements[0]!;
+    assert.equal(el.type, 'sid');
+    if (el.type === 'sid') {
+      assert.equal(el.raw, 'NUBLE4.JJIMY');
+      assert.equal(el.procedure.computerCode, 'NUBLE4');
+
+      const withoutTransition = resolver.parse('NUBLE4');
+      const baseEl = withoutTransition.elements[0]!;
+      assert.equal(baseEl.type, 'sid');
+      if (baseEl.type === 'sid') {
+        assert.ok(
+          el.waypoints.length > baseEl.waypoints.length,
+          'expected dotted transition expansion to add fixes beyond the common route',
+        );
+
+        const baseIdentifiers = baseEl.waypoints.map((wp) => wp.fixIdentifier);
+        const identifiers = el.waypoints.map((wp) => wp.fixIdentifier);
+        assert.equal(
+          identifiers[0],
+          baseIdentifiers[0],
+          'expected dotted SID expansion to start at the common route origin',
+        );
+        assert.equal(
+          identifiers[identifiers.length - 1],
+          'JJIMY',
+          'expected dotted SID expansion to end at the transition terminus',
+        );
+        assert.ok(
+          identifiers.includes('RBELA'),
+          'expected JJIMY transition fix RBELA in waypoints',
+        );
+      }
+    }
+  });
+
+  it('resolves a STAR with a dotted transition in arrival order', () => {
+    const result = resolver.parse('AALLE4.BBOTL');
+    assert.equal(result.elements.length, 1);
+    const el = result.elements[0]!;
+    assert.equal(el.type, 'star');
+    if (el.type === 'star') {
+      assert.equal(el.raw, 'AALLE4.BBOTL');
+      assert.equal(el.procedure.computerCode, 'AALLE4');
+      const identifiers = el.waypoints.map((wp) => wp.fixIdentifier);
+      assert.equal(
+        identifiers[0],
+        'BBOTL',
+        'expected dotted STAR expansion to start at the transition origin',
+      );
+    }
+  });
+
+  it('marks a dotted procedure with an unknown transition as resolved with empty waypoints', () => {
+    const result = resolver.parse('NUBLE4.NOTAREALXFER');
+    assert.equal(result.elements.length, 1);
+    const el = result.elements[0]!;
+    assert.equal(el.type, 'sid');
+    if (el.type === 'sid') {
+      assert.equal(el.procedure.computerCode, 'NUBLE4');
+      assert.equal(el.waypoints.length, 0);
+    }
+  });
+
+  it('marks a dotted token with an unknown procedure as unresolved', () => {
+    const result = resolver.parse('NOTAPROC.JJIMY');
+    assert.equal(result.elements.length, 1);
+    assert.equal(result.elements[0]!.type, 'unresolved');
+    assert.equal(result.elements[0]!.raw, 'NOTAPROC.JJIMY');
+  });
+
   it('parses DDMMN/DDDMMEW coordinates', () => {
     const result = resolver.parse('4000N07000W');
     assert.equal(result.elements.length, 1);
