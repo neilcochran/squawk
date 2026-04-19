@@ -87,6 +87,49 @@ Continue exposes MCP via its experimental config block. In `~/.continue/config.j
 }
 ```
 
+### Picking an install version
+
+The snippets above pass the bare package name (`@squawk/mcp`), which lets `npx` pick whatever
+version it finds first - usually a previously cached one. For predictable behavior, pin the
+version explicitly in the client config:
+
+```json
+{
+  "mcpServers": {
+    "squawk": {
+      "command": "npx",
+      "args": ["-y", "@squawk/mcp@0.4.1"]
+    }
+  }
+}
+```
+
+Bump the pinned version when a new release ships (see [npm](https://www.npmjs.com/package/@squawk/mcp)
+for the latest). Pinning is the most reliable option because the resolved version is part of your
+config and never depends on cache state.
+
+If you would rather have the server auto-update on every Claude Desktop (or other host) restart,
+use the `@latest` tag:
+
+```json
+{
+  "mcpServers": {
+    "squawk": {
+      "command": "npx",
+      "args": ["-y", "@squawk/mcp@latest"]
+    }
+  }
+}
+```
+
+`@latest` instructs `npx` to consult the registry for the newest version on every spawn. There is a
+caveat: the `npx` cache (under `~/.npm/_npx/`) can still hold an older version that satisfies the
+resolved tag, in which case the cached copy is reused. If a newer release is published and the
+server still serves the old behavior after a host restart, clear the cache directory and restart
+again, or fall back to a pinned version. The host process itself also has to restart for any
+update to take effect, since each MCP server is a long-running stdio subprocess that loads its
+code once at spawn time.
+
 ### Pinning a specific Node binary
 
 `npx` resolves `node` through whatever PATH the host launches with. On macOS, GUI apps often
