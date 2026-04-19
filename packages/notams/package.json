@@ -45,6 +45,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@squawk/types": "*"
+    "@squawk/types": "^0.3.0"
   }
 }
