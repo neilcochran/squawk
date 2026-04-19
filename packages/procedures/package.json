@@ -19,8 +19,8 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -30,7 +30,8 @@
   "scripts": {
     "build": "tsc",
     "test": "node --test 'dist/**/*.spec.js'",
-    "lint": "tsc --noEmit && eslint src"
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
     "@squawk/types": "*"
