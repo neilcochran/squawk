@@ -41,7 +41,7 @@
     "publint": "^0.3.18",
     "turbo": "^2.9.6",
     "typedoc": "^0.28.18",
-    "typescript": "^5.4.0",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.0.0"
   }
 }
