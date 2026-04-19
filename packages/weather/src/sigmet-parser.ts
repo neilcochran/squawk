@@ -854,11 +854,13 @@ function parseNonConvectiveCancellation(body: string, raw: string): NonConvectiv
  * After stripping, the body starts with [FIR codes...] SIGMET or just SIGMET.
  */
 function stripInternationalHeaders(text: string): string {
-  // Find the position of the SIGMET body by looking for FIR code(s) + SIGMET pattern
-  // or just SIGMET keyword with the ICAO validity format. The trailing dash may
-  // be preceded by whitespace in some feeds (e.g. `SBAZ -`).
-  const sigmetPattern =
-    /\b(?:[A-Z]{4}\s+)*SIGMET\s+\w+(?:\s+\d+)?\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}\s*-/;
+  // Anchor the search on the SIGMET keyword itself rather than an optional FIR
+  // prefix. Including the prefix as a quantified group (e.g. `(?:[A-Z]{4}\s+)*`)
+  // turns the search into O(N^2) on the count of leading 4-letter tokens when
+  // the trailing dash never matches, since the engine retries every starting
+  // position. With the prefix excluded, each starting position does constant
+  // work and any FIR codes are recovered separately from the prefix below.
+  const sigmetPattern = /\bSIGMET\s+\w+(?:\s+\d+)?\s+VALID\s+\d{6}\/\d{6}\s+[A-Z]{4}\s*-/;
   const match = text.match(sigmetPattern);
   if (!match || match.index === undefined) {
     return text;
@@ -879,20 +881,17 @@ function stripInternationalHeaders(text: string): string {
     .replace(/\b[A-Z]{3,4}\s+WS\s+\d{6}\b/g, '') // Area IDs (ANCM WS 291615)
     .trim();
 
-  // Whatever 4-letter codes remain in the prefix are FIR codes from the body
+  // Whatever 4-letter codes remain in the prefix are FIR codes from the body.
+  // Prepend all of them to the SIGMET body so parseInternationalHeader can
+  // capture the FIR closest to SIGMET and parseFirInfo can pick up the rest.
   const remainingFirCodes = strippedPrefix.match(/\b[A-Z]{4}\b/g);
 
+  const sigmetBody = text.substring(match.index).trim();
   if (remainingFirCodes && remainingFirCodes.length > 0) {
-    // Use the last FIR code as the primary (for multi-FIR, the one closest to SIGMET)
-    return (
-      remainingFirCodes[remainingFirCodes.length - 1]! +
-      ' ' +
-      text.substring(text.indexOf('SIGMET', match.index)).trim()
-    );
+    return remainingFirCodes.join(' ') + ' ' + sigmetBody;
   }
 
-  // No FIR codes in prefix - body starts at the match position
-  return text.substring(match.index).trim();
+  return sigmetBody;
 }
 
 /**

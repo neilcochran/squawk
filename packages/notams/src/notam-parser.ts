@@ -315,8 +315,10 @@ export function parseNotam(raw: string): Notam {
   }
   const referencedId = headerMatch[3];
 
-  // Extract Q-line
-  const qLineMatch = normalized.match(/Q\)\s*([^)]*?(?:\/[^)]*?){7})\s*(?=[A-G]\))/i);
+  // Extract Q-line. Each of the 8 slash-separated fields excludes both ')' and
+  // '/' so the engine cannot try multiple distributions of the slashes between
+  // the fields, which keeps matching linear in input length.
+  const qLineMatch = normalized.match(/Q\)\s*([^)/]*(?:\/[^)/]*){7})\s*(?=[A-G]\))/i);
   let qualifier: NotamQualifier | undefined;
   if (qLineMatch) {
     qualifier = parseQLine(qLineMatch[1]!.trim());
