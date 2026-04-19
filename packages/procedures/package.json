@@ -1,6 +1,6 @@
 {
   "name": "@squawk/procedures",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "Instrument procedure lookup and expansion for SIDs and STARs",
   "author": "Neil Cochran",
