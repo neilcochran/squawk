@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/fix-data)](https://www.npmjs.com/package/@squawk/fix-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed snapshot of US fix/waypoint data from the **2026-04-16** FAA NASR
+Pre-processed snapshot of fix/waypoint data from the **2026-04-16** FAA NASR
 cycle. Data only - no query logic, no dependency on
 `@squawk/fixes`.
 
@@ -12,7 +12,7 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 
 ## Coverage
 
-- All non-CNF US named fixes and waypoints: waypoints, reporting points, VFR waypoints, NRS waypoints, military waypoints/reporting points, and radar fixes
+- All non-CNF named fixes and waypoints the FAA publishes: US-domestic waypoints, reporting points, VFR waypoints, NRS waypoints, military waypoints/reporting points, and radar fixes, plus selected Canadian, Mexican, Caribbean, and Pacific fixes that participate in US operations
 - Geographic coordinates (decimal degrees)
 - Usage category (WP, RP, VFR, NRS, MW, MR, RADAR)
 - ARTCC assignment (low and high altitude)
@@ -53,9 +53,10 @@ Each record is a full `Fix` object from `@squawk/types`. Key fields:
 | Property                     | Type                       | Description                                          |
 | ---------------------------- | -------------------------- | ---------------------------------------------------- |
 | `identifier`                 | string                     | Fix identifier (e.g. "MERIT", "BOSCO")               |
-| `icaoRegionCode`             | string                     | ICAO region code (e.g. "K6", "K7")                   |
+| `icaoRegionCode`             | string                     | ICAO region code (e.g. "K6", "K7", "CY" for Canada)  |
 | `lat`, `lon`                 | number                     | Decimal degrees                                      |
-| `state`, `country`           | string                     | Two-letter codes                                     |
+| `country`                    | string                     | Two-letter country code                              |
+| `state`                      | string or undefined        | Two-letter code for US fixes, absent for foreign     |
 | `useCode`                    | FixUseCode                 | WP, RP, VFR, NRS, MW, MR, or RADAR                   |
 | `highArtccId`                | string or undefined        | High-altitude ARTCC (e.g. "ZNY")                     |
 | `lowArtccId`                 | string or undefined        | Low-altitude ARTCC                                   |

@@ -166,8 +166,8 @@ interface CompactAirport {
   st: FacilityStatus;
   /** City. */
   city: string;
-  /** State code. */
-  state: string;
+  /** State code (absent for non-US facilities). */
+  state?: string;
   /** Country code. */
   ctry: string;
   /** County. */
@@ -437,7 +437,6 @@ function expandAirport(c: CompactAirport): Airport {
     useType: c.use,
     status: c.st,
     city: c.city,
-    state: c.state,
     country: c.ctry,
     lat: c.lat,
     lon: c.lon,
@@ -445,6 +444,9 @@ function expandAirport(c: CompactAirport): Airport {
     frequencies: (c.freqs ?? []).map(expandFrequency),
   };
 
+  if (c.state !== undefined) {
+    apt.state = c.state;
+  }
   if (c.icao !== undefined) {
     apt.icao = c.icao;
   }
@@ -518,12 +520,15 @@ const raw: BundledData = JSON.parse(gunzipSync(readFileSync(dataPath)).toString(
 const records: Airport[] = raw.records.map(expandAirport);
 
 /**
- * Pre-processed snapshot of US airport data derived from the FAA NASR
+ * Pre-processed snapshot of airport data derived from the FAA NASR
  * 28-day subscription cycle.
  *
  * Contains airport identification, location, elevation, runways (dimensions,
  * surface, lighting, declared distances), and communication frequencies for
- * all open US aviation facilities (airports, heliports, seaplane bases, etc.).
+ * every open aviation facility (airports, heliports, seaplane bases, etc.)
+ * published by the FAA. Includes selected Canadian, Mexican, Caribbean, and
+ * Pacific facilities that participate in US operations; their `state` field
+ * is undefined while `country` is populated with a two-letter code.
  *
  * Pass the `records` array directly to `createAirportResolver()` from
  * `@squawk/airports` for zero-config lookups:

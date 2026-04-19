@@ -25,11 +25,27 @@ describe('usBundledAirports', () => {
     assert.equal(typeof first.useType, 'string');
     assert.equal(typeof first.status, 'string');
     assert.equal(typeof first.city, 'string');
-    assert.equal(typeof first.state, 'string');
+    assert.equal(typeof first.country, 'string');
     assert.equal(typeof first.lat, 'number');
     assert.equal(typeof first.lon, 'number');
     assert.ok(Array.isArray(first.runways));
     assert.ok(Array.isArray(first.frequencies));
+  });
+
+  it('populates state for US facilities', () => {
+    const us = usBundledAirports.records.find((r) => r.country === 'US');
+    assert.ok(us !== undefined);
+    assert.equal(typeof us.state, 'string');
+    assert.ok(us.state && us.state.length > 0);
+  });
+
+  it('includes foreign facilities that the FAA publishes (e.g. Canadian airports)', () => {
+    const foreign = usBundledAirports.records.filter((r) => r.country !== 'US');
+    assert.ok(foreign.length > 0, 'expected at least one foreign airport');
+
+    const canadian = usBundledAirports.records.find((r) => r.country === 'CA');
+    assert.ok(canadian !== undefined, 'expected at least one Canadian airport');
+    assert.equal(canadian.state, undefined, 'non-US facilities should have no state');
   });
 
   it('contains records with optional fields populated', () => {

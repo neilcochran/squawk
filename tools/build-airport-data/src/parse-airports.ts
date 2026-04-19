@@ -17,6 +17,7 @@ import type {
   VgsiType,
 } from '@squawk/types';
 import { ILS_CATEGORY_MAP, ILS_SYSTEM_TYPE_MAP } from '@squawk/types';
+import { lookupCode } from '@squawk/build-shared';
 import type { CsvRecord } from './parse-csv.js';
 
 /** Maps FAA SITE_TYPE_CODE values to FacilityType. */
@@ -479,16 +480,7 @@ export function buildAirport(
   const lat = parseOptFloat(base.LAT_DECIMAL);
   const lon = parseOptFloat(base.LONG_DECIMAL);
 
-  if (
-    !faaId ||
-    !name ||
-    !city ||
-    !state ||
-    !country ||
-    !siteNo ||
-    lat === undefined ||
-    lon === undefined
-  ) {
+  if (!faaId || !name || !city || !country || !siteNo || lat === undefined || lon === undefined) {
     return undefined;
   }
 
@@ -501,10 +493,10 @@ export function buildAirport(
     return undefined;
   }
 
-  const facType = facilityTypeMap[siteTypeCode];
-  const ownership = ownershipMap[ownerCode];
-  const useType = useMap[useCode];
-  const status = statusMap[statusCode];
+  const facType = lookupCode(facilityTypeMap, siteTypeCode, 'SITE_TYPE_CODE', 'parse-airports');
+  const ownership = lookupCode(ownershipMap, ownerCode, 'OWNERSHIP_TYPE_CODE', 'parse-airports');
+  const useType = lookupCode(useMap, useCode, 'FACILITY_USE_CODE', 'parse-airports');
+  const status = lookupCode(statusMap, statusCode, 'ARPT_STATUS', 'parse-airports');
 
   if (!facType || !ownership || !useType || !status) {
     return undefined;
@@ -518,13 +510,16 @@ export function buildAirport(
     useType,
     status,
     city,
-    state,
     country,
     lat,
     lon,
     runways: [],
     frequencies: [],
   };
+
+  if (state) {
+    airport.state = state;
+  }
 
   if (base.ICAO_ID) {
     airport.icao = base.ICAO_ID;
