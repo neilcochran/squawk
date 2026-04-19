@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/navaid-data)](https://www.npmjs.com/package/@squawk/navaid-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed snapshot of US navaid data from the **2026-04-16** FAA NASR
+Pre-processed snapshot of navaid data from the **2026-04-16** FAA NASR
 cycle. Data only - no query logic, no dependency on
 `@squawk/navaids`.
 
@@ -12,7 +12,7 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 
 ## Coverage
 
-- All non-shutdown US navigational aids: VOR, VORTAC, VOR/DME, TACAN, DME, NDB, NDB/DME, fan markers, marine NDBs, and VOTs
+- All non-shutdown navigational aids the FAA publishes: US-domestic VOR, VORTAC, VOR/DME, TACAN, DME, NDB, NDB/DME, fan markers, marine NDBs, and VOTs, plus selected Canadian, Mexican, and Caribbean navaids that participate in US operations
 - Frequencies (MHz for VOR-family, kHz for NDB-family) and TACAN channels
 - Elevation, magnetic variation, and service volume classification
 - ARTCC assignment (low and high altitude)
@@ -54,7 +54,8 @@ Each record is a full `Navaid` object from `@squawk/types`. Key fields:
 | `type`                       | NavaidType           | VOR, VORTAC, VOR/DME, TACAN, DME, NDB, NDB/DME, etc.        |
 | `status`                     | NavaidStatus         | OPERATIONAL_IFR, OPERATIONAL_RESTRICTED, or OPERATIONAL_VFR |
 | `lat`, `lon`                 | number               | Decimal degrees                                             |
-| `state`, `country`           | string               | Two-letter codes                                            |
+| `country`                    | string               | Two-letter country code                                     |
+| `state`                      | string or undefined  | Two-letter code for US navaids, absent for foreign          |
 | `city`                       | string or undefined  | Associated city                                             |
 | `elevationFt`                | number or undefined  | Elevation in feet MSL                                       |
 | `frequencyMhz`               | number or undefined  | VOR-family frequency in MHz (108.0-117.95)                  |

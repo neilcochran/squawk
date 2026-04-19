@@ -20,8 +20,8 @@ interface CompactNavaid {
   lat: number;
   /** Longitude. */
   lon: number;
-  /** State code. */
-  state: string;
+  /** State code (absent for non-US navaids). */
+  state?: string;
   /** Country code. */
   ctry: string;
   /** City. */
@@ -100,10 +100,12 @@ function compactNavaid(nav: Navaid): CompactNavaid {
     st: nav.status,
     lat: nav.lat,
     lon: nav.lon,
-    state: nav.state,
     ctry: nav.country,
   };
 
+  if (nav.state !== undefined) {
+    c.state = nav.state;
+  }
   if (nav.city !== undefined) {
     c.city = nav.city;
   }

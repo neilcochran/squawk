@@ -26,8 +26,8 @@ interface CompactFix {
   id: string;
   /** ICAO region code. */
   icao: string;
-  /** State code. */
-  st: string;
+  /** State code (absent for non-US fixes). */
+  st?: string;
   /** Country code. */
   ctry: string;
   /** Latitude. */
@@ -96,13 +96,15 @@ function compactFix(fix: Fix): CompactFix {
   const c: CompactFix = {
     id: fix.identifier,
     icao: fix.icaoRegionCode,
-    st: fix.state,
     ctry: fix.country,
     lat: fix.lat,
     lon: fix.lon,
     uc: fix.useCode,
   };
 
+  if (fix.state !== undefined) {
+    c.st = fix.state;
+  }
   if (fix.highArtccId !== undefined) {
     c.hart = fix.highArtccId;
   }

@@ -1,5 +1,6 @@
 import type { Fix, FixCompulsory, FixNavaidAssociation, FixUseCode } from '@squawk/types';
 import { FIX_COMPULSORY_MAP, FIX_USE_CODE_MAP } from '@squawk/types';
+import { lookupCode } from '@squawk/build-shared';
 import type { CsvRecord } from './parse-csv.js';
 
 /**
@@ -38,14 +39,7 @@ export function buildFix(rec: CsvRecord): Fix | undefined {
   const lat = parseOptFloat(rec.LAT_DECIMAL);
   const lon = parseOptFloat(rec.LONG_DECIMAL);
 
-  if (
-    !identifier ||
-    !icaoRegionCode ||
-    !state ||
-    !country ||
-    lat === undefined ||
-    lon === undefined
-  ) {
+  if (!identifier || !icaoRegionCode || !country || lat === undefined || lon === undefined) {
     return undefined;
   }
 
@@ -53,7 +47,12 @@ export function buildFix(rec: CsvRecord): Fix | undefined {
   if (!useCodeRaw) {
     return undefined;
   }
-  const useCode: FixUseCode | undefined = FIX_USE_CODE_MAP[useCodeRaw];
+  const useCode: FixUseCode | undefined = lookupCode(
+    FIX_USE_CODE_MAP,
+    useCodeRaw,
+    'FIX_USE_CODE',
+    'parse-fixes',
+  );
   if (!useCode) {
     return undefined;
   }
@@ -61,7 +60,6 @@ export function buildFix(rec: CsvRecord): Fix | undefined {
   const fix: Fix = {
     identifier,
     icaoRegionCode,
-    state,
     country,
     lat,
     lon,
@@ -72,6 +70,10 @@ export function buildFix(rec: CsvRecord): Fix | undefined {
     chartTypes: [],
     navaidAssociations: [],
   };
+
+  if (state) {
+    fix.state = state;
+  }
 
   if (rec.ARTCC_ID_HIGH) {
     fix.highArtccId = rec.ARTCC_ID_HIGH;

@@ -20,8 +20,8 @@ interface CompactNavaid {
   lat: number;
   /** Longitude. */
   lon: number;
-  /** State code. */
-  state: string;
+  /** State code (absent for non-US navaids). */
+  state?: string;
   /** Country code. */
   ctry: string;
   /** City. */
@@ -124,10 +124,12 @@ function expandNavaid(c: CompactNavaid): Navaid {
     status: c.st,
     lat: c.lat,
     lon: c.lon,
-    state: c.state,
     country: c.ctry,
   };
 
+  if (c.state !== undefined) {
+    navaid.state = c.state;
+  }
   if (c.city !== undefined) {
     navaid.city = c.city;
   }
@@ -207,12 +209,15 @@ const raw: BundledData = JSON.parse(gunzipSync(readFileSync(dataPath)).toString(
 const records: Navaid[] = raw.records.map(expandNavaid);
 
 /**
- * Pre-processed snapshot of US navaid data derived from the FAA NASR
+ * Pre-processed snapshot of navaid data derived from the FAA NASR
  * 28-day subscription cycle.
  *
  * Contains navaid identification, location, frequency, type, and service
- * volume information for all non-shutdown US navigational aids (VORs,
- * VORTACs, VOR/DMEs, TACANs, DMEs, NDBs, NDB/DMEs, fan markers, and VOTs).
+ * volume information for every non-shutdown navigational aid (VORs, VORTACs,
+ * VOR/DMEs, TACANs, DMEs, NDBs, NDB/DMEs, fan markers, and VOTs) published
+ * by the FAA. Includes selected Canadian, Mexican, and Caribbean navaids
+ * that participate in US operations; their `state` field is undefined while
+ * `country` is populated with a two-letter code.
  *
  * Pass the `records` array directly to `createNavaidResolver()` from
  * `@squawk/navaids` for zero-config lookups:

@@ -65,8 +65,8 @@ export interface Navaid {
   lat: number;
   /** Longitude in decimal degrees, positive east. */
   lon: number;
-  /** Two-letter state code (e.g. "NY", "CA"). */
-  state: string;
+  /** Two-letter state code (e.g. "NY", "CA"). Absent for non-US navaids. */
+  state?: string;
   /** Two-letter country code (e.g. "US"). */
   country: string;
   /** Associated city name. */

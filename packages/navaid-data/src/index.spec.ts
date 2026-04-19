@@ -23,8 +23,23 @@ describe('usBundledNavaids', () => {
     assert.equal(typeof first.status, 'string');
     assert.equal(typeof first.lat, 'number');
     assert.equal(typeof first.lon, 'number');
-    assert.equal(typeof first.state, 'string');
     assert.equal(typeof first.country, 'string');
+  });
+
+  it('populates state for US navaids', () => {
+    const us = usBundledNavaids.records.find((r) => r.country === 'US');
+    assert.ok(us !== undefined);
+    assert.equal(typeof us.state, 'string');
+    assert.ok(us.state && us.state.length > 0);
+  });
+
+  it('includes foreign navaids that the FAA publishes (e.g. Canadian navaids)', () => {
+    const foreign = usBundledNavaids.records.filter((r) => r.country !== 'US');
+    assert.ok(foreign.length > 0, 'expected at least one foreign navaid');
+
+    const canadian = usBundledNavaids.records.find((r) => r.country === 'CA');
+    assert.ok(canadian !== undefined, 'expected at least one Canadian navaid');
+    assert.equal(canadian.state, undefined, 'non-US navaids should have no state');
   });
 
   it('does not contain SHUTDOWN navaids', () => {

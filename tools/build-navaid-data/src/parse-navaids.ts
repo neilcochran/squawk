@@ -1,5 +1,6 @@
 import type { Navaid, NavaidStatus, NavaidType } from '@squawk/types';
 import { NAVAID_STATUS_MAP, NAVAID_TYPE_MAP } from '@squawk/types';
+import { lookupCode } from '@squawk/build-shared';
 import type { CsvRecord } from './parse-csv.js';
 
 /** Navaid types whose frequency is expressed in MHz. */
@@ -48,7 +49,7 @@ export function buildNavaid(rec: CsvRecord): Navaid | undefined {
   const lat = parseOptFloat(rec.LAT_DECIMAL);
   const lon = parseOptFloat(rec.LONG_DECIMAL);
 
-  if (!identifier || !name || !state || !country || lat === undefined || lon === undefined) {
+  if (!identifier || !name || !country || lat === undefined || lon === undefined) {
     return undefined;
   }
 
@@ -56,7 +57,12 @@ export function buildNavaid(rec: CsvRecord): Navaid | undefined {
   if (!typeCode) {
     return undefined;
   }
-  const type: NavaidType | undefined = NAVAID_TYPE_MAP[typeCode];
+  const type: NavaidType | undefined = lookupCode(
+    NAVAID_TYPE_MAP,
+    typeCode,
+    'NAV_TYPE',
+    'parse-navaids',
+  );
   if (!type) {
     return undefined;
   }
@@ -65,7 +71,12 @@ export function buildNavaid(rec: CsvRecord): Navaid | undefined {
   if (!statusCode) {
     return undefined;
   }
-  const status: NavaidStatus | undefined = NAVAID_STATUS_MAP[statusCode];
+  const status: NavaidStatus | undefined = lookupCode(
+    NAVAID_STATUS_MAP,
+    statusCode,
+    'NAV_STATUS',
+    'parse-navaids',
+  );
   if (!status) {
     return undefined;
   }
@@ -77,9 +88,12 @@ export function buildNavaid(rec: CsvRecord): Navaid | undefined {
     status,
     lat,
     lon,
-    state,
     country,
   };
+
+  if (state) {
+    navaid.state = state;
+  }
 
   if (rec.CITY) {
     navaid.city = rec.CITY;
