@@ -1,6 +1,6 @@
 {
   "name": "@squawk/flight-math",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "description": "Aviation flight computer calculations - the programmatic equivalent of an E6B",
   "author": "Neil Cochran",

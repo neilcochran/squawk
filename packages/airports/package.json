@@ -1,6 +1,6 @@
 {
   "name": "@squawk/airports",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "description": "Pure logic library for querying US airport data by identifier, location, or name",
   "author": "Neil Cochran",
@@ -34,11 +34,11 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/geo": "^0.2.0",
-    "@squawk/types": "^0.3.0"
+    "@squawk/geo": "^0.2.1",
+    "@squawk/types": "^0.3.1"
   },
   "devDependencies": {
-    "@squawk/airport-data": "^0.4.0",
+    "@squawk/airport-data": "^0.4.1",
     "@types/node": "^25.6.0"
   },
   "keywords": [
