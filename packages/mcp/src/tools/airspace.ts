@@ -1,14 +1,15 @@
 /**
  * @packageDocumentation
- * MCP tool module wrapping `@squawk/airspace` point-in-airspace queries,
- * backed by the US NASR airspace GeoJSON snapshot in `@squawk/airspace-data`.
+ * MCP tool module wrapping `@squawk/airspace` queries (point-in-airspace and
+ * per-airport lookups), backed by the US NASR airspace GeoJSON snapshot in
+ * `@squawk/airspace-data`.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AirspaceQuery } from '@squawk/airspace';
 import type { AirspaceFeature, AirspaceType } from '@squawk/types';
 import { z } from 'zod';
-import { airspaceResolver } from '../resolvers.js';
+import { airportResolver, airspaceResolver } from '../resolvers.js';
 
 /** All {@link AirspaceType} values, used for input validation. */
 const AIRSPACE_TYPE_VALUES = [
@@ -102,10 +103,49 @@ export function registerAirspaceTools(server: McpServer): void {
       if (airspaceTypes !== undefined) {
         query.types = new Set(airspaceTypes);
       }
-      const features = airspaceResolver(query).map(summarizeFeature);
+      const features = airspaceResolver.query(query).map(summarizeFeature);
       return {
         content: [{ type: 'text', text: JSON.stringify(features, null, 2) }],
         structuredContent: { features },
+      };
+    },
+  );
+
+  server.registerTool(
+    'get_airspace_for_airport',
+    {
+      title: 'Get airspace features associated with an airport',
+      description:
+        'Returns every airspace feature associated with a given airport (Class B/C/D/E2 surface-area sectors), each with full polygon boundary coordinates suitable for drawing. Accepts either an FAA location identifier (e.g. "JFK", "LAX") or an ICAO code (e.g. "KJFK", "KLAX"); ICAO codes are resolved to the underlying FAA ID before lookup. Unlike query_airspace_at_position, boundary geometry is preserved so callers can render the full "wedding cake" of shells, and no altitude is needed. Returns an empty features array for airports with no surrounding controlled airspace (most GA fields).',
+      inputSchema: {
+        airportId: z
+          .string()
+          .min(1)
+          .describe('FAA location identifier or ICAO code (case-insensitive).'),
+        airspaceTypes: z
+          .array(z.enum(AIRSPACE_TYPE_VALUES))
+          .optional()
+          .describe(
+            'Restrict results to these airspace types. Defaults to surface-area classes (CLASS_B, CLASS_C, CLASS_D, CLASS_E2).',
+          ),
+      },
+    },
+    ({ airportId, airspaceTypes }) => {
+      const airport = airportResolver.byFaaId(airportId) ?? airportResolver.byIcao(airportId);
+      if (airport === undefined) {
+        return {
+          content: [{ type: 'text', text: `No airport found for identifier "${airportId}".` }],
+          structuredContent: { airport: null, features: [] },
+        };
+      }
+      const typeFilter =
+        airspaceTypes === undefined
+          ? new Set<AirspaceType>(['CLASS_B', 'CLASS_C', 'CLASS_D', 'CLASS_E2'])
+          : new Set<AirspaceType>(airspaceTypes);
+      const features = airspaceResolver.byAirport(airport.faaId, typeFilter);
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ airport, features }, null, 2) }],
+        structuredContent: { airport, features },
       };
     },
   );

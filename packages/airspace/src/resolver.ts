@@ -34,10 +34,35 @@ export interface AirspaceResolverOptions {
 }
 
 /**
- * A function that accepts a position and altitude and returns all
- * airspace features that contain that point laterally and vertically.
+ * Stateless resolver exposing airspace query methods.
  */
-export type AirspaceResolver = (query: AirspaceQuery) => AirspaceFeature[];
+export interface AirspaceResolver {
+  /**
+   * Returns every airspace feature whose lateral polygon contains the given
+   * position and whose vertical bounds contain the given altitude.
+   *
+   * @param query - Position, altitude, and optional type filter.
+   * @returns All matching features, in no particular order.
+   */
+  query(query: AirspaceQuery): AirspaceFeature[];
+
+  /**
+   * Returns every airspace feature associated with the given identifier,
+   * independent of position or altitude. Lookup is case-insensitive.
+   *
+   * For Class B/C/D/E2 airspace, the feature `identifier` is the associated
+   * airport's FAA location identifier (e.g. "JFK" for the NY Class B). For
+   * Special Use Airspace, it is the NASR designator (e.g. "R-2508"). Pass
+   * only the bare identifier - ICAO-prefixed codes like "KJFK" will not
+   * match; resolve to an FAA ID first via `@squawk/airports` if needed.
+   *
+   * @param identifier - FAA identifier or NASR designator.
+   * @param types - Optional type filter. Only features whose type is in this
+   *                set are returned. When omitted, all types are returned.
+   * @returns All features whose identifier matches, or an empty array.
+   */
+  byAirport(identifier: string, types?: ReadonlySet<AirspaceType>): AirspaceFeature[];
+}
 
 /**
  * An airspace feature with its pre-parsed polygon coordinates and bounding
@@ -89,12 +114,12 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
 }
 
 /**
- * Creates a stateless airspace resolver function. The resolver accepts a
- * GeoJSON FeatureCollection at initialization (typically from
- * `@squawk/airspace-data`) and returns a function that, given a position
- * and altitude, returns all matching airspace features.
+ * Creates a stateless airspace resolver. The resolver accepts a GeoJSON
+ * FeatureCollection at initialization (typically from `@squawk/airspace-data`)
+ * and returns an object with methods for querying by position and altitude
+ * or by associated airport / SUA identifier.
  *
- * The resolver performs two checks for each feature:
+ * Position queries perform two checks per feature:
  * 1. **Lateral** - point-in-polygon test against the feature boundary
  * 2. **Vertical** - altitude comparison against floor/ceiling bounds
  *
@@ -109,40 +134,64 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
  * import { usBundledAirspace } from '@squawk/airspace-data';
  * import { createAirspaceResolver } from '@squawk/airspace';
  *
- * const resolve = createAirspaceResolver({ data: usBundledAirspace });
- * const features = resolve({ lat: 33.9425, lon: -118.4081, altitudeFt: 3000 });
+ * const resolver = createAirspaceResolver({ data: usBundledAirspace });
+ * const overhead = resolver.query({ lat: 33.9425, lon: -118.4081, altitudeFt: 3000 });
+ * const laxShells = resolver.byAirport('LAX');
  * ```
  */
 export function createAirspaceResolver(options: AirspaceResolverOptions): AirspaceResolver {
   const indexed: IndexedFeature[] = [];
+  const byIdentifierMap = new Map<string, AirspaceFeature[]>();
 
   for (const geoFeature of options.data.features) {
     const parsed = parseFeature(geoFeature);
     if (parsed) {
       indexed.push(parsed);
+      const key = parsed.feature.identifier.toUpperCase();
+      if (key.length > 0) {
+        const bucket = byIdentifierMap.get(key);
+        if (bucket === undefined) {
+          byIdentifierMap.set(key, [parsed.feature]);
+        } else {
+          bucket.push(parsed.feature);
+        }
+      }
     }
   }
 
-  return (query: AirspaceQuery): AirspaceFeature[] => {
-    const results: AirspaceFeature[] = [];
-    const { lon, lat, altitudeFt, types } = query;
+  return {
+    query(query: AirspaceQuery): AirspaceFeature[] {
+      const results: AirspaceFeature[] = [];
+      const { lon, lat, altitudeFt, types } = query;
 
-    for (const { feature, ring, boundingBox } of indexed) {
-      if (types && !types.has(feature.type)) {
-        continue;
+      for (const { feature, ring, boundingBox } of indexed) {
+        if (types && !types.has(feature.type)) {
+          continue;
+        }
+        if (!polygon.pointInBoundingBox(lon, lat, boundingBox)) {
+          continue;
+        }
+        if (!polygon.pointInPolygon(lon, lat, ring)) {
+          continue;
+        }
+        if (!altitudeMatches(altitudeFt, feature.floor, feature.ceiling)) {
+          continue;
+        }
+        results.push(feature);
       }
-      if (!polygon.pointInBoundingBox(lon, lat, boundingBox)) {
-        continue;
-      }
-      if (!polygon.pointInPolygon(lon, lat, ring)) {
-        continue;
-      }
-      if (!altitudeMatches(altitudeFt, feature.floor, feature.ceiling)) {
-        continue;
-      }
-      results.push(feature);
-    }
 
-    return results;
+      return results;
+    },
+
+    byAirport(identifier: string, types?: ReadonlySet<AirspaceType>): AirspaceFeature[] {
+      const bucket = byIdentifierMap.get(identifier.toUpperCase());
+      if (bucket === undefined) {
+        return [];
+      }
+      if (types === undefined) {
+        return bucket.slice();
+      }
+      return bucket.filter((f) => types.has(f.type));
+    },
   };
 }
