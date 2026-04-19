@@ -1,5 +1,31 @@
 # @squawk/mcp
 
+## 0.4.1
+
+### Patch Changes
+
+- 51a9ddc: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
+- Updated dependencies [51a9ddc]
+  - @squawk/icao-registry-data@0.3.3
+  - @squawk/procedure-data@0.3.3
+  - @squawk/icao-registry@0.2.3
+  - @squawk/airport-data@0.4.1
+  - @squawk/airway-data@0.3.3
+  - @squawk/flight-math@0.5.1
+  - @squawk/navaid-data@0.4.1
+  - @squawk/flightplan@0.3.3
+  - @squawk/procedures@0.2.4
+  - @squawk/airports@0.3.2
+  - @squawk/airspace@0.4.1
+  - @squawk/fix-data@0.4.1
+  - @squawk/airways@0.2.3
+  - @squawk/navaids@0.2.4
+  - @squawk/weather@0.3.4
+  - @squawk/notams@0.2.3
+  - @squawk/fixes@0.1.4
+  - @squawk/types@0.3.1
+  - @squawk/geo@0.2.1
+
 ## 0.4.0
 
 ### Minor Changes

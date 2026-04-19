@@ -1,5 +1,14 @@
 # @squawk/flightplan
 
+## 0.3.3
+
+### Patch Changes
+
+- 51a9ddc: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
+- Updated dependencies [51a9ddc]
+  - @squawk/types@0.3.1
+  - @squawk/geo@0.2.1
+
 ## 0.3.2
 
 ### Patch Changes
