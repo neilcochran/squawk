@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airport-data)](https://www.npmjs.com/package/@squawk/airport-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed snapshot of US airport data from the **2026-04-16** FAA NASR
+Pre-processed snapshot of airport data from the **2026-04-16** FAA NASR
 cycle. Data only - no query logic, no dependency on
 `@squawk/airports`.
 
@@ -12,7 +12,7 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 
 ## Coverage
 
-- All open US aviation facilities: airports, heliports, seaplane bases, gliderports, ultralight, and balloonports
+- All open aviation facilities the FAA publishes: US airports, heliports, seaplane bases, gliderports, ultralight, and balloonports, plus selected Canadian, Mexican, Caribbean, and Pacific facilities that participate in US operations
 - Runway dimensions, surface, condition, lighting, and weight limits
 - Per-runway-end details: heading, displaced thresholds, declared distances (TORA/TODA/ASDA/LDA), approach lighting, VGSI, LAHSO
 - Structured ILS data: system type, identifier, category, localizer frequency and course, glide slope angle and type, DME channel
@@ -46,23 +46,24 @@ pass any compatible Airport array at initialization.
 
 Each record is a full `Airport` object from `@squawk/types`. Key fields:
 
-| Property                   | Type                | Description                                        |
-| -------------------------- | ------------------- | -------------------------------------------------- |
-| `faaId`                    | string              | FAA location identifier (e.g. "JFK", "LAX", "3N6") |
-| `icao`                     | string or undefined | ICAO code when assigned (e.g. "KJFK")              |
-| `name`                     | string              | Official facility name                             |
-| `facilityType`             | FacilityType        | AIRPORT, HELIPORT, SEAPLANE_BASE, etc.             |
-| `ownershipType`            | OwnershipType       | PUBLIC or PRIVATE                                  |
-| `useType`                  | FacilityUseType     | PUBLIC or PRIVATE                                  |
-| `status`                   | FacilityStatus      | Always OPEN (closed facilities are excluded)       |
-| `city`, `state`, `country` | string              | Location identifiers                               |
-| `lat`, `lon`               | number              | Decimal degrees                                    |
-| `elevationFt`              | number or undefined | Field elevation in feet MSL                        |
-| `magneticVariationDeg`     | number or undefined | Magnetic variation in degrees                      |
-| `towerType`                | string or undefined | e.g. "ATCT", "NON-ATCT"                            |
-| `fuelTypes`                | string or undefined | e.g. "100LL,A"                                     |
-| `runways`                  | Runway[]            | Runway details (see below)                         |
-| `frequencies`              | AirportFrequency[]  | Communication frequencies (see below)              |
+| Property               | Type                | Description                                           |
+| ---------------------- | ------------------- | ----------------------------------------------------- |
+| `faaId`                | string              | FAA location identifier (e.g. "JFK", "LAX", "3N6")    |
+| `icao`                 | string or undefined | ICAO code when assigned (e.g. "KJFK")                 |
+| `name`                 | string              | Official facility name                                |
+| `facilityType`         | FacilityType        | AIRPORT, HELIPORT, SEAPLANE_BASE, etc.                |
+| `ownershipType`        | OwnershipType       | PUBLIC or PRIVATE                                     |
+| `useType`              | FacilityUseType     | PUBLIC or PRIVATE                                     |
+| `status`               | FacilityStatus      | Always OPEN (closed facilities are excluded)          |
+| `city`, `country`      | string              | Location identifiers                                  |
+| `state`                | string or undefined | Two-letter code for US facilities, absent for foreign |
+| `lat`, `lon`           | number              | Decimal degrees                                       |
+| `elevationFt`          | number or undefined | Field elevation in feet MSL                           |
+| `magneticVariationDeg` | number or undefined | Magnetic variation in degrees                         |
+| `towerType`            | string or undefined | e.g. "ATCT", "NON-ATCT"                               |
+| `fuelTypes`            | string or undefined | e.g. "100LL,A"                                        |
+| `runways`              | Runway[]            | Runway details (see below)                            |
+| `frequencies`          | AirportFrequency[]  | Communication frequencies (see below)                 |
 
 ### Runway
 

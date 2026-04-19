@@ -61,7 +61,9 @@ export interface FixNavaidAssociation {
 }
 
 /**
- * A named fix or waypoint in the US National Airspace System.
+ * A named fix or waypoint published by the FAA. Includes US fixes and
+ * selected foreign fixes (Canadian, Mexican, Caribbean, Pacific) that
+ * participate in US operations.
  * Fixes are specific geographic positions used in flight planning, instrument
  * procedures, and ATC operations. They are defined by geographic coordinates
  * and may be associated with one or more navaids via radial/distance intersections.
@@ -71,8 +73,8 @@ export interface Fix {
   identifier: string;
   /** ICAO region code (e.g. "K6", "K7", "K1"). */
   icaoRegionCode: string;
-  /** Two-letter state code (e.g. "MA", "NY", "CA"). */
-  state: string;
+  /** Two-letter state code (e.g. "MA", "NY", "CA"). Absent for non-US fixes. */
+  state?: string;
   /** Two-letter country code (e.g. "US"). */
   country: string;
   /** Latitude in decimal degrees, positive north. */

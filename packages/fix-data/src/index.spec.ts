@@ -19,7 +19,6 @@ describe('usBundledFixes', () => {
     assert.equal(typeof first.identifier, 'string');
     assert.ok(first.identifier.length > 0);
     assert.equal(typeof first.icaoRegionCode, 'string');
-    assert.equal(typeof first.state, 'string');
     assert.equal(typeof first.country, 'string');
     assert.equal(typeof first.lat, 'number');
     assert.equal(typeof first.lon, 'number');
@@ -29,6 +28,23 @@ describe('usBundledFixes', () => {
     assert.equal(typeof first.suaAtcaa, 'boolean');
     assert.ok(Array.isArray(first.chartTypes));
     assert.ok(Array.isArray(first.navaidAssociations));
+  });
+
+  it('populates state for US fixes', () => {
+    const us = usBundledFixes.records.find((r) => r.country === 'US');
+    assert.ok(us !== undefined);
+    assert.equal(typeof us.state, 'string');
+    assert.ok(us.state && us.state.length > 0);
+  });
+
+  it('includes foreign fixes that the FAA publishes (e.g. Canadian fixes)', () => {
+    const foreign = usBundledFixes.records.filter((r) => r.country !== 'US');
+    assert.ok(foreign.length > 0, 'expected at least one foreign fix');
+
+    const canadian = usBundledFixes.records.find((r) => r.country === 'CA');
+    assert.ok(canadian !== undefined, 'expected at least one Canadian fix');
+    assert.equal(canadian.state, undefined, 'non-US fixes should have no state');
+    assert.equal(canadian.icaoRegionCode.startsWith('CY'), true);
   });
 
   it('does not contain CNF (computer navigation fix) records', () => {

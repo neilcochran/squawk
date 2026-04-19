@@ -148,8 +148,8 @@ interface CompactAirport {
   st: string;
   /** City. */
   city: string;
-  /** State code. */
-  state: string;
+  /** State code (absent for non-US facilities). */
+  state?: string;
   /** Country code. */
   ctry: string;
   /** County name. */
@@ -398,12 +398,14 @@ function compactAirport(apt: Airport): CompactAirport {
     use: apt.useType,
     st: apt.status,
     city: apt.city,
-    state: apt.state,
     ctry: apt.country,
     lat: apt.lat,
     lon: apt.lon,
   };
 
+  if (apt.state !== undefined) {
+    c.state = apt.state;
+  }
   if (apt.icao !== undefined) {
     c.icao = apt.icao;
   }
