@@ -19,14 +19,17 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 import { usBundledAirspace } from '@squawk/airspace-data';
 import { createAirspaceResolver } from '@squawk/airspace';
 
-const resolve = createAirspaceResolver({ data: usBundledAirspace });
+const resolver = createAirspaceResolver({ data: usBundledAirspace });
 
 // Query a position and altitude
-const features = resolve({ lat: 33.9425, lon: -118.4081, altitudeFt: 3000 });
+const overhead = resolver.query({ lat: 33.9425, lon: -118.4081, altitudeFt: 3000 });
 
-for (const f of features) {
+for (const f of overhead) {
   console.log(f.type, f.name, f.identifier);
 }
+
+// Get every shell associated with an airport (for drawing the full wedding cake)
+const laxShells = resolver.byAirport('LAX');
 ```
 
 Consumers who have their own GeoJSON airspace data can use this package standalone:
@@ -34,19 +37,23 @@ Consumers who have their own GeoJSON airspace data can use this package standalo
 ```typescript
 import { createAirspaceResolver } from '@squawk/airspace';
 
-const resolve = createAirspaceResolver({ data: myGeoJson });
+const resolver = createAirspaceResolver({ data: myGeoJson });
 ```
 
 ## How it works
 
 `createAirspaceResolver` parses the GeoJSON FeatureCollection at initialization and
-returns a resolver function. Each call to the resolver performs two checks per
-feature:
+returns a resolver object with two methods:
 
-1. **Lateral** - a ray casting point-in-polygon test against the feature boundary
-2. **Vertical** - altitude comparison against floor and ceiling bounds
+- `query(AirspaceQuery)` - returns features containing the given position and
+  altitude, via a ray casting point-in-polygon test combined with a vertical
+  floor/ceiling comparison.
+- `byAirport(identifier, types?)` - returns every feature whose `identifier`
+  matches (case-insensitive). For Class B/C/D/E2 this groups all sectors of the
+  airspace around a given airport regardless of the point of interest.
 
-All matching features are returned as `AirspaceFeature` objects (from `@squawk/types`).
+All matching features are returned as `AirspaceFeature` objects (from `@squawk/types`),
+including the full polygon boundary coordinates.
 
 ## AGL altitude handling
 
@@ -74,14 +81,14 @@ for (const f of features) {
 
 ### `createAirspaceResolver(options)`
 
-Creates a resolver function from a GeoJSON dataset.
+Creates a resolver from a GeoJSON dataset.
 
 **Parameters:**
 
 - `options.data` - a GeoJSON `FeatureCollection` with airspace features
 
-**Returns:** `AirspaceResolver` - a function with signature
-`(query: AirspaceQuery) => AirspaceFeature[]`
+**Returns:** `AirspaceResolver` - an object exposing `query(AirspaceQuery)` and
+`byAirport(identifier, types?)` methods.
 
 ### `AirspaceQuery`
 
@@ -94,10 +101,26 @@ Creates a resolver function from a GeoJSON dataset.
 
 ```typescript
 // Only query tower-controlled airspace (exclude Class E and SUA)
-const controlled = resolve({
+const controlled = resolver.query({
   lat: 33.9425,
   lon: -118.4081,
   altitudeFt: 3000,
   types: new Set(['CLASS_B', 'CLASS_C', 'CLASS_D']),
 });
+```
+
+### `resolver.byAirport(identifier, types?)`
+
+Returns every airspace feature whose `identifier` property matches. For
+Class B/C/D/E2 this is the associated airport's FAA location identifier
+(e.g. "JFK" for the NY Class B). For Special Use Airspace this is the NASR
+designator (e.g. "R-2508"). Lookup is case-insensitive. ICAO-prefixed codes
+like "KJFK" will not match - resolve to an FAA ID first via `@squawk/airports`.
+
+```typescript
+// Every sector of the NY Class B around JFK, with full polygon boundaries
+const jfkShells = resolver.byAirport('JFK');
+
+// Only the Class D for a towered field
+const safClassD = resolver.byAirport('SAF', new Set(['CLASS_D']));
 ```

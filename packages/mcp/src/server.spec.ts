@@ -45,6 +45,7 @@ const EXPECTED_TOOLS: readonly string[] = [
   'search_airports',
   // airspace
   'query_airspace_at_position',
+  'get_airspace_for_airport',
   // navaids
   'get_navaid_by_ident',
   'find_navaids_by_frequency',
@@ -159,6 +160,48 @@ describe('createSquawkMcpServer', () => {
       assert.ok(parsed.airport !== null, 'expected an airport for KJFK');
       assert.equal(parsed.airport.faaId, 'JFK');
       assert.equal(parsed.airport.icao, 'KJFK');
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes get_airspace_for_airport end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_airspace_for_airport',
+        arguments: { airportId: 'KJFK' },
+      });
+      const parsed = z
+        .object({
+          airport: z
+            .object({
+              faaId: z.string(),
+            })
+            .nullable(),
+          features: z.array(
+            z
+              .object({
+                type: z.string(),
+                identifier: z.string(),
+                boundary: z.object({
+                  type: z.literal('Polygon'),
+                  coordinates: z.array(z.array(z.tuple([z.number(), z.number()]))),
+                }),
+              })
+              .passthrough(),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.airport !== null, 'expected an airport for KJFK');
+      assert.equal(parsed.airport.faaId, 'JFK');
+      assert.ok(parsed.features.length > 1, 'JFK Class B has multiple sectors');
+      for (const feature of parsed.features) {
+        assert.equal(feature.identifier, 'JFK');
+        assert.ok(feature.type === 'CLASS_B', 'default filter keeps only surface classes');
+        const ring = feature.boundary.coordinates[0];
+        assert.ok(ring && ring.length >= 4, 'boundary ring must be returned intact');
+      }
     } finally {
       await close();
     }
