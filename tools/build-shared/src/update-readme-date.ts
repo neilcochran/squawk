@@ -22,7 +22,7 @@ export async function updateReadmeDate(outputPath: string, date: string): Promis
   try {
     const readme = await readFile(readmePath, 'utf-8');
     const updated = readme.replace(
-      /from the \*\*\d{4}-\d{2}-\d{2}\*\* FAA (NASR|ReleasableAircraft)/,
+      /from the \*\*\d{4}-\d{2}-\d{2}\*\* FAA (NASR|CIFP|ReleasableAircraft)/,
       `from the **${date}** FAA $1`,
     );
     if (updated !== readme) {

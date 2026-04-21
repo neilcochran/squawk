@@ -29,7 +29,7 @@ export function registerDatasetTools(server: McpServer): void {
     {
       title: 'Report status of every bundled dataset',
       description:
-        'Returns the FAA NASR cycle effective date, build timestamp, and record counts for each dataset the server loads (airports, airspace, navaids, fixes, airways, procedures, ICAO aircraft registry). Use this when a user asks "how current is the data?" or before answering a question that depends on procedure/navaid currency. The aircraft registry is lazily loaded and reports its load state without forcing initialization.',
+        'Returns the cycle effective date (FAA NASR for airports/airspace/navaids/fixes/airways; FAA CIFP for procedures), build timestamp, and record counts for each dataset the server loads (airports, airspace, navaids, fixes, airways, procedures, ICAO aircraft registry). Use this when a user asks "how current is the data?" or before answering a question that depends on procedure/navaid currency. The aircraft registry is lazily loaded and reports its load state without forcing initialization.',
       inputSchema: {},
     },
     () => {
@@ -62,12 +62,13 @@ export function registerDatasetTools(server: McpServer): void {
           waypointCount: usBundledAirways.properties.waypointCount,
         },
         procedures: {
-          nasrCycleDate: usBundledProcedures.properties.nasrCycleDate,
+          cifpCycleDate: usBundledProcedures.properties.cifpCycleDate,
           generatedAt: usBundledProcedures.properties.generatedAt,
           recordCount: usBundledProcedures.properties.recordCount,
           sidCount: usBundledProcedures.properties.sidCount,
           starCount: usBundledProcedures.properties.starCount,
-          waypointCount: usBundledProcedures.properties.waypointCount,
+          iapCount: usBundledProcedures.properties.iapCount,
+          legCount: usBundledProcedures.properties.legCount,
         },
         icaoRegistry:
           registryMetadata !== undefined

@@ -26,8 +26,8 @@ TypeScript libraries for building aviation applications - airspace geometry, wea
 | [`@squawk/fix-data`](packages/fix-data)                     | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`          |
 | [`@squawk/airways`](packages/airways)                       | Airway lookup, traversal, and expansion by designation, fix, or search             |
 | [`@squawk/airway-data`](packages/airway-data)               | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`              |
-| [`@squawk/procedures`](packages/procedures)                 | Instrument procedure lookup and expansion for SIDs and STARs                       |
-| [`@squawk/procedure-data`](packages/procedure-data)         | Pre-processed FAA NASR procedure snapshot for use with `@squawk/procedures`        |
+| [`@squawk/procedures`](packages/procedures)                 | Instrument procedure lookup and expansion for SIDs, STARs, and IAPs (CIFP)         |
+| [`@squawk/procedure-data`](packages/procedure-data)         | Pre-processed FAA CIFP procedure snapshot for use with `@squawk/procedures`        |
 | [`@squawk/flightplan`](packages/flightplan)                 | Flight plan route string parsing and resolution using composed resolvers           |
 | [`@squawk/weather`](packages/weather)                       | Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP)      |
 | [`@squawk/notams`](packages/notams)                         | Parse raw ICAO-format NOTAM strings into structured objects                        |
@@ -45,7 +45,7 @@ npm run docs     # generate documentation
 
 ## Tools
 
-The `tools/` directory contains the build pipelines that produce the data packages from raw FAA source files. They are not published to npm but are fully usable if you want to rebuild data from a newer FAA cycle or customize the pipeline. Each tool accepts a [NASR subscription](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) `.zip` or extracted directory via `--local` and writes its output to the corresponding data package. The ICAO registry tool parses the [FAA ReleasableAircraft](https://registry.faa.gov/database/ReleasableAircraft.zip) database. See `npm run build:data -- --help` for the orchestrator that runs them all.
+The `tools/` directory contains the build pipelines that produce the data packages from raw FAA source files. They are not published to npm but are fully usable if you want to rebuild data from a newer FAA cycle or customize the pipeline. Most tools accept a [NASR subscription](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) `.zip` or extracted directory via `--local` and write their output to the corresponding data package. The ICAO registry tool parses the [FAA ReleasableAircraft](https://registry.faa.gov/database/ReleasableAircraft.zip) database; the procedure tool parses the [FAA CIFP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/) (ARINC 424) zip. See `npm run build:data -- --help` for the orchestrator that runs them all.
 
 | Tool                                                         | Description                                                           |
 | ------------------------------------------------------------ | --------------------------------------------------------------------- |
@@ -55,7 +55,7 @@ The `tools/` directory contains the build pipelines that produce the data packag
 | [`build-navaid-data`](tools/build-navaid-data)               | Processes FAA NASR NAV_BASE.csv into navaid JSON                      |
 | [`build-fix-data`](tools/build-fix-data)                     | Processes FAA NASR FIX CSVs into fix/waypoint JSON                    |
 | [`build-airway-data`](tools/build-airway-data)               | Processes FAA NASR AWY.txt and ATS.txt into airway JSON               |
-| [`build-procedure-data`](tools/build-procedure-data)         | Processes FAA NASR STARDP.txt into procedure JSON                     |
+| [`build-procedure-data`](tools/build-procedure-data)         | Processes FAA CIFP into SID / STAR / IAP procedure JSON               |
 
 ## License
 

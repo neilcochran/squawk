@@ -5,7 +5,7 @@ import type {
   Fix,
   Navaid,
   Procedure,
-  ProcedureWaypoint,
+  ProcedureLeg,
 } from '@squawk/types';
 
 // ---------------------------------------------------------------------------
@@ -61,13 +61,14 @@ export interface FlightplanAirwayLookup {
  * Structurally compatible with {@link @squawk/procedures!ProcedureResolver}.
  */
 export interface FlightplanProcedureLookup {
-  /** Looks up a procedure by FAA computer code (e.g. "AALLE4"). */
-  byName(computerCode: string): Procedure | undefined;
-  /** Expands a procedure into an ordered waypoint sequence. */
+  /** Looks up every procedure that publishes the given CIFP identifier across airports. */
+  byIdentifier(identifier: string): Procedure[];
+  /** Expands a procedure into an ordered leg sequence. */
   expand(
-    computerCode: string,
+    airportId: string,
+    identifier: string,
     transitionName?: string,
-  ): { procedure: Procedure; waypoints: ProcedureWaypoint[] } | undefined;
+  ): { procedure: Procedure; legs: ProcedureLeg[] } | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,8 +97,8 @@ export interface SidRouteElement {
   raw: string;
   /** Resolved procedure record. */
   procedure: Procedure;
-  /** Ordered waypoint sequence for the procedure. */
-  waypoints: ProcedureWaypoint[];
+  /** Ordered legs for the procedure expansion. */
+  legs: ProcedureLeg[];
 }
 
 /**
@@ -110,8 +111,8 @@ export interface StarRouteElement {
   raw: string;
   /** Resolved procedure record. */
   procedure: Procedure;
-  /** Ordered waypoint sequence for the procedure. */
-  waypoints: ProcedureWaypoint[];
+  /** Ordered legs for the procedure expansion. */
+  legs: ProcedureLeg[];
 }
 
 /**
@@ -387,41 +388,61 @@ function tryAirport(
 }
 
 /**
- * Attempts to resolve a token as a SID or STAR procedure.
+ * Attempts to resolve a token as a SID or STAR procedure at a given
+ * airport context. The airport context is the identifier of the most
+ * recently seen airport (for SIDs, the departure airport; for STARs,
+ * the arrival airport - but since the route is parsed left-to-right,
+ * the most recent airport is the best available hint).
  *
- * Accepts both the bare computer code (e.g. "NUBLE4") and the dotted
- * procedure-with-transition form (e.g. "NUBLE4.JJIMY"). When a transition
- * is supplied, it is forwarded to the procedure resolver so that the
- * transition's waypoints are merged into the expansion.
+ * Accepts both the bare CIFP identifier (e.g. `NUBLE4`) and the dotted
+ * identifier-with-transition form (e.g. `NUBLE4.JJIMY`). When a
+ * transition is supplied it is forwarded to the procedure resolver so
+ * that the transition's legs are merged into the expansion.
  */
 function tryProcedure(
   token: string,
   procedures: FlightplanProcedureLookup | undefined,
+  airportContext: string | undefined,
 ): SidRouteElement | StarRouteElement | undefined {
   if (!procedures) {
     return undefined;
   }
 
   const dotIndex = token.indexOf('.');
-  const computerCode = dotIndex >= 0 ? token.slice(0, dotIndex) : token;
+  const identifier = dotIndex >= 0 ? token.slice(0, dotIndex) : token;
   const transitionName = dotIndex >= 0 ? token.slice(dotIndex + 1) : undefined;
 
-  if (computerCode.length === 0) {
+  if (identifier.length === 0) {
     return undefined;
   }
 
-  const proc = procedures.byName(computerCode);
-  if (!proc) {
+  const candidates = procedures.byIdentifier(identifier);
+  if (candidates.length === 0) {
     return undefined;
   }
 
-  const expansion = procedures.expand(computerCode, transitionName);
-  const waypoints = expansion ? expansion.waypoints : [];
+  let proc: Procedure | undefined;
+  if (airportContext !== undefined) {
+    const upperAirport = airportContext.toUpperCase();
+    proc = candidates.find((c) => c.airports.some((a) => a.toUpperCase() === upperAirport));
+  }
+  if (proc === undefined) {
+    proc = candidates[0];
+  }
+  if (proc === undefined || proc.type === 'IAP') {
+    return undefined;
+  }
+
+  const airportForExpansion = proc.airports[0];
+  const legs =
+    airportForExpansion === undefined
+      ? []
+      : (procedures.expand(airportForExpansion, identifier, transitionName)?.legs ?? []);
 
   if (proc.type === 'SID') {
-    return { type: 'sid', raw: token, procedure: proc, waypoints };
+    return { type: 'sid', raw: token, procedure: proc, legs };
   }
-  return { type: 'star', raw: token, procedure: proc, waypoints };
+  return { type: 'star', raw: token, procedure: proc, legs };
 }
 
 /**
@@ -516,6 +537,7 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
       const tokens = raw.split(/\s+/);
       const elements: RouteElement[] = [];
       let lastWaypointIdent: string | undefined;
+      let lastAirportIdent: string | undefined;
 
       let i = 0;
       while (i < tokens.length) {
@@ -594,18 +616,23 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
           // use it as the entry fix (e.g. "BOS V16 CCC" where BOS is both an
           // airport and a navaid on V16).
           lastWaypointIdent = token;
+          lastAirportIdent = airportElement.airport.icao ?? airportElement.airport.faaId;
           i++;
           continue;
         }
 
         // Try procedure (SID/STAR)
-        const procElement = tryProcedure(token, procedures);
+        const procElement = tryProcedure(token, procedures, lastAirportIdent);
         if (procElement) {
           elements.push(procElement);
-          // Update last waypoint to the last fix in the procedure
-          if (procElement.waypoints.length > 0) {
-            lastWaypointIdent =
-              procElement.waypoints[procElement.waypoints.length - 1]!.fixIdentifier;
+          // Update last waypoint to the last fix in the procedure expansion
+          // that actually terminates at a fix (some leg types have no fix).
+          for (let j = procElement.legs.length - 1; j >= 0; j--) {
+            const fixIdent = procElement.legs[j]?.fixIdentifier;
+            if (fixIdent !== undefined) {
+              lastWaypointIdent = fixIdent;
+              break;
+            }
           }
           i++;
           continue;
