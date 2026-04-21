@@ -46,7 +46,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@squawk/types": "^0.3.1",
+    "@squawk/types": "^0.4.0",
     "@squawk/units": "^0.4.0"
   },
   "devDependencies": {

@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.4.1"]
+      "args": ["-y", "@squawk/mcp@0.5.0"]
     }
   }
 }
@@ -241,12 +241,17 @@ directly.
 
 ### Procedures (`@squawk/procedures` + `@squawk/procedure-data`)
 
-| Tool                         | Purpose                                                                  |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| `get_procedure_by_code`      | Look up a SID/STAR by FAA computer code                                  |
-| `find_procedures_by_airport` | Procedures associated with an airport                                    |
-| `expand_procedure`           | Expand a procedure into its waypoint sequence (with optional transition) |
-| `search_procedures`          | Substring search by name or code, optionally filtered to SIDs or STARs   |
+Covers SIDs, STARs, and Instrument Approach Procedures (IAPs) from FAA CIFP.
+
+| Tool                                      | Purpose                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `find_procedures_by_identifier`           | Every procedure publishing a CIFP identifier (same name often appears at multiple airports) |
+| `get_procedure_by_airport_and_identifier` | Resolve a specific procedure at a specific airport                                          |
+| `find_procedures_by_airport`              | Procedures associated with an airport                                                       |
+| `find_procedures_by_airport_and_runway`   | Procedures at an airport serving a specific runway (IAP runway match or RW\* transition)    |
+| `find_approaches_by_type`                 | Every IAP of a given approach classification (ILS, RNAV, VOR, etc.)                         |
+| `expand_procedure`                        | Expand a procedure into its leg sequence (with optional transition merge)                   |
+| `search_procedures`                       | Substring search by name or identifier, optionally filtered by procedure or approach type   |
 
 ### ICAO aircraft registry (`@squawk/icao-registry` + `@squawk/icao-registry-data`)
 
@@ -333,12 +338,13 @@ left to the model itself.
 
 ## Notes
 
-- All NASR-derived data sources cover the contiguous United States plus the territories included in
-  the FAA NASR 28-day subscription. Outside the US the lookup tools will return empty results. Use
-  `get_dataset_status` to confirm which NASR cycle the running server is serving.
+- The bundled datasets (airports, airspace, navaids, fixes, airways from FAA NASR; procedures from
+  FAA CIFP) cover the contiguous United States plus the territories included in the respective FAA
+  subscriptions. Outside the US the lookup tools will return empty results. Use `get_dataset_status`
+  to confirm which NASR and CIFP cycles the running server is serving.
 - Live weather tools issue HTTPS requests to `https://aviationweather.gov/api/data/...` (or the
   override above). They are the only tools that touch the network at invocation time; everything
   else operates against bundled snapshots in memory.
-- The bundled NASR snapshots are decompressed and indexed once when the server starts. Expect a few
+- The bundled snapshots are decompressed and indexed once when the server starts. Expect a few
   hundred milliseconds of startup time. The aircraft registration snapshot (the largest) is loaded
   lazily on the first `lookup_aircraft_by_icao_hex` call.
