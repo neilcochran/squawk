@@ -1,6 +1,6 @@
 {
   "name": "@squawk/icao-registry",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "type": "module",
   "description": "FAA ICAO hex address to aircraft registration and info lookup",
   "author": "Neil Cochran",
@@ -45,7 +45,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@squawk/types": "^0.4.0",
+    "@squawk/types": "^0.5.0",
     "adm-zip": "^0.5.17"
   },
   "devDependencies": {
