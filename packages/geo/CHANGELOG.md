@@ -1,5 +1,16 @@
 # @squawk/geo
 
+## 0.3.0
+
+### Minor Changes
+
+- 772b90d: Bump `@squawk/types` peer dependency to `^0.4.0` for the procedures CIFP migration. No behavioral changes.
+
+### Patch Changes
+
+- Updated dependencies [772b90d]
+  - @squawk/types@0.5.0
+
 ## 0.2.1
 
 ### Patch Changes
