@@ -33,15 +33,15 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
-    "@changesets/cli": "^2.30.0",
+    "@changesets/cli": "^2.31.0",
     "@types/node": "^25.6.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.2",
     "publint": "^0.3.18",
     "turbo": "^2.9.6",
-    "typedoc": "^0.28.18",
+    "typedoc": "^0.28.19",
     "typescript": "^5.4.0",
-    "typescript-eslint": "^8.0.0"
+    "typescript-eslint": "^8.58.2"
   }
 }
