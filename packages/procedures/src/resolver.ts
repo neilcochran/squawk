@@ -1,86 +1,115 @@
 import type {
+  ApproachType,
   Procedure,
-  ProcedureType,
-  ProcedureWaypoint,
   ProcedureCommonRoute,
+  ProcedureLeg,
+  ProcedureTransition,
+  ProcedureType,
 } from '@squawk/types';
 
 /**
  * Options for creating a procedure resolver.
  */
 export interface ProcedureResolverOptions {
-  /** Array of Procedure records to index for queries. */
+  /** Array of {@link Procedure} records to index for queries. */
   data: Procedure[];
 }
 
 /**
- * Result of expanding a procedure into a waypoint sequence.
+ * Result of expanding a procedure into an ordered leg sequence.
  */
 export interface ProcedureExpansionResult {
   /** The procedure that was expanded. */
   procedure: Procedure;
-  /** Ordered sequence of waypoints for the selected route. */
-  waypoints: ProcedureWaypoint[];
+  /** Ordered legs for the expansion (common route + optional transition). */
+  legs: ProcedureLeg[];
 }
 
 /**
- * Options for a text search query against procedure names and computer codes.
+ * Options for a text search query against procedure names and identifiers.
  */
 export interface ProcedureSearchQuery {
-  /** Case-insensitive substring to match against procedure name or computer code. */
+  /** Case-insensitive substring matched against name and identifier. */
   text: string;
   /** Maximum number of results to return. Defaults to 20. */
   limit?: number;
-  /** Optional procedure type to filter by (SID or STAR). */
+  /** Optional procedure type to filter by. */
   type?: ProcedureType;
+  /** Optional approach type filter (applied only when matching IAPs). */
+  approachType?: ApproachType;
 }
 
 /**
- * A stateless resolver providing instrument procedure lookup, filtering, and
- * expansion methods.
+ * A stateless resolver providing instrument procedure lookup, filtering,
+ * and expansion methods against a pre-indexed dataset.
  */
 export interface ProcedureResolver {
   /**
-   * Looks up a procedure by its FAA computer code (e.g. "AALLE4", "ACCRA5").
-   * Case-insensitive. Returns undefined if no match is found.
+   * Looks up every procedure matching a CIFP identifier. The identifier
+   * alone is not globally unique in CIFP data - the same name (for
+   * example `SARDI1` or `I04L`) is published separately for every
+   * adapted airport. This method returns all of them.
    */
-  byName(computerCode: string): Procedure | undefined;
+  byIdentifier(identifier: string): Procedure[];
 
   /**
-   * Finds all procedures associated with a given airport identifier.
-   * Case-insensitive. Returns an empty array if no match is found.
+   * Looks up a single procedure by (airport, identifier). Returns
+   * `undefined` when the airport does not adapt the identifier.
+   */
+  byAirportAndIdentifier(airportId: string, identifier: string): Procedure | undefined;
+
+  /**
+   * Returns every procedure adapted at the given airport (SIDs, STARs,
+   * and IAPs).
    */
   byAirport(airportId: string): Procedure[];
 
   /**
-   * Returns all procedures of a given type (SID or STAR).
+   * Returns every procedure at an airport that serves a specific runway.
+   *
+   * - For IAPs this matches the `runway` field directly.
+   * - For SIDs and STARs this matches procedures that publish a runway transition named `RW<runway>` (e.g. `RW04L`).
+   */
+  byAirportAndRunway(airportId: string, runway: string): Procedure[];
+
+  /**
+   * Returns every procedure of a given type.
    */
   byType(type: ProcedureType): Procedure[];
 
   /**
-   * Expands a procedure into an ordered waypoint sequence.
-   *
-   * When called without a transition name, returns the first common route.
-   *
-   * When called with a transition name, the transition's waypoints are
-   * merged with the first common route's waypoints in flying order:
-   * - For STARs the transition feeds into the common route, so the
-   *   transition waypoints come first followed by the common route.
-   * - For SIDs the common route departs the airport before joining the
-   *   transition, so the common route comes first followed by the
-   *   transition.
-   *
-   * In both cases the connecting fix where the transition meets the common
-   * route is deduplicated when present.
-   *
-   * Returns undefined if the procedure or transition is not found.
+   * Returns every IAP of a given approach classification (ILS, RNAV, etc.).
    */
-  expand(computerCode: string, transitionName?: string): ProcedureExpansionResult | undefined;
+  byApproachType(approachType: ApproachType): Procedure[];
 
   /**
-   * Searches procedures by name or computer code using case-insensitive
-   * substring matching. Results are returned in alphabetical order by
-   * computer code.
+   * Expands a procedure into an ordered leg sequence. When `transitionName`
+   * is omitted the expansion is the procedure's first common route. When
+   * `transitionName` is provided, the named transition's legs are merged
+   * with the common route in flying order:
+   *
+   * - SID, enroute exit transition - common route first, then transition.
+   * - SID, runway transition (`RW*` name) - transition first, then common route.
+   * - STAR, enroute entry transition - transition first, then common route.
+   * - STAR, runway transition (`RW*` name) - common route first, then transition.
+   * - IAP, approach transition - transition first, then common route (final approach segment).
+   *
+   * The connecting fix between transition and common route is
+   * deduplicated when both segments reference it.
+   *
+   * Returns `undefined` when the procedure, airport, or transition is
+   * not found.
+   */
+  expand(
+    airportId: string,
+    identifier: string,
+    transitionName?: string,
+  ): ProcedureExpansionResult | undefined;
+
+  /**
+   * Searches procedures by name or identifier using case-insensitive
+   * substring matching. Results are returned sorted by airport then
+   * identifier.
    */
   search(query: ProcedureSearchQuery): Procedure[];
 }
@@ -91,13 +120,13 @@ export interface ProcedureResolver {
 const DEFAULT_SEARCH_LIMIT = 20;
 
 /**
- * Creates a stateless procedure resolver. The resolver accepts an array of
- * Procedure records at initialization (typically from `@squawk/procedure-data`)
- * and returns an object with methods for looking up procedures by computer code,
- * airport, type, expanding route segments, and searching by name.
+ * Creates a stateless procedure resolver. The resolver accepts an array
+ * of {@link Procedure} records at initialization (typically from
+ * `@squawk/procedure-data`) and returns an object with query methods.
  *
- * The resolver builds internal indexes at creation time for fast lookups
- * by computer code and by airport identifier.
+ * The resolver builds internal indexes at creation time for fast lookup
+ * by identifier, by airport, by (airport, identifier), by type, and by
+ * approach type.
  *
  * ```typescript
  * import { usBundledProcedures } from '@squawk/procedure-data';
@@ -105,153 +134,234 @@ const DEFAULT_SEARCH_LIMIT = 20;
  *
  * const resolver = createProcedureResolver({ data: usBundledProcedures.records });
  *
- * const aalle = resolver.byName('AALLE4');
- * const denProcedures = resolver.byAirport('DEN');
- * const stars = resolver.byType('STAR');
- * const expanded = resolver.expand('AALLE4', 'BBOTL');
- * const results = resolver.search({ text: 'AALLE' });
+ * const allSardi = resolver.byIdentifier('SARDI1');
+ * const denAalle = resolver.byAirportAndIdentifier('KDEN', 'AALLE4');
+ * const jfkApproaches = resolver.byAirport('KJFK').filter((p) => p.type === 'IAP');
+ * const jfk04LApproaches = resolver.byAirportAndRunway('KJFK', '04L');
+ * const allIls = resolver.byApproachType('ILS');
+ * const expanded = resolver.expand('KDEN', 'AALLE4', 'BBOTL');
  * ```
  */
 export function createProcedureResolver(options: ProcedureResolverOptions): ProcedureResolver {
   const procedures = options.data;
 
-  const byCodeMap = new Map<string, Procedure>();
+  const byIdentifierMap = new Map<string, Procedure[]>();
   const byAirportMap = new Map<string, Procedure[]>();
+  const byAirportIdentifierMap = new Map<string, Procedure>();
   const sidList: Procedure[] = [];
   const starList: Procedure[] = [];
+  const iapList: Procedure[] = [];
+  const byApproachTypeMap = new Map<ApproachType, Procedure[]>();
 
   for (const proc of procedures) {
-    byCodeMap.set(proc.computerCode.toUpperCase(), proc);
+    const identKey = proc.identifier.toUpperCase();
+    appendToMap(byIdentifierMap, identKey, proc);
 
     for (const airport of proc.airports) {
-      const key = airport.toUpperCase();
-      let arr = byAirportMap.get(key);
-      if (!arr) {
-        arr = [];
-        byAirportMap.set(key, arr);
-      }
-      arr.push(proc);
+      const airportKey = airport.toUpperCase();
+      appendToMap(byAirportMap, airportKey, proc);
+      byAirportIdentifierMap.set(`${airportKey}::${identKey}`, proc);
     }
 
     if (proc.type === 'SID') {
       sidList.push(proc);
-    } else {
+    } else if (proc.type === 'STAR') {
       starList.push(proc);
+    } else {
+      iapList.push(proc);
+    }
+
+    if (proc.approachType !== undefined) {
+      appendToMap(byApproachTypeMap, proc.approachType, proc);
     }
   }
 
   return {
-    byName(computerCode: string): Procedure | undefined {
-      return byCodeMap.get(computerCode.toUpperCase());
+    byIdentifier(identifier: string): Procedure[] {
+      return byIdentifierMap.get(identifier.toUpperCase()) ?? [];
+    },
+
+    byAirportAndIdentifier(airportId: string, identifier: string): Procedure | undefined {
+      return byAirportIdentifierMap.get(`${airportId.toUpperCase()}::${identifier.toUpperCase()}`);
     },
 
     byAirport(airportId: string): Procedure[] {
       return byAirportMap.get(airportId.toUpperCase()) ?? [];
     },
 
-    byType(type: ProcedureType): Procedure[] {
-      return type === 'SID' ? sidList : starList;
+    byAirportAndRunway(airportId: string, runway: string): Procedure[] {
+      const candidates = byAirportMap.get(airportId.toUpperCase()) ?? [];
+      const runwayUpper = runway.toUpperCase();
+      const runwayTransitionName = `RW${runwayUpper}`;
+      return candidates.filter((proc) => {
+        if (proc.runway !== undefined && proc.runway.toUpperCase() === runwayUpper) {
+          return true;
+        }
+        for (const transition of proc.transitions) {
+          if (transition.name.toUpperCase() === runwayTransitionName) {
+            return true;
+          }
+        }
+        return false;
+      });
     },
 
-    expand(computerCode: string, transitionName?: string): ProcedureExpansionResult | undefined {
-      const proc = byCodeMap.get(computerCode.toUpperCase());
-      if (!proc) {
+    byType(type: ProcedureType): Procedure[] {
+      if (type === 'SID') {
+        return sidList;
+      }
+      if (type === 'STAR') {
+        return starList;
+      }
+      return iapList;
+    },
+
+    byApproachType(approachType: ApproachType): Procedure[] {
+      return byApproachTypeMap.get(approachType) ?? [];
+    },
+
+    expand(
+      airportId: string,
+      identifier: string,
+      transitionName?: string,
+    ): ProcedureExpansionResult | undefined {
+      const proc = byAirportIdentifierMap.get(
+        `${airportId.toUpperCase()}::${identifier.toUpperCase()}`,
+      );
+      if (proc === undefined) {
         return undefined;
       }
 
+      const commonRoute = proc.commonRoutes[0];
       if (transitionName === undefined) {
-        const firstRoute = proc.commonRoutes[0];
-        if (!firstRoute) {
+        if (commonRoute === undefined) {
           return undefined;
         }
-        return {
-          procedure: proc,
-          waypoints: firstRoute.waypoints,
-        };
+        return { procedure: proc, legs: commonRoute.legs };
       }
 
-      const upperTransition = transitionName.toUpperCase();
-      const transition = proc.transitions.find((t) => t.name.toUpperCase() === upperTransition);
-      if (!transition) {
+      const transition = proc.transitions.find(
+        (t) => t.name.toUpperCase() === transitionName.toUpperCase(),
+      );
+      if (transition === undefined) {
         return undefined;
       }
 
-      const firstRoute = proc.commonRoutes[0];
-      if (!firstRoute) {
-        return {
-          procedure: proc,
-          waypoints: transition.waypoints,
-        };
+      if (commonRoute === undefined) {
+        return { procedure: proc, legs: transition.legs };
       }
 
-      const waypoints = mergeTransitionAndRoute(transition.waypoints, firstRoute, proc.type);
-      return {
-        procedure: proc,
-        waypoints,
-      };
+      const legs = mergeTransitionAndRoute(transition, commonRoute, proc.type);
+      return { procedure: proc, legs };
     },
 
     search(query: ProcedureSearchQuery): Procedure[] {
       const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
       const needle = query.text.toUpperCase();
-
       if (needle.length === 0) {
         return [];
       }
 
       const results: Procedure[] = [];
-
       for (const proc of procedures) {
-        if (query.type && proc.type !== query.type) {
+        if (query.type !== undefined && proc.type !== query.type) {
           continue;
         }
-
+        if (query.approachType !== undefined && proc.approachType !== query.approachType) {
+          continue;
+        }
         if (
-          proc.computerCode.toUpperCase().includes(needle) ||
+          proc.identifier.toUpperCase().includes(needle) ||
           proc.name.toUpperCase().includes(needle)
         ) {
           results.push(proc);
         }
       }
 
-      results.sort((a, b) => a.computerCode.localeCompare(b.computerCode));
+      results.sort((a, b) => {
+        const airportDiff = (a.airports[0] ?? '').localeCompare(b.airports[0] ?? '');
+        if (airportDiff !== 0) {
+          return airportDiff;
+        }
+        return a.identifier.localeCompare(b.identifier);
+      });
       return results.slice(0, limit);
     },
   };
 }
 
 /**
- * Merges a transition's waypoints with a common route's waypoints in the
- * order aircraft fly the procedure. SIDs depart along the common route and
- * then continue onto the transition; STARs fly the transition into the
- * common route. The connecting fix where the two segments meet is
- * deduplicated when present.
+ * Appends a procedure to a keyed array within a map, lazily creating
+ * the array on first insertion.
+ */
+function appendToMap<K>(map: Map<K, Procedure[]>, key: K, procedure: Procedure): void {
+  let arr = map.get(key);
+  if (arr === undefined) {
+    arr = [];
+    map.set(key, arr);
+  }
+  arr.push(procedure);
+}
+
+/**
+ * Merges a transition's legs with a common route's legs in the order
+ * an aircraft flies the procedure. The direction depends on both the
+ * procedure type and whether the transition is a runway transition
+ * (name prefixed with `RW`).
+ *
+ * - SID + enroute transition - common route first, transition last.
+ * - SID + runway transition - transition first, common route last.
+ * - STAR + enroute transition - transition first, common route last.
+ * - STAR + runway transition - common route first, transition last.
+ * - IAP + approach transition - transition first, common route last.
+ *
+ * The connecting fix between the two segments is deduplicated when
+ * both segments reference it with the same identifier.
  */
 function mergeTransitionAndRoute(
-  transitionWaypoints: ProcedureWaypoint[],
+  transition: ProcedureTransition,
   route: ProcedureCommonRoute,
   procedureType: ProcedureType,
-): ProcedureWaypoint[] {
-  if (transitionWaypoints.length === 0) {
-    return route.waypoints;
+): ProcedureLeg[] {
+  if (transition.legs.length === 0) {
+    return route.legs;
   }
-  if (route.waypoints.length === 0) {
-    return transitionWaypoints;
+  if (route.legs.length === 0) {
+    return transition.legs;
   }
 
+  const isRunwayTransition = transition.name.toUpperCase().startsWith('RW');
+  let transitionFirst: boolean;
   if (procedureType === 'SID') {
-    const lastRoute = route.waypoints[route.waypoints.length - 1]!;
-    const firstTransition = transitionWaypoints[0]!;
-    if (lastRoute.fixIdentifier.toUpperCase() === firstTransition.fixIdentifier.toUpperCase()) {
-      return [...route.waypoints, ...transitionWaypoints.slice(1)];
-    }
-    return [...route.waypoints, ...transitionWaypoints];
+    transitionFirst = isRunwayTransition;
+  } else if (procedureType === 'STAR') {
+    transitionFirst = !isRunwayTransition;
+  } else {
+    transitionFirst = true;
   }
 
-  const lastTransition = transitionWaypoints[transitionWaypoints.length - 1]!;
-  const firstRoute = route.waypoints[0]!;
-  if (lastTransition.fixIdentifier.toUpperCase() === firstRoute.fixIdentifier.toUpperCase()) {
-    return [...transitionWaypoints, ...route.waypoints.slice(1)];
+  if (transitionFirst) {
+    return joinSegments(transition.legs, route.legs);
   }
-  return [...transitionWaypoints, ...route.waypoints];
+  return joinSegments(route.legs, transition.legs);
+}
+
+/**
+ * Joins two leg segments, deduplicating the connecting fix when the
+ * last leg of `first` and the first leg of `second` terminate at the
+ * same fix identifier.
+ */
+function joinSegments(first: ProcedureLeg[], second: ProcedureLeg[]): ProcedureLeg[] {
+  const last = first[first.length - 1];
+  const next = second[0];
+  if (
+    last !== undefined &&
+    next !== undefined &&
+    last.fixIdentifier !== undefined &&
+    next.fixIdentifier !== undefined &&
+    last.fixIdentifier.toUpperCase() === next.fixIdentifier.toUpperCase()
+  ) {
+    return [...first, ...second.slice(1)];
+  }
+  return [...first, ...second];
 }

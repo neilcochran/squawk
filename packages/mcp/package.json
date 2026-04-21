@@ -54,9 +54,9 @@
     "@squawk/navaid-data": "^0.4.1",
     "@squawk/navaids": "^0.2.4",
     "@squawk/notams": "^0.2.3",
-    "@squawk/procedure-data": "^0.3.3",
-    "@squawk/procedures": "^0.2.4",
-    "@squawk/types": "^0.3.1",
+    "@squawk/procedure-data": "^0.4.0",
+    "@squawk/procedures": "^0.3.0",
+    "@squawk/types": "^0.4.0",
     "@squawk/weather": "^0.3.4",
     "zod": "^4.3.6"
   },

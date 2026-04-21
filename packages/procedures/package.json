@@ -1,8 +1,8 @@
 {
   "name": "@squawk/procedures",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Instrument procedure lookup and expansion for SIDs and STARs",
+  "description": "Instrument procedure lookup and expansion for SIDs, STARs, and Instrument Approach Procedures (IAPs)",
   "author": "Neil Cochran",
   "license": "MIT",
   "homepage": "https://github.com/neilcochran/squawk",
@@ -34,10 +34,10 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/types": "^0.3.1"
+    "@squawk/types": "^0.4.0"
   },
   "devDependencies": {
-    "@squawk/procedure-data": "^0.3.3",
+    "@squawk/procedure-data": "^0.4.0",
     "@types/node": "^25.6.0"
   },
   "keywords": [
@@ -45,11 +45,14 @@
     "typescript",
     "sid",
     "star",
+    "iap",
+    "approach",
     "instrument-procedure",
     "departure",
     "arrival",
     "faa",
-    "nasr"
+    "cifp",
+    "arinc-424"
   ],
   "publishConfig": {
     "access": "public"

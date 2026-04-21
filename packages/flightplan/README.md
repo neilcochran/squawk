@@ -62,7 +62,7 @@ Creates a resolver from optional lookup providers.
 - `options.navaids` - navaid lookup (must provide `byIdent`)
 - `options.fixes` - fix lookup (must provide `byIdent`)
 - `options.airways` - airway lookup (must provide `byDesignation` and `expand`)
-- `options.procedures` - procedure lookup (must provide `byName` and `expand`)
+- `options.procedures` - procedure lookup (must provide `byIdentifier` and `expand`)
 
 **Returns:** `FlightplanResolver` - an object with the `parse` method described below.
 
@@ -84,8 +84,8 @@ Each element has a `type` discriminant and a `raw` field with the original token
 | Type            | Description                               | Key fields                                                  |
 | --------------- | ----------------------------------------- | ----------------------------------------------------------- |
 | `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                   |
-| `sid`           | Standard Instrument Departure             | `procedure`, `waypoints`                                    |
-| `star`          | Standard Terminal Arrival Route           | `procedure`, `waypoints`                                    |
+| `sid`           | Standard Instrument Departure             | `procedure`, `legs`                                         |
+| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`                                         |
 | `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`                |
 | `direct`        | DCT (direct) indicator                    | -                                                           |
 | `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                         |
