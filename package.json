@@ -42,6 +42,6 @@
     "turbo": "^2.9.6",
     "typedoc": "^0.28.18",
     "typescript": "^5.4.0",
-    "typescript-eslint": "^8.0.0"
+    "typescript-eslint": "^8.58.2"
   }
 }
