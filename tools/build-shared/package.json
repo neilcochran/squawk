@@ -9,6 +9,10 @@
   },
   "main": "./dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
   }
 }
