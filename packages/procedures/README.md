@@ -2,11 +2,13 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/procedures)](https://www.npmjs.com/package/@squawk/procedures) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pure logic library for querying US instrument procedure data. Look up SIDs
-and STARs by computer code, find procedures by airport, filter by type, expand
-route segments with transitions, or search by name. Contains no bundled data -
-accepts an array of Procedure records at initialization. For zero-config use,
-pair with `@squawk/procedure-data`.
+Pure logic library for querying US instrument procedure data sourced from FAA
+CIFP (Coded Instrument Flight Procedures). Covers SIDs, STARs, and Instrument
+Approach Procedures (IAPs) in a unified ARINC 424 leg model. Look up by
+identifier, by airport, by runway, by approach type; expand a procedure into
+an ordered leg sequence; or search by name. Contains no bundled data - accepts
+an array of `Procedure` records at initialization. For zero-config use, pair
+with `@squawk/procedure-data`.
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
@@ -18,28 +20,36 @@ import { createProcedureResolver } from '@squawk/procedures';
 
 const resolver = createProcedureResolver({ data: usBundledProcedures.records });
 
-// Look up by computer code
-const aalle = resolver.byName('AALLE4');
+// Look up every adaptation of an identifier across airports
+const allSardi = resolver.byIdentifier('SARDI1');
 
-// Find all procedures for an airport
-const denProcedures = resolver.byAirport('DEN');
+// Resolve a specific procedure at an airport
+const aalleAtDen = resolver.byAirportAndIdentifier('KDEN', 'AALLE4');
+const ilsAtJfk = resolver.byAirportAndIdentifier('KJFK', 'I04L');
 
-// Get all STARs
-const stars = resolver.byType('STAR');
+// Find every procedure for an airport
+const jfkProcedures = resolver.byAirport('KJFK');
 
-// Expand a procedure (common route only)
-const route = resolver.expand('AALLE4');
-if (route) {
-  for (const wp of route.waypoints) {
-    console.log(wp.fixIdentifier, wp.lat, wp.lon);
+// Find procedures that serve a specific runway
+const jfk04LApproaches = resolver.byAirportAndRunway('KJFK', '04L');
+
+// Filter by type or approach classification
+const allStars = resolver.byType('STAR');
+const allIls = resolver.byApproachType('ILS');
+
+// Expand a procedure into an ordered leg sequence (common route only)
+const expansion = resolver.expand('KDEN', 'AALLE4');
+if (expansion) {
+  for (const leg of expansion.legs) {
+    console.log(leg.pathTerminator, leg.fixIdentifier ?? '(no fix)');
   }
 }
 
-// Expand with a named transition
-const withTransition = resolver.expand('AALLE4', 'BBOTL');
+// Expand with a named transition (transition + common route merged in flying order)
+const withTransition = resolver.expand('KDEN', 'AALLE4', 'BBOTL');
 
-// Search by name or code
-const results = resolver.search({ text: 'AALLE' });
+// Search by name or identifier
+const results = resolver.search({ text: 'AALLE', type: 'STAR' });
 ```
 
 Consumers who have their own procedure data can use this package standalone:
@@ -54,51 +64,80 @@ const resolver = createProcedureResolver({ data: myProcedures });
 
 ### `createProcedureResolver(options)`
 
-Creates a resolver object from an array of Procedure records.
+Creates a resolver object from an array of `Procedure` records.
 
 **Parameters:**
 
-- `options.data` - an array of `Procedure` objects (from `@squawk/types`)
+- `options.data` - an array of `Procedure` objects (from `@squawk/types`).
 
 **Returns:** `ProcedureResolver` - an object with the lookup methods described below.
 
-### `resolver.byName(computerCode)`
+### `resolver.byIdentifier(identifier)`
 
-Looks up a procedure by its FAA computer code (e.g. "AALLE4", "ACCRA5").
-Case-insensitive. Returns `Procedure | undefined`.
+Looks up every procedure matching a CIFP identifier (case-insensitive). CIFP
+identifiers are not globally unique - the same identifier (for example
+`SARDI1` or `I04L`) is published separately for each adapted airport, so this
+returns all matches. Returns `Procedure[]`.
+
+### `resolver.byAirportAndIdentifier(airportId, identifier)`
+
+Resolves a single procedure by (airport, identifier). Case-insensitive for
+both arguments. Returns `Procedure | undefined`.
 
 ### `resolver.byAirport(airportId)`
 
-Finds all procedures associated with a given airport identifier.
+Returns every procedure (SID, STAR, or IAP) adapted at the given airport.
 Case-insensitive. Returns `Procedure[]`.
+
+### `resolver.byAirportAndRunway(airportId, runway)`
+
+Returns procedures at an airport that serve a specific runway. For IAPs, the
+match is on the `runway` field directly. For SIDs and STARs, the match is on a
+runway transition named `RW<runway>` (for example `RW04L`). Case-insensitive.
+Returns `Procedure[]`.
 
 ### `resolver.byType(type)`
 
-Returns all procedures of a given type. Pass `'SID'` or `'STAR'`.
+Returns every procedure of a given type. Pass `'SID'`, `'STAR'`, or `'IAP'`.
 Returns `Procedure[]`.
 
-### `resolver.expand(computerCode, transitionName?)`
+### `resolver.byApproachType(approachType)`
 
-Expands a procedure into an ordered waypoint sequence.
+Returns every IAP of a given approach classification (`'ILS'`, `'LOC'`,
+`'LOC_BC'`, `'RNAV'`, `'RNAV_RNP'`, `'VOR'`, `'VOR_DME'`, `'NDB'`, `'NDB_DME'`,
+`'TACAN'`, `'GLS'`, `'IGS'`, `'LDA'`, `'SDF'`, `'GPS'`, `'FMS'`, `'MLS'`).
+Returns `Procedure[]`.
 
-- Without a transition: returns the first common route's waypoints
-- With a transition: returns the transition waypoints merged with the first
-  common route, deduplicating the connecting fix
+### `resolver.expand(airportId, identifier, transitionName?)`
 
-Returns `ProcedureExpansionResult | undefined`. The result contains:
+Expands a procedure into an ordered leg sequence. Without a transition name,
+returns the procedure's first common route. With a transition name, merges the
+named transition's legs with the common route in flying order:
 
-- `procedure` - the full Procedure record
-- `waypoints` - the ordered waypoint sequence
+- **SID + enroute exit transition** - common route first, then transition.
+- **SID + runway transition** (`RW*` name) - transition first, then common route.
+- **STAR + enroute entry transition** - transition first, then common route.
+- **STAR + runway transition** - common route first, then transition.
+- **IAP + approach transition** - transition first, then final approach segment.
+
+The connecting fix between transition and common route is deduplicated when
+both segments reference it.
+
+Returns `ProcedureExpansionResult | undefined`, containing:
+
+- `procedure` - the full `Procedure` record.
+- `legs` - the ordered `ProcedureLeg` sequence.
 
 ### `resolver.search(query)`
 
-Searches procedures by name or computer code using case-insensitive substring
-matching. Results are returned in alphabetical order by computer code.
+Searches procedures by name or identifier using case-insensitive substring
+matching. Results are sorted by airport then identifier.
 
-| Property | Type          | Description                                                       |
-| -------- | ------------- | ----------------------------------------------------------------- |
-| `text`   | string        | Case-insensitive substring to match against name or computer code |
-| `limit`  | number        | Optional. Maximum number of results. Defaults to 20               |
-| `type`   | ProcedureType | Optional. When provided, only this procedure type is returned     |
+| Property       | Type          | Description                                                    |
+| -------------- | ------------- | -------------------------------------------------------------- |
+| `text`         | string        | Case-insensitive substring to match against name or identifier |
+| `limit`        | number        | Optional. Maximum number of results. Defaults to 20            |
+| `type`         | ProcedureType | Optional. Restrict to `'SID'`, `'STAR'`, or `'IAP'` only       |
+| `approachType` | ApproachType  | Optional. Restrict to IAPs of a given approach classification  |
 
 Returns `Procedure[]`.

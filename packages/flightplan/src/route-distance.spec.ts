@@ -94,23 +94,23 @@ function makeAirway(
 
 function makeSid(
   raw: string,
-  waypoints: { fixIdentifier: string; lat: number; lon: number }[],
+  fixes: { fixIdentifier: string; lat: number; lon: number }[],
 ): SidRouteElement {
   return {
     type: 'sid',
     raw,
     procedure: {
       name: raw,
-      computerCode: raw,
+      identifier: raw,
       type: 'SID',
       airports: [],
       commonRoutes: [],
       transitions: [],
     },
-    waypoints: waypoints.map((wp) => ({
+    legs: fixes.map((wp) => ({
+      pathTerminator: 'TF' as const,
       fixIdentifier: wp.fixIdentifier,
       category: 'FIX' as const,
-      typeCode: 'P' as const,
       lat: wp.lat,
       lon: wp.lon,
     })),
@@ -119,23 +119,23 @@ function makeSid(
 
 function makeStar(
   raw: string,
-  waypoints: { fixIdentifier: string; lat: number; lon: number }[],
+  fixes: { fixIdentifier: string; lat: number; lon: number }[],
 ): StarRouteElement {
   return {
     type: 'star',
     raw,
     procedure: {
       name: raw,
-      computerCode: raw,
+      identifier: raw,
       type: 'STAR',
       airports: [],
       commonRoutes: [],
       transitions: [],
     },
-    waypoints: waypoints.map((wp) => ({
+    legs: fixes.map((wp) => ({
+      pathTerminator: 'TF' as const,
       fixIdentifier: wp.fixIdentifier,
       category: 'FIX' as const,
-      typeCode: 'P' as const,
       lat: wp.lat,
       lon: wp.lon,
     })),

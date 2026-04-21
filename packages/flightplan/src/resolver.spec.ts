@@ -143,67 +143,67 @@ describe('parse', () => {
     assert.equal(fakeEl.type, 'unresolved');
   });
 
-  it('resolves a SID procedure with waypoints', () => {
+  it('resolves a SID procedure', () => {
     const result = resolver.parse('ACCRA5');
     assert.equal(result.elements.length, 1);
     const el = result.elements[0]!;
     assert.equal(el.type, 'sid');
     if (el.type === 'sid') {
-      assert.equal(el.procedure.computerCode, 'ACCRA5');
+      assert.equal(el.procedure.identifier, 'ACCRA5');
       assert.equal(el.procedure.type, 'SID');
-      assert.equal(el.procedure.name, 'ACCRA FIVE');
-      assert.ok(el.waypoints.length > 0, 'expected SID to have expanded waypoints');
     }
   });
 
-  it('resolves a STAR procedure with waypoints', () => {
+  it('picks the procedure adaptation matching the preceding airport', () => {
+    // DALL4 is adapted at KDAL and KDFW (among others). When parsing a
+    // route with a specific departure airport, the resolver should pick
+    // the adaptation at that airport, not an arbitrary first match.
+    const kdalRoute = resolver.parse('KDAL DALL4');
+    const kdfwRoute = resolver.parse('KDFW DALL4');
+    const kdalSid = kdalRoute.elements.find((e) => e.type === 'sid');
+    const kdfwSid = kdfwRoute.elements.find((e) => e.type === 'sid');
+    assert.ok(kdalSid && kdalSid.type === 'sid');
+    assert.ok(kdfwSid && kdfwSid.type === 'sid');
+    assert.ok(
+      kdalSid.procedure.airports.some((a) => a.toUpperCase() === 'KDAL'),
+      'expected KDAL DALL4 to resolve to the KDAL adaptation',
+    );
+    assert.ok(
+      kdfwSid.procedure.airports.some((a) => a.toUpperCase() === 'KDFW'),
+      'expected KDFW DALL4 to resolve to the KDFW adaptation',
+    );
+  });
+
+  it('resolves a STAR procedure with legs', () => {
     const result = resolver.parse('AALLE4');
     assert.equal(result.elements.length, 1);
     const el = result.elements[0]!;
     assert.equal(el.type, 'star');
     if (el.type === 'star') {
-      assert.equal(el.procedure.computerCode, 'AALLE4');
+      assert.equal(el.procedure.identifier, 'AALLE4');
       assert.equal(el.procedure.type, 'STAR');
-      assert.equal(el.procedure.name, 'AALLE FOUR');
-      assert.ok(el.waypoints.length > 0, 'expected STAR to have expanded waypoints');
+      assert.ok(el.legs.length > 0, 'expected STAR to have expanded legs');
     }
   });
 
-  it('resolves a SID with a dotted transition in departure order', () => {
+  it('resolves a SID with a dotted transition', () => {
     const result = resolver.parse('NUBLE4.JJIMY');
     assert.equal(result.elements.length, 1);
     const el = result.elements[0]!;
     assert.equal(el.type, 'sid');
     if (el.type === 'sid') {
       assert.equal(el.raw, 'NUBLE4.JJIMY');
-      assert.equal(el.procedure.computerCode, 'NUBLE4');
-
-      const withoutTransition = resolver.parse('NUBLE4');
-      const baseEl = withoutTransition.elements[0]!;
-      assert.equal(baseEl.type, 'sid');
-      if (baseEl.type === 'sid') {
-        assert.ok(
-          el.waypoints.length > baseEl.waypoints.length,
-          'expected dotted transition expansion to add fixes beyond the common route',
-        );
-
-        const baseIdentifiers = baseEl.waypoints.map((wp) => wp.fixIdentifier);
-        const identifiers = el.waypoints.map((wp) => wp.fixIdentifier);
-        assert.equal(
-          identifiers[0],
-          baseIdentifiers[0],
-          'expected dotted SID expansion to start at the common route origin',
-        );
-        assert.equal(
-          identifiers[identifiers.length - 1],
-          'JJIMY',
-          'expected dotted SID expansion to end at the transition terminus',
-        );
-        assert.ok(
-          identifiers.includes('RBELA'),
-          'expected JJIMY transition fix RBELA in waypoints',
-        );
-      }
+      assert.equal(el.procedure.identifier, 'NUBLE4');
+      const identifiers = el.legs.map((leg) => leg.fixIdentifier);
+      assert.equal(
+        identifiers[identifiers.length - 1],
+        'JJIMY',
+        'expected dotted SID expansion to end at the transition terminus',
+      );
+      assert.ok(
+        identifiers.includes('RBELA'),
+        'expected JJIMY transition fix RBELA in the expansion',
+      );
     }
   });
 
@@ -214,8 +214,8 @@ describe('parse', () => {
     assert.equal(el.type, 'star');
     if (el.type === 'star') {
       assert.equal(el.raw, 'AALLE4.BBOTL');
-      assert.equal(el.procedure.computerCode, 'AALLE4');
-      const identifiers = el.waypoints.map((wp) => wp.fixIdentifier);
+      assert.equal(el.procedure.identifier, 'AALLE4');
+      const identifiers = el.legs.map((wp) => wp.fixIdentifier);
       assert.equal(
         identifiers[0],
         'BBOTL',
@@ -230,8 +230,8 @@ describe('parse', () => {
     const el = result.elements[0]!;
     assert.equal(el.type, 'sid');
     if (el.type === 'sid') {
-      assert.equal(el.procedure.computerCode, 'NUBLE4');
-      assert.equal(el.waypoints.length, 0);
+      assert.equal(el.procedure.identifier, 'NUBLE4');
+      assert.equal(el.legs.length, 0);
     }
   });
 
@@ -614,8 +614,8 @@ describe('FAA Coded Departure Routes', () => {
     const el7 = result.elements[7]!;
     assert.equal(el7.type, 'star');
     if (el7.type === 'star') {
-      assert.equal(el7.procedure.computerCode, 'HOBTT3');
-      assert.ok(el7.waypoints.length > 0, 'expected STAR to have waypoints');
+      assert.equal(el7.procedure.identifier, 'HOBTT3');
+      assert.ok(el7.legs.length > 0, 'expected STAR to have waypoints');
     }
 
     // KATL - arrival airport
@@ -688,7 +688,7 @@ describe('FAA Coded Departure Routes', () => {
     const el8 = result.elements[8]!;
     assert.equal(el8.type, 'star');
     if (el8.type === 'star') {
-      assert.equal(el8.procedure.computerCode, 'ANTHM5');
+      assert.equal(el8.procedure.identifier, 'ANTHM5');
     }
 
     // KBWI - arrival
@@ -708,9 +708,9 @@ describe('FAA Coded Departure Routes', () => {
     const el1 = result.elements[1]!;
     assert.equal(el1.type, 'sid');
     if (el1.type === 'sid') {
-      assert.equal(el1.procedure.computerCode, 'LARGO3');
+      assert.equal(el1.procedure.identifier, 'LARGO3');
       assert.equal(el1.procedure.type, 'SID');
-      assert.ok(el1.waypoints.length > 0, 'expected SID to have waypoints');
+      assert.ok(el1.legs.length > 0, 'expected SID to have waypoints');
     }
 
     // RSK - navaid waypoint
@@ -724,7 +724,7 @@ describe('FAA Coded Departure Routes', () => {
     const el4 = result.elements[4]!;
     assert.equal(el4.type, 'star');
     if (el4.type === 'star') {
-      assert.equal(el4.procedure.computerCode, 'LOYYD1');
+      assert.equal(el4.procedure.identifier, 'LOYYD1');
       assert.equal(el4.procedure.type, 'STAR');
     }
 
@@ -767,7 +767,7 @@ describe('FAA Coded Departure Routes', () => {
     const el9 = result.elements[9]!;
     assert.equal(el9.type, 'star');
     if (el9.type === 'star') {
-      assert.equal(el9.procedure.computerCode, 'PARQR4');
+      assert.equal(el9.procedure.identifier, 'PARQR4');
     }
 
     // KCLT - arrival
@@ -796,7 +796,7 @@ describe('FAA Coded Departure Routes', () => {
     const sid = result.elements[1]!;
     assert.equal(sid.type, 'sid');
     if (sid.type === 'sid') {
-      assert.equal(sid.procedure.computerCode, 'MNZNO3');
+      assert.equal(sid.procedure.identifier, 'MNZNO3');
     }
 
     // Verify airway segments exist with correct designations
@@ -816,7 +816,7 @@ describe('FAA Coded Departure Routes', () => {
     const starEl = result.elements.find((e) => e.type === 'star');
     assert.ok(starEl, 'expected a STAR element');
     if (starEl && starEl.type === 'star') {
-      assert.equal(starEl.procedure.computerCode, 'RAVNN8');
+      assert.equal(starEl.procedure.identifier, 'RAVNN8');
     }
 
     // KBWI - arrival

@@ -144,8 +144,11 @@ function extractGeoPoints(elements: RouteElement[]): {
 
       case 'sid':
       case 'star':
-        for (const wp of el.waypoints) {
-          emit({ label: wp.fixIdentifier, lat: wp.lat, lon: wp.lon });
+        for (const leg of el.legs) {
+          if (leg.fixIdentifier === undefined || leg.lat === undefined || leg.lon === undefined) {
+            continue;
+          }
+          emit({ label: leg.fixIdentifier, lat: leg.lat, lon: leg.lon });
         }
         break;
 

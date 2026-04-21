@@ -61,8 +61,11 @@ const EXPECTED_TOOLS: readonly string[] = [
   'find_airways_by_fix',
   'search_airways',
   // procedures
-  'get_procedure_by_code',
+  'find_procedures_by_identifier',
+  'get_procedure_by_airport_and_identifier',
   'find_procedures_by_airport',
+  'find_procedures_by_airport_and_runway',
+  'find_approaches_by_type',
   'expand_procedure',
   'search_procedures',
   // icao-registry
@@ -316,8 +319,11 @@ describe('createSquawkMcpServer', () => {
             airways: z.object({ recordCount: z.number().positive() }).passthrough(),
             procedures: z
               .object({
+                cifpCycleDate: z.string(),
                 sidCount: z.number().nonnegative(),
                 starCount: z.number().nonnegative(),
+                iapCount: z.number().nonnegative(),
+                legCount: z.number().positive(),
               })
               .passthrough(),
             // The lazy ICAO registry should report `loaded: false` here -
@@ -368,6 +374,303 @@ describe('createSquawkMcpServer', () => {
       assert.equal(parsed.result.legs.length, 1);
       assert.equal(parsed.result.legs[0]?.from, 'KJFK');
       assert.equal(parsed.result.legs[0]?.to, 'KLAX');
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes find_procedures_by_identifier end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      // I04L is published at multiple airports; every hit must be an IAP.
+      const result = await client.callTool({
+        name: 'find_procedures_by_identifier',
+        arguments: { identifier: 'I04L' },
+      });
+      const parsed = z
+        .object({
+          procedures: z.array(
+            z.object({
+              identifier: z.string(),
+              type: z.string(),
+              airports: z.array(z.string()),
+            }),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.procedures.length >= 1);
+      for (const proc of parsed.procedures) {
+        assert.equal(proc.identifier, 'I04L');
+        assert.equal(proc.type, 'IAP');
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes get_procedure_by_airport_and_identifier end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_procedure_by_airport_and_identifier',
+        arguments: { airportId: 'KJFK', identifier: 'I04L' },
+      });
+      const parsed = z
+        .object({
+          procedure: z
+            .object({
+              identifier: z.string(),
+              type: z.string(),
+              approachType: z.string().optional(),
+              runway: z.string().optional(),
+              airports: z.array(z.string()),
+            })
+            .nullable(),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.procedure !== null);
+      assert.equal(parsed.procedure.identifier, 'I04L');
+      assert.equal(parsed.procedure.approachType, 'ILS');
+      assert.equal(parsed.procedure.runway, '04L');
+      assert.ok(parsed.procedure.airports.includes('KJFK'));
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes find_procedures_by_airport_and_runway end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_procedures_by_airport_and_runway',
+        arguments: { airportId: 'KJFK', runway: '04L' },
+      });
+      const parsed = z
+        .object({
+          procedures: z.array(
+            z.object({
+              identifier: z.string(),
+              type: z.string(),
+              runway: z.string().optional(),
+            }),
+          ),
+        })
+        .parse(result.structuredContent);
+      // Every matched IAP must carry runway = 04L.
+      const iaps = parsed.procedures.filter((p) => p.type === 'IAP');
+      assert.ok(iaps.length > 0);
+      for (const iap of iaps) {
+        assert.equal(iap.runway, '04L');
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes find_approaches_by_type end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_approaches_by_type',
+        arguments: { approachType: 'ILS' },
+      });
+      const parsed = z
+        .object({
+          procedures: z.array(
+            z.object({
+              type: z.string(),
+              approachType: z.string(),
+            }),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.procedures.length > 100);
+      for (const proc of parsed.procedures) {
+        assert.equal(proc.type, 'IAP');
+        assert.equal(proc.approachType, 'ILS');
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes expand_procedure end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'expand_procedure',
+        arguments: { airportId: 'KJFK', identifier: 'I04L' },
+      });
+      const parsed = z
+        .object({
+          expansion: z
+            .object({
+              procedure: z.object({ identifier: z.string() }).passthrough(),
+              legs: z.array(
+                z
+                  .object({
+                    pathTerminator: z.string(),
+                  })
+                  .passthrough(),
+              ),
+            })
+            .nullable(),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.expansion !== null);
+      assert.equal(parsed.expansion.procedure.identifier, 'I04L');
+      assert.ok(parsed.expansion.legs.length > 0);
+      assert.equal(parsed.expansion.legs[0]?.pathTerminator, 'IF');
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes search_procedures end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_procedures',
+        arguments: { text: 'AALLE', limit: 10 },
+      });
+      const parsed = z
+        .object({
+          procedures: z.array(
+            z.object({
+              identifier: z.string(),
+              name: z.string(),
+            }),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.procedures.length > 0);
+      for (const proc of parsed.procedures) {
+        const matches =
+          proc.identifier.toUpperCase().includes('AALLE') ||
+          proc.name.toUpperCase().includes('AALLE');
+        assert.ok(matches);
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes expand_procedure with a transition name end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'expand_procedure',
+        arguments: {
+          airportId: 'KJFK',
+          identifier: 'I13L',
+          transitionName: 'BUZON',
+        },
+      });
+      const parsed = z
+        .object({
+          expansion: z
+            .object({
+              procedure: z.object({ identifier: z.string() }).passthrough(),
+              legs: z.array(
+                z
+                  .object({
+                    pathTerminator: z.string(),
+                    fixIdentifier: z.string().optional(),
+                  })
+                  .passthrough(),
+              ),
+            })
+            .nullable(),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.expansion !== null);
+      assert.equal(parsed.expansion.procedure.identifier, 'I13L');
+      assert.ok(parsed.expansion.legs.length > 0);
+      // First leg of the expansion should come from the BUZON transition.
+      assert.equal(parsed.expansion.legs[0]?.fixIdentifier, 'BUZON');
+    } finally {
+      await close();
+    }
+  });
+
+  it('expand_procedure returns null for an unknown airport/identifier combination', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'expand_procedure',
+        arguments: { airportId: 'KDEN', identifier: 'I04L' },
+      });
+      const parsed = z.object({ expansion: z.null() }).parse(result.structuredContent);
+      assert.equal(parsed.expansion, null);
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_procedure_by_airport_and_identifier returns null for an unknown identifier', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_procedure_by_airport_and_identifier',
+        arguments: { airportId: 'KJFK', identifier: 'ZZZ99' },
+      });
+      const parsed = z.object({ procedure: z.null() }).parse(result.structuredContent);
+      assert.equal(parsed.procedure, null);
+    } finally {
+      await close();
+    }
+  });
+
+  it('find_procedures_by_identifier returns an empty array for unknown identifier', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_procedures_by_identifier',
+        arguments: { identifier: 'ZZZZZ9' },
+      });
+      const parsed = z.object({ procedures: z.array(z.unknown()) }).parse(result.structuredContent);
+      assert.equal(parsed.procedures.length, 0);
+    } finally {
+      await close();
+    }
+  });
+
+  it('find_procedures_by_airport_and_runway returns an empty array for an unknown runway', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_procedures_by_airport_and_runway',
+        arguments: { airportId: 'KJFK', runway: '99Z' },
+      });
+      const parsed = z.object({ procedures: z.array(z.unknown()) }).parse(result.structuredContent);
+      assert.equal(parsed.procedures.length, 0);
+    } finally {
+      await close();
+    }
+  });
+
+  it('search_procedures honors the approachType filter', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_procedures',
+        arguments: { text: 'RWY', approachType: 'ILS', limit: 20 },
+      });
+      const parsed = z
+        .object({
+          procedures: z.array(
+            z.object({
+              type: z.string(),
+              approachType: z.string().optional(),
+            }),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.procedures.length > 0);
+      for (const proc of parsed.procedures) {
+        assert.equal(proc.type, 'IAP');
+        assert.equal(proc.approachType, 'ILS');
+      }
     } finally {
       await close();
     }

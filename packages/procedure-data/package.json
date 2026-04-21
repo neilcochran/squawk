@@ -1,8 +1,8 @@
 {
   "name": "@squawk/procedure-data",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "type": "module",
-  "description": "Pre-processed FAA NASR procedure snapshot for use with @squawk/procedures",
+  "description": "Pre-processed FAA CIFP procedure snapshot (SIDs, STARs, IAPs) for use with @squawk/procedures",
   "author": "Neil Cochran",
   "license": "MIT",
   "homepage": "https://github.com/neilcochran/squawk",
@@ -35,15 +35,18 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/types": "^0.3.1"
+    "@squawk/types": "^0.4.0"
   },
   "keywords": [
     "aviation",
     "typescript",
     "sid",
     "star",
+    "iap",
+    "approach",
     "faa",
-    "nasr"
+    "cifp",
+    "arinc-424"
   ],
   "publishConfig": {
     "access": "public"
