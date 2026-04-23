@@ -158,6 +158,8 @@ interface CompactAirport {
   lat: number;
   /** Longitude. */
   lon: number;
+  /** IANA time zone identifier. */
+  tz: string;
   /** Elevation in feet MSL. */
   elev?: number;
   /** Magnetic variation. */
@@ -401,6 +403,7 @@ function compactAirport(apt: Airport): CompactAirport {
     ctry: apt.country,
     lat: apt.lat,
     lon: apt.lon,
+    tz: apt.timezone,
   };
 
   if (apt.state !== undefined) {

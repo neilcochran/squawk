@@ -28,8 +28,49 @@ describe('usBundledAirports', () => {
     assert.equal(typeof first.country, 'string');
     assert.equal(typeof first.lat, 'number');
     assert.equal(typeof first.lon, 'number');
+    assert.equal(typeof first.timezone, 'string');
+    assert.ok(first.timezone.length > 0);
     assert.ok(Array.isArray(first.runways));
     assert.ok(Array.isArray(first.frequencies));
+  });
+
+  it('populates an IANA timezone on every record', () => {
+    for (const apt of usBundledAirports.records) {
+      assert.ok(
+        typeof apt.timezone === 'string' && apt.timezone.length > 0,
+        `airport ${apt.faaId} is missing a timezone`,
+      );
+      assert.ok(
+        apt.timezone.includes('/'),
+        `airport ${apt.faaId} timezone "${apt.timezone}" is not in IANA form`,
+      );
+    }
+  });
+
+  it('resolves expected IANA timezones for well-known airports', () => {
+    const jfk = usBundledAirports.records.find((r) => r.icao === 'KJFK');
+    assert.equal(jfk?.timezone, 'America/New_York');
+
+    const lax = usBundledAirports.records.find((r) => r.icao === 'KLAX');
+    assert.equal(lax?.timezone, 'America/Los_Angeles');
+
+    const hnl = usBundledAirports.records.find((r) => r.icao === 'PHNL');
+    assert.equal(hnl?.timezone, 'Pacific/Honolulu');
+
+    const anc = usBundledAirports.records.find((r) => r.icao === 'PANC');
+    assert.equal(anc?.timezone, 'America/Anchorage');
+  });
+
+  it('resolves expected IANA timezones for US territories and foreign airports', () => {
+    const sanJuan = usBundledAirports.records.find((r) => r.icao === 'TJSJ');
+    assert.equal(sanJuan?.timezone, 'America/Puerto_Rico');
+
+    const guam = usBundledAirports.records.find((r) => r.icao === 'PGUM');
+    assert.equal(guam?.timezone, 'Pacific/Guam');
+
+    const toronto = usBundledAirports.records.find((r) => r.icao === 'CYYZ');
+    assert.equal(toronto?.country, 'CA');
+    assert.equal(toronto?.timezone, 'America/Toronto');
   });
 
   it('populates state for US facilities', () => {

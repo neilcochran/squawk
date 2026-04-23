@@ -17,6 +17,7 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 - Per-runway-end details: heading, displaced thresholds, declared distances (TORA/TODA/ASDA/LDA), approach lighting, VGSI, LAHSO
 - Structured ILS data: system type, identifier, category, localizer frequency and course, glide slope angle and type, DME channel
 - Communication frequencies with usage and sectorization
+- IANA time zone identifier resolved from the facility lat/lon (e.g. `America/New_York`), ready for direct use with `Intl.DateTimeFormat` and other standard date/time APIs
 
 ## Installation
 
@@ -58,6 +59,7 @@ Each record is a full `Airport` object from `@squawk/types`. Key fields:
 | `city`, `country`      | string              | Location identifiers                                  |
 | `state`                | string or undefined | Two-letter code for US facilities, absent for foreign |
 | `lat`, `lon`           | number              | Decimal degrees                                       |
+| `timezone`             | string              | IANA time zone identifier (e.g. "America/New_York")   |
 | `elevationFt`          | number or undefined | Field elevation in feet MSL                           |
 | `magneticVariationDeg` | number or undefined | Magnetic variation in degrees                         |
 | `towerType`            | string or undefined | e.g. "ATCT", "NON-ATCT"                               |
