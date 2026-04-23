@@ -18,7 +18,8 @@
   "dependencies": {
     "@squawk/build-shared": "*",
     "@squawk/types": "*",
-    "adm-zip": "^0.5.17"
+    "adm-zip": "^0.5.17",
+    "geo-tz": "^8.1.6"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.5",

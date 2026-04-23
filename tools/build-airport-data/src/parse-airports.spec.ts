@@ -37,8 +37,44 @@ describe('buildAirport', () => {
       assert.equal(airport.country, 'US');
       assert.equal(airport.lat, 40.6398);
       assert.equal(airport.lon, -73.7789);
+      assert.equal(airport.timezone, 'America/New_York');
       assert.deepEqual(airport.runways, []);
       assert.deepEqual(airport.frequencies, []);
+    });
+
+    it('resolves timezones for airports across US time zones', () => {
+      const la = buildAirport(
+        baseRec({ ARPT_ID: 'LAX', LAT_DECIMAL: '33.9425', LONG_DECIMAL: '-118.4081' }),
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+      );
+      assert.equal(la?.timezone, 'America/Los_Angeles');
+
+      const honolulu = buildAirport(
+        baseRec({ ARPT_ID: 'HNL', LAT_DECIMAL: '21.3187', LONG_DECIMAL: '-157.9225' }),
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+      );
+      assert.equal(honolulu?.timezone, 'Pacific/Honolulu');
+
+      const anchorage = buildAirport(
+        baseRec({ ARPT_ID: 'ANC', LAT_DECIMAL: '61.1743', LONG_DECIMAL: '-149.9982' }),
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+      );
+      assert.equal(anchorage?.timezone, 'America/Anchorage');
     });
 
     it('returns undefined when ARPT_ID is missing', () => {

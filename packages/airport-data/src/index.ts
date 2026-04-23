@@ -176,6 +176,8 @@ interface CompactAirport {
   lat: number;
   /** Longitude. */
   lon: number;
+  /** IANA time zone identifier. */
+  tz: string;
   /** Elevation. */
   elev?: number;
   /** Magnetic variation. */
@@ -440,6 +442,7 @@ function expandAirport(c: CompactAirport): Airport {
     country: c.ctry,
     lat: c.lat,
     lon: c.lon,
+    timezone: c.tz,
     runways: (c.rwys ?? []).map(expandRunway),
     frequencies: (c.freqs ?? []).map(expandFrequency),
   };
