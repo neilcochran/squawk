@@ -1,6 +1,6 @@
 {
   "name": "@squawk/airway-data",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "Pre-processed FAA NASR airway snapshot for use with @squawk/airways",
   "author": "Neil Cochran",
@@ -35,7 +35,7 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/types": "^0.5.0"
+    "@squawk/types": "^0.6.0"
   },
   "keywords": [
     "aviation",

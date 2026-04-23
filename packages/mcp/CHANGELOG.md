@@ -1,5 +1,39 @@
 # @squawk/mcp
 
+## 0.6.0
+
+### Minor Changes
+
+- d72e966: ### Added
+  - Required `timezone: string` field on the `Airport` type in `@squawk/types`, carrying an IANA zone identifier (e.g. `America/New_York`) resolved from the airport's lat/lon. Pass directly to `Intl.DateTimeFormat`, `Temporal`, `date-fns-tz`, `luxon`, etc. to format timestamps in the airport's local time with no runtime timezone dependency. Consumers constructing `Airport` objects by hand must now populate the field.
+  - IANA `timezone` resolved for every record in `@squawk/airport-data` (19,097 US, territorial, and selected foreign facilities the FAA publishes). Resolved at build time from timezone-boundary-builder polygons.
+  - "Local time at an airport" section in the `@squawk/airports` README showing `Intl.DateTimeFormat` usage.
+
+  ### Changed
+  - `get_airport_by_faa_id`, `get_airport_by_icao`, `find_nearest_airports`, and `search_airports` tools in `@squawk/mcp` now include the new `timezone` field on every returned airport record.
+
+### Patch Changes
+
+- Updated dependencies [d72e966]
+  - @squawk/types@0.6.0
+  - @squawk/airport-data@0.6.0
+  - @squawk/airports@0.5.0
+  - @squawk/airspace@0.5.1
+  - @squawk/airway-data@0.4.1
+  - @squawk/airways@0.3.1
+  - @squawk/fix-data@0.5.1
+  - @squawk/fixes@0.2.1
+  - @squawk/flightplan@0.4.1
+  - @squawk/geo@0.3.1
+  - @squawk/icao-registry@0.3.1
+  - @squawk/icao-registry-data@0.4.1
+  - @squawk/navaid-data@0.5.1
+  - @squawk/navaids@0.3.1
+  - @squawk/notams@0.3.1
+  - @squawk/procedure-data@0.5.1
+  - @squawk/procedures@0.4.1
+  - @squawk/weather@0.4.1
+
 ## 0.5.0
 
 ### Minor Changes
