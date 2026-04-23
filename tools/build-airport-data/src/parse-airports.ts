@@ -18,6 +18,7 @@ import type {
 } from '@squawk/types';
 import { ILS_CATEGORY_MAP, ILS_SYSTEM_TYPE_MAP } from '@squawk/types';
 import { lookupCode } from '@squawk/build-shared';
+import { find as findTimezone } from 'geo-tz';
 import type { CsvRecord } from './parse-csv.js';
 
 /** Maps FAA SITE_TYPE_CODE values to FacilityType. */
@@ -502,6 +503,12 @@ export function buildAirport(
     return undefined;
   }
 
+  const zones = findTimezone(lat, lon);
+  const timezone = zones[0];
+  if (timezone === undefined) {
+    throw new Error(`[parse-airports] No IANA timezone resolved for ${faaId} at (${lat}, ${lon}).`);
+  }
+
   const airport: Airport = {
     faaId,
     name,
@@ -513,6 +520,7 @@ export function buildAirport(
     country,
     lat,
     lon,
+    timezone,
     runways: [],
     frequencies: [],
   };
