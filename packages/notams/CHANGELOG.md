@@ -1,5 +1,12 @@
 # @squawk/notams
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [d72e966]
+  - @squawk/types@0.6.0
+
 ## 0.3.0
 
 ### Minor Changes
