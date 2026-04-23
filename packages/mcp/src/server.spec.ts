@@ -156,6 +156,7 @@ describe('createSquawkMcpServer', () => {
               faaId: z.string(),
               icao: z.string().optional(),
               name: z.string(),
+              timezone: z.string(),
             })
             .nullable(),
         })
@@ -163,6 +164,7 @@ describe('createSquawkMcpServer', () => {
       assert.ok(parsed.airport !== null, 'expected an airport for KJFK');
       assert.equal(parsed.airport.faaId, 'JFK');
       assert.equal(parsed.airport.icao, 'KJFK');
+      assert.equal(parsed.airport.timezone, 'America/New_York');
     } finally {
       await close();
     }

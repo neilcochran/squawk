@@ -27,6 +27,7 @@ describe('byFaaId', () => {
     assert.equal(result.faaId, 'JFK');
     assert.equal(result.icao, 'KJFK');
     assert.equal(result.facilityType, 'AIRPORT');
+    assert.equal(result.timezone, 'America/New_York');
   });
 
   it('finds LAX by FAA ID', () => {

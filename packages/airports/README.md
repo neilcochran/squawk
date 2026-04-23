@@ -112,3 +112,25 @@ Returns `Airport[]`.
 ```typescript
 const results = resolver.search({ text: 'san francisco', limit: 10 });
 ```
+
+## Local time at an airport
+
+Every airport record carries an IANA `timezone` field (e.g. `America/New_York`) resolved
+from the airport's lat/lon at build time. Combine it with the standard
+`Intl.DateTimeFormat` API to format a timestamp in the airport's local time without
+pulling in a timezone library at runtime:
+
+```typescript
+const jfk = resolver.byIcao('KJFK');
+if (jfk) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: jfk.timezone,
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  console.log(formatter.format(new Date())); // e.g. "Apr 23, 2026, 3:42 PM"
+}
+```
+
+The same field works anywhere an IANA zone is accepted - `Temporal`, `date-fns-tz`,
+`luxon`, `moment-timezone`, etc.

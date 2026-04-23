@@ -287,6 +287,8 @@ export interface Airport {
   lat: number;
   /** Longitude in decimal degrees. */
   lon: number;
+  /** IANA time zone identifier for the facility location (e.g. "America/New_York", "Pacific/Honolulu"). */
+  timezone: string;
   /** Field elevation in feet MSL. */
   elevationFt?: number;
   /** Magnetic variation in degrees. */
