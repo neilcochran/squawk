@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.6.0"]
+      "args": ["-y", "@squawk/mcp@0.7.0"]
     }
   }
 }
@@ -264,18 +264,20 @@ do not pay the decompression cost.
 
 ### Weather (`@squawk/weather` + `@squawk/weather/fetch`)
 
-| Tool                          | Purpose                                                        |
-| ----------------------------- | -------------------------------------------------------------- |
-| `parse_metar`                 | Parse a user-supplied METAR/SPECI string                       |
-| `parse_taf`                   | Parse a user-supplied TAF                                      |
-| `parse_sigmet`                | Parse a US-domestic or ICAO SIGMET                             |
-| `parse_airmet`                | Parse an AIRMET bulletin                                       |
-| `parse_pirep`                 | Parse a PIREP report                                           |
-| `fetch_metar`                 | Fetch and parse live METARs from the Aviation Weather Center   |
-| `fetch_taf`                   | Fetch and parse live TAFs                                      |
-| `fetch_pirep`                 | Fetch PIREPs near a center station                             |
-| `fetch_sigmets`               | Fetch active US (CONUS) SIGMETs, optionally filtered by hazard |
-| `fetch_international_sigmets` | Fetch active international SIGMETs in ICAO format              |
+| Tool                          | Purpose                                                             |
+| ----------------------------- | ------------------------------------------------------------------- |
+| `parse_metar`                 | Parse a user-supplied METAR/SPECI string                            |
+| `parse_taf`                   | Parse a user-supplied TAF                                           |
+| `parse_sigmet`                | Parse a US-domestic or ICAO SIGMET                                  |
+| `parse_airmet`                | Parse an AIRMET bulletin                                            |
+| `parse_pirep`                 | Parse a PIREP report                                                |
+| `parse_winds_aloft`           | Parse an FD (winds and temperatures aloft) bulletin                 |
+| `fetch_metar`                 | Fetch and parse live METARs from the Aviation Weather Center        |
+| `fetch_taf`                   | Fetch and parse live TAFs                                           |
+| `fetch_pirep`                 | Fetch PIREPs near a center station                                  |
+| `fetch_sigmets`               | Fetch active US (CONUS) SIGMETs, optionally filtered by hazard      |
+| `fetch_international_sigmets` | Fetch active international SIGMETs in ICAO format                   |
+| `fetch_winds_aloft`           | Fetch and parse a live FD winds-aloft forecast by region and period |
 
 ### NOTAMs (`@squawk/notams`)
 

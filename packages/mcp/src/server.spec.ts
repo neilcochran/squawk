@@ -76,11 +76,13 @@ const EXPECTED_TOOLS: readonly string[] = [
   'parse_sigmet',
   'parse_airmet',
   'parse_pirep',
+  'parse_winds_aloft',
   'fetch_metar',
   'fetch_taf',
   'fetch_pirep',
   'fetch_sigmets',
   'fetch_international_sigmets',
+  'fetch_winds_aloft',
   // notams
   'parse_icao_notam',
   'parse_faa_notam',
@@ -257,6 +259,56 @@ describe('createSquawkMcpServer', () => {
         })
         .parse(result.structuredContent);
       assert.equal(parsed.metar.stationId, 'KJFK');
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes parse_winds_aloft end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const raw = [
+        '(Extracted from FBUS31 KWNO 241359)',
+        'FD1US1',
+        'DATA BASED ON 241200Z',
+        'VALID 241800Z   FOR USE 1400-2100Z. TEMPS NEG ABV 24000',
+        '',
+        'FT  3000',
+        'BDL 3509',
+      ].join('\n');
+      const result = await client.callTool({
+        name: 'parse_winds_aloft',
+        arguments: { raw },
+      });
+      const parsed = z
+        .object({
+          windsAloft: z
+            .object({
+              productCode: z.string(),
+              altitudesFt: z.array(z.number()),
+              stations: z.array(z.object({ stationId: z.string() }).passthrough()),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      assert.equal(parsed.windsAloft.productCode, 'FD1US1');
+      assert.deepEqual(parsed.windsAloft.altitudesFt, [3000]);
+      assert.equal(parsed.windsAloft.stations[0]?.stationId, 'BDL');
+    } finally {
+      await close();
+    }
+  });
+
+  it('parse_winds_aloft flags malformed input via isError without throwing', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'parse_winds_aloft',
+        arguments: { raw: 'not a bulletin' },
+      });
+      assert.equal(result.isError, true);
+      const parsed = z.object({ windsAloft: z.null() }).parse(result.structuredContent);
+      assert.equal(parsed.windsAloft, null);
     } finally {
       await close();
     }
@@ -833,6 +885,49 @@ describe('live weather fetch tools (mocked)', () => {
       assert.ok(stub.lastUrl?.includes('/airsigmet?'));
       assert.ok(stub.lastUrl?.includes('hazard=turb'));
       assert.ok(stub.lastUrl?.includes('format=raw'));
+    } finally {
+      await close();
+    }
+  });
+
+  it('fetch_winds_aloft maps options to AWC wire params and returns a parsed forecast', async () => {
+    stub.body = [
+      '(Extracted from FBUS31 KWNO 241359)',
+      'FD1US1',
+      'DATA BASED ON 241200Z',
+      'VALID 241800Z   FOR USE 1400-2100Z. TEMPS NEG ABV 24000',
+      '',
+      'FT  3000',
+      'BDL 3509',
+    ].join('\n');
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'fetch_winds_aloft',
+        arguments: {
+          region: 'northeast',
+          altitudeBand: 'low',
+          forecastHours: 6,
+        },
+      });
+      const parsed = z
+        .object({
+          forecast: z
+            .object({
+              productCode: z.string(),
+              altitudesFt: z.array(z.number()),
+              stations: z.array(z.object({ stationId: z.string() }).passthrough()),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      assert.equal(parsed.forecast.productCode, 'FD1US1');
+      assert.deepEqual(parsed.forecast.altitudesFt, [3000]);
+      assert.equal(parsed.forecast.stations[0]?.stationId, 'BDL');
+      assert.ok(stub.lastUrl?.includes('/windtemp?'));
+      assert.ok(stub.lastUrl?.includes('region=bos'));
+      assert.ok(stub.lastUrl?.includes('level=low'));
+      assert.ok(stub.lastUrl?.includes('fcst=06'));
     } finally {
       await close();
     }
