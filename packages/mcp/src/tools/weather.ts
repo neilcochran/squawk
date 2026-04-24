@@ -10,18 +10,29 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { parseAirmet, parseMetar, parsePirep, parseSigmet, parseTaf } from '@squawk/weather';
+import {
+  parseAirmet,
+  parseMetar,
+  parsePirep,
+  parseSigmet,
+  parseTaf,
+  parseWindsAloft,
+} from '@squawk/weather';
 import {
   fetchInternationalSigmets,
   fetchMetar,
   fetchPirep,
   fetchSigmets,
   fetchTaf,
+  fetchWindsAloft,
   type FetchPirepOptions,
   type FetchSigmetsOptions,
   type FetchWeatherOptions,
+  type FetchWindsAloftOptions,
   type PirepMinimumIntensity,
   type SigmetHazardFilter,
+  type WindsAloftAltitudeBand,
+  type WindsAloftRegion,
 } from '@squawk/weather/fetch';
 import { z } from 'zod';
 import { runParser, summarizeParseErrors } from './tool-helpers.js';
@@ -40,6 +51,26 @@ const PIREP_INTENSITY_VALUES = [
   'mod',
   'sev',
 ] as const satisfies readonly PirepMinimumIntensity[];
+
+/** Allowed geographic regions for the AWC winds-aloft (FD) endpoint. */
+const WINDS_ALOFT_REGION_VALUES = [
+  'contiguousUs',
+  'northeast',
+  'southeast',
+  'northCentral',
+  'southCentral',
+  'rockyMountain',
+  'pacificCoast',
+  'alaska',
+  'hawaii',
+  'westernPacific',
+] as const satisfies readonly WindsAloftRegion[];
+
+/** Allowed altitude bands for the AWC winds-aloft (FD) endpoint. */
+const WINDS_ALOFT_ALTITUDE_BAND_VALUES = [
+  'low',
+  'high',
+] as const satisfies readonly WindsAloftAltitudeBand[];
 
 /**
  * Optional override for the Aviation Weather Center base URL. Read once at
@@ -139,6 +170,19 @@ export function registerWeatherTools(server: McpServer): void {
       },
     },
     ({ raw }) => runParser(raw, parsePirep, 'pirep'),
+  );
+
+  server.registerTool(
+    'parse_winds_aloft',
+    {
+      title: 'Parse a winds-aloft (FD) forecast bulletin',
+      description:
+        'Parses a raw FD (Forecast Winds and Temperatures Aloft) bulletin - sometimes referred to by its older name "FB" - into a structured object with the issue time, valid time, usable period, altitude columns, and per-station forecast levels. Each level includes wind direction, wind speed, and (usually) temperature; light-and-variable winds are flagged, missing columns are flagged, and temperatures above the "TEMPS NEG ABV" threshold are decoded from the implicit-negative wire format.',
+      inputSchema: {
+        raw: z.string().min(1).describe('Raw FD bulletin text.'),
+      },
+    },
+    ({ raw }) => runParser(raw, parseWindsAloft, 'windsAloft'),
   );
 
   // ---------------------------------------------------------------------------
@@ -295,6 +339,51 @@ export function registerWeatherTools(server: McpServer): void {
     async () => {
       const { sigmets, parseErrors } = await fetchInternationalSigmets(baseFetchOptions());
       const payload = { sigmets, parseErrors: summarizeParseErrors(parseErrors) };
+      return {
+        content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
+        structuredContent: payload,
+      };
+    },
+  );
+
+  server.registerTool(
+    'fetch_winds_aloft',
+    {
+      title: 'Fetch a winds-aloft (FD) forecast from the Aviation Weather Center',
+      description:
+        'Fetches a winds-aloft forecast (FD product) from the Aviation Weather Center text API and parses the response. Returns a single parsed bulletin covering many reporting stations at several altitudes. All three inputs (region, altitudeBand, forecastHours) are optional - omit them to let AWC apply its own defaults.',
+      inputSchema: {
+        region: z
+          .enum(WINDS_ALOFT_REGION_VALUES)
+          .optional()
+          .describe(
+            'Optional geographic region. "contiguousUs" covers all 48 contiguous US sites; the per-center regions ("northeast", "southeast", "northCentral", "southCentral", "rockyMountain", "pacificCoast") cover subsets. "alaska", "hawaii", and "westernPacific" are separate regions.',
+          ),
+        altitudeBand: z
+          .enum(WINDS_ALOFT_ALTITUDE_BAND_VALUES)
+          .optional()
+          .describe(
+            'Optional altitude band. "low" covers 3000-39000 ft (9 altitude columns); "high" covers FL450 and above (typically 45000 and 53000 ft).',
+          ),
+        forecastHours: z
+          .union([z.literal(6), z.literal(12), z.literal(24)])
+          .optional()
+          .describe('Optional forecast horizon in hours from issue time. Must be 6, 12, or 24.'),
+      },
+    },
+    async ({ region, altitudeBand, forecastHours }) => {
+      const options: FetchWindsAloftOptions = baseFetchOptions();
+      if (region !== undefined) {
+        options.region = region;
+      }
+      if (altitudeBand !== undefined) {
+        options.altitudeBand = altitudeBand;
+      }
+      if (forecastHours !== undefined) {
+        options.forecastHours = forecastHours;
+      }
+      const { forecast } = await fetchWindsAloft(options);
+      const payload = { forecast };
       return {
         content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
         structuredContent: payload,
