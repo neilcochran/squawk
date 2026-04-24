@@ -3,10 +3,10 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/weather)](https://www.npmjs.com/package/@squawk/weather) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure parsing library for aviation weather strings. Parses raw METAR, SPECI, TAF,
-SIGMET, AIRMET, and PIREP text into fully typed, structured objects. The core
-`@squawk/weather` export contains no network calls - consumers provide raw
-weather strings however they obtain them (ADDS API, AVWX, local feed, file
-dump) and the package returns structured results.
+SIGMET, AIRMET, PIREP, and FD (winds and temperatures aloft) text into fully
+typed, structured objects. The core `@squawk/weather` export contains no network
+calls - consumers provide raw weather strings however they obtain them (ADDS
+API, AVWX, local feed, file dump) and the package returns structured results.
 
 An opt-in fetch layer is available at `@squawk/weather/fetch` for consumers
 who want to pull live data directly from the Aviation Weather Center (AWC)
@@ -89,6 +89,28 @@ const sigmet = parseSigmet(singleSigmetRecord);
 console.log(sigmet.format); // "CONVECTIVE" | "NONCONVECTIVE" | "INTERNATIONAL"
 ```
 
+### Winds aloft (FD)
+
+```typescript
+import { parseWindsAloft, getLevelAtFt } from '@squawk/weather';
+
+const forecast = parseWindsAloft(rawFdBulletin);
+
+console.log(forecast.basedOn); // { day: 24, hour: 12, minute: 0 }
+console.log(forecast.altitudesFt); // [3000, 6000, 9000, 12000, 18000, 24000, 30000, 34000, 39000]
+
+const bdl = forecast.stations.find((s) => s.stationId === 'BDL');
+const at9k = bdl && getLevelAtFt(bdl, 9000);
+console.log(at9k?.directionDeg); // 330
+console.log(at9k?.speedKt); // 40
+console.log(at9k?.temperatureC); // -4
+
+// Light-and-variable winds (raw "9900") set a flag rather than a zero speed:
+const lv = forecast.stations[1]?.levels[0];
+console.log(lv?.isLightAndVariable); // true
+console.log(lv?.speedKt); // undefined
+```
+
 ## API
 
 ### `parseMetar(raw)`
@@ -154,6 +176,22 @@ console.log(pirep.turbulence?.[0]?.intensity); // "LGT"
 console.log(pirep.icing?.[0]?.type); // "RIME"
 ```
 
+### `parseWindsAloft(raw)`
+
+Parses a raw FD (Forecast Winds and Temperatures Aloft) bulletin - sometimes
+referred to by its older name "FB" - into a structured `WindsAloftForecast`
+object. Handles the AWC wire-format preamble (`(Extracted from ...)` or a
+plain WMO header line), the fixed-width altitude table, light-and-variable
+winds (raw code `9900`), high-speed wind encoding (direction codes 51-86
+denoting speeds >= 100 kt), and implicit-negative temperatures above the
+`TEMPS NEG ABV` threshold.
+
+### `getLevelAtFt(station, altitudeFt)`
+
+Helper that returns the `WindsAloftLevel` entry for a given altitude on a
+station row. Returns `undefined` when the altitude is not a column in the
+bulletin; no interpolation is performed.
+
 ### `deriveFlightCategory(visibilityStatuteMiles, isLessThan, sky, isCavok)`
 
 Derives the flight category (VFR, MVFR, IFR, LIFR) from visibility and ceiling
@@ -173,6 +211,7 @@ import {
   fetchPirep,
   fetchSigmets,
   fetchInternationalSigmets,
+  fetchWindsAloft,
 } from '@squawk/weather/fetch';
 
 const { metars } = await fetchMetar(['KJFK', 'KLAX']);
@@ -180,6 +219,11 @@ const { tafs } = await fetchTaf('KJFK');
 const { pireps } = await fetchPirep('KDEN');
 const { sigmets } = await fetchSigmets();
 const { sigmets: international } = await fetchInternationalSigmets();
+const { forecast } = await fetchWindsAloft({
+  region: 'northeast',
+  altitudeBand: 'low',
+  forecastHours: 6,
+});
 ```
 
 `fetchMetar` and `fetchTaf` accept a single 4-letter ICAO identifier or an
@@ -193,6 +237,10 @@ respective regions and take no ID argument:
 - `fetchInternationalSigmets` - international / ICAO-format SIGMETs via
   `/api/data/isigmet`. Does not include SIGMETs issued by the US in
   domestic format.
+- `fetchWindsAloft` - winds-aloft forecast (FD) bulletin via
+  `/api/data/windtemp`. Returns a single parsed `WindsAloftForecast`
+  (not an array); parser errors are thrown rather than captured as
+  per-record failures, because the endpoint returns a single bulletin.
 
 AWC does not currently expose a raw-text AIRMET endpoint; `parseAirmet` is
 still available for callers who have AIRMET text from another source.
@@ -215,6 +263,21 @@ await fetchPirep('KDEN', {
 ```typescript
 await fetchSigmets({ hazard: 'turb' }); // 'conv' | 'turb' | 'ice' | 'ifr'
 ```
+
+`fetchWindsAloft` accepts region, altitude band, and forecast horizon:
+
+```typescript
+await fetchWindsAloft({
+  region: 'northeast',
+  altitudeBand: 'low', // 'low' covers 3k-39k ft; 'high' covers FL450+
+  forecastHours: 6, // 6 | 12 | 24
+});
+```
+
+Region values are `contiguousUs`, `northeast`, `southeast`, `northCentral`,
+`southCentral`, `rockyMountain`, `pacificCoast`, `alaska`, `hawaii`, and
+`westernPacific`. All three parameters are optional - when omitted, the AWC
+API applies its own defaults.
 
 ### Options
 
@@ -257,5 +320,15 @@ try {
 This package exports all weather-related type definitions directly. Import types from `@squawk/weather` rather than `@squawk/types`:
 
 ```typescript
-import type { Metar, Taf, Sigmet, Airmet, Pirep, FlightCategory } from '@squawk/weather';
+import type {
+  Metar,
+  Taf,
+  Sigmet,
+  Airmet,
+  Pirep,
+  WindsAloftForecast,
+  WindsAloftStationForecast,
+  WindsAloftLevel,
+  FlightCategory,
+} from '@squawk/weather';
 ```

@@ -16,5 +16,13 @@ export { fetchSigmets } from './sigmet.js';
 export type { FetchSigmetsOptions, FetchSigmetsResult, SigmetHazardFilter } from './sigmet.js';
 export { fetchInternationalSigmets } from './international-sigmet.js';
 export type { FetchInternationalSigmetsResult } from './international-sigmet.js';
+export { fetchWindsAloft } from './winds-aloft.js';
+export type {
+  FetchWindsAloftOptions,
+  FetchWindsAloftResult,
+  WindsAloftRegion,
+  WindsAloftAltitudeBand,
+  WindsAloftForecastHours,
+} from './winds-aloft.js';
 export { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 export type { FetchWeatherOptions, ParseRecordError } from './client.js';
