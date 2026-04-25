@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.7.0"]
+      "args": ["-y", "@squawk/mcp@0.8.0"]
     }
   }
 }
@@ -209,9 +209,12 @@ directly.
 
 ### Airspace (`@squawk/airspace` + `@squawk/airspace-data`)
 
-| Tool                         | Purpose                                                                                             |
-| ---------------------------- | --------------------------------------------------------------------------------------------------- |
-| `query_airspace_at_position` | Class B/C/D/E and SUA features whose lateral polygon and vertical bounds contain a point + altitude |
+| Tool                         | Purpose                                                                                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `query_airspace_at_position` | Class B/C/D/E, SUA, and ARTCC features whose lateral polygon and vertical bounds contain a point + altitude                                     |
+| `get_airspace_for_airport`   | Class B/C/D/E2 surface-area sectors associated with an airport, with full polygon boundaries                                                    |
+| `find_artcc_for_position`    | US ARTCC features containing a given position and altitude (typically one feature; multiple for oceanic CTA+FIR overlaps or stratum boundaries) |
+| `find_artcc_by_identifier`   | All ARTCC features for a 3-letter center code (e.g. "ZNY"), optionally narrowed to a single stratum, with full polygon boundaries               |
 
 ### Navaids (`@squawk/navaids` + `@squawk/navaid-data`)
 

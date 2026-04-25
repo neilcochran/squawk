@@ -254,6 +254,7 @@ function parseSuaXml(
     state,
     controllingFacility,
     scheduleDescription,
+    artccStratum: null,
   };
 }
 
