@@ -38,7 +38,7 @@
     "@squawk/types": "^0.7.0"
   },
   "devDependencies": {
-    "@squawk/airport-data": "^0.6.1",
+    "@squawk/airport-data": "^0.7.0",
     "@types/node": "^25.6.0"
   },
   "keywords": [

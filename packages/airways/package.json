@@ -38,7 +38,7 @@
     "@squawk/units": "^0.4.0"
   },
   "devDependencies": {
-    "@squawk/airway-data": "^0.4.2",
+    "@squawk/airway-data": "^0.5.0",
     "@types/node": "^25.6.0"
   },
   "keywords": [
