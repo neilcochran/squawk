@@ -1,7 +1,7 @@
 import type { Fix, FixCompulsory, FixNavaidAssociation, FixUseCode } from '@squawk/types';
 import { FIX_COMPULSORY_MAP, FIX_USE_CODE_MAP } from '@squawk/types';
 import { lookupCode } from '@squawk/build-shared';
-import type { CsvRecord } from './parse-csv.js';
+import type { CsvRecord } from '@squawk/build-shared';
 
 /**
  * Safely parses a string to a float, returning undefined if empty or NaN.

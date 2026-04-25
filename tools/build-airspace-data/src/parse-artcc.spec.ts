@@ -1,48 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  parseCsvLine,
-  resolveStratum,
-  splitClosedShapes,
-  type ArtccSegPoint,
-} from './parse-artcc.js';
-
-describe('parseCsvLine', () => {
-  it('splits all-quoted fields on the comma between them', () => {
-    const fields = parseCsvLine('"2026/03/19","ZNY","NEW YORK"');
-    assert.deepEqual(fields, ['2026/03/19', 'ZNY', 'NEW YORK']);
-  });
-
-  it('preserves commas that appear inside a quoted field', () => {
-    const fields = parseCsvLine('"FACILITY LOCATED AT ALBUQUERQUE, NM","X"');
-    assert.deepEqual(fields, ['FACILITY LOCATED AT ALBUQUERQUE, NM', 'X']);
-  });
-
-  it('handles unquoted numeric fields mixed with quoted strings', () => {
-    // The ARB CSV uses unquoted numbers for lat deg/min/sec components
-    const fields = parseCsvLine('"ZNY","HIGH","ARTCC",10,40,47,2.35,"N"');
-    assert.deepEqual(fields, ['ZNY', 'HIGH', 'ARTCC', '10', '40', '47', '2.35', 'N']);
-  });
-
-  it('keeps empty quoted fields as empty strings', () => {
-    const fields = parseCsvLine('"A","","B"');
-    assert.deepEqual(fields, ['A', '', 'B']);
-  });
-
-  it('keeps trailing empty fields', () => {
-    const fields = parseCsvLine('"A","B",');
-    assert.deepEqual(fields, ['A', 'B', '']);
-  });
-
-  it('strips a leading UTF-8 BOM before splitting', () => {
-    const fields = parseCsvLine('\uFEFF"EFF_DATE","LOCATION_ID"');
-    assert.deepEqual(fields, ['EFF_DATE', 'LOCATION_ID']);
-  });
-
-  it('returns a single-element array for a line with no commas', () => {
-    assert.deepEqual(parseCsvLine('"only-field"'), ['only-field']);
-  });
-});
+import { resolveStratum, splitClosedShapes, type ArtccSegPoint } from './parse-artcc.js';
 
 describe('resolveStratum', () => {
   it('returns LOW for ALTITUDE=LOW + TYPE=ARTCC', () => {

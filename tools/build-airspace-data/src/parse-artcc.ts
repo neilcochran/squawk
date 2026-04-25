@@ -2,6 +2,7 @@ import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
 import type { Polygon } from 'geojson';
 import type { AirspaceFeature, AltitudeBound, ArtccStratum, Coordinates } from '@squawk/types';
+import { closeRing, parseCsvLine } from '@squawk/build-shared';
 import { simplifyPolygon } from './simplify-polygon.js';
 import { splitAtAntimeridian } from './split-antimeridian.js';
 
@@ -118,46 +119,6 @@ export interface ArtccSegPoint extends Coordinates {
   pointSeq: number;
   /** Boundary point description text (used to detect shape close markers). */
   description: string;
-}
-
-/**
- * UTF-8 byte order mark code point. Stripped from the very first character of
- * a CSV file when present, otherwise the BOM gets glued to the first column
- * name and breaks `indexOf` lookups against expected header strings.
- */
-const UTF8_BOM = '\uFEFF';
-
-/**
- * Parses a single line of the FAA NASR ARB CSV files into individual field
- * values. Unlike the simpler airport CSV parser used elsewhere in this build
- * tool, the ARB files mix quoted string fields (e.g. `"ZNY"`, `"ALBUQUERQUE"`)
- * with unquoted numeric fields (e.g. `35,46,0` for lat deg/min/sec). This
- * parser walks the line character-by-character, treating quoted regions as
- * opaque text and unquoted regions as comma-separated values. A leading
- * UTF-8 BOM is stripped so header parsing works on files that ship one.
- *
- * Exported for unit testing.
- */
-export function parseCsvLine(line: string): string[] {
-  const stripped = line.startsWith(UTF8_BOM) ? line.slice(1) : line;
-  const fields: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < stripped.length; i++) {
-    const char = stripped[i];
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-    if (char === ',' && !inQuotes) {
-      fields.push(current);
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-  fields.push(current);
-  return fields;
 }
 
 /**
@@ -338,12 +299,7 @@ export function splitClosedShapes(points: ArtccSegPoint[]): [number, number][][]
   for (const point of points) {
     current.push([point.lon, point.lat]);
     if (point.description.toUpperCase().includes(POINT_OF_BEGINNING_MARKER)) {
-      const first = current[0];
-      const last = current[current.length - 1];
-      if (first && last && (first[0] !== last[0] || first[1] !== last[1])) {
-        current.push([first[0], first[1]]);
-      }
-      shapes.push(current);
+      shapes.push(closeRing(current));
       current = [];
     }
   }
@@ -352,12 +308,7 @@ export function splitClosedShapes(points: ArtccSegPoint[]): [number, number][][]
   // so the polygon is still valid GeoJSON; this is defensive in case future
   // NASR cycles publish data without the explicit close marker.
   if (current.length > 0) {
-    const first = current[0];
-    const last = current[current.length - 1];
-    if (first && last && (first[0] !== last[0] || first[1] !== last[1])) {
-      current.push([first[0], first[1]]);
-    }
-    shapes.push(current);
+    shapes.push(closeRing(current));
   }
 
   return shapes;

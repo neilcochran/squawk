@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildAirport } from './parse-airports.js';
-import type { CsvRecord } from './parse-csv.js';
+import type { CsvRecord } from '@squawk/build-shared';
 
 function baseRec(overrides: Partial<CsvRecord> = {}): CsvRecord {
   return {

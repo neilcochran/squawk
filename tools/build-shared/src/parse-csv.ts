@@ -5,30 +5,40 @@
 export type CsvRecord = Record<string, string>;
 
 /**
- * Parses a single CSV line that may contain a mix of quoted and unquoted fields.
- * Handles the FAA NASR format where string fields are quoted but numeric fields
- * may be unquoted.
+ * UTF-8 byte order mark code point. Stripped from the very first character
+ * of the input when present, otherwise the BOM gets glued to the first
+ * column name and breaks `indexOf` lookups against expected header strings.
+ */
+const UTF8_BOM = '\uFEFF';
+
+/**
+ * Parses a single CSV line that may contain a mix of quoted and unquoted
+ * fields. Handles the FAA NASR format where string fields are quoted but
+ * numeric fields may be unquoted, including escaped double-quotes (`""`)
+ * inside quoted fields. A leading UTF-8 BOM is stripped so header parsing
+ * works on files that ship one.
  *
  * @param line - Raw CSV line to parse.
  * @returns Array of field values with quotes stripped.
  */
 export function parseCsvLine(line: string): string[] {
+  const stripped = line.startsWith(UTF8_BOM) ? line.slice(1) : line;
   const fields: string[] = [];
   let i = 0;
 
-  while (i <= line.length) {
-    if (i === line.length) {
+  while (i <= stripped.length) {
+    if (i === stripped.length) {
       fields.push('');
       break;
     }
 
-    if (line[i] === '"') {
+    if (stripped[i] === '"') {
       // Quoted field - find the closing quote.
       let j = i + 1;
       let value = '';
-      while (j < line.length) {
-        if (line[j] === '"') {
-          if (line[j + 1] === '"') {
+      while (j < stripped.length) {
+        if (stripped[j] === '"') {
+          if (stripped[j + 1] === '"') {
             // Escaped double-quote inside a quoted field.
             value += '"';
             j += 2;
@@ -37,7 +47,7 @@ export function parseCsvLine(line: string): string[] {
             break;
           }
         } else {
-          value += line[j];
+          value += stripped[j];
           j++;
         }
       }
@@ -46,12 +56,12 @@ export function parseCsvLine(line: string): string[] {
       i = j + 2;
     } else {
       // Unquoted field - find the next comma.
-      const commaIdx = line.indexOf(',', i);
+      const commaIdx = stripped.indexOf(',', i);
       if (commaIdx === -1) {
-        fields.push(line.substring(i));
+        fields.push(stripped.substring(i));
         break;
       }
-      fields.push(line.substring(i, commaIdx));
+      fields.push(stripped.substring(i, commaIdx));
       i = commaIdx + 1;
     }
   }
@@ -60,8 +70,8 @@ export function parseCsvLine(line: string): string[] {
 }
 
 /**
- * Parses a full CSV string into an array of record objects keyed by column name.
- * Only non-empty, trimmed values are included in each record.
+ * Parses a full CSV string into an array of record objects keyed by column
+ * name. Only non-empty, trimmed values are included in each record.
  *
  * @param text - Full CSV text content.
  * @returns Array of parsed records.
