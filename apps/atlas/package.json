@@ -29,6 +29,8 @@
   },
   "dependencies": {
     "@protomaps/basemaps": "^5.7.2",
+    "@squawk/airport-data": "^0.7.0",
+    "@squawk/airports": "^0.5.1",
     "@tanstack/react-router": "^1.168.24",
     "@vis.gl/react-maplibre": "^8.1.1",
     "maplibre-gl": "^5.24.0",

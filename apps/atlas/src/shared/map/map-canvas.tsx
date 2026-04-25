@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { Map } from '@vis.gl/react-maplibre';
 import type { ViewStateChangeEvent } from '@vis.gl/react-maplibre';
 import maplibregl from 'maplibre-gl';
@@ -57,15 +57,27 @@ export interface MapCanvasProps {
   zoom: number;
   /** Called when the user finishes interacting with the map (fires on `moveend`). */
   onViewStateChange?: (view: ViewStateChange) => void;
+  /**
+   * Map overlays. Pass `<Source>` and `<Layer>` elements from
+   * `@vis.gl/react-maplibre` to render mode-specific data on top of the
+   * basemap.
+   */
+  children?: ReactNode;
 }
 
 /**
  * Shared map primitive used by every mode that needs a basemap. Renders a
  * full-bleed MapLibre map with the Protomaps basemap and emits the view state
  * on `moveend` so callers can persist it to the URL. Mode-specific overlays
- * will be added as children in later phases.
+ * are rendered by passing `<Source>` and `<Layer>` elements as children.
  */
-export function MapCanvas({ lat, lon, zoom, onViewStateChange }: MapCanvasProps): ReactElement {
+export function MapCanvas({
+  lat,
+  lon,
+  zoom,
+  onViewStateChange,
+  children,
+}: MapCanvasProps): ReactElement {
   const handleMoveEnd = useCallback(
     (event: ViewStateChangeEvent): void => {
       if (onViewStateChange === undefined) {
@@ -86,6 +98,8 @@ export function MapCanvas({ lat, lon, zoom, onViewStateChange }: MapCanvasProps)
       style={{ position: 'absolute', inset: 0 }}
       mapStyle={MAP_STYLE}
       onMoveEnd={handleMoveEnd}
-    />
+    >
+      {children}
+    </Map>
   );
 }

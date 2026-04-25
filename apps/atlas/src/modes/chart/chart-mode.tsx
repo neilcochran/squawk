@@ -3,14 +3,16 @@ import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { MapCanvas } from '../../shared/map/map-canvas.tsx';
 import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
+import { AirportsLayer } from './layers/airports-layer.tsx';
 import { CHART_ROUTE_PATH } from './url-state.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 
 /**
- * Chart mode: an interactive aeronautical map. v0 renders the shared map
- * primitive and round-trips the view state through the URL; data layers
- * (airports, navaids, fixes, airways, airspace) land in Phase 5.
+ * Chart mode: an interactive aeronautical map. Renders the shared map
+ * primitive with chart-specific overlays (airports today; navaids, fixes,
+ * airways, and airspace land in subsequent steps of Phase 5) and round-trips
+ * the view state through the URL.
  */
 export function ChartMode(): ReactElement {
   const { lat, lon, zoom } = route.useSearch();
@@ -26,5 +28,9 @@ export function ChartMode(): ReactElement {
     [navigate],
   );
 
-  return <MapCanvas lat={lat} lon={lon} zoom={zoom} onViewStateChange={handleViewStateChange} />;
+  return (
+    <MapCanvas lat={lat} lon={lon} zoom={zoom} onViewStateChange={handleViewStateChange}>
+      <AirportsLayer />
+    </MapCanvas>
+  );
 }
