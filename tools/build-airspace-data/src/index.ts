@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import AdmZip from 'adm-zip';
 import { parseNasrArgs } from '@squawk/build-shared';
 import { loadAirportStates } from './load-airport-states.js';
+import { parseArtcc } from './parse-artcc.js';
 import { parseClassAirspace } from './parse-class-airspace.js';
 import { parseSua } from './parse-sua.js';
 import { writeOutput } from './write-output.js';
@@ -22,29 +23,38 @@ const CSV_DATA_DIR = 'CSV_Data';
 /** Name of the APT_BASE.csv file inside the CSV data ZIP. */
 const APT_BASE_CSV = 'APT_BASE.csv';
 
+/** Name of the ARB_BASE.csv file inside the CSV data ZIP. */
+const ARB_BASE_CSV = 'ARB_BASE.csv';
+
+/** Name of the ARB_SEG.csv file inside the CSV data ZIP. */
+const ARB_SEG_CSV = 'ARB_SEG.csv';
+
 /**
- * Extracts APT_BASE.csv from the NASR CSV data ZIP and writes it to a temp
- * file. The caller is responsible for deleting the temp file when done.
- * Returns the absolute path to the written temp file.
+ * Locates the inner CSV ZIP within the NASR subscription directory and
+ * returns an `AdmZip` handle to it. The CSV directory contains a single
+ * cycle-dated ZIP (e.g. `16_Apr_2026_CSV.zip`) holding all CSV files.
  */
-async function extractAptBaseCsv(subscriptionDir: string): Promise<string> {
+function openCsvZip(subscriptionDir: string): AdmZip {
   const csvDataDir = join(subscriptionDir, CSV_DATA_DIR);
   const entries = readdirSync(csvDataDir).filter((f) => f.endsWith('.zip'));
   const firstEntry = entries[0];
   if (!firstEntry) {
     throw new Error(`No ZIP file found in ${csvDataDir}`);
   }
+  return new AdmZip(join(csvDataDir, firstEntry));
+}
 
-  const csvZipPath = join(csvDataDir, firstEntry);
-  console.log(`[index] Extracting ${APT_BASE_CSV} from ${basename(csvZipPath)}`);
-
-  const csvZip = new AdmZip(csvZipPath);
-  const csvBuffer = csvZip.readFile(APT_BASE_CSV);
+/**
+ * Extracts a single named CSV file from the inner NASR CSV ZIP and writes
+ * it to a temp file. Returns the absolute path to the written temp file.
+ * The caller is responsible for deleting the temp file when done.
+ */
+async function extractCsvToTemp(csvZip: AdmZip, csvName: string): Promise<string> {
+  const csvBuffer = csvZip.readFile(csvName);
   if (!csvBuffer) {
-    throw new Error(`Could not read ${APT_BASE_CSV} from ${csvZipPath}`);
+    throw new Error(`Could not read ${csvName} from CSV ZIP`);
   }
-
-  const tempPath = join(tmpdir(), `apt-base-${randomUUID()}.csv`);
+  const tempPath = join(tmpdir(), `${basename(csvName, '.csv')}-${randomUUID()}.csv`);
   await writeFile(tempPath, csvBuffer);
   return tempPath;
 }
@@ -65,13 +75,19 @@ async function main(): Promise<void> {
     const shpPath = join(subscriptionDir, CLASS_AIRSPACE_SHP);
     const saaZipPath = join(subscriptionDir, SAA_ZIP_PATH);
 
-    // Extract APT_BASE.csv from the nested CSV ZIP to a temp file.
-    let tempCsvPath: string | undefined;
+    const csvZip = openCsvZip(subscriptionDir);
+    const tempPaths: string[] = [];
     try {
-      tempCsvPath = await extractAptBaseCsv(subscriptionDir);
+      console.log(`[index] Extracting ${APT_BASE_CSV}, ${ARB_BASE_CSV}, ${ARB_SEG_CSV}...`);
+      const aptBaseCsvPath = await extractCsvToTemp(csvZip, APT_BASE_CSV);
+      tempPaths.push(aptBaseCsvPath);
+      const arbBaseCsvPath = await extractCsvToTemp(csvZip, ARB_BASE_CSV);
+      tempPaths.push(arbBaseCsvPath);
+      const arbSegCsvPath = await extractCsvToTemp(csvZip, ARB_SEG_CSV);
+      tempPaths.push(arbSegCsvPath);
 
       console.log('[index] Loading airport states...');
-      const airportStates = await loadAirportStates(tempCsvPath);
+      const airportStates = await loadAirportStates(aptBaseCsvPath);
       console.log(`[index] Loaded ${airportStates.size} airport state entries.`);
 
       console.log('[index] Parsing Class B/C/D/E airspace...');
@@ -82,14 +98,16 @@ async function main(): Promise<void> {
       const suaFeatures = parseSua(saaZipPath);
       console.log(`[index] Parsed ${suaFeatures.length} SUA features.`);
 
-      const allFeatures = [...classFeatures, ...suaFeatures];
+      console.log('[index] Parsing ARTCC airspace...');
+      const artccFeatures = await parseArtcc(arbBaseCsvPath, arbSegCsvPath);
+      console.log(`[index] Parsed ${artccFeatures.length} ARTCC features.`);
+
+      const allFeatures = [...classFeatures, ...suaFeatures, ...artccFeatures];
       console.log(`[index] Total features: ${allFeatures.length}`);
 
       await writeOutput(allFeatures, outputPath, nasrCycleDate);
     } finally {
-      if (tempCsvPath) {
-        await unlink(tempCsvPath).catch(() => undefined);
-      }
+      await Promise.all(tempPaths.map((p) => unlink(p).catch(() => undefined)));
     }
   } finally {
     cleanup();

@@ -12,6 +12,9 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 
 - Class B, C, D, and E controlled airspace (E2 through E7 subtypes)
 - Special Use Airspace: MOAs, restricted, prohibited, warning, alert, and national security areas
+- ARTCC (Air Route Traffic Control Center) lateral boundaries for all
+  US-controlled centers, published per stratum (LOW/HIGH/UTA, plus oceanic
+  CTA/FIR where applicable)
 
 ## Usage
 
@@ -19,8 +22,8 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 import { usBundledAirspace } from '@squawk/airspace-data';
 
 // Inspect metadata
-console.log(usBundledAirspace.properties.nasrCycleDate); // "2026-01-22"
-console.log(usBundledAirspace.properties.featureCount); // 6842
+console.log(usBundledAirspace.properties.nasrCycleDate); // YYYY-MM-DD
+console.log(usBundledAirspace.properties.featureCount);
 
 // Use with @squawk/airspace for zero-config airspace queries
 import { createAirspaceResolver } from '@squawk/airspace';
@@ -36,22 +39,25 @@ pass any compatible GeoJSON dataset at initialization.
 The export is a GeoJSON `FeatureCollection`. Each feature's geometry is a Polygon
 representing one airspace boundary. Feature properties include:
 
-| Property              | Type           | Description                                                                   |
-| --------------------- | -------------- | ----------------------------------------------------------------------------- |
-| `type`                | string         | Airspace type (CLASS_B, CLASS_C, CLASS_D, CLASS_E2-E7, MOA, RESTRICTED, etc.) |
-| `name`                | string         | Human-readable name                                                           |
-| `identifier`          | string         | NASR designator or airport identifier                                         |
-| `floor`               | AltitudeBound  | Lower vertical bound                                                          |
-| `ceiling`             | AltitudeBound  | Upper vertical bound                                                          |
-| `state`               | string or null | Two-letter US state abbreviation                                              |
-| `controllingFacility` | string or null | Controlling ARTCC or facility                                                 |
-| `scheduleDescription` | string or null | Operating schedule text                                                       |
+| Property              | Type                 | Description                                                                                                 |
+| --------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `type`                | string               | Airspace type (CLASS_B, CLASS_C, CLASS_D, CLASS_E2-E7, MOA, RESTRICTED, ARTCC, etc.)                        |
+| `name`                | string               | Human-readable name                                                                                         |
+| `identifier`          | string               | NASR designator, airport identifier, or 3-letter ARTCC code                                                 |
+| `floor`               | AltitudeBound        | Lower vertical bound                                                                                        |
+| `ceiling`             | AltitudeBound        | Upper vertical bound                                                                                        |
+| `state`               | string or null       | Two-letter US state abbreviation                                                                            |
+| `controllingFacility` | string or null       | Controlling ARTCC or facility (null for ARTCC features)                                                     |
+| `scheduleDescription` | string or null       | Operating schedule text                                                                                     |
+| `artccStratum`        | ArtccStratum or null | For ARTCC features, the stratum (`LOW`, `HIGH`, `UTA`, `CTA`, `FIR`, `CTA/FIR`); `null` for all other types |
 
 `AltitudeBound` is `{ valueFt: number, reference: 'MSL' | 'AGL' | 'SFC' }`.
 
 ## Data source
 
 All geometry and metadata is derived from the [FAA National Airspace System Resource
-(NASR)](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) 28-day subscription, which is public domain. Class B/C/D/E boundaries come
-from the NASR ESRI Shapefile and SUA boundaries from the AIXM 5.0 XML files. The
-build pipeline that produces this dataset lives in [tools/build-airspace-data](https://github.com/neilcochran/squawk/tree/main/tools/build-airspace-data).
+(NASR)](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) 28-day subscription, which is public domain. Class B/C/D/E
+boundaries come from the NASR ESRI Shapefile, SUA boundaries from the AIXM
+5.0 XML files, and ARTCC boundaries from the `ARB_BASE.csv` and
+`ARB_SEG.csv` tables in the NASR CSV distribution. The build pipeline that
+produces this dataset lives in [tools/build-airspace-data](https://github.com/neilcochran/squawk/tree/main/tools/build-airspace-data).

@@ -7,7 +7,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { AirspaceQuery } from '@squawk/airspace';
-import type { AirspaceFeature, AirspaceType } from '@squawk/types';
+import type { AirspaceFeature, AirspaceType, ArtccStratum } from '@squawk/types';
 import { z } from 'zod';
 import { airportResolver, airspaceResolver } from '../resolvers.js';
 
@@ -28,7 +28,18 @@ const AIRSPACE_TYPE_VALUES = [
   'WARNING',
   'ALERT',
   'NSA',
+  'ARTCC',
 ] as const satisfies readonly AirspaceType[];
+
+/** All {@link ArtccStratum} values, used for input validation. */
+const ARTCC_STRATUM_VALUES = [
+  'LOW',
+  'HIGH',
+  'UTA',
+  'CTA',
+  'FIR',
+  'CTA/FIR',
+] as const satisfies readonly ArtccStratum[];
 
 /**
  * Strips the polygon boundary from a feature for tool output. The boundary
@@ -39,11 +50,11 @@ const AIRSPACE_TYPE_VALUES = [
  * callers can tell how detailed the original boundary was.
  */
 function summarizeFeature(feature: AirspaceFeature): {
-  /** Airspace class or SUA designation. */
+  /** Airspace class, SUA, or ARTCC designation. */
   type: AirspaceType;
   /** Human-readable airspace name. */
   name: string;
-  /** NASR designator (SUA) or associated airport identifier (Class B/C/D). */
+  /** NASR designator (SUA), associated airport identifier (Class B/C/D), or ARTCC code. */
   identifier: string;
   /** Lower vertical bound. */
   floor: AirspaceFeature['floor'];
@@ -55,6 +66,8 @@ function summarizeFeature(feature: AirspaceFeature): {
   controllingFacility: string | null;
   /** Operating schedule text, or null. */
   scheduleDescription: string | null;
+  /** For ARTCC features, the stratum (LOW, HIGH, UTA, CTA, FIR, CTA/FIR); null for all other types. */
+  artccStratum: ArtccStratum | null;
   /** Number of vertices in the boundary polygon (useful for downstream tooling). */
   vertexCount: number;
 } {
@@ -68,6 +81,7 @@ function summarizeFeature(feature: AirspaceFeature): {
     state: feature.state,
     controllingFacility: feature.controllingFacility,
     scheduleDescription: feature.scheduleDescription,
+    artccStratum: feature.artccStratum,
     vertexCount: ring.length,
   };
 }
@@ -146,6 +160,67 @@ export function registerAirspaceTools(server: McpServer): void {
       return {
         content: [{ type: 'text', text: JSON.stringify({ airport, features }, null, 2) }],
         structuredContent: { airport, features },
+      };
+    },
+  );
+
+  server.registerTool(
+    'find_artcc_for_position',
+    {
+      title: 'Find the ARTCC center containing a position and altitude',
+      description:
+        'Returns the US Air Route Traffic Control Center (ARTCC) features whose lateral boundary contains the given position at the given altitude. Typically returns a single feature (one center, one stratum), but can return multiple in three cases: (1) oceanic positions covered by overlapping CTA and FIR strata; (2) positions exactly at a stratum boundary (e.g. FL180 matches both LOW and HIGH); (3) antimeridian-split centers like ZAK where a stratum is published as multiple sub-polygons that each cover part of the same geographic area. If the position falls outside any US ARTCC, returns an empty features array. Boundary geometry is summarized as a vertex count to keep responses compact - use find_artcc_by_identifier to retrieve full polygons.',
+      inputSchema: {
+        lat: z.number().min(-90).max(90).describe('Latitude in decimal degrees (WGS84).'),
+        lon: z.number().min(-180).max(180).describe('Longitude in decimal degrees (WGS84).'),
+        altitudeFt: z
+          .number()
+          .optional()
+          .describe(
+            'Altitude in feet MSL. Defaults to 0 (surface), which selects the LOW stratum where applicable. Pass FL180+ to target HIGH or FL600+ to target UTA.',
+          ),
+      },
+    },
+    ({ lat, lon, altitudeFt }) => {
+      const query: AirspaceQuery = {
+        lat,
+        lon,
+        altitudeFt: altitudeFt ?? 0,
+        types: new Set<AirspaceType>(['ARTCC']),
+      };
+      const features = airspaceResolver.query(query).map(summarizeFeature);
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ features }, null, 2) }],
+        structuredContent: { features },
+      };
+    },
+  );
+
+  server.registerTool(
+    'find_artcc_by_identifier',
+    {
+      title: 'Find ARTCC features for a center identifier',
+      description:
+        'Returns every ARTCC feature for the given three-letter center code (e.g. "ZNY", "ZBW", "ZAK"), with full polygon boundary coordinates suitable for drawing. Each US center is published as multiple features (one per stratum: LOW, HIGH, plus oceanic UTA/CTA/FIR), all returned by default. A single stratum can map to more than one feature when the source data has multiple disjoint shapes (e.g. ZOA UTA spans four oceanic delegation areas) or when antimeridian-crossing shapes are split into eastern and western sub-polygons (ZAK and ZAP). Pass a stratum filter to narrow results. Lookup is case-insensitive. Returns an empty features array for unknown identifiers.',
+      inputSchema: {
+        artccId: z
+          .string()
+          .min(3)
+          .max(3)
+          .describe('Three-letter ARTCC center code (e.g. "ZNY", "ZBW").'),
+        stratum: z
+          .enum(ARTCC_STRATUM_VALUES)
+          .optional()
+          .describe(
+            'Restrict to a single stratum (LOW, HIGH, UTA, CTA, FIR, or CTA/FIR). Omit to return every published stratum for the center.',
+          ),
+      },
+    },
+    ({ artccId, stratum }) => {
+      const features = airspaceResolver.byArtcc(artccId, stratum);
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ features }, null, 2) }],
+        structuredContent: { features },
       };
     },
   );
