@@ -1,5 +1,12 @@
 # @squawk/icao-registry-data
 
+## 0.7.0
+
+### Minor Changes
+
+- 239ef23: ### Changed
+  - Refreshed bundled FAA ReleasableAircraft snapshot (311,711 records, up from 311,653).
+
 ## 0.6.0
 
 ### Minor Changes
