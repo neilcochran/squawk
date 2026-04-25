@@ -38,7 +38,7 @@
     "@squawk/types": "^0.7.0"
   },
   "devDependencies": {
-    "@squawk/fix-data": "^0.5.2",
+    "@squawk/fix-data": "^0.6.0",
     "@types/node": "^25.6.0"
   },
   "keywords": [
