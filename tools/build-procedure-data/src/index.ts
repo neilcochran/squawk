@@ -55,7 +55,7 @@ async function fetchLatestCifpFilename(): Promise<string> {
 
 /**
  * Main entry point. Parses CLI arguments, loads the CIFP dataset,
- * decodes every published procedure, and writes the compacted output.
+ * decodes every published procedure, and writes the gzipped output.
  */
 async function main(): Promise<void> {
   const args = process.argv.slice(2);

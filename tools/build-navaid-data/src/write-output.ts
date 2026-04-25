@@ -5,75 +5,9 @@ import { updateReadmeDate } from '@squawk/build-shared';
 import type { Navaid } from '@squawk/types';
 
 /**
- * Compact representation of a Navaid record. Short keys reduce file size.
- */
-interface CompactNavaid {
-  /** Identifier. */
-  id: string;
-  /** Name. */
-  nm: string;
-  /** Type. */
-  tp: string;
-  /** Status. */
-  st: string;
-  /** Latitude. */
-  lat: number;
-  /** Longitude. */
-  lon: number;
-  /** State code (absent for non-US navaids). */
-  state?: string;
-  /** Country code. */
-  ctry: string;
-  /** City. */
-  city?: string;
-  /** Elevation in feet MSL. */
-  elev?: number;
-  /** Frequency in MHz (VOR-family). */
-  fmhz?: number;
-  /** Frequency in kHz (NDB-family). */
-  fkhz?: number;
-  /** TACAN channel. */
-  ch?: string;
-  /** Magnetic variation. */
-  mv?: number;
-  /** Magnetic variation direction. */
-  mvd?: string;
-  /** Magnetic variation year. */
-  mvy?: number;
-  /** Low-altitude ARTCC ID. */
-  lart?: string;
-  /** High-altitude ARTCC ID. */
-  hart?: string;
-  /** Navaid class. */
-  cls?: string;
-  /** DME service volume. */
-  dssv?: string;
-  /** Power output watts. */
-  pwr?: number;
-  /** Simultaneous voice. */
-  sv?: true;
-  /** NDB class. */
-  ndb?: string;
-  /** Public use. */
-  pub?: true;
-  /** Operating hours. */
-  hrs?: string;
-  /** NOTAM ID. */
-  notam?: string;
-  /** Fan marker identifier. */
-  mkr?: string;
-  /** Fan marker shape. */
-  mkrs?: string;
-  /** Fan marker bearing. */
-  mkrb?: number;
-  /** DME latitude. */
-  dlat?: number;
-  /** DME longitude. */
-  dlon?: number;
-}
-
-/**
- * Shape of the bundled JSON output file.
+ * Shape of the bundled JSON output file: dataset metadata plus the array
+ * of full Navaid records. Matches the wire format consumed by
+ * `@squawk/navaid-data`.
  */
 interface BundledOutput {
   /** Dataset metadata. */
@@ -85,102 +19,12 @@ interface BundledOutput {
     /** Total number of navaid records in the dataset. */
     recordCount: number;
   };
-  /** Navaid records as an array. */
-  records: CompactNavaid[];
+  /** Navaid records. */
+  records: Navaid[];
 }
 
 /**
- * Compacts a Navaid into its short-key representation.
- */
-function compactNavaid(nav: Navaid): CompactNavaid {
-  const c: CompactNavaid = {
-    id: nav.identifier,
-    nm: nav.name,
-    tp: nav.type,
-    st: nav.status,
-    lat: nav.lat,
-    lon: nav.lon,
-    ctry: nav.country,
-  };
-
-  if (nav.state !== undefined) {
-    c.state = nav.state;
-  }
-  if (nav.city !== undefined) {
-    c.city = nav.city;
-  }
-  if (nav.elevationFt !== undefined) {
-    c.elev = nav.elevationFt;
-  }
-  if (nav.frequencyMhz !== undefined) {
-    c.fmhz = nav.frequencyMhz;
-  }
-  if (nav.frequencyKhz !== undefined) {
-    c.fkhz = nav.frequencyKhz;
-  }
-  if (nav.tacanChannel !== undefined) {
-    c.ch = nav.tacanChannel;
-  }
-  if (nav.magneticVariationDeg !== undefined) {
-    c.mv = nav.magneticVariationDeg;
-  }
-  if (nav.magneticVariationDirection !== undefined) {
-    c.mvd = nav.magneticVariationDirection;
-  }
-  if (nav.magneticVariationYear !== undefined) {
-    c.mvy = nav.magneticVariationYear;
-  }
-  if (nav.lowArtccId !== undefined) {
-    c.lart = nav.lowArtccId;
-  }
-  if (nav.highArtccId !== undefined) {
-    c.hart = nav.highArtccId;
-  }
-  if (nav.navaidClass !== undefined) {
-    c.cls = nav.navaidClass;
-  }
-  if (nav.dmeServiceVolume !== undefined) {
-    c.dssv = nav.dmeServiceVolume;
-  }
-  if (nav.powerOutputWatts !== undefined) {
-    c.pwr = nav.powerOutputWatts;
-  }
-  if (nav.simultaneousVoice) {
-    c.sv = true;
-  }
-  if (nav.ndbClass !== undefined) {
-    c.ndb = nav.ndbClass;
-  }
-  if (nav.publicUse) {
-    c.pub = true;
-  }
-  if (nav.operatingHours !== undefined) {
-    c.hrs = nav.operatingHours;
-  }
-  if (nav.notamId !== undefined) {
-    c.notam = nav.notamId;
-  }
-  if (nav.markerIdentifier !== undefined) {
-    c.mkr = nav.markerIdentifier;
-  }
-  if (nav.markerShape !== undefined) {
-    c.mkrs = nav.markerShape;
-  }
-  if (nav.markerBearingDeg !== undefined) {
-    c.mkrb = nav.markerBearingDeg;
-  }
-  if (nav.dmeLat !== undefined) {
-    c.dlat = nav.dmeLat;
-  }
-  if (nav.dmeLon !== undefined) {
-    c.dlon = nav.dmeLon;
-  }
-
-  return c;
-}
-
-/**
- * Writes Navaid records to a gzipped compact JSON file at the given path.
+ * Writes Navaid records to a gzipped JSON file at the given path.
  * Creates the output directory if it does not exist.
  *
  * @param navaids - Navaid records to serialize.
@@ -200,7 +44,7 @@ export async function writeOutput(
       nasrCycleDate,
       recordCount: navaids.length,
     },
-    records: navaids.map(compactNavaid),
+    records: navaids,
   };
 
   const json = JSON.stringify(output);
