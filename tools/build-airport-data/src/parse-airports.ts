@@ -18,8 +18,8 @@ import type {
 } from '@squawk/types';
 import { ILS_CATEGORY_MAP, ILS_SYSTEM_TYPE_MAP } from '@squawk/types';
 import { lookupCode } from '@squawk/build-shared';
+import type { CsvRecord } from '@squawk/build-shared';
 import { find as findTimezone } from 'geo-tz';
-import type { CsvRecord } from './parse-csv.js';
 
 /** Maps FAA SITE_TYPE_CODE values to FacilityType. */
 const facilityTypeMap: Record<string, FacilityType> = {

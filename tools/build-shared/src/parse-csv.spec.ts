@@ -47,6 +47,11 @@ describe('parseCsvLine', () => {
     const fields = parseCsvLine('"  spaced  ","nope"');
     assert.deepEqual(fields, ['  spaced  ', 'nope']);
   });
+
+  it('strips a leading UTF-8 BOM before splitting', () => {
+    const fields = parseCsvLine('\uFEFF"EFF_DATE","LOCATION_ID"');
+    assert.deepEqual(fields, ['EFF_DATE', 'LOCATION_ID']);
+  });
 });
 
 describe('parseCsv', () => {

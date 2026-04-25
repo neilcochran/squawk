@@ -4,3 +4,7 @@ export { parseNasrArgs } from './parse-nasr-args.js';
 export type { NasrArgs, ParseNasrArgsOptions } from './parse-nasr-args.js';
 export { updateReadmeDate } from './update-readme-date.js';
 export { lookupCode } from './lookup-code.js';
+export { parseCsv, parseCsvLine } from './parse-csv.js';
+export type { CsvRecord } from './parse-csv.js';
+export { closeRing, stripClosingDuplicate } from './close-ring.js';
+export type { LonLat } from './close-ring.js';

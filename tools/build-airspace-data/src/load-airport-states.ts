@@ -1,15 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
-
-/**
- * Parses a single line of the FAA NASR APT_BASE.csv format into an array of
- * field values. Every field in the FAA CSV is wrapped in double quotes, so the
- * strategy is to strip the leading and trailing quote from the whole line and
- * then split on the literal sequence `","`.
- */
-function parseCsvLine(line: string): string[] {
-  return line.replace(/^"|"$/g, '').split('","');
-}
+import { parseCsvLine } from '@squawk/build-shared';
 
 /**
  * Reads the FAA NASR APT_BASE.csv file and returns a map from airport
