@@ -4,6 +4,7 @@ import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { MapCanvas } from '../../shared/map/map-canvas.tsx';
 import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
+import { NavaidsLayer } from './layers/navaids-layer.tsx';
 import { CHART_ROUTE_PATH } from './url-state.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
@@ -31,6 +32,7 @@ export function ChartMode(): ReactElement {
   return (
     <MapCanvas lat={lat} lon={lon} zoom={zoom} onViewStateChange={handleViewStateChange}>
       <AirportsLayer />
+      <NavaidsLayer />
     </MapCanvas>
   );
 }
