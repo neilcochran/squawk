@@ -1,6 +1,6 @@
 {
   "name": "@squawk/fix-data",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "type": "module",
   "description": "Pre-processed FAA NASR fix/waypoint snapshot for use with @squawk/fixes",
   "author": "Neil Cochran",

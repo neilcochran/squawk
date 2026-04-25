@@ -1,6 +1,6 @@
 {
   "name": "@squawk/procedure-data",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "type": "module",
   "description": "Pre-processed FAA CIFP procedure snapshot (SIDs, STARs, IAPs) for use with @squawk/procedures",
   "author": "Neil Cochran",
