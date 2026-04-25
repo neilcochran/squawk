@@ -1,8 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
 import AdmZip from 'adm-zip';
-import { parseNasrArgs } from '@squawk/build-shared';
-import { parseCsv } from './parse-csv.js';
+import { parseNasrArgs, parseCsv } from '@squawk/build-shared';
 import { buildFix, buildNavaidAssociation } from './parse-fixes.js';
 import { writeOutput } from './write-output.js';
 import type { Fix } from '@squawk/types';

@@ -1,8 +1,4 @@
-/**
- * A `[lon, lat]` coordinate pair in decimal degrees, matching the GeoJSON
- * convention used throughout the airspace pipeline.
- */
-type LonLat = [number, number];
+import { closeRing, stripClosingDuplicate, type LonLat } from '@squawk/build-shared';
 
 /**
  * Splits a closed polygon ring into one or more closed rings such that every
@@ -75,39 +71,6 @@ export function splitAtAntimeridian(
     subRings.push(closeRing(mapped));
   }
   return subRings;
-}
-
-/**
- * Returns a copy of the ring with its trailing closing-duplicate vertex
- * removed, if present. Leaves the ring unchanged when the first and last
- * vertices already differ.
- */
-function stripClosingDuplicate(ring: LonLat[]): LonLat[] {
-  if (ring.length < 2) {
-    return ring.slice();
-  }
-  const first = ring[0];
-  const last = ring[ring.length - 1];
-  if (first && last && first[0] === last[0] && first[1] === last[1]) {
-    return ring.slice(0, -1);
-  }
-  return ring.slice();
-}
-
-/**
- * Re-closes an open ring by appending a copy of the first vertex when the
- * last vertex differs from it. GeoJSON requires polygon rings to be closed.
- */
-function closeRing(open: LonLat[]): LonLat[] {
-  if (open.length === 0) {
-    return [];
-  }
-  const first = open[0]!;
-  const last = open[open.length - 1]!;
-  if (first[0] === last[0] && first[1] === last[1]) {
-    return open.slice();
-  }
-  return [...open, [first[0], first[1]]];
 }
 
 /**

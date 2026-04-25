@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 import { XMLParser } from 'fast-xml-parser';
 import type { Polygon } from 'geojson';
 import type { AirspaceFeature, AirspaceType } from '@squawk/types';
+import { closeRing } from '@squawk/build-shared';
 import { normalizeSaaAltitude } from './normalize-altitude.js';
 import { discretizeArc } from './discretize-arc.js';
 
@@ -358,7 +359,7 @@ function extractBoundary(surface: any, entryName: string): Polygon | null {
     return null;
   }
 
-  const coordinates: [number, number][] = [];
+  let coordinates: [number, number][] = [];
 
   if (exterior.LinearRing) {
     // Simple polygon: pos elements are direct children of LinearRing.
@@ -399,12 +400,7 @@ function extractBoundary(surface: any, entryName: string): Polygon | null {
     return null;
   }
 
-  // GeoJSON requires the ring to be closed (first and last point identical).
-  const first = coordinates[0];
-  const last = coordinates[coordinates.length - 1];
-  if (first && last && (first[0] !== last[0] || first[1] !== last[1])) {
-    coordinates.push([first[0], first[1]]);
-  }
+  coordinates = closeRing(coordinates);
 
   return { type: 'Polygon', coordinates: [coordinates] };
 }
