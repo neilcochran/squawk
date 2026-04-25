@@ -43,6 +43,40 @@ const resolver = createNavaidResolver({ data: usBundledNavaids.records });
 Consumers who have their own data pipeline can use `@squawk/navaids` alone and
 pass any compatible Navaid array at initialization.
 
+## Browser / SPA usage
+
+For browsers, edge runtimes (Cloudflare Workers, Deno Deploy), and any other
+environment without `node:fs`, import the async loader from the `/browser`
+subpath. It fetches and decompresses the bundled `.gz` using Web Streams
+(`DecompressionStream`) and the global `fetch`.
+
+```typescript
+import { loadUsBundledNavaids } from '@squawk/navaid-data/browser';
+import { createNavaidResolver } from '@squawk/navaids';
+
+const dataset = await loadUsBundledNavaids();
+const resolver = createNavaidResolver({ data: dataset.records });
+```
+
+The default URL is resolved relative to this module's `import.meta.url`,
+which works under any modern ESM bundler when the package is installed
+normally.
+
+To host the asset on your own CDN, to use a bundler-resolved (hashed)
+asset URL, or to override the URL for any other reason, pass an explicit
+`url`:
+
+```typescript
+import { loadUsBundledNavaids } from '@squawk/navaid-data/browser';
+
+const dataset = await loadUsBundledNavaids({
+  url: 'https://your-cdn.example/navaids.json.gz',
+});
+```
+
+The loader also accepts a custom `fetch` implementation, which is useful in
+tests or in edge environments that need a configured fetcher.
+
 ## Data format
 
 Each record is a full `Navaid` object from `@squawk/types`. Key fields:

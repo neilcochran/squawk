@@ -1,32 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { updateReadmeDate } from '@squawk/build-shared';
 import { gzipSync } from 'node:zlib';
+import { updateReadmeDate } from '@squawk/build-shared';
 import type { AircraftRegistration } from '@squawk/icao-registry';
 
 /**
- * Shape of a single record in the compact bundled JSON format.
- * Short keys reduce file size across hundreds of thousands of records.
- */
-interface CompactRecord {
-  /** Registration (N-number). */
-  r: string;
-  /** Manufacturer name. */
-  mk?: string;
-  /** Model designation. */
-  md?: string;
-  /** Operator name. */
-  op?: string;
-  /** Aircraft type. */
-  at?: string;
-  /** Engine type. */
-  et?: string;
-  /** Year manufactured. */
-  yr?: number;
-}
-
-/**
- * Shape of the bundled JSON output file.
+ * Shape of the bundled JSON output file: dataset metadata plus the array
+ * of full AircraftRegistration records. Matches the wire format consumed
+ * by `@squawk/icao-registry-data`.
  */
 interface BundledOutput {
   /** Dataset metadata. */
@@ -36,13 +17,21 @@ interface BundledOutput {
     /** Total number of records in the dataset. */
     recordCount: number;
   };
-  /** Records keyed by uppercase ICAO hex address. */
-  records: Record<string, CompactRecord>;
+  /** Aircraft registration records. */
+  records: AircraftRegistration[];
 }
 
 /**
- * Writes AircraftRegistration records to a gzipped compact JSON file at
- * the given path. Creates the output directory if it does not exist.
+ * Today's date in `YYYY-MM-DD` format, used to stamp the `### snapshot` line
+ * in the package README so consumers can see when the snapshot was generated.
+ */
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Writes AircraftRegistration records to a gzipped JSON file at the given
+ * path. Creates the output directory if it does not exist.
  *
  * @param records - AircraftRegistration records to serialize.
  * @param outputPath - Absolute path to write the output .json.gz file.
@@ -53,38 +42,22 @@ export async function writeOutput(
 ): Promise<void> {
   await mkdir(dirname(outputPath), { recursive: true });
 
-  const compactRecords: Record<string, CompactRecord> = {};
-
+  // Defensive dedup by icaoHex with last-write-wins semantics. The FAA
+  // ReleasableAircraft data can contain multiple rows for the same hex
+  // (e.g., a cancelled registration followed by a fresh reissue); collapse
+  // them so consumers see exactly one record per hex.
+  const byHex = new Map<string, AircraftRegistration>();
   for (const rec of records) {
-    const compact: CompactRecord = { r: rec.registration };
-    if (rec.make !== undefined) {
-      compact.mk = rec.make;
-    }
-    if (rec.model !== undefined) {
-      compact.md = rec.model;
-    }
-    if (rec.operator !== undefined) {
-      compact.op = rec.operator;
-    }
-    if (rec.aircraftType !== undefined) {
-      compact.at = rec.aircraftType;
-    }
-    if (rec.engineType !== undefined) {
-      compact.et = rec.engineType;
-    }
-    if (rec.yearManufactured !== undefined) {
-      compact.yr = rec.yearManufactured;
-    }
-
-    compactRecords[rec.icaoHex] = compact;
+    byHex.set(rec.icaoHex, rec);
   }
+  const dedupedRecords = Array.from(byHex.values());
 
   const output: BundledOutput = {
     meta: {
       generatedAt: new Date().toISOString(),
-      recordCount: Object.keys(compactRecords).length,
+      recordCount: dedupedRecords.length,
     },
-    records: compactRecords,
+    records: dedupedRecords,
   };
 
   const json = JSON.stringify(output);
@@ -96,6 +69,5 @@ export async function writeOutput(
     `[write-output] Wrote ${output.meta.recordCount} records to ${outputPath} (${sizeMb} MB gzipped)`,
   );
 
-  const today = new Date().toISOString().slice(0, 10);
-  await updateReadmeDate(outputPath, today);
+  await updateReadmeDate(outputPath, todayIso());
 }

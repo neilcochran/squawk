@@ -43,6 +43,40 @@ const resolver = createAirportResolver({ data: usBundledAirports.records });
 Consumers who have their own data pipeline can use `@squawk/airports` alone and
 pass any compatible Airport array at initialization.
 
+## Browser / SPA usage
+
+For browsers, edge runtimes (Cloudflare Workers, Deno Deploy), and any other
+environment without `node:fs`, import the async loader from the `/browser`
+subpath. It fetches and decompresses the bundled `.gz` using Web Streams
+(`DecompressionStream`) and the global `fetch`.
+
+```typescript
+import { loadUsBundledAirports } from '@squawk/airport-data/browser';
+import { createAirportResolver } from '@squawk/airports';
+
+const dataset = await loadUsBundledAirports();
+const resolver = createAirportResolver({ data: dataset.records });
+```
+
+The default URL is resolved relative to this module's `import.meta.url`,
+which works under any modern ESM bundler when the package is installed
+normally.
+
+To host the asset on your own CDN, to use a bundler-resolved (hashed)
+asset URL, or to override the URL for any other reason, pass an explicit
+`url`:
+
+```typescript
+import { loadUsBundledAirports } from '@squawk/airport-data/browser';
+
+const dataset = await loadUsBundledAirports({
+  url: 'https://your-cdn.example/airports.json.gz',
+});
+```
+
+The loader also accepts a custom `fetch` implementation, which is useful in
+tests or in edge environments that need a configured fetcher.
+
 ## Data format
 
 Each record is a full `Airport` object from `@squawk/types`. Key fields:

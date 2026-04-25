@@ -22,7 +22,7 @@ afterEach(() => {
 
 function readOutput(path: string): {
   meta: { generatedAt: string; recordCount: number };
-  records: Record<string, Record<string, unknown>>;
+  records: AircraftRegistration[];
 } {
   const compressed = readFileSync(path);
   const json = gunzipSync(compressed).toString('utf-8');
@@ -30,7 +30,7 @@ function readOutput(path: string): {
 }
 
 describe('writeOutput', () => {
-  it('indexes records by uppercase icaoHex key', async () => {
+  it('writes records as a flat array of full AircraftRegistration objects', async () => {
     const records: AircraftRegistration[] = [
       { icaoHex: 'A12345', registration: 'N123AB' },
       { icaoHex: 'B67890', registration: 'N456CD' },
@@ -41,49 +41,36 @@ describe('writeOutput', () => {
 
     const data = readOutput(outPath);
     assert.equal(data.meta.recordCount, 2);
-    assert.ok(data.records['A12345']);
-    assert.ok(data.records['B67890']);
-    assert.equal(data.records['A12345']?.r, 'N123AB');
-    assert.equal(data.records['B67890']?.r, 'N456CD');
+    assert.deepEqual(data.records, records);
   });
 
-  it('includes only populated optional fields using short keys', async () => {
-    const records: AircraftRegistration[] = [
-      {
-        icaoHex: 'AABBCC',
-        registration: 'N123AB',
-        make: 'CESSNA',
-        model: '172',
-        operator: 'EXAMPLE LLC',
-        aircraftType: 'fixedWingSingleEngine',
-        engineType: 'reciprocating',
-        yearManufactured: 2010,
-      },
-    ];
+  it('preserves all populated fields verbatim', async () => {
+    const record: AircraftRegistration = {
+      icaoHex: 'AABBCC',
+      registration: 'N123AB',
+      make: 'CESSNA',
+      model: '172',
+      operator: 'EXAMPLE LLC',
+      aircraftType: 'fixedWingSingleEngine',
+      engineType: 'reciprocating',
+      yearManufactured: 2010,
+    };
     const outPath = join(sandbox, 'out.json.gz');
 
-    await writeOutput(records, outPath);
+    await writeOutput([record], outPath);
 
     const data = readOutput(outPath);
-    assert.deepEqual(data.records['AABBCC'], {
-      r: 'N123AB',
-      mk: 'CESSNA',
-      md: '172',
-      op: 'EXAMPLE LLC',
-      at: 'fixedWingSingleEngine',
-      et: 'reciprocating',
-      yr: 2010,
-    });
+    assert.deepEqual(data.records[0], record);
   });
 
-  it('omits missing optional fields entirely', async () => {
+  it('omits missing optional fields from the serialized record', async () => {
     const records: AircraftRegistration[] = [{ icaoHex: 'ABCDEF', registration: 'N999ZZ' }];
     const outPath = join(sandbox, 'out.json.gz');
 
     await writeOutput(records, outPath);
 
     const data = readOutput(outPath);
-    assert.deepEqual(Object.keys(data.records['ABCDEF']!).sort(), ['r']);
+    assert.deepEqual(Object.keys(data.records[0]!).sort(), ['icaoHex', 'registration']);
   });
 
   it('creates the parent directory if it does not exist', async () => {
@@ -117,7 +104,7 @@ describe('writeOutput', () => {
 
     const data = readOutput(outPath);
     assert.equal(data.meta.recordCount, 1);
-    assert.equal(data.records['DUPE01']?.r, 'SECOND');
+    assert.equal(data.records[0]?.registration, 'SECOND');
   });
 
   it('handles an empty record set', async () => {
@@ -126,6 +113,6 @@ describe('writeOutput', () => {
 
     const data = readOutput(outPath);
     assert.equal(data.meta.recordCount, 0);
-    assert.deepEqual(data.records, {});
+    assert.deepEqual(data.records, []);
   });
 });
