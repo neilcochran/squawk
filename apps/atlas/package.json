@@ -18,7 +18,9 @@
     "node": ">=22"
   },
   "scripts": {
+    "prepare": "husky",
     "dev": "vite",
+    "prebuild": "tsr generate",
     "build": "tsc -b && vite build",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint .",
@@ -26,11 +28,22 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@protomaps/basemaps": "^5.7.2",
+    "@tanstack/react-router": "^1.168.24",
+    "@vis.gl/react-maplibre": "^8.1.1",
+    "maplibre-gl": "^5.24.0",
+    "pmtiles": "^4.4.1",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@maplibre/maplibre-gl-style-spec": "^24.8.1",
+    "@tailwindcss/vite": "^4.2.4",
+    "@tanstack/react-router-devtools": "^1.166.13",
+    "@tanstack/router-cli": "^1.166.36",
+    "@tanstack/router-plugin": "^1.167.26",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -42,7 +55,9 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "husky": "^9.1.7",
     "prettier": "^3.8.2",
+    "tailwindcss": "^4.2.4",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
