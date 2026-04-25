@@ -25,6 +25,7 @@
     "build:data": "node scripts/build-data.js",
     "clean": "node scripts/clean.js",
     "publish": "changeset publish",
+    "version-packages": "changeset version && npm install --package-lock-only",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
