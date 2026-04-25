@@ -1,67 +1,12 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { updateReadmeDate } from '@squawk/build-shared';
 import { gzipSync } from 'node:zlib';
-import type { Fix, FixNavaidAssociation } from '@squawk/types';
+import { updateReadmeDate } from '@squawk/build-shared';
+import type { Fix } from '@squawk/types';
 
 /**
- * Compact representation of a FixNavaidAssociation. Short keys reduce file size.
- */
-interface CompactNavaidAssoc {
-  /** Navaid identifier. */
-  nid: string;
-  /** Navaid type. */
-  ntp: string;
-  /** Bearing in degrees. */
-  brg: number;
-  /** Distance in nautical miles. */
-  dst: number;
-}
-
-/**
- * Compact representation of a Fix record. Short keys reduce file size.
- */
-interface CompactFix {
-  /** Identifier. */
-  id: string;
-  /** ICAO region code. */
-  icao: string;
-  /** State code (absent for non-US fixes). */
-  st?: string;
-  /** Country code. */
-  ctry: string;
-  /** Latitude. */
-  lat: number;
-  /** Longitude. */
-  lon: number;
-  /** Use code. */
-  uc: string;
-  /** High-altitude ARTCC ID. */
-  hart?: string;
-  /** Low-altitude ARTCC ID. */
-  lart?: string;
-  /** Pitch flag. */
-  pit?: true;
-  /** Catch flag. */
-  cat?: true;
-  /** SUA/ATCAA flag. */
-  sua?: true;
-  /** Minimum reception altitude. */
-  mra?: number;
-  /** Compulsory designation. */
-  cmp?: string;
-  /** Previous identifier. */
-  pid?: string;
-  /** Charting remark. */
-  rmk?: string;
-  /** Chart types. */
-  cht?: string[];
-  /** Navaid associations. */
-  nav?: CompactNavaidAssoc[];
-}
-
-/**
- * Shape of the bundled JSON output file.
+ * Shape of the bundled JSON output file: dataset metadata plus the array
+ * of full Fix records. Matches the wire format consumed by `@squawk/fix-data`.
  */
 interface BundledOutput {
   /** Dataset metadata. */
@@ -73,77 +18,12 @@ interface BundledOutput {
     /** Total number of fix records in the dataset. */
     recordCount: number;
   };
-  /** Fix records as an array. */
-  records: CompactFix[];
+  /** Fix records. */
+  records: Fix[];
 }
 
 /**
- * Compacts a FixNavaidAssociation into its short-key representation.
- */
-function compactAssociation(a: FixNavaidAssociation): CompactNavaidAssoc {
-  return {
-    nid: a.navaidId,
-    ntp: a.navaidType,
-    brg: a.bearingDeg,
-    dst: a.distanceNm,
-  };
-}
-
-/**
- * Compacts a Fix into its short-key representation.
- */
-function compactFix(fix: Fix): CompactFix {
-  const c: CompactFix = {
-    id: fix.identifier,
-    icao: fix.icaoRegionCode,
-    ctry: fix.country,
-    lat: fix.lat,
-    lon: fix.lon,
-    uc: fix.useCode,
-  };
-
-  if (fix.state !== undefined) {
-    c.st = fix.state;
-  }
-  if (fix.highArtccId !== undefined) {
-    c.hart = fix.highArtccId;
-  }
-  if (fix.lowArtccId !== undefined) {
-    c.lart = fix.lowArtccId;
-  }
-  if (fix.pitch) {
-    c.pit = true;
-  }
-  if (fix.catch) {
-    c.cat = true;
-  }
-  if (fix.suaAtcaa) {
-    c.sua = true;
-  }
-  if (fix.minimumReceptionAltitudeFt !== undefined) {
-    c.mra = fix.minimumReceptionAltitudeFt;
-  }
-  if (fix.compulsory !== undefined) {
-    c.cmp = fix.compulsory;
-  }
-  if (fix.previousIdentifier !== undefined) {
-    c.pid = fix.previousIdentifier;
-  }
-  if (fix.chartingRemark !== undefined) {
-    c.rmk = fix.chartingRemark;
-  }
-  if (fix.chartTypes.length > 0) {
-    c.cht = fix.chartTypes;
-  }
-  if (fix.navaidAssociations.length > 0) {
-    c.nav = fix.navaidAssociations.map(compactAssociation);
-  }
-
-  return c;
-}
-
-/**
- * Writes Fix records to a gzipped compact JSON file at the given path.
+ * Writes Fix records to a gzipped JSON file at the given path.
  * Creates the output directory if it does not exist.
  *
  * @param fixes - Fix records to serialize.
@@ -163,7 +43,7 @@ export async function writeOutput(
       nasrCycleDate,
       recordCount: fixes.length,
     },
-    records: fixes.map(compactFix),
+    records: fixes,
   };
 
   const json = JSON.stringify(output);
