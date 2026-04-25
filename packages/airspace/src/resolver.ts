@@ -1,5 +1,5 @@
 import type { FeatureCollection, Feature } from 'geojson';
-import type { AirspaceFeature, AirspaceType, AltitudeBound } from '@squawk/types';
+import type { AirspaceFeature, AirspaceType, AltitudeBound, ArtccStratum } from '@squawk/types';
 import { polygon, type BoundingBox } from '@squawk/geo';
 import { altitudeMatches } from './vertical-filter.js';
 
@@ -56,12 +56,34 @@ export interface AirspaceResolver {
    * only the bare identifier - ICAO-prefixed codes like "KJFK" will not
    * match; resolve to an FAA ID first via `@squawk/airports` if needed.
    *
+   * Note: ARTCC features share the identifier-keyed index but are typically
+   * looked up via {@link byArtcc} for clearer ergonomics. ARTCC features are
+   * excluded from `byAirport` results since their identifier is a center code
+   * (e.g. "ZNY"), not an airport identifier.
+   *
    * @param identifier - FAA identifier or NASR designator.
    * @param types - Optional type filter. Only features whose type is in this
-   *                set are returned. When omitted, all types are returned.
+   *                set are returned. When omitted, all non-ARTCC types are
+   *                returned.
    * @returns All features whose identifier matches, or an empty array.
    */
   byAirport(identifier: string, types?: ReadonlySet<AirspaceType>): AirspaceFeature[];
+
+  /**
+   * Returns every ARTCC feature associated with the given center identifier,
+   * independent of position or altitude. Lookup is case-insensitive.
+   *
+   * Each US ARTCC is published as multiple features - one per stratum (LOW,
+   * HIGH, UTA, CTA, FIR, CTA/FIR) - because the lateral extent can vary
+   * between strata. Pass an optional stratum filter to narrow results to a
+   * single stratum.
+   *
+   * @param identifier - Three-letter ARTCC code (e.g. "ZNY", "ZBW").
+   * @param stratum - Optional stratum filter. When provided, only features
+   *                  whose `artccStratum` matches are returned.
+   * @returns All matching ARTCC features, or an empty array.
+   */
+  byArtcc(identifier: string, stratum?: ArtccStratum): AirspaceFeature[];
 }
 
 /**
@@ -108,6 +130,7 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
     state: (props.state as string) ?? null,
     controllingFacility: (props.controllingFacility as string) ?? null,
     scheduleDescription: (props.scheduleDescription as string) ?? null,
+    artccStratum: (props.artccStratum as ArtccStratum) ?? null,
   };
 
   return { feature, ring, boundingBox: polygon.boundingBox(ring) };
@@ -137,6 +160,7 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
  * const resolver = createAirspaceResolver({ data: usBundledAirspace });
  * const overhead = resolver.query({ lat: 33.9425, lon: -118.4081, altitudeFt: 3000 });
  * const laxShells = resolver.byAirport('LAX');
+ * const newYorkArtcc = resolver.byArtcc('ZNY');
  * ```
  */
 export function createAirspaceResolver(options: AirspaceResolverOptions): AirspaceResolver {
@@ -189,9 +213,21 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
         return [];
       }
       if (types === undefined) {
-        return bucket.slice();
+        return bucket.filter((f) => f.type !== 'ARTCC');
       }
-      return bucket.filter((f) => types.has(f.type));
+      return bucket.filter((f) => f.type !== 'ARTCC' && types.has(f.type));
+    },
+
+    byArtcc(identifier: string, stratum?: ArtccStratum): AirspaceFeature[] {
+      const bucket = byIdentifierMap.get(identifier.toUpperCase());
+      if (bucket === undefined) {
+        return [];
+      }
+      const artccFeatures = bucket.filter((f) => f.type === 'ARTCC');
+      if (stratum === undefined) {
+        return artccFeatures;
+      }
+      return artccFeatures.filter((f) => f.artccStratum === stratum);
     },
   };
 }

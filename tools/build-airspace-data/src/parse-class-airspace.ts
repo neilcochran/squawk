@@ -121,6 +121,7 @@ export async function parseClassAirspace(
       state: ident ? (airportStates.get(ident) ?? null) : null,
       controllingFacility: attrs.COMM_NAME ?? null,
       scheduleDescription: attrs.WKHR_RMK ?? null,
+      artccStratum: null,
     });
   }
 

@@ -39,9 +39,12 @@ npm run validate
 2. Parses Special Use Airspace (MOAs, restricted, prohibited, warning, alert,
    NSA) from AIXM 5.0 XML files in the nested `SaaSubscriberFile.zip`,
    discretizing circular arcs to polygon points
-3. Enriches both sources with state codes from `APT_BASE.csv`
-4. Merges all features, rounds coordinates to 5 decimal places (~1.1m precision),
-   and writes a single GeoJSON FeatureCollection (~5 MB, ~6,800 features)
+3. Parses ARTCC center boundaries from `ARB_BASE.csv` and `ARB_SEG.csv`,
+   emitting one feature per `(center, stratum)` shape (LOW, HIGH, UTA, plus
+   oceanic CTA/FIR for US-controlled centers)
+4. Enriches Class B/C/D/E features with state codes from `APT_BASE.csv`
+5. Merges all features, rounds coordinates to 5 decimal places (~1.1m precision),
+   and writes a single GeoJSON FeatureCollection (~6,900 features)
 
 ## Input files
 
@@ -52,6 +55,8 @@ All input files come from inside the NASR subscription directory:
 | `Class_Airspace.shp` + `.dbf` | `Additional_Data/Shape_Files/`            | Class B/C/D/E polygon geometry and attributes |
 | `SaaSubscriberFile.zip`       | `Additional_Data/AIXM/SAA-AIXM_5_Schema/` | SUA AIXM 5.0 XML files (nested ZIP)           |
 | `APT_BASE.csv`                | Inside `CSV_Data/<cycle>.zip`             | Airport identifier to state code mapping      |
+| `ARB_BASE.csv`                | Inside `CSV_Data/<cycle>.zip`             | ARTCC center metadata (name, country, state)  |
+| `ARB_SEG.csv`                 | Inside `CSV_Data/<cycle>.zip`             | ARTCC boundary points by stratum and sequence |
 
 ## Dependencies
 

@@ -115,4 +115,83 @@ describe('usBundledAirspace', () => {
     assert.ok(lastCoord !== undefined);
     assert.deepEqual(firstCoord, lastCoord, 'Polygon ring must be closed');
   });
+
+  it('includes ARTCC features for the major CONUS centers', () => {
+    const artccFeatures = usBundledAirspace.features.filter((f) => f.properties?.type === 'ARTCC');
+    assert.ok(
+      artccFeatures.length >= 40,
+      `expected at least 40 ARTCC features, got ${artccFeatures.length}`,
+    );
+    const identifiers = new Set(artccFeatures.map((f) => f.properties?.identifier));
+    for (const expected of ['ZNY', 'ZBW', 'ZDC', 'ZTL', 'ZAU', 'ZLA', 'ZSE', 'ZAB']) {
+      assert.ok(identifiers.has(expected), `missing ARTCC ${expected}`);
+    }
+  });
+
+  it('emits separate ARTCC features per stratum with the expected bounds', () => {
+    const ny = usBundledAirspace.features.filter(
+      (f) => f.properties?.type === 'ARTCC' && f.properties.identifier === 'ZNY',
+    );
+    const strata = new Set(ny.map((f) => f.properties?.artccStratum));
+    assert.ok(strata.has('LOW'), 'expected ZNY LOW feature');
+    assert.ok(strata.has('HIGH'), 'expected ZNY HIGH feature');
+
+    const low = ny.find((f) => f.properties?.artccStratum === 'LOW');
+    assert.ok(low?.properties);
+    assert.equal(low.properties.floor.reference, 'SFC');
+    assert.equal(low.properties.ceiling.valueFt, 18000);
+
+    const high = ny.find((f) => f.properties?.artccStratum === 'HIGH');
+    assert.ok(high?.properties);
+    assert.equal(high.properties.floor.valueFt, 18000);
+    assert.equal(high.properties.ceiling.valueFt, 60000);
+  });
+
+  it('includes US oceanic ARTCC strata', () => {
+    const oceanic = usBundledAirspace.features.filter(
+      (f) =>
+        f.properties?.type === 'ARTCC' &&
+        ['CTA', 'FIR', 'CTA/FIR', 'UTA'].includes(f.properties.artccStratum ?? ''),
+    );
+    assert.ok(oceanic.length > 0, 'expected at least one oceanic ARTCC feature');
+    const oceanicIds = new Set(oceanic.map((f) => f.properties?.identifier));
+    assert.ok(oceanicIds.has('ZAK'), 'expected ZAK Oakland Oceanic');
+  });
+
+  it('sets artccStratum to null on non-ARTCC features', () => {
+    const sample = usBundledAirspace.features.find((f) => f.properties?.type === 'CLASS_B');
+    assert.ok(sample?.properties);
+    assert.equal(sample.properties.artccStratum, null);
+  });
+
+  it('sets artccStratum to a recognized value on every ARTCC feature', () => {
+    const validStrata = new Set(['LOW', 'HIGH', 'UTA', 'CTA', 'FIR', 'CTA/FIR']);
+    const artccFeatures = usBundledAirspace.features.filter((f) => f.properties?.type === 'ARTCC');
+    for (const feature of artccFeatures) {
+      const stratum = feature.properties?.artccStratum;
+      assert.ok(
+        stratum !== null && stratum !== undefined,
+        `ARTCC ${feature.properties?.identifier} must have a non-null artccStratum`,
+      );
+      assert.ok(
+        validStrata.has(stratum),
+        `ARTCC ${feature.properties?.identifier} has unrecognized stratum ${stratum}`,
+      );
+    }
+  });
+
+  it('keeps every ARTCC sub-polygon within standard [-180, 180] longitude range', () => {
+    const artccFeatures = usBundledAirspace.features.filter((f) => f.properties?.type === 'ARTCC');
+    for (const feature of artccFeatures) {
+      const ring = feature.geometry.type === 'Polygon' ? feature.geometry.coordinates[0] : null;
+      assert.ok(ring, `ARTCC ${feature.properties?.identifier} must have a polygon ring`);
+      for (const coord of ring) {
+        const lon = coord[0]!;
+        assert.ok(
+          lon >= -180 && lon <= 180,
+          `ARTCC ${feature.properties?.identifier} ${feature.properties?.artccStratum} has out-of-range lon ${lon}`,
+        );
+      }
+    }
+  });
 });
