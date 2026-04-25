@@ -9,6 +9,16 @@ import { writeOutput } from './write-output.js';
 /** Direct download URL for the FAA ReleasableAircraft database. */
 const FAA_DOWNLOAD_URL = 'https://registry.faa.gov/database/ReleasableAircraft.zip';
 
+/**
+ * User-Agent header sent on the FAA download request. The Akamai WAF
+ * fronting `registry.faa.gov` rejects Node's default `node`/`undici`
+ * UA (and curl, wget, and descriptive bot UAs) with HTTP 403. A
+ * generic browser UA is the only thing that gets through.
+ */
+const FAA_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
 /** Relative path from the script root to the default output file. */
 const DEFAULT_OUTPUT_PATH = '../../../packages/icao-registry-data/data/icao-registry.json.gz';
 
@@ -34,7 +44,9 @@ function printUsageAndExit(): never {
  */
 async function downloadFaaZip(): Promise<string> {
   console.log(`[index] Downloading ${FAA_DOWNLOAD_URL}...`);
-  const response = await fetch(FAA_DOWNLOAD_URL);
+  const response = await fetch(FAA_DOWNLOAD_URL, {
+    headers: { 'User-Agent': FAA_USER_AGENT },
+  });
   if (!response.ok) {
     throw new Error(`FAA download failed: ${response.status} ${response.statusText}`);
   }
