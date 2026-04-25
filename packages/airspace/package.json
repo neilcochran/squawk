@@ -38,7 +38,7 @@
     "@squawk/types": "^0.7.0"
   },
   "devDependencies": {
-    "@squawk/airspace-data": "^0.4.0",
+    "@squawk/airspace-data": "^0.5.0",
     "@types/node": "^25.6.0"
   },
   "keywords": [
