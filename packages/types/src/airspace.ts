@@ -33,7 +33,14 @@ export interface AltitudeBound {
  * - CLASS_E6: Transition area (miscellaneous)
  * - CLASS_E7: Federal airway extensions
  *
- * All remaining values are Special Use Airspace (SUA) types.
+ * MOA, RESTRICTED, PROHIBITED, WARNING, ALERT, and NSA are Special Use
+ * Airspace (SUA) types.
+ *
+ * ARTCC features represent the lateral boundary of an Air Route Traffic
+ * Control Center stratum (e.g. ZNY HIGH, ZBW LOW, ZAK FIR). One ARTCC is
+ * typically published as multiple features - one per altitude tier or
+ * boundary type - because the lateral extent can vary between strata. See
+ * {@link ArtccStratum} for the stratum identifier carried on each feature.
  */
 export type AirspaceType =
   | 'CLASS_B'
@@ -50,16 +57,45 @@ export type AirspaceType =
   | 'PROHIBITED'
   | 'WARNING'
   | 'ALERT'
-  | 'NSA';
+  | 'NSA'
+  | 'ARTCC';
+
+/**
+ * The boundary stratum of an ARTCC feature, derived from NASR ARB_SEG
+ * `ALTITUDE` and `TYPE` columns.
+ *
+ * Each ARTCC publishes its boundary geometry separately for each stratum,
+ * because the lateral extent varies with altitude tier and oceanic boundary
+ * type. The values here are the union of distinct stratum kinds observed
+ * across all US centers:
+ *
+ * - `LOW` - domestic low-altitude stratum (typically SFC to FL180)
+ * - `HIGH` - domestic high-altitude stratum (typically FL180 to FL600)
+ * - `UTA` - Upper Control Area, used only by ZOA (typically FL600 and above)
+ * - `CTA` - oceanic Control Area
+ * - `FIR` - oceanic Flight Information Region
+ * - `CTA/FIR` - combined oceanic CTA and FIR boundary
+ *
+ * Set to `null` for non-ARTCC features.
+ */
+export type ArtccStratum = 'LOW' | 'HIGH' | 'UTA' | 'CTA' | 'FIR' | 'CTA/FIR';
 
 /**
  * A single airspace designation feature derived from FAA NASR data.
  *
  * Each feature represents one lateral polygon with associated vertical bounds and
- * metadata. Class B airspace is stored as multiple separate features (one per
- * concentric ring), each with its own polygon and floor/ceiling. Consumers that
- * need to treat the full Class B structure as a unit can group features by name
- * or identifier.
+ * metadata. A single real-world airspace can produce multiple features:
+ *
+ * - Class B airspace is stored as multiple separate features (one per
+ *   concentric ring), each with its own polygon and floor/ceiling.
+ * - ARTCC centers are stored as multiple features (one per stratum: LOW,
+ *   HIGH, plus oceanic UTA/CTA/FIR strata), and a single stratum can map
+ *   to multiple sub-polygons when the source data has disjoint shapes
+ *   (e.g. ZOA UTA) or when an antimeridian-crossing oceanic boundary has
+ *   been split at lon=180 (e.g. ZAK FIR).
+ *
+ * Consumers that need to treat the full structure as a unit can group
+ * features by `identifier` (and optionally `artccStratum` for ARTCC).
  *
  * Vertical bounds whose reference is AGL cannot be precisely compared to an
  * aircraft MSL altitude without terrain elevation data. The @squawk/airspace
@@ -71,9 +107,13 @@ export interface AirspaceFeature {
   /** Human-readable name of the airspace (e.g. "WASHINGTON", "DEMO 1 MOA"). */
   name: string;
   /**
-   * Unique NASR designator for this feature. For SUA this is the official
-   * designator (e.g. "R-2303A"). For Class B/C/D this is the associated
-   * airport ICAO identifier (e.g. "KDCA").
+   * Identifier for this feature. The semantics depend on `type`:
+   *
+   * - Class B/C/D/E2: associated airport's FAA location identifier (e.g.
+   *   "DCA", "JFK"). ICAO-prefixed codes such as "KDCA" do not appear here.
+   * - Special Use Airspace: official NASR designator (e.g. "R-2303A").
+   * - ARTCC: three-letter center code (e.g. "ZNY", "ZBW").
+   * - Other Class E subtypes: NASR designator from the source data.
    */
   identifier: string;
   /** Lower vertical bound of this feature. */
@@ -88,13 +128,15 @@ export interface AirspaceFeature {
    * airport, not a guarantee that all geometry falls within that state -
    * outer Class B rings in particular commonly extend into adjacent states.
    * For SUA this is the administrative area recorded in the NASR source data.
-   * Null if not available in the source data.
+   * For ARTCC features this is the state of the center's headquarters
+   * facility (e.g. "NY" for ZNY). Null if not available in the source data.
    */
   state: string | null;
   /**
    * The controlling facility or agency. For Class B/C/D this is the TRACON
    * or ARTCC identifier (e.g. "PCT"). For SUA this is the controlling
-   * military or civil authority name. Null if not available in the source data.
+   * military or civil authority name. Always null for ARTCC features.
+   * Null if not available in the source data.
    */
   controllingFacility: string | null;
   /**
@@ -103,4 +145,11 @@ export interface AirspaceFeature {
    * Null for always-active airspace or when schedule data is unavailable.
    */
   scheduleDescription: string | null;
+  /**
+   * For ARTCC features, the boundary stratum that distinguishes this feature
+   * from sibling features within the same center (e.g. the same ZNY ARTCC has
+   * separate `LOW` and `HIGH` features with potentially different polygons).
+   * Null for all non-ARTCC airspace types.
+   */
+  artccStratum: ArtccStratum | null;
 }

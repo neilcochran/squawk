@@ -46,6 +46,8 @@ const EXPECTED_TOOLS: readonly string[] = [
   // airspace
   'query_airspace_at_position',
   'get_airspace_for_airport',
+  'find_artcc_for_position',
+  'find_artcc_by_identifier',
   // navaids
   'get_navaid_by_ident',
   'find_navaids_by_frequency',
@@ -206,6 +208,74 @@ describe('createSquawkMcpServer', () => {
       for (const feature of parsed.features) {
         assert.equal(feature.identifier, 'JFK');
         assert.ok(feature.type === 'CLASS_B', 'default filter keeps only surface classes');
+        const ring = feature.boundary.coordinates[0];
+        assert.ok(ring && ring.length >= 4, 'boundary ring must be returned intact');
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes find_artcc_for_position end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      // Burlington VT at 5000 ft - well inside ZBW LOW
+      const result = await client.callTool({
+        name: 'find_artcc_for_position',
+        arguments: { lat: 44.47, lon: -73.15, altitudeFt: 5000 },
+      });
+      const parsed = z
+        .object({
+          features: z.array(
+            z
+              .object({
+                type: z.literal('ARTCC'),
+                identifier: z.string(),
+                artccStratum: z.enum(['LOW', 'HIGH', 'UTA', 'CTA', 'FIR', 'CTA/FIR']),
+                vertexCount: z.number(),
+              })
+              .passthrough(),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert.ok(
+        parsed.features.some((f) => f.identifier === 'ZBW' && f.artccStratum === 'LOW'),
+        'expected ZBW LOW for a position at FL050 over Burlington VT',
+      );
+    } finally {
+      await close();
+    }
+  });
+
+  it('invokes find_artcc_by_identifier end-to-end via MCP', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_artcc_by_identifier',
+        arguments: { artccId: 'ZNY' },
+      });
+      const parsed = z
+        .object({
+          features: z.array(
+            z
+              .object({
+                type: z.literal('ARTCC'),
+                identifier: z.literal('ZNY'),
+                artccStratum: z.enum(['LOW', 'HIGH', 'UTA', 'CTA', 'FIR', 'CTA/FIR']),
+                boundary: z.object({
+                  type: z.literal('Polygon'),
+                  coordinates: z.array(z.array(z.tuple([z.number(), z.number()]))),
+                }),
+              })
+              .passthrough(),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert.ok(parsed.features.length >= 2, 'expected ZNY LOW and HIGH features');
+      const strata = new Set(parsed.features.map((f) => f.artccStratum));
+      assert.ok(strata.has('LOW'), 'expected ZNY LOW');
+      assert.ok(strata.has('HIGH'), 'expected ZNY HIGH');
+      for (const feature of parsed.features) {
         const ring = feature.boundary.coordinates[0];
         assert.ok(ring && ring.length >= 4, 'boundary ring must be returned intact');
       }

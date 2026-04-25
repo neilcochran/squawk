@@ -53,28 +53,35 @@ describe('createAirspaceResolver with real data', () => {
 
   describe('Class E only (rural CONUS)', () => {
     // Middle of Kansas farmland: 38.5 N, 99.5 W
-    // Class E5 covers most of CONUS at 700 ft AGL, so only Class E is expected here
+    // Class E5 covers most of CONUS at 700 ft AGL; rural points also fall under
+    // an ARTCC (ZKC LOW here), so the assertion only restricts the non-ARTCC
+    // results to Class E.
     it('returns only Class E at low altitude in open terrain', () => {
       const results = resolve_.query({ lat: 38.5, lon: -99.5, altitudeFt: 3000 });
       assert.ok(results.length > 0, 'expected Class E coverage in rural Kansas');
+      const nonArtcc = results.filter((f) => f.type !== 'ARTCC');
       assert.ok(
-        results.every((f) => f.type.startsWith('CLASS_E')),
-        `expected only Class E, got: ${results.map((f) => f.type).join(', ')}`,
+        nonArtcc.every((f) => f.type.startsWith('CLASS_E')),
+        `expected only Class E (excluding ARTCC), got: ${nonArtcc.map((f) => f.type).join(', ')}`,
       );
     });
   });
 
-  describe('no airspace', () => {
-    it('returns no features over the mid-Atlantic', () => {
-      // Mid-Atlantic: 35 N, 55 W
+  describe('no controlled airspace', () => {
+    it('returns no Class B/C/D/E or SUA features over the mid-Atlantic', () => {
+      // Mid-Atlantic: 35 N, 55 W. ZWY oceanic CTA/FIR covers this point, so the
+      // assertion targets only the non-ARTCC types.
       const results = resolve_.query({ lat: 35, lon: -55, altitudeFt: 10000 });
-      assert.equal(results.length, 0, 'expected no airspace over mid-Atlantic');
+      const nonArtcc = results.filter((f) => f.type !== 'ARTCC');
+      assert.equal(nonArtcc.length, 0, 'expected no Class B/C/D/E or SUA over mid-Atlantic');
     });
 
-    it('returns no features over the Pacific off the California coast', () => {
-      // Pacific: 33 N, 125 W
+    it('returns no Class B/C/D/E or SUA features over the Pacific off the California coast', () => {
+      // Pacific: 33 N, 125 W. ZAK Oakland Oceanic CTA/FIR reaches the West Coast
+      // and matches here, so the assertion targets only the non-ARTCC types.
       const results = resolve_.query({ lat: 33, lon: -125, altitudeFt: 3000 });
-      assert.equal(results.length, 0, 'expected no airspace over the Pacific');
+      const nonArtcc = results.filter((f) => f.type !== 'ARTCC');
+      assert.equal(nonArtcc.length, 0, 'expected no Class B/C/D/E or SUA over the Pacific');
     });
   });
 
@@ -213,6 +220,22 @@ describe('createAirspaceResolver with real data', () => {
       assert.ok(feature.ceiling && typeof feature.ceiling.valueFt === 'number');
       assert.ok(feature.ceiling && typeof feature.ceiling.reference === 'string');
       assert.ok(feature.boundary && feature.boundary.type === 'Polygon');
+      // artccStratum is required on AirspaceFeature; non-ARTCC features carry null.
+      assert.ok('artccStratum' in feature, 'artccStratum field must be present');
+      assert.equal(feature.artccStratum, null, 'non-ARTCC feature should have null stratum');
+    });
+
+    it('includes a non-null artccStratum on ARTCC features', () => {
+      const validStrata = new Set(['LOW', 'HIGH', 'UTA', 'CTA', 'FIR', 'CTA/FIR']);
+      const ny = resolve_.byArtcc('ZNY');
+      assert.ok(ny.length > 0, 'expected ZNY features');
+      for (const feature of ny) {
+        assert.ok(feature.artccStratum !== null, 'ARTCC feature stratum must not be null');
+        assert.ok(
+          validStrata.has(feature.artccStratum),
+          `unexpected stratum ${feature.artccStratum}`,
+        );
+      }
     });
   });
 });
@@ -336,6 +359,132 @@ describe('byAirport', () => {
   it('does not match ICAO-prefixed codes (use the FAA identifier)', () => {
     const features = resolve_.byAirport('KJFK');
     assert.equal(features.length, 0, 'airspace features are keyed by FAA ID, not ICAO');
+  });
+
+  it('excludes ARTCC features from byAirport results', () => {
+    const features = resolve_.byAirport('ZNY');
+    assert.equal(
+      features.filter((f) => f.type === 'ARTCC').length,
+      0,
+      'byAirport must not return ARTCC features',
+    );
+  });
+});
+
+describe('byArtcc', () => {
+  it('returns LOW and HIGH features for a CONUS center', () => {
+    const features = resolve_.byArtcc('ZNY');
+    assert.ok(features.length >= 2, 'expected at least LOW and HIGH for ZNY');
+    assert.ok(
+      features.every((f) => f.type === 'ARTCC' && f.identifier === 'ZNY'),
+      'all features must be ARTCC type with matching identifier',
+    );
+    const strata = new Set(features.map((f) => f.artccStratum));
+    assert.ok(strata.has('LOW'));
+    assert.ok(strata.has('HIGH'));
+  });
+
+  it('filters by stratum when provided', () => {
+    const features = resolve_.byArtcc('ZBW', 'HIGH');
+    assert.ok(features.length > 0, 'expected at least one ZBW HIGH feature');
+    assert.ok(
+      features.every((f) => f.artccStratum === 'HIGH'),
+      'all features must match the requested stratum',
+    );
+  });
+
+  it('is case-insensitive', () => {
+    const upper = resolve_.byArtcc('ZNY');
+    const lower = resolve_.byArtcc('zny');
+    assert.equal(upper.length, lower.length);
+  });
+
+  it('returns an empty array for an unknown identifier', () => {
+    assert.equal(resolve_.byArtcc('ZZZ').length, 0);
+  });
+
+  it('returns multiple features for a stratum that has been split or has multiple shapes', () => {
+    // ZAK CTA crosses the antimeridian and is split into two sub-polygons
+    const zakCta = resolve_.byArtcc('ZAK', 'CTA');
+    assert.ok(
+      zakCta.length >= 2,
+      `expected ZAK CTA to have at least 2 sub-polygons, got ${zakCta.length}`,
+    );
+    assert.ok(
+      zakCta.every((f) => f.identifier === 'ZAK' && f.artccStratum === 'CTA'),
+      'all ZAK CTA features should share identifier and stratum',
+    );
+    // Each sub-polygon should stay in standard [-180, 180] longitude range
+    for (const feature of zakCta) {
+      const ring = feature.boundary.coordinates[0]!;
+      for (const coord of ring) {
+        const lon = coord[0]!;
+        assert.ok(lon >= -180 && lon <= 180, `lon ${lon} out of range for ZAK CTA`);
+      }
+    }
+  });
+});
+
+describe('ARTCC position queries', () => {
+  it('returns the LOW stratum at low altitude over CONUS', () => {
+    // Approximately Burlington VT, well inside ZBW LOW
+    const results = resolve_.query({ lat: 44.47, lon: -73.15, altitudeFt: 5000 });
+    const artcc = results.filter((f) => f.type === 'ARTCC');
+    assert.ok(
+      artcc.some((f) => f.identifier === 'ZBW' && f.artccStratum === 'LOW'),
+      'expected ZBW LOW at FL050 over Burlington',
+    );
+  });
+
+  it('returns the HIGH stratum at cruise altitude', () => {
+    // Same location, FL250 - should match ZBW HIGH instead of LOW
+    const results = resolve_.query({ lat: 44.47, lon: -73.15, altitudeFt: 25000 });
+    const artcc = results.filter((f) => f.type === 'ARTCC');
+    assert.ok(
+      artcc.some((f) => f.identifier === 'ZBW' && f.artccStratum === 'HIGH'),
+      'expected ZBW HIGH at FL250 over Burlington',
+    );
+  });
+
+  it('returns ZAK for a Pacific position east of the antimeridian', () => {
+    // 40N, 175W is in the central Pacific, well inside ZAK's eastern sub-polygon
+    const results = resolve_.query({ lat: 40, lon: -175, altitudeFt: 35000 });
+    const artcc = results.filter((f) => f.type === 'ARTCC');
+    assert.ok(
+      artcc.some((f) => f.identifier === 'ZAK'),
+      `expected ZAK at (40, -175); got ${artcc.map((f) => f.identifier).join(', ') || 'nothing'}`,
+    );
+  });
+
+  it('returns ZAK for a Pacific position west of the antimeridian', () => {
+    // 40N, 175E is in the central Pacific, well inside ZAK's western sub-polygon
+    const results = resolve_.query({ lat: 40, lon: 175, altitudeFt: 35000 });
+    const artcc = results.filter((f) => f.type === 'ARTCC');
+    assert.ok(
+      artcc.some((f) => f.identifier === 'ZAK'),
+      `expected ZAK at (40, 175); got ${artcc.map((f) => f.identifier).join(', ') || 'nothing'}`,
+    );
+  });
+
+  it('does not return ZAK for a CONUS position (no false positive from antimeridian splits)', () => {
+    // Kansas: well inside ZKC, far from any oceanic FIR
+    const results = resolve_.query({ lat: 38.5, lon: -99.5, altitudeFt: 3000 });
+    const zak = results.filter((f) => f.identifier === 'ZAK');
+    assert.equal(zak.length, 0, 'ZAK should not match a CONUS position');
+  });
+
+  it('returns only ARTCC features when the types filter is restricted to ARTCC', () => {
+    const results = resolve_.query({
+      lat: 38.5,
+      lon: -99.5,
+      altitudeFt: 3000,
+      types: new Set<AirspaceType>(['ARTCC']),
+    });
+    assert.ok(results.length > 0, 'expected at least one ARTCC at rural Kansas');
+    assert.ok(
+      results.every((f) => f.type === 'ARTCC'),
+      'all results should be ARTCC',
+    );
   });
 });
 

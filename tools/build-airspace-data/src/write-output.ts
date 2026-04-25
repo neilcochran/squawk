@@ -67,6 +67,7 @@ export async function writeOutput(
       state: f.state,
       controllingFacility: f.controllingFacility,
       scheduleDescription: f.scheduleDescription,
+      artccStratum: f.artccStratum,
     },
   }));
 
