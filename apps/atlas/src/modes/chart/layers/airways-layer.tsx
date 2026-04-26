@@ -29,7 +29,7 @@ interface AirwayFeatureProperties {
 const AIRWAYS_SOURCE_ID = 'atlas-airways';
 
 /** MapLibre layer id for the airways line symbology. */
-const AIRWAYS_LAYER_ID = 'atlas-airways-line';
+export const AIRWAYS_LAYER_ID = 'atlas-airways-line';
 
 /**
  * Projects the bundled airway records into a GeoJSON `FeatureCollection`

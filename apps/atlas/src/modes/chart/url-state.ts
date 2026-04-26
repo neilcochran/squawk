@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AirspaceType, AirwayType } from '@squawk/types';
+import { MAP_MAX_PITCH } from '../../shared/map/map-canvas.tsx';
 
 /**
  * Router path that the chart mode mounts at. Single source of truth for any
@@ -110,6 +111,8 @@ export const CHART_DEFAULTS = {
   lon: -98.5,
   /** Default map zoom level. */
   zoom: 4,
+  /** Default map pitch in degrees. 0 is the flat / plan view. */
+  pitch: 0,
   /** Default active layer set: every layer visible. */
   layers: LAYER_IDS,
   /** Default active airspace classes: every class visible. */
@@ -131,6 +134,18 @@ export const chartSearchSchema = z.object({
   lon: z.number().min(-180).max(180).default(CHART_DEFAULTS.lon).catch(CHART_DEFAULTS.lon),
   /** Map zoom level. Range: [0, 22] (MapLibre's supported zoom range). */
   zoom: z.number().min(0).max(22).default(CHART_DEFAULTS.zoom).catch(CHART_DEFAULTS.zoom),
+  /**
+   * Map pitch in degrees. Range: [0, MAP_MAX_PITCH] - matches the map
+   * primitive's `maxPitch` so a stale URL with a value above the cap clamps
+   * to the default rather than landing somewhere the camera will then
+   * clip on next interaction.
+   */
+  pitch: z
+    .number()
+    .min(0)
+    .max(MAP_MAX_PITCH)
+    .default(CHART_DEFAULTS.pitch)
+    .catch(CHART_DEFAULTS.pitch),
   /**
    * Active layer set. Default is every layer enabled; an empty array is a
    * legitimate "basemap only" state and is preserved. Unknown ids or
@@ -159,6 +174,14 @@ export const chartSearchSchema = z.object({
     .array(z.enum(AIRWAY_CATEGORIES))
     .default([...CHART_DEFAULTS.airwayCategories])
     .catch([...CHART_DEFAULTS.airwayCategories]),
+  /**
+   * Currently inspected entity, encoded as `{type}:{id}` (e.g. `airport:BOS`,
+   * `navaid:BOS`, `airway:V16`, `airspace:CLASS_B/JFK`). Absent when no entity
+   * is selected. Malformed or stale values resolve to undefined at the
+   * inspector layer rather than being scrubbed from the URL, so navigations
+   * during a stale link do not silently strip the user's intent.
+   */
+  selected: z.string().optional().catch(undefined),
 });
 
 /**

@@ -151,6 +151,7 @@ function makePrev(overrides: Partial<ChartSearch> = {}): ChartSearch {
     lat: 0,
     lon: 0,
     zoom: 0,
+    pitch: 0,
     layers: [...LAYER_IDS],
     airspaceClasses: [...AIRSPACE_CLASSES],
     airwayCategories: [...AIRWAY_CATEGORIES],

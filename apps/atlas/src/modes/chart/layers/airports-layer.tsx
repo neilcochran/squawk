@@ -27,7 +27,7 @@ interface AirportFeatureProperties {
 const AIRPORTS_SOURCE_ID = 'atlas-airports';
 
 /** MapLibre layer id for the airports circle symbology. */
-const AIRPORTS_LAYER_ID = 'atlas-airports-circle';
+export const AIRPORTS_LAYER_ID = 'atlas-airports-circle';
 
 /**
  * Returns the longest runway length in feet across an airport's runways,

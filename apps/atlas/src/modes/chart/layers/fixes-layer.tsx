@@ -25,7 +25,7 @@ interface FixFeatureProperties {
 const FIXES_SOURCE_ID = 'atlas-fixes';
 
 /** MapLibre layer id for the fixes circle symbology. */
-const FIXES_LAYER_ID = 'atlas-fixes-circle';
+export const FIXES_LAYER_ID = 'atlas-fixes-circle';
 
 /**
  * Fix usage codes we render. `CN` (computer navigation fix - internal FAA

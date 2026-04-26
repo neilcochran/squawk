@@ -14,10 +14,10 @@ const route = getRouteApi(CHART_ROUTE_PATH);
 const AIRSPACE_SOURCE_ID = 'atlas-airspace';
 
 /** MapLibre layer id for the airspace polygon fill. */
-const AIRSPACE_FILL_LAYER_ID = 'atlas-airspace-fill';
+export const AIRSPACE_FILL_LAYER_ID = 'atlas-airspace-fill';
 
 /** MapLibre layer id for the airspace polygon outline. */
-const AIRSPACE_LINE_LAYER_ID = 'atlas-airspace-line';
+export const AIRSPACE_LINE_LAYER_ID = 'atlas-airspace-line';
 
 /**
  * MapLibre `match` expression mapping airspace type to color. Shared

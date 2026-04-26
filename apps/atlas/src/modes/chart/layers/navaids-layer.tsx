@@ -25,7 +25,7 @@ interface NavaidFeatureProperties {
 const NAVAIDS_SOURCE_ID = 'atlas-navaids';
 
 /** MapLibre layer id for the navaids circle symbology. */
-const NAVAIDS_LAYER_ID = 'atlas-navaids-circle';
+export const NAVAIDS_LAYER_ID = 'atlas-navaids-circle';
 
 /**
  * Navaid types we render. `FAN_MARKER`, `MARINE_NDB`, and `VOT` are

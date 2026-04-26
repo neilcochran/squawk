@@ -16,6 +16,7 @@ describe('chartSearchSchema', () => {
     const input = { lat: 40, lon: -100, zoom: 6 };
     expect(chartSearchSchema.parse(input)).toEqual({
       ...input,
+      pitch: CHART_DEFAULTS.pitch,
       layers: [...LAYER_IDS],
       airspaceClasses: [...AIRSPACE_CLASSES],
       airwayCategories: [...AIRWAY_CATEGORIES],
@@ -35,6 +36,31 @@ describe('chartSearchSchema', () => {
   it('falls back to the default zoom when the input is out of range', () => {
     const result = chartSearchSchema.parse({ zoom: 100 });
     expect(result.zoom).toBe(CHART_DEFAULTS.zoom);
+  });
+
+  it('returns the default pitch (0) when absent', () => {
+    const result = chartSearchSchema.parse({});
+    expect(result.pitch).toBe(CHART_DEFAULTS.pitch);
+  });
+
+  it('preserves a valid in-range pitch', () => {
+    const result = chartSearchSchema.parse({ pitch: 30 });
+    expect(result.pitch).toBe(30);
+  });
+
+  it('falls back to the default pitch when the input is below 0', () => {
+    const result = chartSearchSchema.parse({ pitch: -10 });
+    expect(result.pitch).toBe(CHART_DEFAULTS.pitch);
+  });
+
+  it('falls back to the default pitch when the input is above the map cap', () => {
+    const result = chartSearchSchema.parse({ pitch: 200 });
+    expect(result.pitch).toBe(CHART_DEFAULTS.pitch);
+  });
+
+  it('falls back to the default pitch when the input is the wrong type', () => {
+    const result = chartSearchSchema.parse({ pitch: 'not-a-number' });
+    expect(result.pitch).toBe(CHART_DEFAULTS.pitch);
   });
 
   it('falls back to defaults when the input has the wrong type', () => {
@@ -108,5 +134,23 @@ describe('chartSearchSchema', () => {
   it('falls back to all airway categories when airwayCategories is not an array', () => {
     const result = chartSearchSchema.parse({ airwayCategories: 'LOW' });
     expect(result.airwayCategories).toEqual([...AIRWAY_CATEGORIES]);
+  });
+
+  it('returns selected as undefined when absent', () => {
+    const result = chartSearchSchema.parse({});
+    expect(result.selected).toBeUndefined();
+  });
+
+  it('preserves a string selected value', () => {
+    const result = chartSearchSchema.parse({ selected: 'airport:BOS' });
+    expect(result.selected).toBe('airport:BOS');
+  });
+
+  it('falls back to undefined when selected is not a string', () => {
+    // The `.catch(undefined)` clause keeps stale or programmatic-error URLs
+    // (e.g. an array slipped into ?selected=) from throwing at the route
+    // boundary. Validation of the parsed string lives in entity.ts, not here.
+    const result = chartSearchSchema.parse({ selected: ['airport:BOS'] });
+    expect(result.selected).toBeUndefined();
   });
 });
