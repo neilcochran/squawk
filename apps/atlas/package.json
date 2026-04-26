@@ -31,6 +31,8 @@
     "@protomaps/basemaps": "^5.7.2",
     "@squawk/airport-data": "^0.7.0",
     "@squawk/airports": "^0.5.1",
+    "@squawk/airspace": "^0.6.0",
+    "@squawk/airspace-data": "^0.5.0",
     "@squawk/airway-data": "^0.5.0",
     "@squawk/airways": "^0.3.2",
     "@squawk/fix-data": "^0.6.0",
