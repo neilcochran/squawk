@@ -1,11 +1,16 @@
 import { useMemo } from 'react';
 import type { ReactElement } from 'react';
+import { getRouteApi } from '@tanstack/react-router';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, MultiLineString } from 'geojson';
 import type { Airway, AirwayType } from '@squawk/types';
 import { useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
+import { AIRWAY_CATEGORY_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 import { buildSegments } from './airway-segments.ts';
+
+const route = getRouteApi(CHART_ROUTE_PATH);
 
 /**
  * Properties carried on each airway line feature in the GeoJSON source.
@@ -56,13 +61,14 @@ function toFeatureCollection(
 }
 
 /**
- * MapLibre layer styling. Lines are thin and semi-transparent so the
- * airway web reads as a structural underlay rather than dominant
+ * MapLibre layer styling, sans filter. Lines are thin and semi-transparent
+ * so the airway web reads as a structural underlay rather than dominant
  * symbology. Color is tiered by airway type: low-altitude V-routes and
  * RNAV T-routes in slate, high-altitude J-routes and RNAV Q-routes in
- * indigo, regional and oceanic routes in muted gray.
+ * indigo, regional and oceanic routes in muted gray. The visibility filter
+ * is built per-render from the active `airwayCategories` URL state.
  */
-const AIRWAYS_LAYER_PROPS: LayerProps = {
+const AIRWAYS_LAYER_BASE: LayerProps = {
   id: AIRWAYS_LAYER_ID,
   source: AIRWAYS_SOURCE_ID,
   type: 'line',
@@ -87,12 +93,28 @@ const AIRWAYS_LAYER_PROPS: LayerProps = {
 
 /**
  * Chart-mode overlay that renders airways from `@squawk/airway-data` as
- * MapLibre line features. Returns `null` while the dataset is still being
- * fetched or if the load failed; callers needing fetch-state UI should read
- * the same hook directly.
+ * MapLibre line features. Reads the active `airwayCategories` from URL
+ * state and applies a MapLibre `filter` expression so toggling categories
+ * shows or hides only the matching airways without rebuilding the GeoJSON
+ * source. Returns `null` while the dataset is still being fetched or if
+ * the load failed; callers needing fetch-state UI should read the same
+ * hook directly.
  */
 export function AirwaysLayer(): ReactElement | null {
+  const { airwayCategories } = route.useSearch();
   const state = useAirwayDataset();
+
+  const enabledTypes = useMemo<readonly AirwayType[]>(
+    () => airwayCategories.flatMap((category) => AIRWAY_CATEGORY_TYPES[category]),
+    [airwayCategories],
+  );
+
+  const filter = useMemo<ExpressionSpecification>(
+    () => ['in', ['get', 'type'], ['literal', [...enabledTypes]]],
+    [enabledTypes],
+  );
+
+  const layerProps = useMemo<LayerProps>(() => ({ ...AIRWAYS_LAYER_BASE, filter }), [filter]);
 
   const data = useMemo<
     FeatureCollection<MultiLineString, AirwayFeatureProperties> | undefined
@@ -109,7 +131,7 @@ export function AirwaysLayer(): ReactElement | null {
 
   return (
     <Source id={AIRWAYS_SOURCE_ID} type="geojson" data={data}>
-      <Layer {...AIRWAYS_LAYER_PROPS} />
+      <Layer {...layerProps} />
     </Source>
   );
 }

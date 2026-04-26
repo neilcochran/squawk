@@ -1,8 +1,14 @@
+import { useMemo } from 'react';
 import type { ReactElement } from 'react';
+import { getRouteApi } from '@tanstack/react-router';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
+import type { AirspaceType } from '@squawk/types';
 import { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
+import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
+
+const route = getRouteApi(CHART_ROUTE_PATH);
 
 /** MapLibre source id for the airspace overlay. */
 const AIRSPACE_SOURCE_ID = 'atlas-airspace';
@@ -51,14 +57,12 @@ const TYPE_COLOR_EXPRESSION = [
 ] satisfies ExpressionSpecification;
 
 /**
- * Polygon fill layer styling. Uses a low alpha so airspace boundaries
- * read as gentle tints rather than dominant blocks of color, leaving the
- * basemap and other overlays legible. No type filter: every airspace
- * type the dataset emits is rendered. Default-display tuning (which
- * types are visible by default, zoom-aware visibility, opacity ramps)
- * lands in a later step.
+ * Polygon fill layer styling, sans filter. Uses a low alpha so airspace
+ * boundaries read as gentle tints rather than dominant blocks of color,
+ * leaving the basemap and other overlays legible. The visibility filter is
+ * built per-render from the active `airspaceClasses` URL state.
  */
-const AIRSPACE_FILL_LAYER_PROPS: LayerProps = {
+const AIRSPACE_FILL_LAYER_BASE: LayerProps = {
   id: AIRSPACE_FILL_LAYER_ID,
   source: AIRSPACE_SOURCE_ID,
   type: 'fill',
@@ -69,12 +73,11 @@ const AIRSPACE_FILL_LAYER_PROPS: LayerProps = {
 };
 
 /**
- * Polygon outline layer styling. Stroke color matches the fill so each
- * airspace is visually a single unit; stroke is thin so dense areas
- * (e.g. the Class B/C/D layers around busy metros) do not clutter. No
- * type filter, mirroring the fill layer.
+ * Polygon outline layer styling, sans filter. Stroke color matches the
+ * fill so each airspace is visually a single unit; stroke is thin so
+ * dense areas do not clutter.
  */
-const AIRSPACE_LINE_LAYER_PROPS: LayerProps = {
+const AIRSPACE_LINE_LAYER_BASE: LayerProps = {
   id: AIRSPACE_LINE_LAYER_ID,
   source: AIRSPACE_SOURCE_ID,
   type: 'line',
@@ -94,11 +97,35 @@ const AIRSPACE_LINE_LAYER_PROPS: LayerProps = {
  * `@squawk/airspace-data` using a fill layer for tinted boundaries and a
  * line layer for the outlines. The dataset is already a GeoJSON
  * `FeatureCollection`, so MapLibre consumes it directly without a
- * client-side projection step. Returns `null` while the dataset is still
+ * client-side projection step. The fill and line layers share a MapLibre
+ * `filter` expression built from the active `airspaceClasses` URL state,
+ * so toggling sub-classes shows or hides only the matching features
+ * without rebuilding the source. Returns `null` while the dataset is still
  * being fetched or if the load failed.
  */
 export function AirspaceLayer(): ReactElement | null {
+  const { airspaceClasses } = route.useSearch();
   const state = useAirspaceDataset();
+
+  const enabledTypes = useMemo<readonly AirspaceType[]>(
+    () => airspaceClasses.flatMap((cls) => AIRSPACE_CLASS_TYPES[cls]),
+    [airspaceClasses],
+  );
+
+  const filter = useMemo<ExpressionSpecification>(
+    () => ['in', ['get', 'type'], ['literal', [...enabledTypes]]],
+    [enabledTypes],
+  );
+
+  const fillLayerProps = useMemo<LayerProps>(
+    () => ({ ...AIRSPACE_FILL_LAYER_BASE, filter }),
+    [filter],
+  );
+
+  const lineLayerProps = useMemo<LayerProps>(
+    () => ({ ...AIRSPACE_LINE_LAYER_BASE, filter }),
+    [filter],
+  );
 
   if (state.status !== 'loaded') {
     return null;
@@ -106,8 +133,8 @@ export function AirspaceLayer(): ReactElement | null {
 
   return (
     <Source id={AIRSPACE_SOURCE_ID} type="geojson" data={state.dataset}>
-      <Layer {...AIRSPACE_FILL_LAYER_PROPS} />
-      <Layer {...AIRSPACE_LINE_LAYER_PROPS} />
+      <Layer {...fillLayerProps} />
+      <Layer {...lineLayerProps} />
     </Source>
   );
 }
