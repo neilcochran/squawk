@@ -16,6 +16,15 @@ const PROTOMAPS_GLYPHS =
   'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf';
 const PROTOMAPS_SPRITES = 'https://protomaps.github.io/basemaps-assets/sprites/v4/light';
 
+/**
+ * Maximum pitch (in degrees) the map will accept. Raised above MapLibre's
+ * default of 60 so the chart-mode tilt stepper in
+ * `src/shared/map/zoom-controls.tsx` can climb one extra 15-degree step
+ * past the default cap. Exported so the chrome can use the same value as
+ * its upper bound and the two cannot drift.
+ */
+export const MAP_MAX_PITCH = 75;
+
 const MAP_STYLE: StyleSpecification = {
   version: 8,
   glyphs: PROTOMAPS_GLYPHS,
@@ -97,6 +106,7 @@ export function MapCanvas({
       initialViewState={{ longitude: lon, latitude: lat, zoom }}
       style={{ position: 'absolute', inset: 0 }}
       mapStyle={MAP_STYLE}
+      maxPitch={MAP_MAX_PITCH}
       onMoveEnd={handleMoveEnd}
     >
       {children}
