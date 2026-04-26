@@ -2,9 +2,10 @@ import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
-import type { Feature, FeatureCollection, MultiLineString, Position } from 'geojson';
-import type { Airway, AirwayType, AirwayWaypoint } from '@squawk/types';
+import type { Feature, FeatureCollection, MultiLineString } from 'geojson';
+import type { Airway, AirwayType } from '@squawk/types';
 import { useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
+import { buildSegments } from './airway-segments.ts';
 
 /**
  * Properties carried on each airway line feature in the GeoJSON source.
@@ -24,55 +25,6 @@ const AIRWAYS_SOURCE_ID = 'atlas-airways';
 
 /** MapLibre layer id for the airways line symbology. */
 const AIRWAYS_LAYER_ID = 'atlas-airways-line';
-
-/**
- * Builds the per-airway segment list, splitting at the antimeridian when
- * consecutive waypoints lie on opposite sides of lon=180. The split uses
- * linear interpolation of the latitude at the crossing, which is good
- * enough for visual rendering on a Mercator-style projection.
- *
- * Returns one or more `Position[]` segments. With no antimeridian
- * crossings the result is a single segment containing every waypoint.
- */
-function buildSegments(waypoints: AirwayWaypoint[]): Position[][] {
-  const segments: Position[][] = [];
-  let current: Position[] = [];
-  let prev: AirwayWaypoint | undefined;
-
-  for (const wp of waypoints) {
-    if (prev === undefined) {
-      current.push([wp.lon, wp.lat]);
-      prev = wp;
-      continue;
-    }
-
-    const lonDiff = wp.lon - prev.lon;
-    if (Math.abs(lonDiff) > 180) {
-      // The two waypoints are on opposite sides of the antimeridian and the
-      // shorter physical path crosses it. Close the current segment at the
-      // crossing point, then start a new segment from the wrap on the other
-      // side.
-      const prevSideCrossingLon = lonDiff > 0 ? -180 : 180;
-      const wpSideCrossingLon = lonDiff > 0 ? 180 : -180;
-      const wpAdjustedLon = lonDiff > 0 ? wp.lon - 360 : wp.lon + 360;
-      const t = (prevSideCrossingLon - prev.lon) / (wpAdjustedLon - prev.lon);
-      const crossingLat = prev.lat + t * (wp.lat - prev.lat);
-
-      current.push([prevSideCrossingLon, crossingLat]);
-      segments.push(current);
-      current = [
-        [wpSideCrossingLon, crossingLat],
-        [wp.lon, wp.lat],
-      ];
-    } else {
-      current.push([wp.lon, wp.lat]);
-    }
-    prev = wp;
-  }
-
-  segments.push(current);
-  return segments;
-}
 
 /**
  * Projects the bundled airway records into a GeoJSON `FeatureCollection`
