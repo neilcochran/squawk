@@ -1,9 +1,15 @@
 import { useCallback } from 'react';
 import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
+import { MapProvider } from '@vis.gl/react-maplibre';
 import { MapCanvas } from '../../shared/map/map-canvas.tsx';
 import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
+import { ChartLoadingIndicator } from './chart-loading-indicator.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
+import { AirspaceLayer } from './layers/airspace-layer.tsx';
+import { AirwaysLayer } from './layers/airways-layer.tsx';
+import { FixesLayer } from './layers/fixes-layer.tsx';
+import { NavaidsLayer } from './layers/navaids-layer.tsx';
 import { CHART_ROUTE_PATH } from './url-state.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
@@ -28,9 +34,20 @@ export function ChartMode(): ReactElement {
     [navigate],
   );
 
+  // `<MapProvider>` lets the loading indicator (a sibling of MapCanvas)
+  // reach the underlying MapLibre instance via `useMap()`, so it can
+  // subscribe to the map's `idle` event and dismiss only after the
+  // basemap and freshly-added layer sources have actually painted.
   return (
-    <MapCanvas lat={lat} lon={lon} zoom={zoom} onViewStateChange={handleViewStateChange}>
-      <AirportsLayer />
-    </MapCanvas>
+    <MapProvider>
+      <MapCanvas lat={lat} lon={lon} zoom={zoom} onViewStateChange={handleViewStateChange}>
+        <AirspaceLayer />
+        <AirwaysLayer />
+        <FixesLayer />
+        <NavaidsLayer />
+        <AirportsLayer />
+      </MapCanvas>
+      <ChartLoadingIndicator />
+    </MapProvider>
   );
 }
