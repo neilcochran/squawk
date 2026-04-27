@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useMap } from '@vis.gl/react-maplibre';
-import type { Feature, GeoJsonProperties, Geometry, Polygon } from 'geojson';
+import type { Polygon } from 'geojson';
 import type { AirspaceFeature } from '@squawk/types';
 import {
   formatAirspaceLabel,
@@ -14,6 +14,7 @@ import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
 import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.ts';
 import { AIRSPACE_CLASS_FOR_TYPE, CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
+import { isAirspacePolygonFeature } from './airspace-feature.ts';
 import { resolveSelectionFromState, useDatasetStates } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
 import { AirportPanel } from './renderers/airport-panel.tsx';
@@ -658,25 +659,6 @@ function polygonsIdentical(a: Polygon, b: Polygon): boolean {
     }
   }
   return true;
-}
-
-/**
- * Type-narrows a generic GeoJSON feature to the airspace-feature shape
- * the bundled dataset ships. Local copy of the same predicate in
- * `entity-resolver.ts`; duplicated here to keep the inspector's
- * bbox-chip walk self-contained.
- */
-function isAirspacePolygonFeature(
-  feature: Feature<Geometry, GeoJsonProperties>,
-): feature is Feature<Polygon, AirspaceFeature> {
-  if (feature.geometry.type !== 'Polygon') {
-    return false;
-  }
-  const props = feature.properties;
-  if (props === null) {
-    return false;
-  }
-  return 'type' in props && 'identifier' in props && 'floor' in props && 'ceiling' in props;
 }
 
 /** Small icon hint next to the sibling-chip heading: stacked layers. */
