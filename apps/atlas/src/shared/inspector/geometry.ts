@@ -1,5 +1,12 @@
-/** Bounding box in `[west, south, east, north]` order, lon/lat degrees. */
-export type Bbox = [number, number, number, number];
+import type { BoundingBox } from '@squawk/geo';
+
+/**
+ * Re-export of {@link @squawk/geo!BoundingBox} so inspector modules can
+ * import their bbox shape from the same `./geometry.ts` they import the
+ * helpers from, without each one having to take a direct geo import for
+ * the type alone.
+ */
+export type { BoundingBox } from '@squawk/geo';
 
 /**
  * Reduces an iterable of `[lon, lat]` pairs to their bounding box in a
@@ -10,32 +17,36 @@ export type Bbox = [number, number, number, number];
  * Callers are responsible for filtering undefined or `NaN` entries before
  * yielding; this reducer does not look inside its inputs and is the
  * shared min/max walk used by the inspector's per-shape bbox helpers
- * (`polygonBbox`, `bboxFromWaypoints`, `combinedBboxFromAirspaceFeatures`).
+ * (`bboxFromWaypoints`, `combinedBboxFromAirspaceFeatures`). The polygon
+ * case is covered directly by `polygonGeoJson.polygonBoundingBox` from
+ * `@squawk/geo`.
  *
  * @param coords - Iterable of `[lon, lat]` number pairs.
  * @returns The minimal axis-aligned bounding box, or undefined if no
  *          coordinates were yielded.
  */
-export function bboxFromCoords(coords: Iterable<readonly [number, number]>): Bbox | undefined {
-  let west = Number.POSITIVE_INFINITY;
-  let south = Number.POSITIVE_INFINITY;
-  let east = Number.NEGATIVE_INFINITY;
-  let north = Number.NEGATIVE_INFINITY;
+export function bboxFromCoords(
+  coords: Iterable<readonly [number, number]>,
+): BoundingBox | undefined {
+  let minLon = Number.POSITIVE_INFINITY;
+  let minLat = Number.POSITIVE_INFINITY;
+  let maxLon = Number.NEGATIVE_INFINITY;
+  let maxLat = Number.NEGATIVE_INFINITY;
   let any = false;
   for (const [lon, lat] of coords) {
-    if (lon < west) {
-      west = lon;
+    if (lon < minLon) {
+      minLon = lon;
     }
-    if (lat < south) {
-      south = lat;
+    if (lat < minLat) {
+      minLat = lat;
     }
-    if (lon > east) {
-      east = lon;
+    if (lon > maxLon) {
+      maxLon = lon;
     }
-    if (lat > north) {
-      north = lat;
+    if (lat > maxLat) {
+      maxLat = lat;
     }
     any = true;
   }
-  return any ? [west, south, east, north] : undefined;
+  return any ? { minLon, maxLon, minLat, maxLat } : undefined;
 }
