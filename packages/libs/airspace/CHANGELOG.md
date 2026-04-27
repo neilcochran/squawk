@@ -1,5 +1,12 @@
 # @squawk/airspace
 
+## 0.6.2
+
+### Patch Changes
+
+- Updated dependencies [5a181dc]
+  - @squawk/geo@0.4.0
+
 ## 0.6.1
 
 ### Patch Changes
