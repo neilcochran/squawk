@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // Cross-platform clean script
-const packagesDir = path.join(import.meta.dirname, '..', 'packages');
+const packagesDir = path.join(import.meta.dirname, '..', 'packages', 'libs');
 
 try {
   const packages = fs.readdirSync(packagesDir);

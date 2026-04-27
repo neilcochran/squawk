@@ -18,7 +18,7 @@ with NAV_BASE.csv.
 
 ## Output
 
-Gzipped JSON file written to `packages/navaid-data/data/navaids.json.gz`.
+Gzipped JSON file written to `packages/libs/navaid-data/data/navaids.json.gz`.
 
 ## Input files
 

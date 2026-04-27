@@ -20,7 +20,7 @@ node dist/index.js --local <path-to-zip>
 node dist/index.js --fetch --output <output-path>
 ```
 
-The default output path is `packages/icao-registry-data/data/icao-registry.json.gz`.
+The default output path is `packages/libs/icao-registry-data/data/icao-registry.json.gz`.
 
 ## How it works
 

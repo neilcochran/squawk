@@ -1,0 +1,56 @@
+{
+  "name": "@squawk/fixes",
+  "version": "0.2.2",
+  "type": "module",
+  "description": "Fix/waypoint queries by identifier, location, or name search",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/libs/fixes"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only"
+  },
+  "dependencies": {
+    "@squawk/geo": "^0.3.2",
+    "@squawk/types": "^0.7.0"
+  },
+  "devDependencies": {
+    "@squawk/fix-data": "^0.6.0",
+    "@types/node": "^25.6.0"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "fix",
+    "waypoint",
+    "intersection",
+    "faa",
+    "nasr"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

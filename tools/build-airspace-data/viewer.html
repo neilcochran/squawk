@@ -236,7 +236,7 @@
       });
 
       // Try to load default file via fetch (works when served locally)
-      fetch('../../packages/airspace-data/data/airspace.geojson')
+      fetch('../../packages/libs/airspace-data/data/airspace.geojson')
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then(loadGeoJSON)
         .catch(() => {

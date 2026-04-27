@@ -29,7 +29,7 @@ async function main(): Promise<void> {
   const { subscriptionDir, nasrCycleDate, outputPath, cleanup } = parseNasrArgs({
     defaultOutputPath: resolve(
       import.meta.dirname,
-      '../../../packages/fix-data/data/fixes.json.gz',
+      '../../../packages/libs/fix-data/data/fixes.json.gz',
     ),
   });
 
