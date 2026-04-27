@@ -1,4 +1,4 @@
 dist/
 node_modules/
 *.tsbuildinfo
-packages/airspace-data/data/
+packages/libs/airspace-data/data/

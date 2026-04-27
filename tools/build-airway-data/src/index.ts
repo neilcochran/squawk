@@ -205,7 +205,7 @@ async function main(): Promise<void> {
   const { subscriptionDir, nasrCycleDate, outputPath, cleanup } = parseNasrArgs({
     defaultOutputPath: resolve(
       import.meta.dirname,
-      '../../../packages/airway-data/data/airways.json.gz',
+      '../../../packages/libs/airway-data/data/airways.json.gz',
     ),
   });
 

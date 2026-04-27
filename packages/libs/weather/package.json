@@ -1,0 +1,60 @@
+{
+  "name": "@squawk/weather",
+  "version": "0.5.1",
+  "type": "module",
+  "description": "Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP) into structured objects",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/libs/weather"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./fetch": {
+      "types": "./dist/fetch/index.d.ts",
+      "import": "./dist/fetch/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only"
+  },
+  "dependencies": {
+    "@squawk/types": "^0.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "metar",
+    "taf",
+    "sigmet",
+    "airmet",
+    "pirep",
+    "weather",
+    "parser"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

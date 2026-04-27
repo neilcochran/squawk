@@ -1,0 +1,57 @@
+{
+  "name": "@squawk/airports",
+  "version": "0.5.1",
+  "type": "module",
+  "description": "Pure logic library for querying US airport data by identifier, location, or name",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/libs/airports"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only"
+  },
+  "dependencies": {
+    "@squawk/geo": "^0.3.2",
+    "@squawk/types": "^0.7.0"
+  },
+  "devDependencies": {
+    "@squawk/airport-data": "^0.7.0",
+    "@types/node": "^25.6.0"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "airport",
+    "runway",
+    "frequency",
+    "ils",
+    "faa",
+    "nasr"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

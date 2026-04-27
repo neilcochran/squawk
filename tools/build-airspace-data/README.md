@@ -20,7 +20,7 @@ The `--local` path must be the root of an extracted NASR 28-day subscription
 directory named `28DaySubscription_Effective_YYYY-MM-DD`. The cycle date is
 parsed from the directory name and embedded in the output metadata.
 
-The default output path is `packages/airspace-data/data/airspace.geojson`.
+The default output path is `packages/libs/airspace-data/data/airspace.geojson`.
 
 ### Validating output
 

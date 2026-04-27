@@ -8,30 +8,30 @@ TypeScript libraries for building aviation applications - airspace geometry, wea
 
 ## Packages
 
-| Package                                                     | Description                                                                        |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [`@squawk/types`](packages/types)                           | Shared type definitions used across all packages                                   |
-| [`@squawk/units`](packages/units)                           | Aviation-aware unit conversion and formatting utilities                            |
-| [`@squawk/geo`](packages/geo)                               | Geospatial utilities: great-circle distance, bearing, midpoint, point-in-polygon   |
-| [`@squawk/flight-math`](packages/flight-math)               | Aviation flight computer calculations (E6B wind triangle, altitude, airspeed)      |
-| [`@squawk/icao-registry`](packages/icao-registry)           | ICAO hex to N-number and aircraft info lookup with FAA parsing utilities           |
-| [`@squawk/icao-registry-data`](packages/icao-registry-data) | Pre-processed FAA ReleasableAircraft snapshot for use with `@squawk/icao-registry` |
-| [`@squawk/airspace`](packages/airspace)                     | Point-in-airspace queries for Class B/C/D/E and Special Use Airspace               |
-| [`@squawk/airspace-data`](packages/airspace-data)           | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`   |
-| [`@squawk/airports`](packages/airports)                     | Airport queries by identifier, location, or name/city search                       |
-| [`@squawk/airport-data`](packages/airport-data)             | Pre-processed FAA NASR airport snapshot with runways, frequencies, and ILS data    |
-| [`@squawk/navaids`](packages/navaids)                       | Navaid queries by identifier, frequency, type, location, or name search            |
-| [`@squawk/navaid-data`](packages/navaid-data)               | Pre-processed FAA NASR navaid snapshot for use with `@squawk/navaids`              |
-| [`@squawk/fixes`](packages/fixes)                           | Fix/waypoint queries by identifier, location, or identifier search                 |
-| [`@squawk/fix-data`](packages/fix-data)                     | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`          |
-| [`@squawk/airways`](packages/airways)                       | Airway lookup, traversal, and expansion by designation, fix, or search             |
-| [`@squawk/airway-data`](packages/airway-data)               | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`              |
-| [`@squawk/procedures`](packages/procedures)                 | Instrument procedure lookup and expansion for SIDs, STARs, and IAPs (CIFP)         |
-| [`@squawk/procedure-data`](packages/procedure-data)         | Pre-processed FAA CIFP procedure snapshot for use with `@squawk/procedures`        |
-| [`@squawk/flightplan`](packages/flightplan)                 | Flight plan route string parsing and resolution using composed resolvers           |
-| [`@squawk/weather`](packages/weather)                       | Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP)      |
-| [`@squawk/notams`](packages/notams)                         | Parse raw ICAO-format NOTAM strings into structured objects                        |
-| [`@squawk/mcp`](packages/mcp)                               | Model Context Protocol server exposing the squawk libraries as tools for LLMs      |
+| Package                                                          | Description                                                                        |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [`@squawk/types`](packages/libs/types)                           | Shared type definitions used across all packages                                   |
+| [`@squawk/units`](packages/libs/units)                           | Aviation-aware unit conversion and formatting utilities                            |
+| [`@squawk/geo`](packages/libs/geo)                               | Geospatial utilities: great-circle distance, bearing, midpoint, point-in-polygon   |
+| [`@squawk/flight-math`](packages/libs/flight-math)               | Aviation flight computer calculations (E6B wind triangle, altitude, airspeed)      |
+| [`@squawk/icao-registry`](packages/libs/icao-registry)           | ICAO hex to N-number and aircraft info lookup with FAA parsing utilities           |
+| [`@squawk/icao-registry-data`](packages/libs/icao-registry-data) | Pre-processed FAA ReleasableAircraft snapshot for use with `@squawk/icao-registry` |
+| [`@squawk/airspace`](packages/libs/airspace)                     | Point-in-airspace queries for Class B/C/D/E and Special Use Airspace               |
+| [`@squawk/airspace-data`](packages/libs/airspace-data)           | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`   |
+| [`@squawk/airports`](packages/libs/airports)                     | Airport queries by identifier, location, or name/city search                       |
+| [`@squawk/airport-data`](packages/libs/airport-data)             | Pre-processed FAA NASR airport snapshot with runways, frequencies, and ILS data    |
+| [`@squawk/navaids`](packages/libs/navaids)                       | Navaid queries by identifier, frequency, type, location, or name search            |
+| [`@squawk/navaid-data`](packages/libs/navaid-data)               | Pre-processed FAA NASR navaid snapshot for use with `@squawk/navaids`              |
+| [`@squawk/fixes`](packages/libs/fixes)                           | Fix/waypoint queries by identifier, location, or identifier search                 |
+| [`@squawk/fix-data`](packages/libs/fix-data)                     | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`          |
+| [`@squawk/airways`](packages/libs/airways)                       | Airway lookup, traversal, and expansion by designation, fix, or search             |
+| [`@squawk/airway-data`](packages/libs/airway-data)               | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`              |
+| [`@squawk/procedures`](packages/libs/procedures)                 | Instrument procedure lookup and expansion for SIDs, STARs, and IAPs (CIFP)         |
+| [`@squawk/procedure-data`](packages/libs/procedure-data)         | Pre-processed FAA CIFP procedure snapshot for use with `@squawk/procedures`        |
+| [`@squawk/flightplan`](packages/libs/flightplan)                 | Flight plan route string parsing and resolution using composed resolvers           |
+| [`@squawk/weather`](packages/libs/weather)                       | Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP)      |
+| [`@squawk/notams`](packages/libs/notams)                         | Parse raw ICAO-format NOTAM strings into structured objects                        |
+| [`@squawk/mcp`](packages/libs/mcp)                               | Model Context Protocol server exposing the squawk libraries as tools for LLMs      |
 
 ## Development
 

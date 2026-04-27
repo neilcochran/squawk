@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   const { subscriptionDir, nasrCycleDate, outputPath, cleanup } = parseNasrArgs({
     defaultOutputPath: resolve(
       import.meta.dirname,
-      '../../../packages/navaid-data/data/navaids.json.gz',
+      '../../../packages/libs/navaid-data/data/navaids.json.gz',
     ),
   });
 

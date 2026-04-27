@@ -1,0 +1,56 @@
+{
+  "name": "@squawk/airways",
+  "version": "0.3.2",
+  "type": "module",
+  "description": "Airway lookup, traversal, and expansion by designation, fix, or search",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/libs/airways"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only"
+  },
+  "dependencies": {
+    "@squawk/types": "^0.7.0",
+    "@squawk/units": "^0.4.0"
+  },
+  "devDependencies": {
+    "@squawk/airway-data": "^0.5.0",
+    "@types/node": "^25.6.0"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "airway",
+    "victor",
+    "jet-route",
+    "faa",
+    "nasr"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

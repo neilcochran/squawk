@@ -5,7 +5,7 @@
   "description": "Modular TypeScript libraries for building aviation applications - airspace geometry, weather parsing, flight planning, and more.",
   "packageManager": "npm@11.12.1",
   "workspaces": [
-    "packages/*",
+    "packages/libs/*",
     "tools/build-shared",
     "tools/build-airspace-data",
     "tools/build-icao-registry-data",

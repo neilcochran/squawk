@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   const { subscriptionDir, nasrCycleDate, outputPath, cleanup } = parseNasrArgs({
     defaultOutputPath: resolve(
       import.meta.dirname,
-      '../../../packages/airspace-data/data/airspace.geojson.gz',
+      '../../../packages/libs/airspace-data/data/airspace.geojson.gz',
     ),
   });
 
