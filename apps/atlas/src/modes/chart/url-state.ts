@@ -68,6 +68,25 @@ export const AIRSPACE_CLASS_TYPES: Record<AirspaceClass, readonly AirspaceType[]
 };
 
 /**
+ * Reverse of {@link AIRSPACE_CLASS_TYPES}: maps each underlying
+ * `AirspaceType` to the user-facing class that contains it. Used when we
+ * have an arbitrary `AirspaceType` (e.g. on a feature's properties bag)
+ * and need to ask "is the user-facing class for this type currently
+ * toggled on?". Computed once at module load.
+ */
+export const AIRSPACE_CLASS_FOR_TYPE: Record<AirspaceType, AirspaceClass> = (() => {
+  const map: Partial<Record<AirspaceType, AirspaceClass>> = {};
+  for (const cls of AIRSPACE_CLASSES) {
+    for (const type of AIRSPACE_CLASS_TYPES[cls]) {
+      map[type] = cls;
+    }
+  }
+  // Every AirspaceType is covered by exactly one class above; the cast
+  // narrows the partial map to the total record.
+  return map as Record<AirspaceType, AirspaceClass>;
+})();
+
+/**
  * User-facing airway categories exposed by the layer toggle. Groups the
  * underlying `AirwayType` values into three buckets: low-altitude V-routes
  * and RNAV-T, high-altitude J-routes and RNAV-Q, and a combined

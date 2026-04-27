@@ -7,6 +7,7 @@ import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, MultiLineString } from 'geojson';
 import type { Airway, AirwayType } from '@squawk/types';
 import { useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
+import { useActiveHighlightRef } from '../highlight-context.ts';
 import { AIRWAY_CATEGORY_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 import { buildSegments } from './airway-segments.ts';
 
@@ -30,6 +31,39 @@ const AIRWAYS_SOURCE_ID = 'atlas-airways';
 
 /** MapLibre layer id for the airways line symbology. */
 export const AIRWAYS_LAYER_ID = 'atlas-airways-line';
+
+/** MapLibre layer id for the airway selection-highlight overlay. */
+const AIRWAYS_HIGHLIGHT_LAYER_ID = 'atlas-airways-highlight';
+
+/**
+ * Filter expression that matches no feature. Used as the default for the
+ * highlight layer when no airway is currently active.
+ */
+const MATCH_NONE_FILTER: ExpressionSpecification = [
+  '==',
+  ['get', 'designation'],
+  '__atlas-no-match__',
+];
+
+/**
+ * Highlight overlay for the currently-selected (or chip-hovered) airway.
+ * Thicker stroke in dark slate over a wider yellow halo so the airway
+ * still reads as a line (not a band) at any zoom.
+ */
+const AIRWAYS_HIGHLIGHT_LAYER_BASE: LayerProps = {
+  id: AIRWAYS_HIGHLIGHT_LAYER_ID,
+  source: AIRWAYS_SOURCE_ID,
+  type: 'line',
+  layout: {
+    'line-cap': 'round',
+    'line-join': 'round',
+  },
+  paint: {
+    'line-color': '#fde047',
+    'line-width': 4,
+    'line-opacity': 0.95,
+  },
+};
 
 /**
  * Projects the bundled airway records into a GeoJSON `FeatureCollection`
@@ -103,6 +137,7 @@ const AIRWAYS_LAYER_BASE: LayerProps = {
 export function AirwaysLayer(): ReactElement | null {
   const { airwayCategories } = route.useSearch();
   const state = useAirwayDataset();
+  const activeRef = useActiveHighlightRef();
 
   const enabledTypes = useMemo<readonly AirwayType[]>(
     () => airwayCategories.flatMap((category) => AIRWAY_CATEGORY_TYPES[category]),
@@ -115,6 +150,14 @@ export function AirwaysLayer(): ReactElement | null {
   );
 
   const layerProps = useMemo<LayerProps>(() => ({ ...AIRWAYS_LAYER_BASE, filter }), [filter]);
+
+  const highlightLayerProps = useMemo<LayerProps>(() => {
+    const highlightFilter: ExpressionSpecification =
+      activeRef?.type === 'airway'
+        ? ['==', ['get', 'designation'], activeRef.id]
+        : MATCH_NONE_FILTER;
+    return { ...AIRWAYS_HIGHLIGHT_LAYER_BASE, filter: highlightFilter };
+  }, [activeRef]);
 
   const data = useMemo<
     FeatureCollection<MultiLineString, AirwayFeatureProperties> | undefined
@@ -132,6 +175,7 @@ export function AirwaysLayer(): ReactElement | null {
   return (
     <Source id={AIRWAYS_SOURCE_ID} type="geojson" data={data}>
       <Layer {...layerProps} />
+      <Layer {...highlightLayerProps} />
     </Source>
   );
 }

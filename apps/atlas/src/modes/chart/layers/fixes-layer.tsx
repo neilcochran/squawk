@@ -2,9 +2,11 @@ import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { Fix, FixUseCode } from '@squawk/types';
 import { useFixDataset } from '../../../shared/data/fix-dataset.ts';
+import { useActiveHighlightRef } from '../highlight-context.ts';
 
 /**
  * Properties carried on each fix point feature in the GeoJSON source.
@@ -26,6 +28,35 @@ const FIXES_SOURCE_ID = 'atlas-fixes';
 
 /** MapLibre layer id for the fixes circle symbology. */
 export const FIXES_LAYER_ID = 'atlas-fixes-circle';
+
+/** MapLibre layer id for the fix selection-highlight overlay. */
+const FIXES_HIGHLIGHT_LAYER_ID = 'atlas-fixes-highlight';
+
+/**
+ * Filter expression that matches no feature. Used as the default for the
+ * highlight layer when no fix is currently active.
+ */
+const MATCH_NONE_FILTER: ExpressionSpecification = [
+  '==',
+  ['get', 'identifier'],
+  '__atlas-no-match__',
+];
+
+/**
+ * Highlight overlay for the currently-selected (or chip-hovered) fix.
+ * Mirrors the airport / navaid highlight (yellow + dark stroke).
+ */
+const FIXES_HIGHLIGHT_LAYER_BASE: LayerProps = {
+  id: FIXES_HIGHLIGHT_LAYER_ID,
+  source: FIXES_SOURCE_ID,
+  type: 'circle',
+  paint: {
+    'circle-radius': 9,
+    'circle-color': '#fde047',
+    'circle-stroke-color': '#0f172a',
+    'circle-stroke-width': 2,
+  },
+};
 
 /**
  * Fix usage codes we render. `CN` (computer navigation fix - internal FAA
@@ -104,6 +135,7 @@ const FIXES_LAYER_PROPS: LayerProps = {
  */
 export function FixesLayer(): ReactElement | null {
   const state = useFixDataset();
+  const activeRef = useActiveHighlightRef();
 
   const data = useMemo<FeatureCollection<Point, FixFeatureProperties> | undefined>(() => {
     if (state.status !== 'loaded') {
@@ -112,6 +144,12 @@ export function FixesLayer(): ReactElement | null {
     return toFeatureCollection(state.dataset.records);
   }, [state]);
 
+  const highlightLayerProps = useMemo<LayerProps>(() => {
+    const filter: ExpressionSpecification =
+      activeRef?.type === 'fix' ? ['==', ['get', 'identifier'], activeRef.id] : MATCH_NONE_FILTER;
+    return { ...FIXES_HIGHLIGHT_LAYER_BASE, filter };
+  }, [activeRef]);
+
   if (data === undefined) {
     return null;
   }
@@ -119,6 +157,7 @@ export function FixesLayer(): ReactElement | null {
   return (
     <Source id={FIXES_SOURCE_ID} type="geojson" data={data}>
       <Layer {...FIXES_LAYER_PROPS} />
+      <Layer {...highlightLayerProps} />
     </Source>
   );
 }

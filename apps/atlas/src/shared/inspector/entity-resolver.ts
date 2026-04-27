@@ -2,10 +2,16 @@ import { useMemo } from 'react';
 import type { Feature, GeoJsonProperties, Geometry, Polygon } from 'geojson';
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
 import { useAirportDataset } from '../data/airport-dataset.ts';
+import type { AirportDatasetState } from '../data/airport-dataset.ts';
 import { useAirspaceDataset } from '../data/airspace-dataset.ts';
+import type { AirspaceDatasetState } from '../data/airspace-dataset.ts';
 import { useAirwayDataset } from '../data/airway-dataset.ts';
+import type { AirwayDatasetState } from '../data/airway-dataset.ts';
 import { useFixDataset } from '../data/fix-dataset.ts';
+import type { FixDatasetState } from '../data/fix-dataset.ts';
 import { useNavaidDataset } from '../data/navaid-dataset.ts';
+import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
+import { polygonCentroid } from '../../modes/chart/click-to-select.ts';
 import { parseSelected } from './entity.ts';
 import type { EntityRef } from './entity.ts';
 
@@ -91,6 +97,83 @@ export type ResolvedEntityState =
     };
 
 /**
+ * Combined fetch state of every chart-mode dataset, gathered in a single
+ * structure so callers that need to resolve more than one entity (e.g. the
+ * inspector resolving the main selection plus one resolution per "Also
+ * here" sibling chip) can compute results without re-running React hooks.
+ *
+ * Returned by {@link useDatasetStates}; consumed by
+ * {@link resolveSelectionFromState}.
+ */
+export interface ChartDatasetStates {
+  /** Airport dataset fetch state. */
+  airport: AirportDatasetState;
+  /** Navaid dataset fetch state. */
+  navaid: NavaidDatasetState;
+  /** Fix dataset fetch state. */
+  fix: FixDatasetState;
+  /** Airway dataset fetch state. */
+  airway: AirwayDatasetState;
+  /** Airspace dataset fetch state. */
+  airspace: AirspaceDatasetState;
+}
+
+/**
+ * Match tolerance (in degrees lon/lat) used when looking up an airspace
+ * feature by polygon centroid. The chip walk encodes centroids to 5
+ * decimal places (~1m precision); 0.0001 (~11m) is generous enough to
+ * absorb floating-point round-trips through URL parsing.
+ */
+const CENTROID_MATCH_TOLERANCE = 0.0001;
+
+/**
+ * Builds a matcher that returns true iff a candidate airspace feature
+ * has the given type AND its polygon centroid is within
+ * {@link CENTROID_MATCH_TOLERANCE} of the target coordinates. Returns
+ * undefined when the encoded coords cannot be parsed.
+ */
+function buildAirspaceCentroidMatcher(
+  encoded: string,
+  airspaceTypeStr: string,
+): ((feature: Feature<Polygon, AirspaceFeature>) => boolean) | undefined {
+  const parts = encoded.split(',');
+  if (parts.length !== 2) {
+    return undefined;
+  }
+  const targetLon = Number(parts[0]);
+  const targetLat = Number(parts[1]);
+  if (!Number.isFinite(targetLon) || !Number.isFinite(targetLat)) {
+    return undefined;
+  }
+  return (feature) => {
+    if (feature.properties.type !== airspaceTypeStr) {
+      return false;
+    }
+    const centroid = polygonCentroid(feature.geometry);
+    if (centroid === undefined) {
+      return false;
+    }
+    return (
+      Math.abs(centroid[0] - targetLon) < CENTROID_MATCH_TOLERANCE &&
+      Math.abs(centroid[1] - targetLat) < CENTROID_MATCH_TOLERANCE
+    );
+  };
+}
+
+/**
+ * Builds a matcher that returns true iff a candidate airspace feature
+ * has the given type and identifier. The classic compound-key path,
+ * used when the URL remainder is not a centroid encoding.
+ */
+function buildAirspaceIdentifierMatcher(
+  identifier: string,
+  airspaceTypeStr: string,
+): (feature: Feature<Polygon, AirspaceFeature>) => boolean {
+  return (feature) =>
+    feature.properties.type === airspaceTypeStr && feature.properties.identifier === identifier;
+}
+
+/**
  * Type-narrows a generic GeoJSON feature to the airspace-feature shape the
  * `@squawk/airspace-data` bundle ships. Checks the geometry kind and the
  * presence of the discriminating property fields, so subsequent reads of
@@ -111,122 +194,170 @@ function isAirspacePolygonFeature(
 }
 
 /**
- * Resolves a `selected` URL value to a fully-typed entity by looking it up
- * in the appropriate dataset. Subscribes to all five entity datasets via
- * the existing `useXDataset()` hooks; the hooks share their fetches at
- * module scope, so this hook does not trigger any new network requests
- * beyond what chart-mode already initiates.
+ * Subscribes to all five entity datasets via the existing `useXDataset()`
+ * hooks and returns their combined fetch state. The hooks share their
+ * fetches at module scope, so calling this hook does not trigger any new
+ * network requests beyond what chart-mode already initiates.
  *
- * Returns a discriminated state value the caller can pattern-match on.
- * Stale or malformed URL values resolve to `idle` (parse failed) or
- * `not-found` (no dataset match), never throwing.
+ * Pulled into its own hook so a single component can resolve multiple
+ * selections (e.g. the inspector resolving the main entity plus N sibling
+ * chips) by calling this once and dispatching to
+ * {@link resolveSelectionFromState} per selection.
+ *
+ * @returns Combined dataset states, suitable for `resolveSelectionFromState`.
+ */
+export function useDatasetStates(): ChartDatasetStates {
+  const airport = useAirportDataset();
+  const navaid = useNavaidDataset();
+  const fix = useFixDataset();
+  const airway = useAirwayDataset();
+  const airspace = useAirspaceDataset();
+
+  return useMemo(
+    () => ({ airport, navaid, fix, airway, airspace }),
+    [airport, navaid, fix, airway, airspace],
+  );
+}
+
+/**
+ * Pure resolver: looks up a `selected` URL value against pre-fetched
+ * dataset states. No React hooks; safe to call in a loop. The chip-strip
+ * filtering in `inspector.tsx` calls this once per sibling so chips that
+ * cannot resolve are dropped before render rather than producing a "no
+ * matching record" panel on click.
+ *
+ * @param selected - Raw `chartSearchSchema.selected` value.
+ * @param states - Output of {@link useDatasetStates}.
+ * @returns Resolution state, identical in shape to {@link useResolvedEntity}'s return.
+ */
+export function resolveSelectionFromState(
+  selected: string | undefined,
+  states: ChartDatasetStates,
+): ResolvedEntityState {
+  const ref = parseSelected(selected);
+  if (ref === undefined) {
+    return { status: 'idle' };
+  }
+
+  switch (ref.type) {
+    case 'airport': {
+      if (states.airport.status === 'loading') {
+        return { status: 'loading', ref };
+      }
+      if (states.airport.status === 'error') {
+        return { status: 'not-found', ref };
+      }
+      const record = states.airport.dataset.records.find((a) => a.faaId === ref.id);
+      if (record === undefined) {
+        return { status: 'not-found', ref };
+      }
+      return { status: 'resolved', entity: { kind: 'airport', record } };
+    }
+    case 'navaid': {
+      if (states.navaid.status === 'loading') {
+        return { status: 'loading', ref };
+      }
+      if (states.navaid.status === 'error') {
+        return { status: 'not-found', ref };
+      }
+      const record = states.navaid.dataset.records.find((n) => n.identifier === ref.id);
+      if (record === undefined) {
+        return { status: 'not-found', ref };
+      }
+      return { status: 'resolved', entity: { kind: 'navaid', record } };
+    }
+    case 'fix': {
+      if (states.fix.status === 'loading') {
+        return { status: 'loading', ref };
+      }
+      if (states.fix.status === 'error') {
+        return { status: 'not-found', ref };
+      }
+      const record = states.fix.dataset.records.find((f) => f.identifier === ref.id);
+      if (record === undefined) {
+        return { status: 'not-found', ref };
+      }
+      return { status: 'resolved', entity: { kind: 'fix', record } };
+    }
+    case 'airway': {
+      if (states.airway.status === 'loading') {
+        return { status: 'loading', ref };
+      }
+      if (states.airway.status === 'error') {
+        return { status: 'not-found', ref };
+      }
+      const record = states.airway.dataset.records.find((a) => a.designation === ref.id);
+      if (record === undefined) {
+        return { status: 'not-found', ref };
+      }
+      return { status: 'resolved', entity: { kind: 'airway', record } };
+    }
+    case 'airspace': {
+      if (states.airspace.status === 'loading') {
+        return { status: 'loading', ref };
+      }
+      if (states.airspace.status === 'error') {
+        return { status: 'not-found', ref };
+      }
+      const slashIdx = ref.id.indexOf('/');
+      if (slashIdx <= 0 || slashIdx === ref.id.length - 1) {
+        return { status: 'not-found', ref };
+      }
+      const airspaceTypeStr = ref.id.slice(0, slashIdx);
+      const remainder = ref.id.slice(slashIdx + 1);
+      // Two encoding forms: a real `IDENTIFIER`, or `c:LON,LAT` for
+      // empty-identifier airspaces whose only stable URL handle is the
+      // polygon centroid (chip-build uses this in `inspector.tsx`).
+      const matcher = remainder.startsWith('c:')
+        ? buildAirspaceCentroidMatcher(remainder.slice(2), airspaceTypeStr)
+        : buildAirspaceIdentifierMatcher(remainder, airspaceTypeStr);
+      if (matcher === undefined) {
+        return { status: 'not-found', ref };
+      }
+      const features: AirspaceFeature[] = [];
+      for (const feature of states.airspace.dataset.features) {
+        if (isAirspacePolygonFeature(feature) && matcher(feature)) {
+          // The dataset write step puts the boundary on the GeoJSON
+          // geometry, not the properties bag. Re-attach it here so the
+          // resolved AirspaceFeature carries the polygon downstream
+          // (the inspector reads it for bbox-overlap chip computation).
+          features.push({ ...feature.properties, boundary: feature.geometry });
+        }
+      }
+      const first = features[0];
+      if (first === undefined) {
+        return { status: 'not-found', ref };
+      }
+      // Use the matched feature's actual identifier (which may be empty
+      // for centroid-encoded selections) so the panel can render the
+      // correct label.
+      return {
+        status: 'resolved',
+        entity: {
+          kind: 'airspace',
+          airspaceType: first.type,
+          identifier: first.identifier,
+          features,
+        },
+      };
+    }
+  }
+}
+
+/**
+ * Resolves a `selected` URL value to a fully-typed entity by looking it up
+ * in the appropriate dataset. Returns a discriminated state value the
+ * caller can pattern-match on. Stale or malformed URL values resolve to
+ * `idle` (parse failed) or `not-found` (no dataset match), never throwing.
+ *
+ * Thin wrapper over {@link useDatasetStates} +
+ * {@link resolveSelectionFromState} so single-selection callers do not
+ * need to know about the underlying split.
  *
  * @param selected - Raw value of `chartSearchSchema.selected`.
  * @returns Reactive resolution state.
  */
 export function useResolvedEntity(selected: string | undefined): ResolvedEntityState {
-  const airportState = useAirportDataset();
-  const navaidState = useNavaidDataset();
-  const fixState = useFixDataset();
-  const airwayState = useAirwayDataset();
-  const airspaceState = useAirspaceDataset();
-
-  return useMemo<ResolvedEntityState>(() => {
-    const ref = parseSelected(selected);
-    if (ref === undefined) {
-      return { status: 'idle' };
-    }
-
-    switch (ref.type) {
-      case 'airport': {
-        if (airportState.status === 'loading') {
-          return { status: 'loading', ref };
-        }
-        if (airportState.status === 'error') {
-          return { status: 'not-found', ref };
-        }
-        const record = airportState.dataset.records.find((a) => a.faaId === ref.id);
-        if (record === undefined) {
-          return { status: 'not-found', ref };
-        }
-        return { status: 'resolved', entity: { kind: 'airport', record } };
-      }
-      case 'navaid': {
-        if (navaidState.status === 'loading') {
-          return { status: 'loading', ref };
-        }
-        if (navaidState.status === 'error') {
-          return { status: 'not-found', ref };
-        }
-        const record = navaidState.dataset.records.find((n) => n.identifier === ref.id);
-        if (record === undefined) {
-          return { status: 'not-found', ref };
-        }
-        return { status: 'resolved', entity: { kind: 'navaid', record } };
-      }
-      case 'fix': {
-        if (fixState.status === 'loading') {
-          return { status: 'loading', ref };
-        }
-        if (fixState.status === 'error') {
-          return { status: 'not-found', ref };
-        }
-        const record = fixState.dataset.records.find((f) => f.identifier === ref.id);
-        if (record === undefined) {
-          return { status: 'not-found', ref };
-        }
-        return { status: 'resolved', entity: { kind: 'fix', record } };
-      }
-      case 'airway': {
-        if (airwayState.status === 'loading') {
-          return { status: 'loading', ref };
-        }
-        if (airwayState.status === 'error') {
-          return { status: 'not-found', ref };
-        }
-        const record = airwayState.dataset.records.find((a) => a.designation === ref.id);
-        if (record === undefined) {
-          return { status: 'not-found', ref };
-        }
-        return { status: 'resolved', entity: { kind: 'airway', record } };
-      }
-      case 'airspace': {
-        if (airspaceState.status === 'loading') {
-          return { status: 'loading', ref };
-        }
-        if (airspaceState.status === 'error') {
-          return { status: 'not-found', ref };
-        }
-        const slashIdx = ref.id.indexOf('/');
-        if (slashIdx <= 0 || slashIdx === ref.id.length - 1) {
-          return { status: 'not-found', ref };
-        }
-        const airspaceTypeStr = ref.id.slice(0, slashIdx);
-        const identifier = ref.id.slice(slashIdx + 1);
-        const features: AirspaceFeature[] = [];
-        for (const feature of airspaceState.dataset.features) {
-          if (
-            isAirspacePolygonFeature(feature) &&
-            feature.properties.type === airspaceTypeStr &&
-            feature.properties.identifier === identifier
-          ) {
-            features.push(feature.properties);
-          }
-        }
-        const first = features[0];
-        if (first === undefined) {
-          return { status: 'not-found', ref };
-        }
-        return {
-          status: 'resolved',
-          entity: {
-            kind: 'airspace',
-            airspaceType: first.type,
-            identifier,
-            features,
-          },
-        };
-      }
-    }
-  }, [selected, airportState, navaidState, fixState, airwayState, airspaceState]);
+  const states = useDatasetStates();
+  return useMemo(() => resolveSelectionFromState(selected, states), [selected, states]);
 }

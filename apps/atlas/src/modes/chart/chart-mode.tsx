@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { MapProvider } from '@vis.gl/react-maplibre';
@@ -8,7 +8,13 @@ import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
 import { ZoomControls } from '../../shared/map/zoom-controls.tsx';
 import { EntityInspector } from '../../shared/inspector/inspector.tsx';
 import { ChartLoadingIndicator } from './chart-loading-indicator.tsx';
-import { INSPECTABLE_LAYER_IDS, selectedFromFeature } from './click-to-select.ts';
+import {
+  INSPECTABLE_LAYER_IDS,
+  pickFeatureByPriority,
+  selectedFromFeature,
+} from './click-to-select.ts';
+import type { InspectableFeature } from './click-to-select.ts';
+import { HighlightProvider } from './highlight-provider.tsx';
 import { InspectableHoverCursor } from './inspectable-cursor.tsx';
 import { ChartViewResetListener } from './view-reset-listener.tsx';
 import { LayerToggle } from './layer-toggle.tsx';
@@ -29,8 +35,23 @@ const route = getRouteApi(CHART_ROUTE_PATH);
  * through the URL.
  */
 export function ChartMode(): ReactElement {
-  const { lat, lon, zoom, pitch, layers } = route.useSearch();
+  const { lat, lon, zoom, pitch, layers, selected } = route.useSearch();
   const navigate = useNavigate({ from: CHART_ROUTE_PATH });
+  // Snapshot of every feature returned by the most recent map click. The
+  // inspector reads this to render an "Also here" chip strip so the user
+  // can switch between stacked features (e.g. Class B and ARTCC at the
+  // same point) without re-clicking the map. Cleared/replaced on each
+  // click; intentionally lives in component state, not URL, since it is
+  // transient context for the most recent click rather than a shareable
+  // selection.
+  const [featuresAtLastClick, setFeaturesAtLastClick] = useState<readonly InspectableFeature[]>([]);
+  // Selection of the chip the user is currently hovering in the inspector,
+  // used to temporarily highlight that chip's feature on the map. Falls
+  // back to the URL `selected` for the persistent highlight when no chip
+  // is hovered. Lives in component state, not URL, since hover is
+  // transient interaction state.
+  const [hoveredChipSelection, setHoveredChipSelection] = useState<string | undefined>(undefined);
+  const activeHighlight = hoveredChipSelection ?? selected;
 
   const handleViewStateChange = useCallback(
     (view: ViewStateChange): void => {
@@ -50,8 +71,10 @@ export function ChartMode(): ReactElement {
 
   const handleMapClick = useCallback(
     (event: MapLayerMouseEvent): void => {
-      const top = event.features?.[0];
-      const next = top === undefined ? undefined : selectedFromFeature(top);
+      const features = event.features ?? [];
+      setFeaturesAtLastClick(features);
+      const winner = pickFeatureByPriority(features);
+      const next = winner === undefined ? undefined : selectedFromFeature(winner);
       void navigate({
         search: (prev) => ({ ...prev, selected: next }),
         replace: true,
@@ -68,27 +91,32 @@ export function ChartMode(): ReactElement {
   // on top of the layer-toggle button while data is still streaming.
   return (
     <MapProvider>
-      <MapCanvas
-        lat={lat}
-        lon={lon}
-        zoom={zoom}
-        pitch={pitch}
-        onViewStateChange={handleViewStateChange}
-        onMapClick={handleMapClick}
-        interactiveLayerIds={INSPECTABLE_LAYER_IDS}
+      <HighlightProvider
+        activeHighlight={activeHighlight}
+        setHoveredChipSelection={setHoveredChipSelection}
       >
-        {layers.includes('airspace') ? <AirspaceLayer /> : null}
-        {layers.includes('airways') ? <AirwaysLayer /> : null}
-        {layers.includes('fixes') ? <FixesLayer /> : null}
-        {layers.includes('navaids') ? <NavaidsLayer /> : null}
-        {layers.includes('airports') ? <AirportsLayer /> : null}
-      </MapCanvas>
-      <InspectableHoverCursor />
-      <ChartViewResetListener />
-      <LayerToggle />
-      <ZoomControls />
-      <EntityInspector />
-      <ChartLoadingIndicator />
+        <MapCanvas
+          lat={lat}
+          lon={lon}
+          zoom={zoom}
+          pitch={pitch}
+          onViewStateChange={handleViewStateChange}
+          onMapClick={handleMapClick}
+          interactiveLayerIds={INSPECTABLE_LAYER_IDS}
+        >
+          {layers.includes('airspace') ? <AirspaceLayer /> : null}
+          {layers.includes('airways') ? <AirwaysLayer /> : null}
+          {layers.includes('fixes') ? <FixesLayer /> : null}
+          {layers.includes('navaids') ? <NavaidsLayer /> : null}
+          {layers.includes('airports') ? <AirportsLayer /> : null}
+        </MapCanvas>
+        <InspectableHoverCursor />
+        <ChartViewResetListener />
+        <LayerToggle />
+        <ZoomControls />
+        <EntityInspector siblings={featuresAtLastClick} />
+        <ChartLoadingIndicator />
+      </HighlightProvider>
     </MapProvider>
   );
 }
