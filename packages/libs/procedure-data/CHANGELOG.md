@@ -1,5 +1,15 @@
 # @squawk/procedure-data
 
+## 0.6.1
+
+### Patch Changes
+
+- c7e6e12: ### Changed
+  - Updated `repository.directory` in each package's manifest to reflect the monorepo's new internal layout. The "View repository" link on npmjs.com now points to `packages/libs/<name>/` instead of `packages/<name>/`. No code or API changes - this is package metadata only.
+
+- Updated dependencies [c7e6e12]
+  - @squawk/types@0.7.1
+
 ## 0.6.0
 
 ### Minor Changes
