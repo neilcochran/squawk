@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import type { Feature, GeoJsonProperties, Geometry, Polygon } from 'geojson';
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
 import { useAirportDataset } from '../data/airport-dataset.ts';
 import type { AirportDatasetState } from '../data/airport-dataset.ts';
@@ -12,6 +11,8 @@ import type { FixDatasetState } from '../data/fix-dataset.ts';
 import { useNavaidDataset } from '../data/navaid-dataset.ts';
 import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
 import { polygonCentroid } from '../../modes/chart/click-to-select.ts';
+import { isAirspacePolygonFeature } from './airspace-feature.ts';
+import type { AirspacePolygonFeature } from './airspace-feature.ts';
 import { parseSelected } from './entity.ts';
 import type { EntityRef } from './entity.ts';
 
@@ -135,7 +136,7 @@ const CENTROID_MATCH_TOLERANCE = 0.0001;
 function buildAirspaceCentroidMatcher(
   encoded: string,
   airspaceTypeStr: string,
-): ((feature: Feature<Polygon, AirspaceFeature>) => boolean) | undefined {
+): ((feature: AirspacePolygonFeature) => boolean) | undefined {
   const parts = encoded.split(',');
   if (parts.length !== 2) {
     return undefined;
@@ -168,29 +169,9 @@ function buildAirspaceCentroidMatcher(
 function buildAirspaceIdentifierMatcher(
   identifier: string,
   airspaceTypeStr: string,
-): (feature: Feature<Polygon, AirspaceFeature>) => boolean {
+): (feature: AirspacePolygonFeature) => boolean {
   return (feature) =>
     feature.properties.type === airspaceTypeStr && feature.properties.identifier === identifier;
-}
-
-/**
- * Type-narrows a generic GeoJSON feature to the airspace-feature shape the
- * `@squawk/airspace-data` bundle ships. Checks the geometry kind and the
- * presence of the discriminating property fields, so subsequent reads of
- * `feature.properties.type` / `feature.properties.identifier` are typed
- * directly without `as` assertions.
- */
-function isAirspacePolygonFeature(
-  feature: Feature<Geometry, GeoJsonProperties>,
-): feature is Feature<Polygon, AirspaceFeature> {
-  if (feature.geometry.type !== 'Polygon') {
-    return false;
-  }
-  const props = feature.properties;
-  if (props === null) {
-    return false;
-  }
-  return 'type' in props && 'identifier' in props && 'floor' in props && 'ceiling' in props;
 }
 
 /**
