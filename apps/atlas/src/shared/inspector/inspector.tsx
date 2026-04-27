@@ -15,6 +15,8 @@ import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.
 import { AIRSPACE_CLASS_FOR_TYPE, CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
 import { isAirspacePolygonFeature } from './airspace-feature.ts';
+import { bboxFromCoords } from './geometry.ts';
+import type { Bbox } from './geometry.ts';
 import { resolveSelectionFromState, useDatasetStates } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
 import { AirportPanel } from './renderers/airport-panel.tsx';
@@ -261,9 +263,6 @@ function SiblingChips({
   );
 }
 
-/** Bounding box in `[west, south, east, north]` order, lon/lat degrees. */
-type Bbox = [number, number, number, number];
-
 /**
  * Footprint of a selected entity, used to test which other airspaces
  * "overlap" it. Discriminated by `kind`:
@@ -316,19 +315,16 @@ function footprintForSelection(
 
 /** Bounding box from an airway's ordered list of waypoints. */
 function bboxFromWaypoints(waypoints: readonly { lat: number; lon: number }[]): Bbox | undefined {
-  let west = Number.POSITIVE_INFINITY;
-  let south = Number.POSITIVE_INFINITY;
-  let east = Number.NEGATIVE_INFINITY;
-  let north = Number.NEGATIVE_INFINITY;
-  let any = false;
+  return bboxFromCoords(coordsOfWaypoints(waypoints));
+}
+
+/** Yields each waypoint as a `[lon, lat]` pair for the bbox reducer. */
+function* coordsOfWaypoints(
+  waypoints: readonly { lat: number; lon: number }[],
+): Generator<readonly [number, number]> {
   for (const wp of waypoints) {
-    if (wp.lon < west) west = wp.lon;
-    if (wp.lat < south) south = wp.lat;
-    if (wp.lon > east) east = wp.lon;
-    if (wp.lat > north) north = wp.lat;
-    any = true;
+    yield [wp.lon, wp.lat];
   }
-  return any ? [west, south, east, north] : undefined;
 }
 
 /**
@@ -485,28 +481,16 @@ function disambiguateLabels(
  * Returns undefined if no feature has any coordinates.
  */
 function combinedBboxFromAirspaceFeatures(features: readonly AirspaceFeature[]): Bbox | undefined {
-  let west = Number.POSITIVE_INFINITY;
-  let south = Number.POSITIVE_INFINITY;
-  let east = Number.NEGATIVE_INFINITY;
-  let north = Number.NEGATIVE_INFINITY;
-  let any = false;
+  return bboxFromCoords(coordsOfAirspaceFeatures(features));
+}
+
+/** Yields every defined `[lon, lat]` pair across a list of airspace feature boundaries. */
+function* coordsOfAirspaceFeatures(
+  features: readonly AirspaceFeature[],
+): Generator<readonly [number, number]> {
   for (const feature of features) {
-    for (const ring of feature.boundary.coordinates) {
-      for (const coord of ring) {
-        const lon = coord[0];
-        const lat = coord[1];
-        if (lon === undefined || lat === undefined) {
-          continue;
-        }
-        if (lon < west) west = lon;
-        if (lat < south) south = lat;
-        if (lon > east) east = lon;
-        if (lat > north) north = lat;
-        any = true;
-      }
-    }
+    yield* coordsOfPolygon(feature.boundary);
   }
-  return any ? [west, south, east, north] : undefined;
 }
 
 /**
@@ -514,11 +498,16 @@ function combinedBboxFromAirspaceFeatures(features: readonly AirspaceFeature[]):
  * polygon has no coordinates (e.g. a synthesized empty polygon).
  */
 function polygonBbox(polygon: Polygon): Bbox | undefined {
-  let west = Number.POSITIVE_INFINITY;
-  let south = Number.POSITIVE_INFINITY;
-  let east = Number.NEGATIVE_INFINITY;
-  let north = Number.NEGATIVE_INFINITY;
-  let any = false;
+  return bboxFromCoords(coordsOfPolygon(polygon));
+}
+
+/**
+ * Yields every defined `[lon, lat]` pair across all rings of a polygon.
+ * GeoJSON's `Position` is typed as `number[]`, so the inner coords can be
+ * shorter than two elements at the type level; entries with an undefined
+ * lon or lat are skipped.
+ */
+function* coordsOfPolygon(polygon: Polygon): Generator<readonly [number, number]> {
   for (const ring of polygon.coordinates) {
     for (const coord of ring) {
       const lon = coord[0];
@@ -526,14 +515,9 @@ function polygonBbox(polygon: Polygon): Bbox | undefined {
       if (lon === undefined || lat === undefined) {
         continue;
       }
-      if (lon < west) west = lon;
-      if (lat < south) south = lat;
-      if (lon > east) east = lon;
-      if (lat > north) north = lat;
-      any = true;
+      yield [lon, lat];
     }
   }
-  return any ? [west, south, east, north] : undefined;
 }
 
 /** Standard 2D AABB intersection test. */
