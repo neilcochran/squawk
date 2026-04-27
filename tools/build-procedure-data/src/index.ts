@@ -7,7 +7,7 @@ import { writeOutput } from './write-output.js';
  * Relative path from the compiled script to the default output gzip
  * file consumed by `@squawk/procedure-data`.
  */
-const DEFAULT_OUTPUT_PATH = '../../../packages/procedure-data/data/procedures.json.gz';
+const DEFAULT_OUTPUT_PATH = '../../../packages/libs/procedure-data/data/procedures.json.gz';
 
 /**
  * URL of the FAA's CIFP download landing page. The current cycle's

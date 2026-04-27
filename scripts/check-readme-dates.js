@@ -60,8 +60,8 @@ const datePattern = /from the \*\*(\d{4}-\d{2}-\d{2})\*\* FAA (NASR|CIFP|Releasa
 let failures = 0;
 
 for (const { pkg, dataFile, dateField, source } of dataPackages) {
-  const dataPath = resolve(root, 'packages', pkg, dataFile);
-  const readmePath = resolve(root, 'packages', pkg, 'README.md');
+  const dataPath = resolve(root, 'packages', 'libs', pkg, dataFile);
+  const readmePath = resolve(root, 'packages', 'libs', pkg, 'README.md');
 
   const raw = gunzipSync(readFileSync(dataPath));
   const json = JSON.parse(raw.toString());
@@ -101,8 +101,8 @@ for (const { pkg, dataFile, dateField, source } of dataPackages) {
 // ICAO registry: uses generatedAt (YYYY-MM-DD from ISO timestamp)
 {
   const { pkg, dataFile } = icaoPackage;
-  const dataPath = resolve(root, 'packages', pkg, dataFile);
-  const readmePath = resolve(root, 'packages', pkg, 'README.md');
+  const dataPath = resolve(root, 'packages', 'libs', pkg, dataFile);
+  const readmePath = resolve(root, 'packages', 'libs', pkg, 'README.md');
 
   const raw = gunzipSync(readFileSync(dataPath));
   const json = JSON.parse(raw.toString());

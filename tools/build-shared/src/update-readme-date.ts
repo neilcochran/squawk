@@ -7,8 +7,8 @@ import { dirname, resolve } from 'node:path';
  * paragraph as `from the **YYYY-MM-DD** FAA`.
  *
  * The README is located by navigating up one directory from the output data
- * file path (e.g. `packages/navaid-data/data/navaids.json.gz` resolves to
- * `packages/navaid-data/README.md`).
+ * file path (e.g. `packages/libs/navaid-data/data/navaids.json.gz` resolves to
+ * `packages/libs/navaid-data/README.md`).
  *
  * This is best-effort and will not throw if the README is missing or does not
  * contain the expected date pattern (e.g. when the tool is used outside the

@@ -20,7 +20,7 @@ with FIX_BASE.csv, FIX_CHRT.csv, and FIX_NAV.csv.
 
 ## Output
 
-Gzipped JSON file written to `packages/fix-data/data/fixes.json.gz`.
+Gzipped JSON file written to `packages/libs/fix-data/data/fixes.json.gz`.
 
 ## Input files
 
