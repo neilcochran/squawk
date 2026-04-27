@@ -6,6 +6,14 @@ TypeScript libraries for building aviation applications - airspace geometry, wea
 
 **[Documentation](https://neilcochran.github.io/squawk/)**
 
+## Layout
+
+The repo splits into three top-level directories:
+
+- [`apps/`](apps/) - runnable applications built on the squawk libraries. Currently [Atlas](apps/atlas), the official chart-first viewer.
+- [`packages/libs/`](packages/libs/) - the published `@squawk/*` libraries listed below.
+- [`tools/`](tools/) - internal data-build pipelines that produce the bundled snapshots in the `*-data` libraries.
+
 ## Packages
 
 | Package                                                          | Description                                                                        |
