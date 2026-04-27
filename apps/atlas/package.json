@@ -1,0 +1,79 @@
+{
+  "name": "squawk-atlas",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "The official Squawk viewer - a chart-first web app for browsing aeronautical data, built on the @squawk/* packages.",
+  "license": "MIT",
+  "author": "Neil Cochran",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk-atlas.git"
+  },
+  "homepage": "https://github.com/neilcochran/squawk-atlas#readme",
+  "bugs": {
+    "url": "https://github.com/neilcochran/squawk-atlas/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "dev": "vite",
+    "prebuild": "tsr generate",
+    "build": "tsc -b && vite build",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@protomaps/basemaps": "^5.7.2",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@squawk/airport-data": "^0.7.0",
+    "@squawk/airports": "^0.5.1",
+    "@squawk/airspace": "^0.6.0",
+    "@squawk/airspace-data": "^0.5.0",
+    "@squawk/airway-data": "^0.5.0",
+    "@squawk/airways": "^0.3.2",
+    "@squawk/fix-data": "^0.6.0",
+    "@squawk/fixes": "^0.2.2",
+    "@squawk/navaid-data": "^0.6.0",
+    "@squawk/navaids": "^0.3.2",
+    "@tanstack/react-router": "^1.168.24",
+    "@vis.gl/react-maplibre": "^8.1.1",
+    "maplibre-gl": "^5.24.0",
+    "pmtiles": "^4.4.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@maplibre/maplibre-gl-style-spec": "^24.8.1",
+    "@tailwindcss/vite": "^4.2.4",
+    "@tanstack/router-cli": "^1.166.36",
+    "@tanstack/router-plugin": "^1.167.26",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.5.0",
+    "husky": "^9.1.7",
+    "jsdom": "^29.0.2",
+    "prettier": "^3.8.2",
+    "tailwindcss": "^4.2.4",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.2",
+    "vite": "^8.0.10",
+    "vitest": "^4.0.0"
+  }
+}
