@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Map } from '@vis.gl/react-maplibre';
-import type { ViewStateChangeEvent } from '@vis.gl/react-maplibre';
+import type { MapLayerMouseEvent, ViewStateChangeEvent } from '@vis.gl/react-maplibre';
 import maplibregl from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
@@ -41,9 +41,9 @@ const MAP_STYLE: StyleSpecification = {
 };
 
 /**
- * A simplified view-state snapshot suitable for URL serialization. Only the
- * fields the shell rounds-trips through the URL are exposed; bearing and pitch
- * are intentionally omitted.
+ * A simplified view-state snapshot suitable for URL serialization. Bearing
+ * is intentionally omitted - the chart has no rotate-the-map control yet,
+ * so persisting bearing in the URL would only encode accidental gestures.
  */
 export interface ViewStateChange {
   /** Map center latitude in decimal degrees, positive north. */
@@ -52,6 +52,8 @@ export interface ViewStateChange {
   lon: number;
   /** Map zoom level. */
   zoom: number;
+  /** Map pitch in degrees, in the range `[0, MAP_MAX_PITCH]`. */
+  pitch: number;
 }
 
 /**
@@ -64,8 +66,29 @@ export interface MapCanvasProps {
   lon: number;
   /** Initial map zoom level. */
   zoom: number;
+  /**
+   * Initial map pitch in degrees, clamped to `[0, MAP_MAX_PITCH]`. Consumed
+   * once at mount via `initialViewState`; subsequent URL changes do not
+   * auto-move the camera (chart-mode's view-reset bus handles the explicit
+   * "snap to defaults" path that needs URL-to-map sync).
+   */
+  pitch: number;
   /** Called when the user finishes interacting with the map (fires on `moveend`). */
   onViewStateChange?: (view: ViewStateChange) => void;
+  /**
+   * Called when the user clicks the map. When `interactiveLayerIds` is set,
+   * the event carries `features` populated with any features from those
+   * layers at the click point (topmost first). Drag/pan does not fire
+   * this event.
+   */
+  onMapClick?: (event: MapLayerMouseEvent) => void;
+  /**
+   * MapLibre layer ids whose features should be returned in `event.features`
+   * on click and hover events. Without this set, MapLibre treats the map
+   * as a single non-interactive surface and `event.features` is empty
+   * regardless of which layer the cursor is over.
+   */
+  interactiveLayerIds?: readonly string[];
   /**
    * Map overlays. Pass `<Source>` and `<Layer>` elements from
    * `@vis.gl/react-maplibre` to render mode-specific data on top of the
@@ -84,7 +107,10 @@ export function MapCanvas({
   lat,
   lon,
   zoom,
+  pitch,
   onViewStateChange,
+  onMapClick,
+  interactiveLayerIds,
   children,
 }: MapCanvasProps): ReactElement {
   const handleMoveEnd = useCallback(
@@ -96,18 +122,31 @@ export function MapCanvas({
         lat: event.viewState.latitude,
         lon: event.viewState.longitude,
         zoom: event.viewState.zoom,
+        pitch: event.viewState.pitch,
       });
     },
     [onViewStateChange],
   );
 
+  const handleClick = useCallback(
+    (event: MapLayerMouseEvent): void => {
+      if (onMapClick === undefined) {
+        return;
+      }
+      onMapClick(event);
+    },
+    [onMapClick],
+  );
+
   return (
     <Map
-      initialViewState={{ longitude: lon, latitude: lat, zoom }}
+      initialViewState={{ longitude: lon, latitude: lat, zoom, pitch }}
       style={{ position: 'absolute', inset: 0 }}
       mapStyle={MAP_STYLE}
       maxPitch={MAP_MAX_PITCH}
       onMoveEnd={handleMoveEnd}
+      onClick={handleClick}
+      interactiveLayerIds={interactiveLayerIds === undefined ? [] : [...interactiveLayerIds]}
     >
       {children}
     </Map>

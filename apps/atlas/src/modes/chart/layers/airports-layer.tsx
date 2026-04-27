@@ -2,9 +2,11 @@ import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { Airport } from '@squawk/types';
 import { useAirportDataset } from '../../../shared/data/airport-dataset.ts';
+import { useActiveHighlightRef } from '../highlight-context.ts';
 
 /**
  * Properties carried on each airport point feature in the GeoJSON source.
@@ -27,7 +29,18 @@ interface AirportFeatureProperties {
 const AIRPORTS_SOURCE_ID = 'atlas-airports';
 
 /** MapLibre layer id for the airports circle symbology. */
-const AIRPORTS_LAYER_ID = 'atlas-airports-circle';
+export const AIRPORTS_LAYER_ID = 'atlas-airports-circle';
+
+/** MapLibre layer id for the airport selection-highlight overlay. */
+const AIRPORTS_HIGHLIGHT_LAYER_ID = 'atlas-airports-highlight';
+
+/**
+ * Filter expression that matches no feature. Used as the default for the
+ * highlight layer when nothing is selected (or when the active selection
+ * is for a different entity type), so the highlight layer renders nothing
+ * without unmounting and re-mounting.
+ */
+const MATCH_NONE_FILTER: ExpressionSpecification = ['==', ['get', 'faaId'], '__atlas-no-match__'];
 
 /**
  * Returns the longest runway length in feet across an airport's runways,
@@ -72,6 +85,24 @@ function toFeatureCollection(
 }
 
 /**
+ * Highlight overlay for the currently-selected (or chip-hovered) airport.
+ * A larger yellow circle with a dark stroke, drawn on top of the regular
+ * airport layer. Filtered to the active airport's `faaId`; renders
+ * nothing when no airport is active.
+ */
+const AIRPORTS_HIGHLIGHT_LAYER_BASE: LayerProps = {
+  id: AIRPORTS_HIGHLIGHT_LAYER_ID,
+  source: AIRPORTS_SOURCE_ID,
+  type: 'circle',
+  paint: {
+    'circle-radius': 9,
+    'circle-color': '#fde047',
+    'circle-stroke-color': '#0f172a',
+    'circle-stroke-width': 2,
+  },
+};
+
+/**
  * MapLibre layer styling. Radius interpolates by zoom and is gated by
  * runway length, so large airports stay visible at low zoom while smaller
  * fields appear as the user zooms in. Color separates major airports
@@ -109,6 +140,7 @@ const AIRPORTS_LAYER_PROPS: LayerProps = {
  */
 export function AirportsLayer(): ReactElement | null {
   const state = useAirportDataset();
+  const activeRef = useActiveHighlightRef();
 
   const data = useMemo<FeatureCollection<Point, AirportFeatureProperties> | undefined>(() => {
     if (state.status !== 'loaded') {
@@ -117,6 +149,12 @@ export function AirportsLayer(): ReactElement | null {
     return toFeatureCollection(state.dataset.records);
   }, [state]);
 
+  const highlightLayerProps = useMemo<LayerProps>(() => {
+    const filter: ExpressionSpecification =
+      activeRef?.type === 'airport' ? ['==', ['get', 'faaId'], activeRef.id] : MATCH_NONE_FILTER;
+    return { ...AIRPORTS_HIGHLIGHT_LAYER_BASE, filter };
+  }, [activeRef]);
+
   if (data === undefined) {
     return null;
   }
@@ -124,6 +162,7 @@ export function AirportsLayer(): ReactElement | null {
   return (
     <Source id={AIRPORTS_SOURCE_ID} type="geojson" data={data}>
       <Layer {...AIRPORTS_LAYER_PROPS} />
+      <Layer {...highlightLayerProps} />
     </Source>
   );
 }
