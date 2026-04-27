@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.8.4"]
+      "args": ["-y", "@squawk/mcp@0.8.5"]
     }
   }
 }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { polygonGeoJson } from '@squawk/geo';
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
 import { useAirportDataset } from '../data/airport-dataset.ts';
 import type { AirportDatasetState } from '../data/airport-dataset.ts';
@@ -10,7 +11,6 @@ import { useFixDataset } from '../data/fix-dataset.ts';
 import type { FixDatasetState } from '../data/fix-dataset.ts';
 import { useNavaidDataset } from '../data/navaid-dataset.ts';
 import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
-import { polygonCentroid } from '../../modes/chart/click-to-select.ts';
 import { isAirspacePolygonFeature } from './airspace-feature.ts';
 import type { AirspacePolygonFeature } from './airspace-feature.ts';
 import { parseSelected } from './entity.ts';
@@ -150,7 +150,7 @@ function buildAirspaceCentroidMatcher(
     if (feature.properties.type !== airspaceTypeStr) {
       return false;
     }
-    const centroid = polygonCentroid(feature.geometry);
+    const centroid = polygonGeoJson.polygonCentroid(feature.geometry);
     if (centroid === undefined) {
       return false;
     }

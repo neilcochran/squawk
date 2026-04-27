@@ -1,4 +1,5 @@
-import type { GeoJsonProperties, Geometry, Polygon } from 'geojson';
+import type { GeoJsonProperties, Geometry } from 'geojson';
+import { polygonGeoJson } from '@squawk/geo';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
 import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
@@ -189,6 +190,11 @@ export function formatAirspaceLabel(type: string, identifier: string, name: stri
  * Polygon. Used to disambiguate airspace features whose source data has
  * an empty `identifier` - the centroid serves as a stable, URL-encodable
  * surrogate.
+ *
+ * @param geometry - Optional GeoJSON geometry. When this is a Polygon,
+ *                   the centroid of its outer ring is returned.
+ * @returns The centroid as `[lon, lat]`, or undefined when the geometry
+ *          is missing, non-Polygon, or has no usable coordinates.
  */
 export function polygonCentroidFromGeometry(
   geometry: Geometry | undefined,
@@ -196,34 +202,7 @@ export function polygonCentroidFromGeometry(
   if (geometry === undefined || geometry.type !== 'Polygon') {
     return undefined;
   }
-  return polygonCentroid(geometry);
-}
-
-/**
- * Centroid (mean lon, mean lat) over the polygon's outer ring. For
- * non-convex shapes the centroid is not necessarily inside the polygon,
- * but it remains a unique, deterministic disambiguator across dataset
- * rebuilds as long as the polygon coordinates do not change.
- */
-export function polygonCentroid(polygon: Polygon): [number, number] | undefined {
-  const ring = polygon.coordinates[0];
-  if (ring === undefined || ring.length === 0) {
-    return undefined;
-  }
-  let lonSum = 0;
-  let latSum = 0;
-  let count = 0;
-  for (const coord of ring) {
-    const lon = coord[0];
-    const lat = coord[1];
-    if (lon === undefined || lat === undefined) {
-      continue;
-    }
-    lonSum += lon;
-    latSum += lat;
-    count++;
-  }
-  return count === 0 ? undefined : [lonSum / count, latSum / count];
+  return polygonGeoJson.polygonCentroid(geometry);
 }
 
 /**
