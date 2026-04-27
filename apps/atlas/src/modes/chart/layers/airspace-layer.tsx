@@ -5,9 +5,9 @@ import { Source, Layer, useMap } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection } from 'geojson';
+import { polygonGeoJson } from '@squawk/geo';
 import type { AirspaceType } from '@squawk/types';
 import { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
-import { polygonCentroid } from '../click-to-select.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 
@@ -362,7 +362,7 @@ function projectAirspaceSource(
     if (identifier !== '') {
       matchKey = `${type}/${identifier}`;
     } else {
-      const centroid = polygonCentroid(feature.geometry);
+      const centroid = polygonGeoJson.polygonCentroid(feature.geometry);
       if (centroid === undefined) {
         return feature;
       }
