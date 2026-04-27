@@ -3,11 +3,11 @@ import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useMap } from '@vis.gl/react-maplibre';
 import type { Polygon } from 'geojson';
+import { polygonGeoJson } from '@squawk/geo';
 import type { AirspaceFeature } from '@squawk/types';
 import {
   formatAirspaceLabel,
   formatChipLabel,
-  polygonCentroid,
   selectedFromFeature,
 } from '../../modes/chart/click-to-select.ts';
 import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
@@ -16,7 +16,7 @@ import { AIRSPACE_CLASS_FOR_TYPE, CHART_ROUTE_PATH } from '../../modes/chart/url
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
 import { isAirspacePolygonFeature } from './airspace-feature.ts';
 import { bboxFromCoords } from './geometry.ts';
-import type { Bbox } from './geometry.ts';
+import type { BoundingBox } from './geometry.ts';
 import { resolveSelectionFromState, useDatasetStates } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
 import { AirportPanel } from './renderers/airport-panel.tsx';
@@ -84,12 +84,17 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
   // or zoom without needing a separate event subscription. Returns
   // undefined on first render (before the map ref settles), in which
   // case the bbox-overlap chip walk skips the viewport filter.
-  const viewportBounds = useMemo<Bbox | undefined>(() => {
+  const viewportBounds = useMemo<BoundingBox | undefined>(() => {
     if (mapRef === undefined) {
       return undefined;
     }
     const b = mapRef.getMap().getBounds();
-    return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+    return {
+      minLon: b.getWest(),
+      maxLon: b.getEast(),
+      minLat: b.getSouth(),
+      maxLat: b.getNorth(),
+    };
     // lat/lon/zoom are intentionally unused inside the body; they are in
     // the dep list so the memo recomputes after each URL-driven view
     // change.
@@ -274,8 +279,8 @@ function SiblingChips({
  *   we can do without distance-to-line math.
  */
 type SelectionFootprint =
-  | { kind: 'airspace-polygons'; polygons: readonly Polygon[]; bbox: Bbox }
-  | { kind: 'airway-bbox'; bbox: Bbox };
+  | { kind: 'airspace-polygons'; polygons: readonly Polygon[]; bbox: BoundingBox }
+  | { kind: 'airway-bbox'; bbox: BoundingBox };
 
 /**
  * Returns the selected entity's footprint, or undefined when the
@@ -314,7 +319,9 @@ function footprintForSelection(
 }
 
 /** Bounding box from an airway's ordered list of waypoints. */
-function bboxFromWaypoints(waypoints: readonly { lat: number; lon: number }[]): Bbox | undefined {
+function bboxFromWaypoints(
+  waypoints: readonly { lat: number; lon: number }[],
+): BoundingBox | undefined {
   return bboxFromCoords(coordsOfWaypoints(waypoints));
 }
 
@@ -358,7 +365,7 @@ function* buildOverlappingAirspaceChips(
   excludeAirspaceKey: string | undefined,
   datasets: ChartDatasetStates,
   seen: ReadonlySet<string>,
-  viewportBounds: Bbox | undefined,
+  viewportBounds: BoundingBox | undefined,
   activeClasses: readonly AirspaceClass[],
 ): Generator<{ selection: string; label: string }, void, void> {
   if (datasets.airspace.status !== 'loaded') {
@@ -387,17 +394,14 @@ function* buildOverlappingAirspaceChips(
     if (seen.has(selection)) {
       continue;
     }
-    const featureBbox = polygonBbox(feature.geometry);
-    if (featureBbox === undefined) {
-      continue;
-    }
+    const featureBbox = polygonGeoJson.polygonBoundingBox(feature.geometry);
     // Cheap bbox pre-filter against the selected footprint, then a
     // per-feature centroid for both the viewport check and (for
     // airspace selections) the substantial-overlap check below.
-    if (!bboxesOverlap(footprint.bbox, featureBbox)) {
+    if (!polygonGeoJson.boundingBoxesOverlap(footprint.bbox, featureBbox)) {
       continue;
     }
-    const featureCentroid = polygonCentroid(feature.geometry);
+    const featureCentroid = polygonGeoJson.polygonCentroid(feature.geometry);
     if (featureCentroid === undefined) {
       continue;
     }
@@ -406,13 +410,18 @@ function* buildOverlappingAirspaceChips(
     // the viewport edge but whose body is offscreen would slip through
     // and the highlight preview on hover would render somewhere the
     // user cannot see.
-    if (viewportBounds !== undefined && !pointInBbox(featureCentroid, viewportBounds)) {
+    if (
+      viewportBounds !== undefined &&
+      !polygonGeoJson.pointInBoundingBox(featureCentroid, viewportBounds)
+    ) {
       continue;
     }
     if (footprint.kind === 'airspace-polygons') {
       let overlaps = false;
       for (const polygon of footprint.polygons) {
-        if (polygonsSubstantiallyOverlap(feature.geometry, polygon, featureCentroid)) {
+        if (
+          polygonGeoJson.polygonsSubstantiallyOverlap(feature.geometry, polygon, featureCentroid)
+        ) {
           overlaps = true;
           break;
         }
@@ -440,7 +449,7 @@ function encodeAirspaceChipSelection(
   if (identifier !== '') {
     return `airspace:${type}/${identifier}`;
   }
-  const centroid = polygonCentroid(geometry);
+  const centroid = polygonGeoJson.polygonCentroid(geometry);
   if (centroid === undefined) {
     return undefined;
   }
@@ -480,7 +489,9 @@ function disambiguateLabels(
  * combined bbox is the smallest rectangle that contains all of them.
  * Returns undefined if no feature has any coordinates.
  */
-function combinedBboxFromAirspaceFeatures(features: readonly AirspaceFeature[]): Bbox | undefined {
+function combinedBboxFromAirspaceFeatures(
+  features: readonly AirspaceFeature[],
+): BoundingBox | undefined {
   return bboxFromCoords(coordsOfAirspaceFeatures(features));
 }
 
@@ -491,14 +502,6 @@ function* coordsOfAirspaceFeatures(
   for (const feature of features) {
     yield* coordsOfPolygon(feature.boundary);
   }
-}
-
-/**
- * Bounding box of a single GeoJSON Polygon. Returns undefined when the
- * polygon has no coordinates (e.g. a synthesized empty polygon).
- */
-function polygonBbox(polygon: Polygon): Bbox | undefined {
-  return bboxFromCoords(coordsOfPolygon(polygon));
 }
 
 /**
@@ -518,131 +521,6 @@ function* coordsOfPolygon(polygon: Polygon): Generator<readonly [number, number]
       yield [lon, lat];
     }
   }
-}
-
-/** Standard 2D AABB intersection test. */
-function bboxesOverlap(a: Bbox, b: Bbox): boolean {
-  return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
-}
-
-/** True when `[lon, lat]` lies inside (or on the boundary of) `bbox`. */
-function pointInBbox(point: readonly [number, number], bbox: Bbox): boolean {
-  return point[0] >= bbox[0] && point[0] <= bbox[2] && point[1] >= bbox[1] && point[1] <= bbox[3];
-}
-
-/**
- * True if `[lon, lat]` lies inside `polygon`. Standard ray-casting
- * algorithm: count the number of edge crossings on a horizontal ray to
- * the right of the point. The first ring is treated as the outer
- * boundary; any subsequent rings are holes (a point inside a hole is
- * outside the polygon).
- */
-function pointInPolygon(point: readonly [number, number], polygon: Polygon): boolean {
-  let inside = false;
-  for (let r = 0; r < polygon.coordinates.length; r++) {
-    const ring = polygon.coordinates[r];
-    if (ring === undefined || ring.length === 0) {
-      continue;
-    }
-    let ringInside = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i++) {
-      const a = ring[i];
-      const b = ring[j];
-      if (a === undefined || b === undefined) {
-        continue;
-      }
-      const xi = a[0];
-      const yi = a[1];
-      const xj = b[0];
-      const yj = b[1];
-      if (xi === undefined || yi === undefined || xj === undefined || yj === undefined) {
-        continue;
-      }
-      if (yi > point[1] !== yj > point[1]) {
-        const xIntersect = ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi;
-        if (point[0] < xIntersect) {
-          ringInside = !ringInside;
-        }
-      }
-    }
-    if (r === 0) {
-      inside = ringInside;
-    } else if (ringInside) {
-      inside = false;
-    }
-  }
-  return inside;
-}
-
-/**
- * True when two polygons substantially overlap (one is mostly inside
- * the other, or vice versa). The chip strip is for surfacing features
- * the user might want to navigate to underneath the current selection,
- * so "substantial" means majority-area overlap, not just touching.
- *
- * Uses the bidirectional centroid heuristic:
- * - Identical polygons (same lateral airspace at different altitudes,
- *   e.g. POWDER RIVER 1A LOW vs 1A HIGH): always counts.
- * - Otherwise, true iff `a`'s polygon centroid lies inside `b`, OR `b`'s
- *   polygon centroid lies inside `a`. The first arm catches "small
- *   feature inside a big one" (e.g. Class B inside ARTCC); the second
- *   catches the reverse (e.g. ARTCC selected, Class B inside it).
- *
- * The caller may pre-compute `a`'s centroid (it is already needed for
- * the viewport filter) and pass it as `aCentroid` to skip a redundant
- * computation.
- */
-function polygonsSubstantiallyOverlap(
-  a: Polygon,
-  b: Polygon,
-  aCentroid?: readonly [number, number],
-): boolean {
-  if (polygonsIdentical(a, b)) {
-    return true;
-  }
-  const candidateA = aCentroid ?? polygonCentroid(a);
-  if (candidateA !== undefined && pointInPolygon(candidateA, b)) {
-    return true;
-  }
-  const candidateB = polygonCentroid(b);
-  if (candidateB !== undefined && pointInPolygon(candidateB, a)) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Coordinate-by-coordinate equality check. Catches "same lateral
- * airspace published at different altitudes" - e.g. the LOW and HIGH
- * strata of POWDER RIVER 1A share boundary geometry exactly, and the
- * vertex-count threshold alone would miss them because pip on a
- * boundary vertex is algorithm-dependent.
- */
-function polygonsIdentical(a: Polygon, b: Polygon): boolean {
-  if (a.coordinates.length !== b.coordinates.length) {
-    return false;
-  }
-  for (let r = 0; r < a.coordinates.length; r++) {
-    const ringA = a.coordinates[r];
-    const ringB = b.coordinates[r];
-    if (ringA === undefined || ringB === undefined) {
-      return false;
-    }
-    if (ringA.length !== ringB.length) {
-      return false;
-    }
-    for (let i = 0; i < ringA.length; i++) {
-      const ca = ringA[i];
-      const cb = ringB[i];
-      if (ca === undefined || cb === undefined) {
-        return false;
-      }
-      if (ca[0] !== cb[0] || ca[1] !== cb[1]) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 /** Small icon hint next to the sibling-chip heading: stacked layers. */

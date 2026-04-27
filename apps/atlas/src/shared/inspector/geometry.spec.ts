@@ -7,7 +7,12 @@ describe('bboxFromCoords', () => {
   });
 
   it('returns a degenerate bbox for a single coord', () => {
-    expect(bboxFromCoords([[10, 20]])).toEqual([10, 20, 10, 20]);
+    expect(bboxFromCoords([[10, 20]])).toEqual({
+      minLon: 10,
+      maxLon: 10,
+      minLat: 20,
+      maxLat: 20,
+    });
   });
 
   it('takes the min and max across multiple coords', () => {
@@ -17,7 +22,7 @@ describe('bboxFromCoords', () => {
         [30, 40],
         [-5, 25],
       ]),
-    ).toEqual([-5, 20, 30, 40]);
+    ).toEqual({ minLon: -5, maxLon: 30, minLat: 20, maxLat: 40 });
   });
 
   it('handles longitudes that cross zero without special-casing', () => {
@@ -26,7 +31,7 @@ describe('bboxFromCoords', () => {
         [-10, 0],
         [10, 0],
       ]),
-    ).toEqual([-10, 0, 10, 0]);
+    ).toEqual({ minLon: -10, maxLon: 10, minLat: 0, maxLat: 0 });
   });
 
   it('consumes a generator', () => {
@@ -34,6 +39,6 @@ describe('bboxFromCoords', () => {
       yield [1, 1];
       yield [2, 3];
     }
-    expect(bboxFromCoords(gen())).toEqual([1, 1, 2, 3]);
+    expect(bboxFromCoords(gen())).toEqual({ minLon: 1, maxLon: 2, minLat: 1, maxLat: 3 });
   });
 });
