@@ -1,5 +1,34 @@
 # @squawk/mcp
 
+## 0.8.4
+
+### Patch Changes
+
+- c7e6e12: ### Changed
+  - Updated `repository.directory` in each package's manifest to reflect the monorepo's new internal layout. The "View repository" link on npmjs.com now points to `packages/libs/<name>/` instead of `packages/<name>/`. No code or API changes - this is package metadata only.
+
+- Updated dependencies [c7e6e12]
+  - @squawk/airport-data@0.7.1
+  - @squawk/airports@0.5.2
+  - @squawk/airspace@0.6.1
+  - @squawk/airspace-data@0.5.1
+  - @squawk/airway-data@0.5.1
+  - @squawk/airways@0.3.3
+  - @squawk/fix-data@0.6.1
+  - @squawk/fixes@0.2.3
+  - @squawk/flight-math@0.5.2
+  - @squawk/flightplan@0.4.3
+  - @squawk/geo@0.3.3
+  - @squawk/icao-registry@0.3.3
+  - @squawk/icao-registry-data@0.7.1
+  - @squawk/navaid-data@0.6.1
+  - @squawk/navaids@0.3.3
+  - @squawk/notams@0.3.3
+  - @squawk/procedure-data@0.6.1
+  - @squawk/procedures@0.4.3
+  - @squawk/types@0.7.1
+  - @squawk/weather@0.5.2
+
 ## 0.8.3
 
 ### Patch Changes

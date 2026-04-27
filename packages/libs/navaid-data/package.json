@@ -1,6 +1,6 @@
 {
   "name": "@squawk/navaid-data",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "description": "Pre-processed FAA NASR navaid snapshot for use with @squawk/navaids",
   "author": "Neil Cochran",
@@ -41,7 +41,7 @@
     "lint:pack": "publint && attw --pack . --profile esm-only --exclude-entrypoints \"./data/navaids.json.gz\""
   },
   "dependencies": {
-    "@squawk/types": "^0.7.0"
+    "@squawk/types": "^0.7.1"
   },
   "keywords": [
     "aviation",
