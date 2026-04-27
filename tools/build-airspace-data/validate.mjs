@@ -3,7 +3,7 @@
  * characteristics, structural requirements, and geographic sanity checks.
  *
  * Usage: node validate.mjs [path-to-geojson]
- * Defaults to ../../packages/airspace-data/data/airspace.geojson
+ * Defaults to ../../packages/libs/airspace-data/data/airspace.geojson
  */
 
 import { readFile } from 'node:fs/promises';
@@ -11,7 +11,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const defaultPath = resolve(__dirname, '../../packages/airspace-data/data/airspace.geojson');
+const defaultPath = resolve(__dirname, '../../packages/libs/airspace-data/data/airspace.geojson');
 const inputPath = process.argv[2] ? resolve(process.argv[2]) : defaultPath;
 
 let pass = 0;

@@ -20,7 +20,7 @@ node dist/index.js --cifp-local <path-to-zip-or-file>     # build from a local z
 | --------------------- | ---------------------------------------------------------------------------------------- |
 | `--cifp-fetch`        | Download and build from the latest FAA CIFP release (scraped from the FAA download page) |
 | `--cifp-local <path>` | Path to either a CIFP zip file or the extracted `FAACIFP18` ARINC 424 data file          |
-| `--output <path>`     | Output path for the .json.gz file (defaults to `packages/procedure-data/data`)           |
+| `--output <path>`     | Output path for the .json.gz file (defaults to `packages/libs/procedure-data/data`)      |
 
 ### Example
 
@@ -43,7 +43,7 @@ The build does two passes over the file:
 ## Output
 
 Writes a gzipped compact-key JSON file containing every decoded procedure to
-`packages/procedure-data/data/procedures.json.gz`. The output is consumed by
+`packages/libs/procedure-data/data/procedures.json.gz`. The output is consumed by
 `@squawk/procedure-data`, which eagerly expands the records into the public
 `Procedure` interface at import time.
 
@@ -52,4 +52,4 @@ Writes a gzipped compact-key JSON file containing every decoded procedure to
 CIFP encodes graphic Obstacle Departure Procedures (ODPs) as SIDs (`PD`
 records) with no distinguishing field. They appear in the output labelled as
 `SID`. Textual ODPs are not carried by CIFP at all. See
-`packages/procedure-data/README.md` for the full caveat.
+`packages/libs/procedure-data/README.md` for the full caveat.

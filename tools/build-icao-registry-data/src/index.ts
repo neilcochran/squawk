@@ -20,7 +20,7 @@ const FAA_USER_AGENT =
   '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 /** Relative path from the script root to the default output file. */
-const DEFAULT_OUTPUT_PATH = '../../../packages/icao-registry-data/data/icao-registry.json.gz';
+const DEFAULT_OUTPUT_PATH = '../../../packages/libs/icao-registry-data/data/icao-registry.json.gz';
 
 /**
  * Prints usage instructions to stderr and exits with code 1.

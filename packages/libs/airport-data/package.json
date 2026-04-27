@@ -1,0 +1,59 @@
+{
+  "name": "@squawk/airport-data",
+  "version": "0.7.0",
+  "type": "module",
+  "description": "Pre-processed FAA NASR airport snapshot for use with @squawk/airports",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/libs/airport-data"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/node.js",
+  "types": "./dist/node.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/node.d.ts",
+      "browser": "./dist/browser.js",
+      "import": "./dist/node.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    },
+    "./data/airports.json.gz": "./data/airports.json.gz"
+  },
+  "files": [
+    "dist",
+    "data",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test 'dist/**/*.spec.js'",
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only --exclude-entrypoints \"./data/airports.json.gz\""
+  },
+  "dependencies": {
+    "@squawk/types": "^0.7.0"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "airport",
+    "faa",
+    "nasr"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  }
+}

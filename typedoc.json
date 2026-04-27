@@ -1,6 +1,6 @@
 {
   "entryPointStrategy": "packages",
-  "entryPoints": ["packages/**"],
+  "entryPoints": ["packages/libs/**"],
   "out": "docs",
   "name": "@squawk"
 }
