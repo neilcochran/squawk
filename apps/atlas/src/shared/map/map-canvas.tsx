@@ -10,8 +10,22 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 maplibregl.addProtocol('pmtiles', new Protocol().tile);
 
-/** Protomaps' public dev demo PMTiles bucket - no API key required. */
+/**
+ * Protomaps' public dev demo PMTiles bucket - no API key required, but
+ * rate-limited and intended for development only. Used as a fallback
+ * when {@link PMTILES_URL} is not set, so local `npm run dev` works
+ * without any env configuration.
+ */
 const PROTOMAPS_DEMO_PMTILES = 'pmtiles://https://demo-bucket.protomaps.com/v4.pmtiles';
+
+/**
+ * Resolved PMTiles URL for the basemap source. Reads from the
+ * `VITE_PMTILES_URL` build-time env var (set in the production deploy
+ * to point at a self-hosted PMTiles file or Protomaps' commercial CDN)
+ * and falls back to {@link PROTOMAPS_DEMO_PMTILES} when unset.
+ */
+const PMTILES_URL = import.meta.env.VITE_PMTILES_URL ?? PROTOMAPS_DEMO_PMTILES;
+
 const PROTOMAPS_GLYPHS =
   'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf';
 const PROTOMAPS_SPRITES = 'https://protomaps.github.io/basemaps-assets/sprites/v4/light';
@@ -32,7 +46,7 @@ const MAP_STYLE: StyleSpecification = {
   sources: {
     protomaps: {
       type: 'vector',
-      url: PROTOMAPS_DEMO_PMTILES,
+      url: PMTILES_URL,
       attribution:
         '<a href="https://openstreetmap.org/copyright">© OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>',
     },
