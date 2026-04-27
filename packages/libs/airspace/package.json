@@ -1,6 +1,6 @@
 {
   "name": "@squawk/airspace",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "description": "Pure logic library for querying US airspace geometry by position and altitude",
   "author": "Neil Cochran",
@@ -34,7 +34,7 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/geo": "^0.3.3",
+    "@squawk/geo": "^0.4.0",
     "@squawk/types": "^0.7.1"
   },
   "devDependencies": {
