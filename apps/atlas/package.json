@@ -8,17 +8,17 @@
   "author": "Neil Cochran",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/neilcochran/squawk-atlas.git"
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "apps/atlas"
   },
-  "homepage": "https://github.com/neilcochran/squawk-atlas#readme",
+  "homepage": "https://github.com/neilcochran/squawk/tree/main/apps/atlas#readme",
   "bugs": {
-    "url": "https://github.com/neilcochran/squawk-atlas/issues"
+    "url": "https://github.com/neilcochran/squawk/issues"
   },
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "prepare": "husky",
     "dev": "vite",
     "prebuild": "tsr generate",
     "build": "tsc -b && vite build",
@@ -30,16 +30,16 @@
   "dependencies": {
     "@protomaps/basemaps": "^5.7.2",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
-    "@squawk/airport-data": "^0.7.0",
-    "@squawk/airports": "^0.5.1",
-    "@squawk/airspace": "^0.6.0",
-    "@squawk/airspace-data": "^0.5.0",
-    "@squawk/airway-data": "^0.5.0",
-    "@squawk/airways": "^0.3.2",
-    "@squawk/fix-data": "^0.6.0",
-    "@squawk/fixes": "^0.2.2",
-    "@squawk/navaid-data": "^0.6.0",
-    "@squawk/navaids": "^0.3.2",
+    "@squawk/airport-data": "*",
+    "@squawk/airports": "*",
+    "@squawk/airspace": "*",
+    "@squawk/airspace-data": "*",
+    "@squawk/airway-data": "*",
+    "@squawk/airways": "*",
+    "@squawk/fix-data": "*",
+    "@squawk/fixes": "*",
+    "@squawk/navaid-data": "*",
+    "@squawk/navaids": "*",
     "@tanstack/react-router": "^1.168.24",
     "@vis.gl/react-maplibre": "^8.1.1",
     "maplibre-gl": "^5.24.0",
@@ -67,7 +67,6 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
-    "husky": "^9.1.7",
     "jsdom": "^29.0.2",
     "prettier": "^3.8.2",
     "tailwindcss": "^4.2.4",

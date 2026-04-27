@@ -2,3 +2,4 @@ dist/
 node_modules/
 *.tsbuildinfo
 packages/libs/airspace-data/data/
+apps/atlas/src/routeTree.gen.ts
