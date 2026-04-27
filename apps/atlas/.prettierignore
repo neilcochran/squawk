@@ -1,0 +1,4 @@
+dist/
+node_modules/
+*.tsbuildinfo
+src/routeTree.gen.ts
