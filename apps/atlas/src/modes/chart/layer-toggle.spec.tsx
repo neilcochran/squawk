@@ -61,12 +61,14 @@ vi.mock('@radix-ui/react-dropdown-menu', () => {
     children,
     checked,
     onCheckedChange,
+    onKeyDown,
     className,
   }: {
     children: ReactNode;
     checked: boolean;
     onCheckedChange: (next: boolean) => void;
     onSelect?: (event: Event) => void;
+    onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
     className?: string;
   }): ReactNode {
     const activate = (): void => onCheckedChange(!checked);
@@ -78,6 +80,13 @@ vi.mock('@radix-ui/react-dropdown-menu', () => {
         className={className}
         onClick={activate}
         onKeyDown={(event) => {
+          // Run the consumer's handler first so it can preventDefault on
+          // arrow keys (the unified parent row uses ArrowRight/Left for
+          // expand/collapse before the menu's space/enter activation).
+          onKeyDown?.(event);
+          if (event.defaultPrevented) {
+            return;
+          }
           if (event.key === ' ' || event.key === 'Enter') {
             event.preventDefault();
             activate();
@@ -159,13 +168,9 @@ function makePrev(overrides: Partial<ChartSearch> = {}): ChartSearch {
   };
 }
 
-/** Resolves the parent menuitem (or menuitemcheckbox) for a given layer label. */
+/** Resolves the parent row for a given layer label. All parent rows are menuitemcheckbox in the unified design. */
 function getParentRow(label: RegExp | string): HTMLElement {
-  const items = screen.getAllByRole(
-    /airways|airspace/i.test(typeof label === 'string' ? label : label.source)
-      ? 'menuitem'
-      : 'menuitemcheckbox',
-  );
+  const items = screen.getAllByRole('menuitemcheckbox');
   const text = typeof label === 'string' ? label.toLowerCase() : label.source.toLowerCase();
   const match = items.find((el) => el.textContent?.toLowerCase().includes(text));
   if (match === undefined) {
@@ -174,16 +179,18 @@ function getParentRow(label: RegExp | string): HTMLElement {
   return match;
 }
 
-/** Click the row body of an expandable parent (Airways / Airspace) to toggle expansion. */
+/** Click the chevron button inside an expandable parent row to toggle expansion. */
 function expandLayer(layer: 'airways' | 'airspace'): void {
-  fireEvent.click(getParentRow(layer));
+  const row = getParentRow(layer);
+  const chevron = within(row).getByRole('button', {
+    name: new RegExp(`(expand|collapse) ${layer} sub-list`, 'i'),
+  });
+  fireEvent.click(chevron);
 }
 
-/** Click the inner parent checkbox button on an expandable layer row. */
-function clickParentCheckbox(layer: 'airways' | 'airspace'): void {
-  const row = getParentRow(layer);
-  const checkbox = within(row).getByRole('checkbox');
-  fireEvent.click(checkbox);
+/** Click the parent row body itself to toggle the layer's checked state. */
+function clickParentLayer(layer: 'airways' | 'airspace' | 'airports' | 'navaids' | 'fixes'): void {
+  fireEvent.click(getParentRow(layer));
 }
 
 describe('LayerToggle', () => {
@@ -210,15 +217,12 @@ describe('LayerToggle', () => {
     );
   });
 
-  it('renders the expandable parent rows as menuitem with an inner checkbox reflecting the URL', () => {
+  it('renders the expandable parent rows as menuitemcheckbox reflecting the URL', () => {
     useSearchMock.mockReturnValue(makeSearch({ layers: ['airports'] }));
     render(<LayerToggle />);
 
-    const airwaysRow = screen.getByRole('menuitem', { name: /airways/i });
-    expect(within(airwaysRow).getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
-
-    const airspaceRow = screen.getByRole('menuitem', { name: /airspace/i });
-    expect(within(airspaceRow).getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+    expect(getParentRow('airways')).toHaveAttribute('aria-checked', 'false');
+    expect(getParentRow('airspace')).toHaveAttribute('aria-checked', 'false');
   });
 
   it('removes a simple layer from the URL when its row is clicked', () => {
@@ -230,21 +234,21 @@ describe('LayerToggle', () => {
     expect(next.layers).toEqual(['airports', 'navaids', 'airways', 'airspace']);
   });
 
-  it('toggles an expandable parent layer via the inner checkbox without expanding the row', () => {
+  it('toggles an expandable parent layer when the row is clicked, without expanding it', () => {
     render(<LayerToggle />);
-    clickParentCheckbox('airways');
+    clickParentLayer('airways');
 
     expect(navigateMock).toHaveBeenCalledTimes(1);
     const next = applyLatestSearchUpdate(makePrev());
     expect(next.layers).toEqual(['airports', 'navaids', 'fixes', 'airspace']);
-    // Expansion state is component-local - clicking the checkbox should not
-    // have expanded the row, so sub-rows should not be in the DOM.
+    // Row click toggles the layer; the chevron is the separate
+    // expansion affordance, so sub-rows should not have appeared.
     expect(
       screen.queryByRole('menuitemcheckbox', { name: /low altitude/i }),
     ).not.toBeInTheDocument();
   });
 
-  it('expands the row when its body is clicked, without toggling the parent', () => {
+  it('expands the row when the chevron is clicked, without toggling the parent', () => {
     render(<LayerToggle />);
     expandLayer('airways');
 
@@ -256,7 +260,7 @@ describe('LayerToggle', () => {
     ).toBeInTheDocument();
   });
 
-  it('hides sub-rows again when the row is clicked a second time', () => {
+  it('hides sub-rows again when the chevron is clicked a second time', () => {
     render(<LayerToggle />);
     expandLayer('airspace');
     expect(screen.getByRole('menuitemcheckbox', { name: /class b/i })).toBeInTheDocument();
@@ -265,12 +269,12 @@ describe('LayerToggle', () => {
     expect(screen.queryByRole('menuitemcheckbox', { name: /class b/i })).not.toBeInTheDocument();
   });
 
-  it('keeps sub-rows visible when the parent checkbox is toggled (expansion state preserved)', () => {
+  it('keeps sub-rows visible when the parent layer is toggled (expansion state preserved)', () => {
     render(<LayerToggle />);
     expandLayer('airspace');
     expect(screen.getByRole('menuitemcheckbox', { name: /class b/i })).toBeInTheDocument();
 
-    clickParentCheckbox('airspace');
+    clickParentLayer('airspace');
     expect(screen.getByRole('menuitemcheckbox', { name: /class b/i })).toBeInTheDocument();
   });
 
@@ -280,11 +284,11 @@ describe('LayerToggle', () => {
     );
     render(<LayerToggle />);
 
-    const airwaysRow = screen.getByRole('menuitem', { name: /airways/i });
+    const airwaysRow = getParentRow('airways');
     expect(within(airwaysRow).getByText('1/3')).toBeInTheDocument();
     expect(within(airwaysRow).getByLabelText('1 of 3 enabled')).toBeInTheDocument();
 
-    const airspaceRow = screen.getByRole('menuitem', { name: /airspace/i });
+    const airspaceRow = getParentRow('airspace');
     expect(within(airspaceRow).getByText('2/11')).toBeInTheDocument();
     expect(within(airspaceRow).getByLabelText('2 of 11 enabled')).toBeInTheDocument();
   });
@@ -425,7 +429,7 @@ describe('LayerToggle', () => {
       }),
     );
     render(<LayerToggle />);
-    clickParentCheckbox('airways');
+    clickParentLayer('airways');
 
     expect(navigateMock).toHaveBeenCalledTimes(1);
     const next = applyLatestSearchUpdate(
@@ -446,7 +450,7 @@ describe('LayerToggle', () => {
       }),
     );
     render(<LayerToggle />);
-    clickParentCheckbox('airways');
+    clickParentLayer('airways');
 
     expect(navigateMock).toHaveBeenCalledTimes(1);
     const next = applyLatestSearchUpdate(
@@ -480,5 +484,23 @@ describe('LayerToggle', () => {
     expect(next.airwayCategories).toEqual(['LOW']);
     // Parent stays off because the sub-array did not transition out of empty.
     expect(next.layers).toEqual(['airports', 'navaids', 'fixes', 'airspace']);
+  });
+
+  it('expands on ArrowRight and collapses on ArrowLeft (keyboard tree-style nav)', () => {
+    render(<LayerToggle />);
+    const airwaysRow = getParentRow('airways');
+
+    // ArrowRight on a collapsed expandable row expands it without
+    // toggling the parent layer.
+    fireEvent.keyDown(airwaysRow, { key: 'ArrowRight' });
+    expect(screen.getByRole('menuitemcheckbox', { name: /low altitude/i })).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
+
+    // ArrowLeft on an expanded row collapses it.
+    fireEvent.keyDown(airwaysRow, { key: 'ArrowLeft' });
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: /low altitude/i }),
+    ).not.toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });

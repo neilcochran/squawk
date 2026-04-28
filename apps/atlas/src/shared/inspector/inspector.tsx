@@ -12,6 +12,7 @@ import {
 import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
 import { AIRSPACE_CLASS_FOR_TYPE, CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
+import { useCanHover } from '../styles/use-can-hover.ts';
 import { isAirspacePolygonFeature } from './airspace-feature.ts';
 import { ENTITY_TYPES, parseSelected } from './entity.ts';
 import type { EntityType } from './entity.ts';
@@ -71,10 +72,16 @@ export interface EntityInspectorProps {
  * selected; renders a slim loading or not-found header when the URL points
  * at an unloaded or stale id; otherwise dispatches to a per-type renderer.
  *
- * The panel is positioned `absolute` along the right edge of the chart
- * area (`top-0 right-0 bottom-0 w-[360px]`). It overlaps the layer-toggle
- * dropdown when both are open; the close affordance is the X in the
- * panel header.
+ * Layout is responsive: at the Tailwind `md:` breakpoint (>= 768px)
+ * the panel sits `absolute` along the right edge of the chart area
+ * (`top-0 right-0 bottom-0 w-inspector`, with the `inspector` spacing
+ * token declared in `src/index.css`). Below that breakpoint it
+ * collapses into a bottom sheet (`right-0 bottom-0 left-0
+ * max-h-[60vh]`) so the map stays visible above on phones. The
+ * chip-hover pan and recenter offset in `use-chip-hover-pan.ts` follow
+ * the same breakpoint and shift the camera focal point along whichever
+ * axis is occluded. The panel overlaps the layer-toggle dropdown when
+ * both are open; the close affordance is the X in the panel header.
  *
  * Stacked features at the click point: when the user clicks a spot where
  * multiple features overlap (Class B inside ARTCC, an airport sitting on
@@ -123,13 +130,14 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
   // bounce-fix freeze, the dragstart subscription, and the
   // selection-change cleanup; the inspector wires its outputs into
   // the chip strip, the recenter button, and the chip useMemo.
-  const { handleChipHover, handleRecenter, chipViewportBounds, resetSession } = useChipHoverPan({
-    selected,
-    mapRef,
-    datasets,
-    viewportBounds,
-    state,
-  });
+  const { handleChipHover, handleChipCommit, handleRecenter, chipViewportBounds, resetSession } =
+    useChipHoverPan({
+      selected,
+      mapRef,
+      datasets,
+      viewportBounds,
+      state,
+    });
 
   const handleClose = useCallback((): void => {
     resetSession();
@@ -141,16 +149,19 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
 
   const handleSwitchSelected = useCallback(
     (next: string): void => {
-      // Chip click commits: drop any in-flight hover session so the
-      // unhover restore does NOT yank the user back to a position
-      // that no longer matches the new selection.
-      resetSession();
+      // Pan to the picked chip's feature first, then commit the URL.
+      // `handleChipCommit` clears any in-flight hover session so the
+      // unhover-restore does NOT yank the user back to a position that
+      // no longer matches the new selection. The pan starts immediately
+      // and continues through the URL change so the camera ends up at
+      // the new feature regardless of input device.
+      handleChipCommit(next);
       void navigate({
         search: (prev) => ({ ...prev, selected: next }),
         replace: true,
       });
     },
-    [navigate, resetSession],
+    [navigate, handleChipCommit],
   );
 
   // Build the chip list. Two sources are merged, with same-pixel chips
@@ -238,7 +249,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
 
   return (
     <aside
-      className="absolute top-0 right-0 bottom-0 z-20 w-[360px] overflow-y-auto border-l border-slate-200 bg-white shadow-lg"
+      className="absolute right-0 bottom-0 left-0 z-20 max-h-[60vh] overflow-y-auto rounded-t-xl border-t border-slate-200 bg-white shadow-lg md:top-0 md:left-auto md:max-h-none md:w-inspector md:rounded-none md:border-t-0 md:border-l"
       aria-label="Entity inspector"
     >
       <InspectorHeader
@@ -279,9 +290,14 @@ const CHIP_GROUP_LABELS: Record<EntityType, string> = {
  * Airways, Airspace) so a click into a busy area is readable instead
  * of an unsorted wall of buttons.
  *
- * Each chip is a `<button>` so it is keyboard-focusable; hover and
+ * Each chip is a `<button>` so it is keyboard-focusable. On devices
+ * with a real hover gesture (mouse / trackpad) chip hover and keyboard
  * focus call `onHover` so chart-mode can preview the highlight on the
- * map before the user commits with a click.
+ * map before the user commits with a click. On `(hover: none)` devices
+ * (touch-only phones / tablets) the mouse-event preview is gated off
+ * to avoid synthesized-event flicker on tap; focus events still drive
+ * `onHover` so a connected keyboard or screen reader keeps the same
+ * affordance.
  */
 function SiblingChips({
   chips,
@@ -291,13 +307,15 @@ function SiblingChips({
   chips: readonly Chip[];
   onSelect: (selection: string) => void;
   /**
-   * Called on chip hover-enter (with the chip's selection) and on
-   * hover-leave / blur (with `undefined`). Used by chart-mode to
-   * temporarily highlight that chip's feature on the map so the user
-   * can confirm which entity a chip refers to before clicking.
+   * Called when a chip is hover-entered or focused (with the chip's
+   * selection) and when it is hover-left or blurred (with `undefined`).
+   * Used by chart-mode to temporarily highlight that chip's feature on
+   * the map so the user can confirm which entity a chip refers to
+   * before clicking.
    */
   onHover: (selection: string | undefined) => void;
 }): ReactElement {
+  const canHover = useCanHover();
   const [expanded, setExpanded] = useState(false);
   // Group chips by entity type, in canonical ENTITY_TYPES order, and
   // drop empty groups. The result is recomputed only when the chip
@@ -327,7 +345,7 @@ function SiblingChips({
         type="button"
         onClick={(): void => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="flex w-full items-center gap-1.5 px-4 py-2 text-left text-xs font-semibold tracking-wide text-indigo-700 uppercase hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400"
+        className="flex w-full items-center gap-1.5 px-4 py-3 text-left text-xs font-semibold tracking-wide text-indigo-700 uppercase hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400 md:py-2"
       >
         <SwitchIcon />
         <span className="flex-1">{headerText}</span>
@@ -346,11 +364,13 @@ function SiblingChips({
                     key={chip.selection}
                     type="button"
                     onClick={(): void => onSelect(chip.selection)}
-                    onMouseEnter={(): void => onHover(chip.selection)}
-                    onMouseLeave={(): void => onHover(undefined)}
+                    {...(canHover && {
+                      onMouseEnter: (): void => onHover(chip.selection),
+                      onMouseLeave: (): void => onHover(undefined),
+                    })}
                     onFocus={(): void => onHover(chip.selection)}
                     onBlur={(): void => onHover(undefined)}
-                    className="rounded-full border border-indigo-300 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    className="rounded-full border border-indigo-300 bg-white px-3 py-2 text-xs font-medium text-indigo-700 shadow-sm hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 md:px-2.5 md:py-1"
                   >
                     {chip.label}
                   </button>
@@ -634,7 +654,7 @@ function InspectorHeader({
             onClick={onRecenter}
             aria-label="Recenter on this feature"
             title="Recenter on this feature"
-            className="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+            className="flex h-11 w-11 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:h-7 md:w-7"
           >
             <RecenterIcon />
           </button>
@@ -643,7 +663,7 @@ function InspectorHeader({
           type="button"
           onClick={onClose}
           aria-label="Close inspector"
-          className="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          className="flex h-11 w-11 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:h-7 md:w-7"
         >
           <CloseIcon />
         </button>

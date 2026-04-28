@@ -157,7 +157,7 @@ export function ChartLoadingIndicator(): ReactElement | null {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-3 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+            className="mt-3 rounded-md bg-slate-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-slate-800 md:py-1.5"
           >
             Reload
           </button>
