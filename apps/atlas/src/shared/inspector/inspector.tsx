@@ -1,24 +1,25 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useMap } from '@vis.gl/react-maplibre';
 import type { Polygon } from 'geojson';
 import { polygonGeoJson } from '@squawk/geo';
-import type { AirspaceFeature } from '@squawk/types';
 import {
   formatAirspaceLabel,
   formatChipLabel,
   selectedFromFeature,
 } from '../../modes/chart/click-to-select.ts';
 import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
-import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.ts';
 import { AIRSPACE_CLASS_FOR_TYPE, CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
 import { isAirspacePolygonFeature } from './airspace-feature.ts';
-import { bboxFromCoords } from './geometry.ts';
+import { ENTITY_TYPES, parseSelected } from './entity.ts';
+import type { EntityType } from './entity.ts';
+import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.ts';
 import type { BoundingBox } from './geometry.ts';
 import { resolveSelectionFromState, useDatasetStates } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
+import { useChipHoverPan } from './use-chip-hover-pan.ts';
 import { AirportPanel } from './renderers/airport-panel.tsx';
 import { AirspacePanel } from './renderers/airspace-panel.tsx';
 import { AirwayPanel } from './renderers/airway-panel.tsx';
@@ -34,6 +35,21 @@ const route = getRouteApi(CHART_ROUTE_PATH);
  * scrolling. Future work could add an "+N more" affordance.
  */
 const MAX_OVERLAP_CHIPS = 30;
+
+/**
+ * Single entry rendered in the sibling-chip disclosure. Carries the
+ * URL-encoded selection (used as the click handler payload), the
+ * human label, and the entity type so the disclosure can group rows
+ * by type (Airports, Navaids, Fixes, Airways, Airspace).
+ */
+interface Chip {
+  /** URL-encoded selection string (e.g. `airport:BOS`). */
+  selection: string;
+  /** Display label, identical to the popover and possibly suffixed with `(N)` when several chips share a base label. */
+  label: string;
+  /** Entity type, used to drive the disclosure's per-type grouping. */
+  type: EntityType;
+}
 
 /**
  * Props for {@link EntityInspector}.
@@ -101,23 +117,40 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapRef, lat, lon, zoom]);
   const state = useMemo(() => resolveSelectionFromState(selected, datasets), [selected, datasets]);
-  const setHoveredChipSelection = useSetHoveredChipSelection();
+
+  // All chip-hover panning, recenter, and viewport-freeze state lives
+  // in `useChipHoverPan`. The hook owns the pre-pan capture, the
+  // bounce-fix freeze, the dragstart subscription, and the
+  // selection-change cleanup; the inspector wires its outputs into
+  // the chip strip, the recenter button, and the chip useMemo.
+  const { handleChipHover, handleRecenter, chipViewportBounds, resetSession } = useChipHoverPan({
+    selected,
+    mapRef,
+    datasets,
+    viewportBounds,
+    state,
+  });
 
   const handleClose = useCallback((): void => {
+    resetSession();
     void navigate({
       search: (prev) => ({ ...prev, selected: undefined }),
       replace: true,
     });
-  }, [navigate]);
+  }, [navigate, resetSession]);
 
   const handleSwitchSelected = useCallback(
     (next: string): void => {
+      // Chip click commits: drop any in-flight hover session so the
+      // unhover restore does NOT yank the user back to a position
+      // that no longer matches the new selection.
+      resetSession();
       void navigate({
         search: (prev) => ({ ...prev, selected: next }),
         replace: true,
       });
     },
-    [navigate],
+    [navigate, resetSession],
   );
 
   // Build the chip list. Two sources are merged, with same-pixel chips
@@ -134,9 +167,9 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
   // completes. Capped at MAX_OVERLAP_CHIPS to keep the strip readable -
   // a large MOA can pull dozens of underlying Class E5 polygons, more
   // than the panel can show without scrolling.
-  const chips = useMemo<readonly { selection: string; label: string }[]>(() => {
+  const chips = useMemo<readonly Chip[]>(() => {
     const seen = new Set<string>();
-    const result: { selection: string; label: string }[] = [];
+    const result: Chip[] = [];
 
     for (const feature of siblings) {
       const selection = selectedFromFeature(feature);
@@ -149,12 +182,16 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
       if (seen.has(selection)) {
         continue;
       }
+      const ref = parseSelected(selection);
+      if (ref === undefined) {
+        continue;
+      }
       const resolution = resolveSelectionFromState(selection, datasets);
       if (resolution.status === 'not-found' || resolution.status === 'idle') {
         continue;
       }
       seen.add(selection);
-      result.push({ selection, label: formatChipLabel(feature) });
+      result.push({ selection, label: formatChipLabel(feature), type: ref.type });
     }
 
     // Overlap chips: walk the airspace dataset for features that
@@ -177,7 +214,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
         selectedAirspaceKey,
         datasets,
         seen,
-        viewportBounds,
+        chipViewportBounds,
         airspaceClasses,
       )) {
         if (result.length >= MAX_OVERLAP_CHIPS) {
@@ -188,12 +225,12 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
           continue;
         }
         seen.add(chip.selection);
-        result.push(chip);
+        result.push({ ...chip, type: 'airspace' });
       }
     }
 
     return disambiguateLabels(result);
-  }, [siblings, selected, datasets, state, layers, airspaceClasses, viewportBounds]);
+  }, [siblings, selected, datasets, state, layers, airspaceClasses, chipViewportBounds]);
 
   if (state.status === 'idle') {
     return null;
@@ -204,13 +241,13 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
       className="absolute top-0 right-0 bottom-0 z-20 w-[360px] overflow-y-auto border-l border-slate-200 bg-white shadow-lg"
       aria-label="Entity inspector"
     >
-      <InspectorHeader state={state} onClose={handleClose} />
+      <InspectorHeader
+        state={state}
+        onClose={handleClose}
+        {...(state.status === 'resolved' && { onRecenter: handleRecenter })}
+      />
       {chips.length === 0 ? null : (
-        <SiblingChips
-          chips={chips}
-          onSelect={handleSwitchSelected}
-          onHover={setHoveredChipSelection}
-        />
+        <SiblingChips chips={chips} onSelect={handleSwitchSelected} onHover={handleChipHover} />
       )}
       <InspectorBody state={state} />
     </aside>
@@ -218,21 +255,40 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
 }
 
 /**
- * Horizontal chip strip rendered below the inspector header when the most
- * recent click hit more than one feature. Visually distinct from the
- * details body (indigo accent + thicker top rule) so it reads as
- * "alternative selections you can switch to" rather than as further
- * details of the current entity. Each chip is a `<button>` so it is
- * keyboard-focusable and announces correctly to screen readers; the
- * strip wraps so a busy click (ARTCC + Class B + Class E + ...) does
- * not overflow the panel.
+ * Plural-form labels for the chip-disclosure group headers. Mirrors the
+ * canonical {@link ENTITY_TYPES} order so iterating the constant
+ * produces a deterministic Airport > Navaid > Fix > Airway > Airspace
+ * grouping, matching the layer-priority ordering used by the click
+ * picker.
+ */
+const CHIP_GROUP_LABELS: Record<EntityType, string> = {
+  airport: 'Airports',
+  navaid: 'Navaids',
+  fix: 'Fixes',
+  airway: 'Airways',
+  airspace: 'Airspace',
+};
+
+/**
+ * Collapsible disclosure rendered below the inspector header when the
+ * most recent click pulled in alternative features (same-pixel hits
+ * plus bbox-overlap airspaces). Collapsed by default - the popover is
+ * the primary disambiguation surface, and the chip disclosure is the
+ * "other things in this area" follow-up. Click the header to expand;
+ * inside, chips are grouped by feature type (Airports, Navaids, Fixes,
+ * Airways, Airspace) so a click into a busy area is readable instead
+ * of an unsorted wall of buttons.
+ *
+ * Each chip is a `<button>` so it is keyboard-focusable; hover and
+ * focus call `onHover` so chart-mode can preview the highlight on the
+ * map before the user commits with a click.
  */
 function SiblingChips({
   chips,
   onSelect,
   onHover,
 }: {
-  chips: readonly { selection: string; label: string }[];
+  chips: readonly Chip[];
   onSelect: (selection: string) => void;
   /**
    * Called on chip hover-enter (with the chip's selection) and on
@@ -242,28 +298,68 @@ function SiblingChips({
    */
   onHover: (selection: string | undefined) => void;
 }): ReactElement {
+  const [expanded, setExpanded] = useState(false);
+  // Group chips by entity type, in canonical ENTITY_TYPES order, and
+  // drop empty groups. The result is recomputed only when the chip
+  // list changes (chip clicks rebuild it from a new selection).
+  const groups = useMemo<readonly { type: EntityType; chips: readonly Chip[] }[]>(() => {
+    const byType = new Map<EntityType, Chip[]>();
+    for (const chip of chips) {
+      const bucket = byType.get(chip.type);
+      if (bucket === undefined) {
+        byType.set(chip.type, [chip]);
+      } else {
+        bucket.push(chip);
+      }
+    }
+    return ENTITY_TYPES.flatMap((type) => {
+      const bucket = byType.get(type);
+      return bucket === undefined || bucket.length === 0 ? [] : [{ type, chips: bucket }];
+    });
+  }, [chips]);
+
+  const headerText =
+    chips.length === 1 ? '1 other feature here' : `${chips.length} other features here`;
+
   return (
-    <div className="border-y-2 border-indigo-200 bg-indigo-50 px-4 py-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-indigo-700 uppercase">
+    <div className="border-y-2 border-indigo-200 bg-indigo-50">
+      <button
+        type="button"
+        onClick={(): void => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-1.5 px-4 py-2 text-left text-xs font-semibold tracking-wide text-indigo-700 uppercase hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400"
+      >
         <SwitchIcon />
-        Switch to another feature here
-      </p>
-      <div className="flex flex-wrap gap-1.5">
-        {chips.map((chip) => (
-          <button
-            key={chip.selection}
-            type="button"
-            onClick={() => onSelect(chip.selection)}
-            onMouseEnter={() => onHover(chip.selection)}
-            onMouseLeave={() => onHover(undefined)}
-            onFocus={() => onHover(chip.selection)}
-            onBlur={() => onHover(undefined)}
-            className="rounded-full border border-indigo-300 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-          >
-            {chip.label}
-          </button>
-        ))}
-      </div>
+        <span className="flex-1">{headerText}</span>
+        <ChevronIcon expanded={expanded} />
+      </button>
+      {expanded ? (
+        <div className="flex flex-col gap-2 px-4 pt-1 pb-3">
+          {groups.map((group) => (
+            <div key={group.type}>
+              <p className="mb-1 text-[10px] font-semibold tracking-wider text-indigo-600/80 uppercase">
+                {CHIP_GROUP_LABELS[group.type]}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {group.chips.map((chip) => (
+                  <button
+                    key={chip.selection}
+                    type="button"
+                    onClick={(): void => onSelect(chip.selection)}
+                    onMouseEnter={(): void => onHover(chip.selection)}
+                    onMouseLeave={(): void => onHover(undefined)}
+                    onFocus={(): void => onHover(chip.selection)}
+                    onBlur={(): void => onHover(undefined)}
+                    className="rounded-full border border-indigo-300 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -316,22 +412,6 @@ function footprintForSelection(
     return { kind: 'airway-bbox', bbox };
   }
   return undefined;
-}
-
-/** Bounding box from an airway's ordered list of waypoints. */
-function bboxFromWaypoints(
-  waypoints: readonly { lat: number; lon: number }[],
-): BoundingBox | undefined {
-  return bboxFromCoords(coordsOfWaypoints(waypoints));
-}
-
-/** Yields each waypoint as a `[lon, lat]` pair for the bbox reducer. */
-function* coordsOfWaypoints(
-  waypoints: readonly { lat: number; lon: number }[],
-): Generator<readonly [number, number]> {
-  for (const wp of waypoints) {
-    yield [wp.lon, wp.lat];
-  }
 }
 
 /**
@@ -465,9 +545,9 @@ function encodeAirspaceChipSelection(
  * gains a `(N)` suffix. Selection strings are unchanged - they remain
  * the per-feature centroid encoding.
  */
-function disambiguateLabels(
-  chips: readonly { selection: string; label: string }[],
-): readonly { selection: string; label: string }[] {
+function disambiguateLabels<T extends { selection: string; label: string }>(
+  chips: readonly T[],
+): readonly T[] {
   const counts = new Map<string, number>();
   for (const chip of chips) {
     counts.set(chip.label, (counts.get(chip.label) ?? 0) + 1);
@@ -479,48 +559,33 @@ function disambiguateLabels(
     }
     const idx = (seenIndex.get(chip.label) ?? 0) + 1;
     seenIndex.set(chip.label, idx);
-    return { selection: chip.selection, label: `${chip.label} (${idx})` };
+    return { ...chip, label: `${chip.label} (${idx})` };
   });
 }
 
 /**
- * Combined bounding box across every feature in an airspace grouping. A
- * Class B has multiple ring features; an ARTCC has multiple strata. The
- * combined bbox is the smallest rectangle that contains all of them.
- * Returns undefined if no feature has any coordinates.
+ * Caret-style chevron used in the sibling-chip disclosure header.
+ * Rotates 180 degrees via a CSS transform when `expanded` is true so
+ * the same SVG path serves both states; the surrounding button owns
+ * the `aria-expanded` attribute that announces the change.
  */
-function combinedBboxFromAirspaceFeatures(
-  features: readonly AirspaceFeature[],
-): BoundingBox | undefined {
-  return bboxFromCoords(coordsOfAirspaceFeatures(features));
-}
-
-/** Yields every defined `[lon, lat]` pair across a list of airspace feature boundaries. */
-function* coordsOfAirspaceFeatures(
-  features: readonly AirspaceFeature[],
-): Generator<readonly [number, number]> {
-  for (const feature of features) {
-    yield* coordsOfPolygon(feature.boundary);
-  }
-}
-
-/**
- * Yields every defined `[lon, lat]` pair across all rings of a polygon.
- * GeoJSON's `Position` is typed as `number[]`, so the inner coords can be
- * shorter than two elements at the type level; entries with an undefined
- * lon or lat are skipped.
- */
-function* coordsOfPolygon(polygon: Polygon): Generator<readonly [number, number]> {
-  for (const ring of polygon.coordinates) {
-    for (const coord of ring) {
-      const lon = coord[0];
-      const lat = coord[1];
-      if (lon === undefined || lat === undefined) {
-        continue;
-      }
-      yield [lon, lat];
-    }
-  }
+function ChevronIcon({ expanded }: { expanded: boolean }): ReactElement {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={expanded ? 'rotate-180' : ''}
+      aria-hidden="true"
+    >
+      <path d="M3 5L7 9L11 5" />
+    </svg>
+  );
 }
 
 /** Small icon hint next to the sibling-chip heading: stacked layers. */
@@ -543,27 +608,46 @@ function SwitchIcon(): ReactElement {
 }
 
 /**
- * Sticky header at the top of the panel showing a one-line summary (entity
- * type + identifier or status) and a close button.
+ * Sticky header at the top of the panel showing a one-line summary
+ * (entity type + identifier or status), an optional recenter button
+ * that brings the selected entity back into view, and a close button.
+ * The recenter button is only rendered when an `onRecenter` handler is
+ * supplied, which the inspector ties to the resolved-entity state -
+ * loading and not-found states have nothing to recenter on.
  */
 function InspectorHeader({
   state,
   onClose,
+  onRecenter,
 }: {
   state: ResolvedEntityState;
   onClose: () => void;
+  onRecenter?: () => void;
 }): ReactElement {
   return (
-    <header className="sticky top-0 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+    <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
       <HeaderText state={state} />
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close inspector"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-      >
-        <CloseIcon />
-      </button>
+      <div className="flex shrink-0 items-center gap-1">
+        {onRecenter === undefined ? null : (
+          <button
+            type="button"
+            onClick={onRecenter}
+            aria-label="Recenter on this feature"
+            title="Recenter on this feature"
+            className="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          >
+            <RecenterIcon />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close inspector"
+          className="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        >
+          <CloseIcon />
+        </button>
+      </div>
     </header>
   );
 }
@@ -701,6 +785,26 @@ function CloseIcon(): ReactElement {
       aria-hidden="true"
     >
       <path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" />
+    </svg>
+  );
+}
+
+/** Crosshair / target icon used by the recenter button. */
+function RecenterIcon(): ReactElement {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="7" cy="7" r="3" />
+      <path d="M7 1V3M7 11V13M1 7H3M11 7H13" />
     </svg>
   );
 }

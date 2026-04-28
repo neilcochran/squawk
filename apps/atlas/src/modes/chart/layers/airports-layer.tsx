@@ -125,6 +125,8 @@ const AIRPORTS_LAYER_PROPS: LayerProps = {
       ['case', ['>=', ['get', 'longestRunwayFt'], 3000], 4, 2],
       12,
       5,
+      16,
+      10,
     ],
     'circle-color': ['case', ['>=', ['get', 'longestRunwayFt'], 8000], '#1d4ed8', '#0f172a'],
     'circle-stroke-color': '#ffffff',

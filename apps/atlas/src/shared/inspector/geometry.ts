@@ -1,3 +1,5 @@
+import type { Polygon } from 'geojson';
+import type { AirspaceFeature } from '@squawk/types';
 import type { BoundingBox } from '@squawk/geo';
 
 /**
@@ -49,4 +51,64 @@ export function bboxFromCoords(
     any = true;
   }
   return any ? { minLon, maxLon, minLat, maxLat } : undefined;
+}
+
+/**
+ * Bounding box from an airway's ordered list of waypoints.
+ * Returns undefined when the waypoint list is empty.
+ */
+export function bboxFromWaypoints(
+  waypoints: readonly { lat: number; lon: number }[],
+): BoundingBox | undefined {
+  return bboxFromCoords(coordsOfWaypoints(waypoints));
+}
+
+/**
+ * Combined bounding box across every feature in an airspace grouping.
+ * A Class B has multiple ring features; an ARTCC has multiple strata.
+ * The combined bbox is the smallest rectangle that contains all of
+ * them. Returns undefined if no feature has any coordinates.
+ */
+export function combinedBboxFromAirspaceFeatures(
+  features: readonly AirspaceFeature[],
+): BoundingBox | undefined {
+  return bboxFromCoords(coordsOfAirspaceFeatures(features));
+}
+
+/** Yields each waypoint as a `[lon, lat]` pair for the bbox reducer. */
+function* coordsOfWaypoints(
+  waypoints: readonly { lat: number; lon: number }[],
+): Generator<readonly [number, number]> {
+  for (const wp of waypoints) {
+    yield [wp.lon, wp.lat];
+  }
+}
+
+/** Yields every defined `[lon, lat]` pair across a list of airspace feature boundaries. */
+function* coordsOfAirspaceFeatures(
+  features: readonly AirspaceFeature[],
+): Generator<readonly [number, number]> {
+  for (const feature of features) {
+    yield* coordsOfPolygon(feature.boundary);
+  }
+}
+
+/**
+ * Yields every defined `[lon, lat]` pair across all rings of a polygon.
+ * GeoJSON's `Position` is typed as `number[]`, so the inner coords can
+ * be shorter than two elements at the type level; entries with an
+ * undefined lon or lat are skipped. Exported so the chart-mode click
+ * geometry helpers can reuse it without re-importing the geojson type.
+ */
+export function* coordsOfPolygon(polygon: Polygon): Generator<readonly [number, number]> {
+  for (const ring of polygon.coordinates) {
+    for (const coord of ring) {
+      const lon = coord[0];
+      const lat = coord[1];
+      if (lon === undefined || lat === undefined) {
+        continue;
+      }
+      yield [lon, lat];
+    }
+  }
 }

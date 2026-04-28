@@ -126,6 +126,8 @@ const NAVAIDS_LAYER_PROPS: LayerProps = {
       ['match', ['get', 'type'], ['VOR', 'VORTAC', 'VOR/DME'], 4, 2.5],
       12,
       5,
+      16,
+      8,
     ],
     'circle-color': '#7c3aed',
     'circle-stroke-color': '#ffffff',

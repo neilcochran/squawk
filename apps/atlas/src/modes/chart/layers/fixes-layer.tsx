@@ -120,6 +120,8 @@ const FIXES_LAYER_PROPS: LayerProps = {
       ['match', ['get', 'useCode'], ['WP', 'RP'], 2.5, 1.5],
       12,
       3,
+      16,
+      8,
     ],
     'circle-color': '#ea580c',
     'circle-stroke-color': '#ffffff',
