@@ -47,8 +47,34 @@ const HATCH_IMAGE_ID = 'atlas-airspace-hatch';
  * centroid) for empty-id features. Without this, the highlight filter
  * for a centroid-encoded selection would never match because the real
  * `identifier` field is empty.
+ *
+ * Exported so the click-time encoder in `click-to-select.ts` can read
+ * the same value rather than recomputing the centroid from MapLibre's
+ * tile-clipped geometry (which would not round-trip through the
+ * resolver's source-geometry centroid lookup).
  */
-const MATCH_KEY_PROPERTY = '__atlasMatchKey';
+export const AIRSPACE_MATCH_KEY_PROPERTY = '__atlasMatchKey';
+
+/**
+ * Synthetic per-feature properties carrying the floor / ceiling values
+ * as primitives (number + string), copied at source-projection time
+ * from the `floor` / `ceiling` `AltitudeBound` objects on the original
+ * dataset feature. Primitive copies are necessary because MapLibre's
+ * GeoJSON worker pipeline does not reliably round-trip nested object
+ * properties through `queryRenderedFeatures` - downstream consumers
+ * (e.g. the disambiguation popover) only see strings, numbers, and
+ * booleans. The primitive split (Ft + Ref) preserves enough fidelity
+ * to format an "11k-18k" or "700ft AGL" subtitle without re-fetching
+ * the source dataset. Exported so the popover and any other consumer
+ * stay aligned on the property names.
+ */
+export const AIRSPACE_FLOOR_FT_PROPERTY = '__atlasFloorFt';
+/** Reference datum for the floor altitude. One of `'MSL'`, `'AGL'`, `'SFC'`. */
+export const AIRSPACE_FLOOR_REF_PROPERTY = '__atlasFloorRef';
+/** Ceiling altitude in feet. See {@link AIRSPACE_FLOOR_FT_PROPERTY}. */
+export const AIRSPACE_CEILING_FT_PROPERTY = '__atlasCeilingFt';
+/** Reference datum for the ceiling altitude. */
+export const AIRSPACE_CEILING_REF_PROPERTY = '__atlasCeilingRef';
 
 /**
  * Filter expression that matches no feature. Used as the default highlight
@@ -56,7 +82,7 @@ const MATCH_KEY_PROPERTY = '__atlasMatchKey';
  */
 const MATCH_NONE_FILTER: ExpressionSpecification = [
   '==',
-  ['get', MATCH_KEY_PROPERTY],
+  ['get', AIRSPACE_MATCH_KEY_PROPERTY],
   '__atlas-no-match__',
 ];
 
@@ -225,7 +251,7 @@ export function AirspaceLayer(): ReactElement | null {
   // render together for whatever airspace is currently selected.
   const highlightFilter = useMemo<ExpressionSpecification>(() => {
     if (activeRef?.type === 'airspace' && activeRef.id.length > 0) {
-      return ['==', ['get', MATCH_KEY_PROPERTY], activeRef.id];
+      return ['==', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id];
     }
     return MATCH_NONE_FILTER;
   }, [activeRef]);
@@ -368,10 +394,51 @@ function projectAirspaceSource(
       }
       matchKey = `${type}/c:${centroid[0].toFixed(5)},${centroid[1].toFixed(5)}`;
     }
+    const floorPrimitives = readAltitudePrimitives(props['floor']);
+    const ceilingPrimitives = readAltitudePrimitives(props['ceiling']);
     return {
       ...feature,
-      properties: { ...props, [MATCH_KEY_PROPERTY]: matchKey },
+      properties: {
+        ...props,
+        [AIRSPACE_MATCH_KEY_PROPERTY]: matchKey,
+        ...(floorPrimitives !== undefined && {
+          [AIRSPACE_FLOOR_FT_PROPERTY]: floorPrimitives.valueFt,
+          [AIRSPACE_FLOOR_REF_PROPERTY]: floorPrimitives.reference,
+        }),
+        ...(ceilingPrimitives !== undefined && {
+          [AIRSPACE_CEILING_FT_PROPERTY]: ceilingPrimitives.valueFt,
+          [AIRSPACE_CEILING_REF_PROPERTY]: ceilingPrimitives.reference,
+        }),
+      },
     };
   });
   return { type: 'FeatureCollection', features: projected };
+}
+
+/**
+ * Narrows a `floor` or `ceiling` value from the airspace dataset's
+ * GeoJSON property bag into the `{ valueFt, reference }` shape, ready
+ * to be flattened into primitive feature properties for downstream
+ * MapLibre consumers. Returns `undefined` when the input is missing
+ * or has an unexpected shape; callers omit the corresponding primitive
+ * properties in that case so the popover row falls back to no
+ * subtitle.
+ */
+function readAltitudePrimitives(
+  value: unknown,
+): { valueFt: number; reference: 'MSL' | 'AGL' | 'SFC' } | undefined {
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  if (!('valueFt' in value) || !('reference' in value)) {
+    return undefined;
+  }
+  const { valueFt, reference } = value;
+  if (typeof valueFt !== 'number' || typeof reference !== 'string') {
+    return undefined;
+  }
+  if (reference !== 'MSL' && reference !== 'AGL' && reference !== 'SFC') {
+    return undefined;
+  }
+  return { valueFt, reference };
 }

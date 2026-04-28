@@ -14,6 +14,16 @@ function buildSiblingFeature(
   return { layer: { id: layerId }, properties };
 }
 
+/**
+ * Clicks the sibling-chip disclosure header to expand the chip groups,
+ * which are collapsed by default. Tests that assert on chip buttons
+ * call this first; the function throws if the disclosure isn't
+ * rendered (e.g. no chips), which is the desired failure mode.
+ */
+function expandSiblingChips(): void {
+  fireEvent.click(screen.getByRole('button', { name: /other feature/i }));
+}
+
 const {
   useSearchMock,
   useNavigateMock,
@@ -319,11 +329,42 @@ describe('EntityInspector', () => {
     }
   });
 
-  it('does not render the sibling chip strip when no siblings are passed', () => {
+  it('does not render the sibling chip disclosure when no siblings are passed', () => {
     useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
     setupResolutions({ 'airport:BOS': airportResolution });
     render(<EntityInspector />);
-    expect(screen.queryByText(/switch to another feature/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /other feature/i })).not.toBeInTheDocument();
+  });
+
+  it('renders the disclosure collapsed by default with a chip count in the header', () => {
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({
+      'airport:BOS': airportResolution,
+      'airspace:CLASS_B/BOS': airspaceResolution,
+      'airspace:ARTCC/ZBW': {
+        status: 'resolved',
+        entity: {
+          kind: 'airspace',
+          airspaceType: 'ARTCC',
+          identifier: 'ZBW',
+          features: [{ ...sampleAirspaceFeature, type: 'ARTCC', identifier: 'ZBW' }],
+        },
+      },
+    });
+    render(
+      <EntityInspector
+        siblings={[
+          buildSiblingFeature(AIRPORTS_LAYER_ID, { faaId: 'BOS' }),
+          buildSiblingFeature(AIRSPACE_FILL_LAYER_ID, { type: 'CLASS_B', identifier: 'BOS' }),
+          buildSiblingFeature(AIRSPACE_FILL_LAYER_ID, { type: 'ARTCC', identifier: 'ZBW' }),
+        ]}
+      />,
+    );
+    // Two siblings end up as chips (the airport is the current selection).
+    const header = screen.getByRole('button', { name: /2 other features here/i });
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+    // Chips should not be rendered while collapsed.
+    expect(screen.queryByRole('button', { name: 'CLASS B BOS' })).not.toBeInTheDocument();
   });
 
   it('renders a chip for each sibling that resolves and is not the current selection', () => {
@@ -350,11 +391,41 @@ describe('EntityInspector', () => {
         ]}
       />,
     );
-    expect(screen.getByText(/switch to another feature/i)).toBeInTheDocument();
-    // The currently-selected airport is excluded from the strip.
+    expandSiblingChips();
     expect(screen.getByRole('button', { name: 'CLASS B BOS' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'ARTCC ZBW' })).toBeInTheDocument();
+    // The currently-selected airport is excluded from the strip.
     expect(screen.queryByRole('button', { name: 'BOS' })).not.toBeInTheDocument();
+  });
+
+  it('groups expanded chips by feature type with a header per non-empty group', () => {
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({
+      'airport:BOS': airportResolution,
+      'airspace:CLASS_B/BOS': airspaceResolution,
+      'airspace:ARTCC/ZBW': {
+        status: 'resolved',
+        entity: {
+          kind: 'airspace',
+          airspaceType: 'ARTCC',
+          identifier: 'ZBW',
+          features: [{ ...sampleAirspaceFeature, type: 'ARTCC', identifier: 'ZBW' }],
+        },
+      },
+    });
+    render(
+      <EntityInspector
+        siblings={[
+          buildSiblingFeature(AIRSPACE_FILL_LAYER_ID, { type: 'CLASS_B', identifier: 'BOS' }),
+          buildSiblingFeature(AIRSPACE_FILL_LAYER_ID, { type: 'ARTCC', identifier: 'ZBW' }),
+        ]}
+      />,
+    );
+    expandSiblingChips();
+    // Only the airspace group has chips, so only its header should render.
+    expect(screen.getByText(/^airspace$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^airports$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^navaids$/i)).not.toBeInTheDocument();
   });
 
   it('deduplicates chips by encoded selection so two rings collapse to one', () => {
@@ -371,6 +442,7 @@ describe('EntityInspector', () => {
         ]}
       />,
     );
+    expandSiblingChips();
     expect(screen.getAllByRole('button', { name: 'CLASS B BOS' })).toHaveLength(1);
   });
 
@@ -395,6 +467,7 @@ describe('EntityInspector', () => {
         ]}
       />,
     );
+    expandSiblingChips();
     expect(screen.getByRole('button', { name: 'CLASS B BOS' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'ARTCC ZBW' })).not.toBeInTheDocument();
   });
@@ -412,6 +485,7 @@ describe('EntityInspector', () => {
         ]}
       />,
     );
+    expandSiblingChips();
     fireEvent.click(screen.getByRole('button', { name: 'CLASS B BOS' }));
     expect(navigateMock).toHaveBeenCalledTimes(1);
     const call = navigateMock.mock.calls[0]?.[0];
@@ -435,6 +509,7 @@ describe('EntityInspector', () => {
         ]}
       />,
     );
+    expandSiblingChips();
     const chip = screen.getByRole('button', { name: 'CLASS B BOS' });
     fireEvent.mouseEnter(chip);
     expect(setHoveredChipSelectionMock).toHaveBeenLastCalledWith('airspace:CLASS_B/BOS');

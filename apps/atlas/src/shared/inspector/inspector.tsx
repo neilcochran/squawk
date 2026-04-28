@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useMap } from '@vis.gl/react-maplibre';
@@ -15,6 +15,8 @@ import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.
 import { AIRSPACE_CLASS_FOR_TYPE, CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
 import { isAirspacePolygonFeature } from './airspace-feature.ts';
+import { ENTITY_TYPES, parseSelected } from './entity.ts';
+import type { EntityType } from './entity.ts';
 import { bboxFromCoords } from './geometry.ts';
 import type { BoundingBox } from './geometry.ts';
 import { resolveSelectionFromState, useDatasetStates } from './entity-resolver.ts';
@@ -34,6 +36,21 @@ const route = getRouteApi(CHART_ROUTE_PATH);
  * scrolling. Future work could add an "+N more" affordance.
  */
 const MAX_OVERLAP_CHIPS = 30;
+
+/**
+ * Single entry rendered in the sibling-chip disclosure. Carries the
+ * URL-encoded selection (used as the click handler payload), the
+ * human label, and the entity type so the disclosure can group rows
+ * by type (Airports, Navaids, Fixes, Airways, Airspace).
+ */
+interface Chip {
+  /** URL-encoded selection string (e.g. `airport:BOS`). */
+  selection: string;
+  /** Display label, identical to the popover and possibly suffixed with `(N)` when several chips share a base label. */
+  label: string;
+  /** Entity type, used to drive the disclosure's per-type grouping. */
+  type: EntityType;
+}
 
 /**
  * Props for {@link EntityInspector}.
@@ -134,9 +151,9 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
   // completes. Capped at MAX_OVERLAP_CHIPS to keep the strip readable -
   // a large MOA can pull dozens of underlying Class E5 polygons, more
   // than the panel can show without scrolling.
-  const chips = useMemo<readonly { selection: string; label: string }[]>(() => {
+  const chips = useMemo<readonly Chip[]>(() => {
     const seen = new Set<string>();
-    const result: { selection: string; label: string }[] = [];
+    const result: Chip[] = [];
 
     for (const feature of siblings) {
       const selection = selectedFromFeature(feature);
@@ -149,12 +166,16 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
       if (seen.has(selection)) {
         continue;
       }
+      const ref = parseSelected(selection);
+      if (ref === undefined) {
+        continue;
+      }
       const resolution = resolveSelectionFromState(selection, datasets);
       if (resolution.status === 'not-found' || resolution.status === 'idle') {
         continue;
       }
       seen.add(selection);
-      result.push({ selection, label: formatChipLabel(feature) });
+      result.push({ selection, label: formatChipLabel(feature), type: ref.type });
     }
 
     // Overlap chips: walk the airspace dataset for features that
@@ -188,7 +209,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
           continue;
         }
         seen.add(chip.selection);
-        result.push(chip);
+        result.push({ ...chip, type: 'airspace' });
       }
     }
 
@@ -218,21 +239,40 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
 }
 
 /**
- * Horizontal chip strip rendered below the inspector header when the most
- * recent click hit more than one feature. Visually distinct from the
- * details body (indigo accent + thicker top rule) so it reads as
- * "alternative selections you can switch to" rather than as further
- * details of the current entity. Each chip is a `<button>` so it is
- * keyboard-focusable and announces correctly to screen readers; the
- * strip wraps so a busy click (ARTCC + Class B + Class E + ...) does
- * not overflow the panel.
+ * Plural-form labels for the chip-disclosure group headers. Mirrors the
+ * canonical {@link ENTITY_TYPES} order so iterating the constant
+ * produces a deterministic Airport > Navaid > Fix > Airway > Airspace
+ * grouping, matching the layer-priority ordering used by the click
+ * picker.
+ */
+const CHIP_GROUP_LABELS: Record<EntityType, string> = {
+  airport: 'Airports',
+  navaid: 'Navaids',
+  fix: 'Fixes',
+  airway: 'Airways',
+  airspace: 'Airspace',
+};
+
+/**
+ * Collapsible disclosure rendered below the inspector header when the
+ * most recent click pulled in alternative features (same-pixel hits
+ * plus bbox-overlap airspaces). Collapsed by default - the popover is
+ * the primary disambiguation surface, and the chip disclosure is the
+ * "other things in this area" follow-up. Click the header to expand;
+ * inside, chips are grouped by feature type (Airports, Navaids, Fixes,
+ * Airways, Airspace) so a click into a busy area is readable instead
+ * of an unsorted wall of buttons.
+ *
+ * Each chip is a `<button>` so it is keyboard-focusable; hover and
+ * focus call `onHover` so chart-mode can preview the highlight on the
+ * map before the user commits with a click.
  */
 function SiblingChips({
   chips,
   onSelect,
   onHover,
 }: {
-  chips: readonly { selection: string; label: string }[];
+  chips: readonly Chip[];
   onSelect: (selection: string) => void;
   /**
    * Called on chip hover-enter (with the chip's selection) and on
@@ -242,28 +282,68 @@ function SiblingChips({
    */
   onHover: (selection: string | undefined) => void;
 }): ReactElement {
+  const [expanded, setExpanded] = useState(false);
+  // Group chips by entity type, in canonical ENTITY_TYPES order, and
+  // drop empty groups. The result is recomputed only when the chip
+  // list changes (chip clicks rebuild it from a new selection).
+  const groups = useMemo<readonly { type: EntityType; chips: readonly Chip[] }[]>(() => {
+    const byType = new Map<EntityType, Chip[]>();
+    for (const chip of chips) {
+      const bucket = byType.get(chip.type);
+      if (bucket === undefined) {
+        byType.set(chip.type, [chip]);
+      } else {
+        bucket.push(chip);
+      }
+    }
+    return ENTITY_TYPES.flatMap((type) => {
+      const bucket = byType.get(type);
+      return bucket === undefined || bucket.length === 0 ? [] : [{ type, chips: bucket }];
+    });
+  }, [chips]);
+
+  const headerText =
+    chips.length === 1 ? '1 other feature here' : `${chips.length} other features here`;
+
   return (
-    <div className="border-y-2 border-indigo-200 bg-indigo-50 px-4 py-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-indigo-700 uppercase">
+    <div className="border-y-2 border-indigo-200 bg-indigo-50">
+      <button
+        type="button"
+        onClick={(): void => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-1.5 px-4 py-2 text-left text-xs font-semibold tracking-wide text-indigo-700 uppercase hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400"
+      >
         <SwitchIcon />
-        Switch to another feature here
-      </p>
-      <div className="flex flex-wrap gap-1.5">
-        {chips.map((chip) => (
-          <button
-            key={chip.selection}
-            type="button"
-            onClick={() => onSelect(chip.selection)}
-            onMouseEnter={() => onHover(chip.selection)}
-            onMouseLeave={() => onHover(undefined)}
-            onFocus={() => onHover(chip.selection)}
-            onBlur={() => onHover(undefined)}
-            className="rounded-full border border-indigo-300 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-          >
-            {chip.label}
-          </button>
-        ))}
-      </div>
+        <span className="flex-1">{headerText}</span>
+        <ChevronIcon expanded={expanded} />
+      </button>
+      {expanded ? (
+        <div className="flex flex-col gap-2 px-4 pt-1 pb-3">
+          {groups.map((group) => (
+            <div key={group.type}>
+              <p className="mb-1 text-[10px] font-semibold tracking-wider text-indigo-600/80 uppercase">
+                {CHIP_GROUP_LABELS[group.type]}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {group.chips.map((chip) => (
+                  <button
+                    key={chip.selection}
+                    type="button"
+                    onClick={(): void => onSelect(chip.selection)}
+                    onMouseEnter={(): void => onHover(chip.selection)}
+                    onMouseLeave={(): void => onHover(undefined)}
+                    onFocus={(): void => onHover(chip.selection)}
+                    onBlur={(): void => onHover(undefined)}
+                    className="rounded-full border border-indigo-300 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 shadow-sm hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -465,9 +545,9 @@ function encodeAirspaceChipSelection(
  * gains a `(N)` suffix. Selection strings are unchanged - they remain
  * the per-feature centroid encoding.
  */
-function disambiguateLabels(
-  chips: readonly { selection: string; label: string }[],
-): readonly { selection: string; label: string }[] {
+function disambiguateLabels<T extends { selection: string; label: string }>(
+  chips: readonly T[],
+): readonly T[] {
   const counts = new Map<string, number>();
   for (const chip of chips) {
     counts.set(chip.label, (counts.get(chip.label) ?? 0) + 1);
@@ -479,7 +559,7 @@ function disambiguateLabels(
     }
     const idx = (seenIndex.get(chip.label) ?? 0) + 1;
     seenIndex.set(chip.label, idx);
-    return { selection: chip.selection, label: `${chip.label} (${idx})` };
+    return { ...chip, label: `${chip.label} (${idx})` };
   });
 }
 
@@ -521,6 +601,31 @@ function* coordsOfPolygon(polygon: Polygon): Generator<readonly [number, number]
       yield [lon, lat];
     }
   }
+}
+
+/**
+ * Caret-style chevron used in the sibling-chip disclosure header.
+ * Rotates 180 degrees via a CSS transform when `expanded` is true so
+ * the same SVG path serves both states; the surrounding button owns
+ * the `aria-expanded` attribute that announces the change.
+ */
+function ChevronIcon({ expanded }: { expanded: boolean }): ReactElement {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={expanded ? 'rotate-180' : ''}
+      aria-hidden="true"
+    >
+      <path d="M3 5L7 9L11 5" />
+    </svg>
+  );
 }
 
 /** Small icon hint next to the sibling-chip heading: stacked layers. */
