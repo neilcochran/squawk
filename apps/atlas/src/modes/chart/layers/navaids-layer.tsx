@@ -6,6 +6,11 @@ import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { Navaid, NavaidType } from '@squawk/types';
 import { useNavaidDataset } from '../../../shared/data/navaid-dataset.ts';
+import {
+  CHART_HIGHLIGHT_COLORS,
+  CHART_NAVAID_COLOR,
+  CHART_SYMBOL_STROKE,
+} from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 
 /**
@@ -53,8 +58,8 @@ const NAVAIDS_HIGHLIGHT_LAYER_BASE: LayerProps = {
   type: 'circle',
   paint: {
     'circle-radius': 9,
-    'circle-color': '#fde047',
-    'circle-stroke-color': '#0f172a',
+    'circle-color': CHART_HIGHLIGHT_COLORS.primary,
+    'circle-stroke-color': CHART_HIGHLIGHT_COLORS.stroke,
     'circle-stroke-width': 2,
   },
 };
@@ -129,8 +134,8 @@ const NAVAIDS_LAYER_PROPS: LayerProps = {
       16,
       8,
     ],
-    'circle-color': '#7c3aed',
-    'circle-stroke-color': '#ffffff',
+    'circle-color': CHART_NAVAID_COLOR,
+    'circle-stroke-color': CHART_SYMBOL_STROKE,
     'circle-stroke-width': 1,
   },
 };

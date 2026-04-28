@@ -6,6 +6,11 @@ import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { Airport } from '@squawk/types';
 import { useAirportDataset } from '../../../shared/data/airport-dataset.ts';
+import {
+  CHART_AIRPORT_COLORS,
+  CHART_HIGHLIGHT_COLORS,
+  CHART_SYMBOL_STROKE,
+} from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 
 /**
@@ -96,8 +101,8 @@ const AIRPORTS_HIGHLIGHT_LAYER_BASE: LayerProps = {
   type: 'circle',
   paint: {
     'circle-radius': 9,
-    'circle-color': '#fde047',
-    'circle-stroke-color': '#0f172a',
+    'circle-color': CHART_HIGHLIGHT_COLORS.primary,
+    'circle-stroke-color': CHART_HIGHLIGHT_COLORS.stroke,
     'circle-stroke-width': 2,
   },
 };
@@ -128,8 +133,13 @@ const AIRPORTS_LAYER_PROPS: LayerProps = {
       16,
       10,
     ],
-    'circle-color': ['case', ['>=', ['get', 'longestRunwayFt'], 8000], '#1d4ed8', '#0f172a'],
-    'circle-stroke-color': '#ffffff',
+    'circle-color': [
+      'case',
+      ['>=', ['get', 'longestRunwayFt'], 8000],
+      CHART_AIRPORT_COLORS.major,
+      CHART_AIRPORT_COLORS.minor,
+    ],
+    'circle-stroke-color': CHART_SYMBOL_STROKE,
     'circle-stroke-width': 1,
   },
 };

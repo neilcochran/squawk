@@ -187,7 +187,7 @@ export function ZoomControls(): ReactElement {
  * stack - keeping the control geometry stable at the bounds.
  */
 const CONTROL_BUTTON_CLASS =
-  'flex h-8 w-8 items-center justify-center text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white';
+  'flex h-11 w-11 items-center justify-center text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white md:h-8 md:w-8';
 
 /** Inline plus glyph for the zoom-in button. */
 function PlusIcon(): ReactElement {

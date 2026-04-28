@@ -8,14 +8,52 @@ import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.
 import type { BoundingBox } from './geometry.ts';
 
 /**
- * Width in pixels of the inspector overlay that the entity inspector
- * paints on the right edge of the chart-mode map. The chip-hover pan
- * and the recenter button both shift the camera focal point left by
- * half this width so the target feature lands in the un-occluded
- * portion of the map. Mirrors the `w-[360px]` Tailwind class on the
- * inspector aside in `inspector.tsx`; keep both in sync.
+ * Width in pixels of the inspector overlay when it renders as the
+ * desktop right-edge panel. Mirrors the `--spacing-inspector` token
+ * (22.5rem = 360px @ 16px root) declared in `src/index.css` and
+ * consumed via `w-inspector` on the inspector aside in
+ * `inspector.tsx`; keep both in sync. Stays as a plain pixel constant
+ * rather than a rem value because every consumer feeds it to a
+ * MapLibre canvas-pixel API (`map.easeTo({ offset })`,
+ * `map.project()`).
  */
-export const INSPECTOR_OVERLAY_WIDTH_PX = 360;
+export const INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX = 360;
+
+/**
+ * Tailwind `md:` breakpoint in pixels. The inspector renders as a
+ * bottom sheet below this width and as a right-edge panel at or above
+ * it, mirroring the `md:` overrides on the inspector aside. Keep in
+ * sync with Tailwind v4's default `md` breakpoint (currently 48rem =
+ * 768px); if either changes, update both.
+ */
+const INSPECTOR_DESKTOP_BREAKPOINT_PX = 768;
+
+/**
+ * Fraction of viewport height the inspector occupies as a mobile
+ * bottom sheet. Mirrors the `max-h-[60vh]` clamp on the inspector
+ * aside; the chip-hover pan keeps the selected feature visible above
+ * this band.
+ */
+const INSPECTOR_MOBILE_HEIGHT_FRACTION = 0.6;
+
+/**
+ * Returns the inspector's chart-occlusion footprint for the current
+ * viewport in canvas pixels. On desktop (>= the `md:` breakpoint) the
+ * inspector occupies the right edge so the camera offset shifts the
+ * focal point leftward (`x` non-zero). Below the breakpoint the
+ * inspector is a bottom sheet so the offset shifts upward (`y`
+ * non-zero) instead. Read at the time of pan so the camera follows
+ * resize / orientation changes without cached stale geometry.
+ */
+function getInspectorOcclusionPx(): { x: number; y: number } {
+  if (typeof window === 'undefined') {
+    return { x: 0, y: 0 };
+  }
+  if (window.innerWidth >= INSPECTOR_DESKTOP_BREAKPOINT_PX) {
+    return { x: INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX, y: 0 };
+  }
+  return { x: 0, y: Math.round(window.innerHeight * INSPECTOR_MOBILE_HEIGHT_FRACTION) };
+}
 
 /**
  * Camera ease duration for chip-hover pan and recenter actions, in
@@ -59,10 +97,11 @@ export interface UseChipHoverPanArgs {
 
 /**
  * Public API of the chip-hover pan hook. The inspector wires
- * `handleChipHover` to the sibling chip strip's onHover, exposes
- * `handleRecenter` as the recenter button's onClick, derives the chip
- * `useMemo`'s viewport input from `chipViewportBounds`, and calls
- * `resetSession` from its close / chip-click commit paths.
+ * `handleChipHover` to the sibling chip strip's onHover, calls
+ * `handleChipCommit` from its chip-click commit path,
+ * exposes `handleRecenter` as the recenter button's onClick, derives
+ * the chip `useMemo`'s viewport input from `chipViewportBounds`, and
+ * calls `resetSession` from its close handler.
  */
 export interface UseChipHoverPanResult {
   /**
@@ -75,6 +114,17 @@ export interface UseChipHoverPanResult {
    * recapture mid-restore.
    */
   handleChipHover: (selection: string | undefined) => void;
+  /**
+   * Pan + commit handler for chip clicks. Eases the camera so the
+   * picked chip's feature lands in the un-occluded portion of the
+   * map and clears any in-flight hover session so the unhover-restore
+   * does not yank the user back to a position that no longer matches
+   * the new selection. Caller is still responsible for the URL
+   * navigation that commits the selection. Pans regardless of input
+   * device (mouse hover-then-click and touch tap both end up at the
+   * picked feature).
+   */
+  handleChipCommit: (selection: string) => void;
   /**
    * Eases the camera so the currently-resolved entity lands in the
    * un-occluded portion of the map. No-op when the entity has no
@@ -91,9 +141,9 @@ export interface UseChipHoverPanResult {
   chipViewportBounds: BoundingBox | undefined;
   /**
    * Clears the captured pre-pan center and viewport snapshot. The
-   * inspector's close handler and chip-click commit handler both
-   * call this so the camera does not snap back after the user has
-   * committed to a new view.
+   * inspector's close handler calls this so the camera does not snap
+   * back after the user has dismissed the panel. Chip-click commits
+   * go through `handleChipCommit`, which calls this internally.
    */
   resetSession: () => void;
 }
@@ -227,9 +277,31 @@ export function useChipHoverPan(args: UseChipHoverPanArgs): UseChipHoverPanResul
     panToFeatureWithInspectorOffset(target, map);
   }, [state, mapRef, resetSession]);
 
+  const handleChipCommit = useCallback(
+    (selection: string): void => {
+      // Commit ends any preview phase: clear the hover-chip highlight
+      // and the pre-pan capture so the unhover-restore does not yank
+      // the user back to a position that no longer matches the new
+      // selection. Touch devices never enter a hover preview phase, so
+      // the clears are no-ops there but harmless.
+      setHoveredChipSelection(undefined);
+      resetSession();
+      const map = getMapInstance(mapRef);
+      if (map === undefined) {
+        return;
+      }
+      const target = chipCentroid(selection, datasets);
+      if (target === undefined) {
+        return;
+      }
+      panToFeatureWithInspectorOffset(target, map);
+    },
+    [setHoveredChipSelection, resetSession, mapRef, datasets],
+  );
+
   const chipViewportBounds = hoverViewportFreeze ?? viewportBounds;
 
-  return { handleChipHover, handleRecenter, chipViewportBounds, resetSession };
+  return { handleChipHover, handleChipCommit, handleRecenter, chipViewportBounds, resetSession };
 }
 
 /**
@@ -287,15 +359,16 @@ function chipCentroid(
 /**
  * Returns true when a map-coordinate point lies outside the
  * comfortable viewing area, gating the chip-hover pan. The
- * comfortable area is the canvas minus the inspector overlay on the
- * right, with a {@link PAN_EDGE_MARGIN_PX} buffer around every other
- * edge. Returns true for:
+ * comfortable area is the canvas minus whichever edge the inspector
+ * occludes (right on desktop, bottom on mobile), with a
+ * {@link PAN_EDGE_MARGIN_PX} buffer around every other edge. Returns
+ * true for:
  *
  * - Fully offscreen points (negative coords or beyond canvas size).
- * - Points within `PAN_EDGE_MARGIN_PX` of the top, bottom, or left
- *   edges - they would render barely visible and easy to miss.
- * - Points within the right `INSPECTOR_OVERLAY_WIDTH_PX` strip
- *   (occluded by the inspector) plus the same margin.
+ * - Points within `PAN_EDGE_MARGIN_PX` of any non-occluded edge -
+ *   they would render barely visible and easy to miss.
+ * - Points within the inspector-occluded strip (right on desktop,
+ *   bottom on mobile) plus the same margin.
  *
  * Features comfortably inside this area are skipped from panning so
  * the camera does not jolt for chip-hovers on already-visible
@@ -309,29 +382,40 @@ function isPointOutsideComfortableArea(
   const canvas = map.getCanvas();
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
-  const usableRightEdge = w - INSPECTOR_OVERLAY_WIDTH_PX - PAN_EDGE_MARGIN_PX;
+  const occlusion = getInspectorOcclusionPx();
+  const usableRightEdge = w - occlusion.x - PAN_EDGE_MARGIN_PX;
+  const usableBottomEdge = h - occlusion.y - PAN_EDGE_MARGIN_PX;
   return (
     point.x < PAN_EDGE_MARGIN_PX ||
     point.x > usableRightEdge ||
     point.y < PAN_EDGE_MARGIN_PX ||
-    point.y > h - PAN_EDGE_MARGIN_PX
+    point.y > usableBottomEdge
   );
 }
 
 /**
  * Eases the camera so a target lng/lat lands at the center of the
  * un-occluded portion of the map (geometric center minus half the
- * inspector overlay's width). The negative x-offset shifts the camera
- * focal point left so the target appears in the visible left strip
- * rather than directly under the right-side panel.
+ * inspector overlay's footprint). On desktop the negative x-offset
+ * shifts the focal point left so the target appears in the visible
+ * left strip rather than directly under the right-side panel; on
+ * mobile the negative y-offset shifts the focal point up so the
+ * target appears in the visible top strip above the bottom sheet.
  */
 function panToFeatureWithInspectorOffset(
   lngLat: { lng: number; lat: number },
   map: MaplibreMap,
 ): void {
+  const occlusion = getInspectorOcclusionPx();
+  // Guard against negative zero on the un-occluded axis: dividing 0 by
+  // 2 and negating yields `-0`, which trips strict object-equality
+  // assertions and is technically distinct from `+0` even though
+  // MapLibre treats them identically.
+  const offsetX = occlusion.x === 0 ? 0 : -(occlusion.x / 2);
+  const offsetY = occlusion.y === 0 ? 0 : -(occlusion.y / 2);
   map.easeTo({
     center: [lngLat.lng, lngLat.lat],
-    offset: [-INSPECTOR_OVERLAY_WIDTH_PX / 2, 0],
+    offset: [offsetX, offsetY],
     duration: PAN_DURATION_MS,
   });
 }
