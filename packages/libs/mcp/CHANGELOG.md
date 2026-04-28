@@ -1,5 +1,17 @@
 # @squawk/mcp
 
+## 0.8.5
+
+### Patch Changes
+
+- Updated dependencies [5a181dc]
+  - @squawk/geo@0.4.0
+  - @squawk/airports@0.5.3
+  - @squawk/airspace@0.6.2
+  - @squawk/fixes@0.2.4
+  - @squawk/flightplan@0.4.4
+  - @squawk/navaids@0.3.4
+
 ## 0.8.4
 
 ### Patch Changes
