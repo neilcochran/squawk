@@ -1,18 +1,27 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, renderHook } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
-import { useActiveHighlightRef, useSetHoveredChipSelection } from './highlight-context.ts';
+import {
+  useActiveHighlightRef,
+  useHoveredFeatureIndex,
+  useSetHoveredChipSelection,
+  useSetHoveredFeatureIndex,
+} from './highlight-context.ts';
 import { HighlightProvider } from './highlight-provider.tsx';
 
 function wrap(
   activeHighlight: string | undefined,
   setHoveredChipSelection: (selection: string | undefined) => void = vi.fn(),
+  hoveredFeatureIndex: number | undefined = undefined,
+  setHoveredFeatureIndex: (index: number | undefined) => void = vi.fn(),
 ): (props: { children: ReactNode }) => ReactElement {
   function Wrapper({ children }: { children: ReactNode }): ReactElement {
     return (
       <HighlightProvider
         activeHighlight={activeHighlight}
         setHoveredChipSelection={setHoveredChipSelection}
+        hoveredFeatureIndex={hoveredFeatureIndex}
+        setHoveredFeatureIndex={setHoveredFeatureIndex}
       >
         {children}
       </HighlightProvider>
@@ -81,10 +90,48 @@ describe('useSetHoveredChipSelection without a provider', () => {
 describe('HighlightProvider rendering', () => {
   it('renders children without modification', () => {
     const { getByText } = render(
-      <HighlightProvider activeHighlight={undefined} setHoveredChipSelection={() => {}}>
+      <HighlightProvider
+        activeHighlight={undefined}
+        setHoveredChipSelection={() => {}}
+        hoveredFeatureIndex={undefined}
+        setHoveredFeatureIndex={() => {}}
+      >
         <span>child content</span>
       </HighlightProvider>,
     );
     expect(getByText('child content')).toBeInTheDocument();
+  });
+});
+
+describe('useHoveredFeatureIndex', () => {
+  it('returns the provider-supplied index', () => {
+    const { result } = renderHook(() => useHoveredFeatureIndex(), {
+      wrapper: wrap(undefined, vi.fn(), 2, vi.fn()),
+    });
+    expect(result.current).toBe(2);
+  });
+
+  it('returns undefined when no provider is mounted', () => {
+    const { result } = renderHook(() => useHoveredFeatureIndex());
+    expect(result.current).toBeUndefined();
+  });
+});
+
+describe('useSetHoveredFeatureIndex', () => {
+  it('forwards the supplied setter', () => {
+    const setter = vi.fn();
+    const { result } = renderHook(() => useSetHoveredFeatureIndex(), {
+      wrapper: wrap(undefined, vi.fn(), undefined, setter),
+    });
+    result.current(3);
+    expect(setter).toHaveBeenCalledWith(3);
+    result.current(undefined);
+    expect(setter).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('returns a no-op when no provider is mounted', () => {
+    const { result } = renderHook(() => useSetHoveredFeatureIndex());
+    expect(() => result.current(0)).not.toThrow();
+    expect(() => result.current(undefined)).not.toThrow();
   });
 });

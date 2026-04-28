@@ -16,7 +16,7 @@ import { InspectableHoverCursor } from './inspectable-cursor.tsx';
 import { ChartViewResetListener } from './view-reset-listener.tsx';
 import { LayerToggle } from './layer-toggle.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
-import { AirspaceLayer } from './layers/airspace-layer.tsx';
+import { AirspaceFeatureOverlayLayers, AirspaceLayer } from './layers/airspace-layer.tsx';
 import { AirwaysLayer } from './layers/airways-layer.tsx';
 import { FixesLayer } from './layers/fixes-layer.tsx';
 import { NavaidsLayer } from './layers/navaids-layer.tsx';
@@ -25,17 +25,32 @@ import { CHART_ROUTE_PATH } from './url-state.ts';
 const route = getRouteApi(CHART_ROUTE_PATH);
 
 /**
- * Pixel radius of the bbox used for click feature lookup. MapLibre's
- * default `event.features` (a strict-point query against the click
- * pixel) misses near-misses entirely - in dense fix or navaid clusters
- * a click 4-6 pixels off the symbol returns nothing inspectable, even
- * though the user clearly aimed at the cluster. Widening to a 10-pixel
- * bbox (so 21px square) lets the click classifier see every feature
- * the user could plausibly have meant. Tuned empirically against the
- * chart's symbol sizes; raise if dense clusters still feel finicky,
- * lower if visually distant features start sneaking into popovers.
+ * Returns the pixel radius of the bbox used for click feature lookup,
+ * scaled by zoom. At high zoom (12+) we want a generous radius so
+ * dense fix/navaid clusters and near-miss clicks land in the popover.
+ * At low zoom (CONUS view), the same pixel radius spans hundreds of
+ * nautical miles and pulls in dozens of unrelated features per click,
+ * so we taper toward zero for a near-strict point query.
+ *
+ * Stops:
+ * - zoom <= 5: 0px (point query)
+ * - zoom 8: 4px
+ * - zoom 12+: 10px
+ *
+ * Linear interpolation between stops.
  */
-const CLICK_QUERY_RADIUS_PX = 10;
+function clickQueryRadiusPx(zoom: number): number {
+  if (zoom <= 5) {
+    return 0;
+  }
+  if (zoom >= 12) {
+    return 10;
+  }
+  if (zoom <= 8) {
+    return ((zoom - 5) / (8 - 5)) * 4;
+  }
+  return 4 + ((zoom - 8) / (12 - 8)) * (10 - 4);
+}
 
 /**
  * Chart mode: an interactive aeronautical map. Renders the shared map
@@ -61,6 +76,12 @@ export function ChartMode(): ReactElement {
   // is hovered. Lives in component state, not URL, since hover is
   // transient interaction state.
   const [hoveredChipSelection, setHoveredChipSelection] = useState<string | undefined>(undefined);
+  // Index of the airspace feature whose inspector section is currently
+  // hovered, used by the airspace layer's feature-focus filter to brighten
+  // a single polygon inside a multi-feature airspace grouping. Cleared on
+  // mouseLeave; component-local because the hover state should not survive
+  // refreshes or be shareable via URL.
+  const [hoveredFeatureIndex, setHoveredFeatureIndex] = useState<number | undefined>(undefined);
   // Snapshot of the most recent click that the click classifier ruled
   // ambiguous (e.g. an airway intersection or two close VORs at the
   // same pixel). Drives the disambiguation popover - when set, the
@@ -96,13 +117,28 @@ export function ChartMode(): ReactElement {
       // surface in the popover. The bbox is centered on the click pixel
       // and limited to inspectable layers so the basemap's roads, water,
       // and labels never enter the candidate set.
+      //
+      // `queryRenderedFeatures` throws when any layer id passed in
+      // `layers` is not registered on the map's style (e.g. a layer
+      // whose dataset is still loading and whose React component is
+      // returning null, or a layer the user has toggled off). Filter
+      // the id list down to the currently-registered subset so the
+      // call never throws. MapLibre's older `event.features` path was
+      // tolerant of missing layers; this path is not.
       const { x, y } = event.point;
+      const liveLayerIds = INSPECTABLE_LAYER_IDS.filter(
+        (id) => event.target.getLayer(id) !== undefined,
+      );
+      if (liveLayerIds.length === 0) {
+        return;
+      }
+      const radius = clickQueryRadiusPx(event.target.getZoom());
       const features = event.target.queryRenderedFeatures(
         [
-          [x - CLICK_QUERY_RADIUS_PX, y - CLICK_QUERY_RADIUS_PX],
-          [x + CLICK_QUERY_RADIUS_PX, y + CLICK_QUERY_RADIUS_PX],
+          [x - radius, y - radius],
+          [x + radius, y + radius],
         ],
-        { layers: [...INSPECTABLE_LAYER_IDS] },
+        { layers: liveLayerIds },
       );
       const classification = classifyClick(features);
       if (classification.kind === 'ambiguous') {
@@ -165,6 +201,8 @@ export function ChartMode(): ReactElement {
       <HighlightProvider
         activeHighlight={activeHighlight}
         setHoveredChipSelection={setHoveredChipSelection}
+        hoveredFeatureIndex={hoveredFeatureIndex}
+        setHoveredFeatureIndex={setHoveredFeatureIndex}
       >
         <MapCanvas
           lat={lat}
@@ -180,6 +218,14 @@ export function ChartMode(): ReactElement {
           {layers.includes('fixes') ? <FixesLayer /> : null}
           {layers.includes('navaids') ? <NavaidsLayer /> : null}
           {layers.includes('airports') ? <AirportsLayer /> : null}
+          {/*
+            Airspace feature-focus outline and per-feature badge labels
+            mount LAST so MapLibre stacks them above every other source's
+            layers - airport / navaid / fix circles included. Without
+            this trailing position the badges sit underneath the point
+            symbols and get visually clipped.
+          */}
+          {layers.includes('airspace') ? <AirspaceFeatureOverlayLayers /> : null}
         </MapCanvas>
         <InspectableHoverCursor />
         <ChartViewResetListener />

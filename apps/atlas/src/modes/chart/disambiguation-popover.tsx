@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import type { ReactElement } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { useMap } from '@vis.gl/react-maplibre';
 import type { GeoJsonProperties } from 'geojson';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
@@ -161,17 +161,28 @@ export function DisambiguationPopover({
     return null;
   }
 
+  // Heuristic for "this list is long enough to be tedious to scan".
+  // Tied to the bottom hint suggesting the user zoom in for a smaller
+  // candidate set; tuned against typical CONUS-zoom airspace clicks
+  // where 20+ rows is overwhelming.
+  const HINT_THRESHOLD = 20;
+
   return (
-    <div
+    <ClampedPopover
+      anchorX={screen.x + POPOVER_OFFSET_PX}
+      anchorY={screen.y + POPOVER_OFFSET_PX}
+      // Re-clamp when the entry count changes (the popover height
+      // changes with the entry list).
+      clampKey={entries.length}
       role="menu"
       aria-label="Select a feature"
-      className="absolute z-30 min-w-[180px] overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
-      style={{ left: screen.x + POPOVER_OFFSET_PX, top: screen.y + POPOVER_OFFSET_PX }}
+      className="absolute z-30 flex max-h-[70vh] min-w-[200px] flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
     >
-      <p className="border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 uppercase">
-        Select a feature
+      <p className="flex shrink-0 items-baseline justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 uppercase">
+        <span>Select a feature</span>
+        <span className="font-mono text-slate-400">{entries.length}</span>
       </p>
-      <ul className="flex flex-col">
+      <ul className="flex flex-col overflow-y-auto">
         {entries.map((entry) => (
           <li key={entry.selection}>
             <button
@@ -197,6 +208,81 @@ export function DisambiguationPopover({
           </li>
         ))}
       </ul>
+      {entries.length > HINT_THRESHOLD ? (
+        <p className="shrink-0 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] tracking-wide text-slate-500 italic">
+          Zoom in for fewer options
+        </p>
+      ) : null}
+    </ClampedPopover>
+  );
+}
+
+/**
+ * Wraps the popover root with a `useLayoutEffect` that measures the
+ * rendered popover and shifts it so it never overflows the bounds of
+ * its positioned ancestor (the chart-mode `<main>` container). The
+ * naive `top: anchorY` would let a click near the bottom of the map
+ * push the popover off the screen; clamping keeps it fully visible
+ * while staying as close to the click as possible.
+ */
+function ClampedPopover({
+  anchorX,
+  anchorY,
+  clampKey,
+  children,
+  ...rest
+}: {
+  anchorX: number;
+  anchorY: number;
+  clampKey: unknown;
+  children: ReactNode;
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'style' | 'children'>): ReactElement {
+  const ref = useRef<HTMLDivElement>(null);
+  // Initial position uses the raw anchor; the layout effect below
+  // refines it after measurement. useLayoutEffect runs synchronously
+  // after layout but before paint, so the user never sees the
+  // unclamped position.
+  const [pos, setPos] = useState<{ left: number; top: number }>({
+    left: anchorX,
+    top: anchorY,
+  });
+  useLayoutEffect((): void => {
+    const el = ref.current;
+    if (el === null) {
+      return;
+    }
+    const parent = el.parentElement;
+    if (parent === null) {
+      return;
+    }
+    const popover = el.getBoundingClientRect();
+    const container = parent.getBoundingClientRect();
+    // jsdom and other unlaid-out environments report all bounds as
+    // zero; without this guard the clamping below would pin the
+    // popover to (POPOVER_OFFSET_PX, POPOVER_OFFSET_PX) regardless of
+    // anchor. Skip the clamp when there is nothing to clamp against.
+    if (container.height === 0 || container.width === 0) {
+      return;
+    }
+    let left = anchorX;
+    let top = anchorY;
+    // Bottom-overflow: shift popover up so its bottom sits inside
+    // the parent (with a small breathing-room margin equal to the
+    // anchor offset).
+    if (top + popover.height > container.height - POPOVER_OFFSET_PX) {
+      top = Math.max(POPOVER_OFFSET_PX, container.height - popover.height - POPOVER_OFFSET_PX);
+    }
+    // Right-overflow: same shift on the horizontal axis. Rare in
+    // practice (the popover is narrow and clicks happen on the
+    // un-occluded left side of the map), but cheap to handle.
+    if (left + popover.width > container.width - POPOVER_OFFSET_PX) {
+      left = Math.max(POPOVER_OFFSET_PX, container.width - popover.width - POPOVER_OFFSET_PX);
+    }
+    setPos({ left, top });
+  }, [anchorX, anchorY, clampKey]);
+  return (
+    <div ref={ref} style={pos} {...rest}>
+      {children}
     </div>
   );
 }

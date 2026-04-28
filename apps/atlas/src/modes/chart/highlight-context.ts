@@ -21,6 +21,21 @@ export interface HighlightContextValue {
    * the inspector. Pass `undefined` to clear (i.e. on mouseLeave).
    */
   setHoveredChipSelection: (selection: string | undefined) => void;
+  /**
+   * Index of the currently-hovered airspace feature within the active
+   * entity's `features` array, or `undefined` when no per-feature
+   * section is hovered. Used by the airspace layer's feature-focus
+   * filter to brighten a single polygon when the user hovers a section
+   * in the inspector. Only meaningful for airspace selections; ignored
+   * for other entity types.
+   */
+  hoveredFeatureIndex: number | undefined;
+  /**
+   * Sets the currently-hovered airspace feature index. Inspector
+   * sections call this on mouseEnter / mouseLeave (with `undefined`
+   * to clear).
+   */
+  setHoveredFeatureIndex: (index: number | undefined) => void;
 }
 
 /**
@@ -50,10 +65,34 @@ export function useActiveHighlightRef(): EntityRef | undefined {
  */
 export function useSetHoveredChipSelection(): (selection: string | undefined) => void {
   const ctx = useContext(HighlightContext);
-  return ctx?.setHoveredChipSelection ?? noopSetter;
+  return ctx?.setHoveredChipSelection ?? noopChipSelectionSetter;
+}
+
+/**
+ * Returns the index of the currently-hovered airspace feature within
+ * the active entity's `features` array, or `undefined`. Consumed by
+ * the airspace layer's feature-focus filter so the hovered polygon
+ * lights up brighter than its siblings.
+ */
+export function useHoveredFeatureIndex(): number | undefined {
+  return useContext(HighlightContext)?.hoveredFeatureIndex;
+}
+
+/**
+ * Returns the setter the airspace inspector panel calls on per-feature
+ * section mouseEnter / mouseLeave. No-op when no provider is mounted.
+ */
+export function useSetHoveredFeatureIndex(): (index: number | undefined) => void {
+  const ctx = useContext(HighlightContext);
+  return ctx?.setHoveredFeatureIndex ?? noopFeatureIndexSetter;
 }
 
 /** Stable no-op setter used when the inspector renders without a provider. */
-function noopSetter(): void {
+function noopChipSelectionSetter(): void {
+  // intentionally empty
+}
+
+/** Stable no-op feature-index setter used when no provider is mounted. */
+function noopFeatureIndexSetter(): void {
   // intentionally empty
 }

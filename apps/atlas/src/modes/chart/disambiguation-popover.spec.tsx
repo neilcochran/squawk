@@ -49,6 +49,8 @@ function withProvider(
       <HighlightProvider
         activeHighlight={undefined}
         setHoveredChipSelection={setHoveredChipSelection}
+        hoveredFeatureIndex={undefined}
+        setHoveredFeatureIndex={vi.fn()}
       >
         {children}
       </HighlightProvider>
@@ -176,6 +178,163 @@ describe('DisambiguationPopover', () => {
 
     const menu = screen.getByRole('menu');
     expect(menu).toHaveStyle({ left: '258px', top: '183px' });
+  });
+
+  it('clamps the popover up when the click is near the bottom of the map', () => {
+    // jsdom does not run real layout, so element rects come back as
+    // zeros - the clamp logic short-circuits in that case. Force the
+    // measured rects to mimic a 1280 x 600 parent with a 200 x 240
+    // popover whose anchor (top=520) would push 60px past the
+    // parent's bottom. The clamp should snap the popover up so its
+    // bottom sits 8px inside the parent.
+    const v16 = buildFeature(AIRWAYS_LAYER_ID, { designation: 'V16' });
+    const v44 = buildFeature(AIRWAYS_LAYER_ID, { designation: 'V44' });
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect(): DOMRect {
+      if (this.getAttribute('role') === 'menu') {
+        return {
+          x: 0,
+          y: 0,
+          top: 0,
+          left: 0,
+          right: 200,
+          bottom: 240,
+          width: 200,
+          height: 240,
+        } as DOMRect;
+      }
+      // Every other element (the test wrapper acting as the popover's
+      // positioned ancestor) reports the simulated parent size.
+      return {
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 1280,
+        bottom: 600,
+        width: 1280,
+        height: 600,
+      } as DOMRect;
+    };
+    try {
+      render(
+        <DisambiguationPopover
+          screen={{ x: 200, y: 512 }}
+          candidates={[v16, v44]}
+          onSelect={vi.fn()}
+          onDismiss={vi.fn()}
+        />,
+        { wrapper: withProvider(vi.fn()) },
+      );
+      const menu = screen.getByRole('menu');
+      // anchorY = 512 + 8 = 520. 520 + 240 = 760 > 600 - 8 = 592.
+      // Clamped top = 600 - 240 - 8 = 352.
+      // anchorX = 200 + 8 = 208. 208 + 200 = 408 < 1272, no horizontal clamp.
+      expect(menu).toHaveStyle({ left: '208px', top: '352px' });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    }
+  });
+
+  it('leaves the popover at its anchor when it fits naturally inside the parent', () => {
+    // No-clamp regression test: a click near the top-left of the map
+    // produces a popover whose bottom and right both fit comfortably
+    // inside a 1280 x 600 parent. The clamp must NOT pull the popover
+    // away from the click in that case - otherwise users see the
+    // popover snap to the corner regardless of where they clicked.
+    const v16 = buildFeature(AIRWAYS_LAYER_ID, { designation: 'V16' });
+    const v44 = buildFeature(AIRWAYS_LAYER_ID, { designation: 'V44' });
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect(): DOMRect {
+      if (this.getAttribute('role') === 'menu') {
+        return {
+          x: 0,
+          y: 0,
+          top: 0,
+          left: 0,
+          right: 200,
+          bottom: 240,
+          width: 200,
+          height: 240,
+        } as DOMRect;
+      }
+      return {
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 1280,
+        bottom: 600,
+        width: 1280,
+        height: 600,
+      } as DOMRect;
+    };
+    try {
+      render(
+        <DisambiguationPopover
+          screen={{ x: 100, y: 80 }}
+          candidates={[v16, v44]}
+          onSelect={vi.fn()}
+          onDismiss={vi.fn()}
+        />,
+        { wrapper: withProvider(vi.fn()) },
+      );
+      const menu = screen.getByRole('menu');
+      // anchorX = 108, anchorY = 88. Popover (200x240) ends at 308x328,
+      // both inside the 1280x600 parent (minus 8px breathing room).
+      // Position should equal the anchor.
+      expect(menu).toHaveStyle({ left: '108px', top: '88px' });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    }
+  });
+
+  it('clamps the popover left when the click is near the right edge of the map', () => {
+    // Horizontal overflow companion to the bottom-overflow case.
+    const v16 = buildFeature(AIRWAYS_LAYER_ID, { designation: 'V16' });
+    const v44 = buildFeature(AIRWAYS_LAYER_ID, { designation: 'V44' });
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect(): DOMRect {
+      if (this.getAttribute('role') === 'menu') {
+        return {
+          x: 0,
+          y: 0,
+          top: 0,
+          left: 0,
+          right: 200,
+          bottom: 240,
+          width: 200,
+          height: 240,
+        } as DOMRect;
+      }
+      return {
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 1280,
+        bottom: 600,
+        width: 1280,
+        height: 600,
+      } as DOMRect;
+    };
+    try {
+      render(
+        <DisambiguationPopover
+          screen={{ x: 1180, y: 100 }}
+          candidates={[v16, v44]}
+          onSelect={vi.fn()}
+          onDismiss={vi.fn()}
+        />,
+        { wrapper: withProvider(vi.fn()) },
+      );
+      const menu = screen.getByRole('menu');
+      // anchorX = 1188. 1188 + 200 = 1388 > 1280 - 8 = 1272.
+      // Clamped left = 1280 - 200 - 8 = 1072. anchorY = 108 fits.
+      expect(menu).toHaveStyle({ left: '1072px', top: '108px' });
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    }
   });
 
   it('calls setHoveredChipSelection on hover and on mouse leave', () => {

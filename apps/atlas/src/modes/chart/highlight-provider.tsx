@@ -20,6 +20,17 @@ export interface HighlightProviderProps {
    * passing it back in.
    */
   setHoveredChipSelection: (selection: string | undefined) => void;
+  /**
+   * Index of the currently-hovered airspace feature within the active
+   * entity's `features` array, or `undefined` when no inspector section
+   * is hovered. Drives the airspace layer's feature-focus filter.
+   */
+  hoveredFeatureIndex: number | undefined;
+  /**
+   * Callback the airspace inspector panel calls on per-feature section
+   * mouseEnter / mouseLeave.
+   */
+  setHoveredFeatureIndex: (index: number | undefined) => void;
   /** Children that may consume the context via the exported hooks. */
   children: ReactNode;
 }
@@ -36,14 +47,18 @@ export interface HighlightProviderProps {
 export function HighlightProvider({
   activeHighlight,
   setHoveredChipSelection,
+  hoveredFeatureIndex,
+  setHoveredFeatureIndex,
   children,
 }: HighlightProviderProps): ReactElement {
   const value = useMemo<HighlightContextValue>(
     () => ({
       activeRef: parseSelected(activeHighlight),
       setHoveredChipSelection,
+      hoveredFeatureIndex,
+      setHoveredFeatureIndex,
     }),
-    [activeHighlight, setHoveredChipSelection],
+    [activeHighlight, setHoveredChipSelection, hoveredFeatureIndex, setHoveredFeatureIndex],
   );
   return <HighlightContext.Provider value={value}>{children}</HighlightContext.Provider>;
 }
