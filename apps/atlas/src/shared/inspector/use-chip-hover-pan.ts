@@ -1,0 +1,360 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { MapRef } from '@vis.gl/react-maplibre';
+import type { Map as MaplibreMap } from 'maplibre-gl';
+import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.ts';
+import { resolveSelectionFromState } from './entity-resolver.ts';
+import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
+import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.ts';
+import type { BoundingBox } from './geometry.ts';
+
+/**
+ * Width in pixels of the inspector overlay that the entity inspector
+ * paints on the right edge of the chart-mode map. The chip-hover pan
+ * and the recenter button both shift the camera focal point left by
+ * half this width so the target feature lands in the un-occluded
+ * portion of the map. Mirrors the `w-[360px]` Tailwind class on the
+ * inspector aside in `inspector.tsx`; keep both in sync.
+ */
+export const INSPECTOR_OVERLAY_WIDTH_PX = 360;
+
+/**
+ * Camera ease duration for chip-hover pan and recenter actions, in
+ * milliseconds. Brief enough to feel responsive, long enough to be
+ * smooth instead of teleporting.
+ */
+const PAN_DURATION_MS = 350;
+
+/**
+ * Minimum pixel margin from any visible-area edge before a feature is
+ * considered "comfortably onscreen". Anything closer to an edge - or
+ * fully offscreen - triggers the chip-hover pan so the user does not
+ * have to peer at the periphery to see what they hovered.
+ */
+const PAN_EDGE_MARGIN_PX = 50;
+
+/**
+ * Inputs for {@link useChipHoverPan}. The hook is hard-wired to the
+ * chart-mode map and the inspector's resolved-entity state, so the
+ * caller threads its own copies of those through.
+ */
+export interface UseChipHoverPanArgs {
+  /** Currently-selected entity URL string (read from the search params). */
+  selected: string | undefined;
+  /** Map ref returned by `useMap()` after `current ?? default` resolution. */
+  mapRef: MapRef | undefined;
+  /** Combined chart dataset state, passed to the entity resolver inside `chipCentroid`. */
+  datasets: ChartDatasetStates;
+  /**
+   * Live viewport bounds derived from the map's current view-state.
+   * The hook snapshots this on the first occluded chip-hover and uses
+   * the snapshot for chip composition until the session ends.
+   */
+  viewportBounds: BoundingBox | undefined;
+  /**
+   * Resolved entity state for the current `selected`, used by the
+   * recenter handler to pan the camera to the entity's centroid.
+   */
+  state: ResolvedEntityState;
+}
+
+/**
+ * Public API of the chip-hover pan hook. The inspector wires
+ * `handleChipHover` to the sibling chip strip's onHover, exposes
+ * `handleRecenter` as the recenter button's onClick, derives the chip
+ * `useMemo`'s viewport input from `chipViewportBounds`, and calls
+ * `resetSession` from its close / chip-click commit paths.
+ */
+export interface UseChipHoverPanResult {
+  /**
+   * Wraps `setHoveredChipSelection` with the pan state machine. On
+   * an occluded chip-hover, captures the pre-pan center and the
+   * viewport snapshot, then eases the camera so the chip's feature
+   * lands in the un-occluded portion of the map. On hover-leave,
+   * eases the camera back to the captured center; the captured
+   * state stays sticky so a rapid leave-then-enter sequence does not
+   * recapture mid-restore.
+   */
+  handleChipHover: (selection: string | undefined) => void;
+  /**
+   * Eases the camera so the currently-resolved entity lands in the
+   * un-occluded portion of the map. No-op when the entity has no
+   * usable centroid or the map is not yet available.
+   */
+  handleRecenter: () => void;
+  /**
+   * Viewport input for the chip-composition `useMemo`. While a
+   * hover-pan is in flight, this returns the snapshot taken at the
+   * start of the session so the chip list does not reshuffle as the
+   * camera pans (the chip-reorder bounce). Outside a hover session,
+   * tracks the live viewport bounds.
+   */
+  chipViewportBounds: BoundingBox | undefined;
+  /**
+   * Clears the captured pre-pan center and viewport snapshot. The
+   * inspector's close handler and chip-click commit handler both
+   * call this so the camera does not snap back after the user has
+   * committed to a new view.
+   */
+  resetSession: () => void;
+}
+
+/**
+ * Encapsulates the chip-hover pan state machine: the pre-pan center
+ * (so unhovered features can ease back), the viewport-bounds freeze
+ * (so the chip composition does not reshuffle as the camera pans
+ * toward an occluded chip), the dragstart subscription (so a
+ * deliberate user pan abandons the captured state), and the recenter
+ * action (so a panned-away selection can be brought back).
+ *
+ * Lifted out of `inspector.tsx` so the surface area is testable in
+ * isolation and the inspector body stays focused on rendering. The
+ * hook still relies on the highlight context for the chip-hover
+ * highlight override, mirroring the original behavior.
+ */
+export function useChipHoverPan(args: UseChipHoverPanArgs): UseChipHoverPanResult {
+  const { selected, mapRef, datasets, viewportBounds, state } = args;
+  const setHoveredChipSelection = useSetHoveredChipSelection();
+
+  // Pre-pan center captured the first time a chip-hover triggers a
+  // pan in this hover session. Stays sticky across mouseleave so a
+  // rapid mouseleave-then-mouseenter on a different chip does not
+  // recapture mid-restore.
+  const prePanCenterRef = useRef<{ lng: number; lat: number } | undefined>(undefined);
+  // Viewport snapshot taken on the first occluded hover. Holds the
+  // chip-composition viewport stable while the camera animates toward
+  // the hovered chip's feature; without this, the moveend after each
+  // pan would recompute the bbox-overlap chip list under the cursor
+  // and shuffle chips out from under the hover, triggering a runaway
+  // bounce.
+  const [hoverViewportFreeze, setHoverViewportFreeze] = useState<BoundingBox | undefined>(
+    undefined,
+  );
+
+  // Defensive cleanup: if `selected` changes from outside the inspector
+  // (e.g. the user clicks a new feature on the map), the captured
+  // session state belongs to the previous selection and must clear.
+  // setState-during-render is the React-sanctioned pattern for
+  // deriving cleared state from a prop change; the lint rule
+  // `react-hooks/set-state-in-effect` disallows the equivalent inside
+  // a useEffect.
+  const [previousSelected, setPreviousSelected] = useState<typeof selected>(selected);
+  if (previousSelected !== selected) {
+    setPreviousSelected(selected);
+    setHoverViewportFreeze(undefined);
+  }
+  // The pre-pan center ref needs the same selection-change cleanup,
+  // but ref mutation during render is disallowed by the
+  // `react-hooks/refs` lint rule. useEffect is the sanctioned place.
+  useEffect(() => {
+    prePanCenterRef.current = undefined;
+  }, [selected]);
+
+  // A user-initiated drag is a clear "I am committed to this view"
+  // signal; clear both captures so the next hover starts fresh
+  // instead of yanking the camera back to a stale position.
+  useEffect((): (() => void) | undefined => {
+    const map = getMapInstance(mapRef);
+    if (map === undefined) {
+      return undefined;
+    }
+    function handleDragStart(): void {
+      prePanCenterRef.current = undefined;
+      setHoverViewportFreeze(undefined);
+    }
+    map.on('dragstart', handleDragStart);
+    return (): void => {
+      map.off('dragstart', handleDragStart);
+    };
+  }, [mapRef]);
+
+  const resetSession = useCallback((): void => {
+    prePanCenterRef.current = undefined;
+    setHoverViewportFreeze(undefined);
+  }, []);
+
+  const handleChipHover = useCallback(
+    (selection: string | undefined): void => {
+      setHoveredChipSelection(selection);
+      const map = getMapInstance(mapRef);
+      if (map === undefined) {
+        return;
+      }
+      if (selection === undefined) {
+        const captured = prePanCenterRef.current;
+        if (captured !== undefined) {
+          restoreCenter(captured, map);
+          // Intentionally sticky: see `prePanCenterRef` and
+          // `hoverViewportFreeze` declarations above.
+        }
+        return;
+      }
+      const target = chipCentroid(selection, datasets);
+      if (target === undefined) {
+        return;
+      }
+      if (!isPointOutsideComfortableArea(target, map)) {
+        return;
+      }
+      // Functional update keeps any existing snapshot; only the first
+      // hover-enter of a session writes it.
+      setHoverViewportFreeze((prev) => prev ?? viewportBounds);
+      if (prePanCenterRef.current === undefined) {
+        const c = map.getCenter();
+        prePanCenterRef.current = { lng: c.lng, lat: c.lat };
+      }
+      panToFeatureWithInspectorOffset(target, map);
+    },
+    [setHoveredChipSelection, mapRef, datasets, viewportBounds],
+  );
+
+  const handleRecenter = useCallback((): void => {
+    if (state.status !== 'resolved') {
+      return;
+    }
+    const target = entityCentroid(state.entity);
+    if (target === undefined) {
+      return;
+    }
+    const map = getMapInstance(mapRef);
+    if (map === undefined) {
+      return;
+    }
+    // Recenter is a commit-like action: discard any in-flight hover
+    // session so a subsequent chip hover captures fresh state from the
+    // new view rather than restoring back to wherever the user was
+    // before the recenter.
+    resetSession();
+    panToFeatureWithInspectorOffset(target, map);
+  }, [state, mapRef, resetSession]);
+
+  const chipViewportBounds = hoverViewportFreeze ?? viewportBounds;
+
+  return { handleChipHover, handleRecenter, chipViewportBounds, resetSession };
+}
+
+/**
+ * Map-coordinate centroid for a resolved entity, used by the chip-hover
+ * pan logic and the recenter button. Falls back to `undefined` when an
+ * entity has no usable position (a degenerate airway with zero
+ * waypoints, an airspace whose features carry no coordinates).
+ */
+function entityCentroid(entity: ResolvedEntity): { lng: number; lat: number } | undefined {
+  switch (entity.kind) {
+    case 'airport':
+    case 'navaid':
+    case 'fix':
+      return { lng: entity.record.lon, lat: entity.record.lat };
+    case 'airway': {
+      const bbox = bboxFromWaypoints(entity.record.waypoints);
+      if (bbox === undefined) {
+        return undefined;
+      }
+      return {
+        lng: (bbox.minLon + bbox.maxLon) / 2,
+        lat: (bbox.minLat + bbox.maxLat) / 2,
+      };
+    }
+    case 'airspace': {
+      const bbox = combinedBboxFromAirspaceFeatures(entity.features);
+      if (bbox === undefined) {
+        return undefined;
+      }
+      return {
+        lng: (bbox.minLon + bbox.maxLon) / 2,
+        lat: (bbox.minLat + bbox.maxLat) / 2,
+      };
+    }
+  }
+}
+
+/**
+ * Resolves a chip's URL selection string into a map-coordinate centroid
+ * by routing through the dataset-backed entity resolver. Returns
+ * `undefined` if the selection is unparseable, the dataset is still
+ * loading, or the entity has no usable position.
+ */
+function chipCentroid(
+  selection: string,
+  datasets: ChartDatasetStates,
+): { lng: number; lat: number } | undefined {
+  const resolution = resolveSelectionFromState(selection, datasets);
+  if (resolution.status !== 'resolved') {
+    return undefined;
+  }
+  return entityCentroid(resolution.entity);
+}
+
+/**
+ * Returns true when a map-coordinate point lies outside the
+ * comfortable viewing area, gating the chip-hover pan. The
+ * comfortable area is the canvas minus the inspector overlay on the
+ * right, with a {@link PAN_EDGE_MARGIN_PX} buffer around every other
+ * edge. Returns true for:
+ *
+ * - Fully offscreen points (negative coords or beyond canvas size).
+ * - Points within `PAN_EDGE_MARGIN_PX` of the top, bottom, or left
+ *   edges - they would render barely visible and easy to miss.
+ * - Points within the right `INSPECTOR_OVERLAY_WIDTH_PX` strip
+ *   (occluded by the inspector) plus the same margin.
+ *
+ * Features comfortably inside this area are skipped from panning so
+ * the camera does not jolt for chip-hovers on already-visible
+ * features.
+ */
+function isPointOutsideComfortableArea(
+  lngLat: { lng: number; lat: number },
+  map: MaplibreMap,
+): boolean {
+  const point = map.project([lngLat.lng, lngLat.lat]);
+  const canvas = map.getCanvas();
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const usableRightEdge = w - INSPECTOR_OVERLAY_WIDTH_PX - PAN_EDGE_MARGIN_PX;
+  return (
+    point.x < PAN_EDGE_MARGIN_PX ||
+    point.x > usableRightEdge ||
+    point.y < PAN_EDGE_MARGIN_PX ||
+    point.y > h - PAN_EDGE_MARGIN_PX
+  );
+}
+
+/**
+ * Eases the camera so a target lng/lat lands at the center of the
+ * un-occluded portion of the map (geometric center minus half the
+ * inspector overlay's width). The negative x-offset shifts the camera
+ * focal point left so the target appears in the visible left strip
+ * rather than directly under the right-side panel.
+ */
+function panToFeatureWithInspectorOffset(
+  lngLat: { lng: number; lat: number },
+  map: MaplibreMap,
+): void {
+  map.easeTo({
+    center: [lngLat.lng, lngLat.lat],
+    offset: [-INSPECTOR_OVERLAY_WIDTH_PX / 2, 0],
+    duration: PAN_DURATION_MS,
+  });
+}
+
+/**
+ * Eases the camera back to a previously-captured center, undoing a
+ * chip-hover pan. No `offset` here: the captured center represents the
+ * user's pre-pan view exactly, with no inspector compensation needed
+ * since the user established that view themselves.
+ */
+function restoreCenter(lngLat: { lng: number; lat: number }, map: MaplibreMap): void {
+  map.easeTo({
+    center: [lngLat.lng, lngLat.lat],
+    duration: PAN_DURATION_MS,
+  });
+}
+
+/**
+ * Resolves a `MapRef | undefined` into the underlying maplibre `Map`
+ * instance, or `undefined` when no map ref is available (e.g. the
+ * inspector renders before MapLibre has initialized, or in tests
+ * where `useMap` returns an empty collection).
+ */
+function getMapInstance(mapRef: MapRef | undefined): MaplibreMap | undefined {
+  return mapRef?.getMap();
+}

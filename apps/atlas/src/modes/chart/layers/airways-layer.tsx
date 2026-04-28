@@ -120,7 +120,7 @@ const AIRWAYS_LAYER_BASE: LayerProps = {
       '#4338ca',
       '#94a3b8',
     ],
-    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.4, 7, 0.8, 10, 1.6],
+    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 7, 1.6, 10, 2.6],
     'line-opacity': 0.45,
   },
 };

@@ -1,7 +1,11 @@
 import type { GeoJsonProperties, Geometry } from 'geojson';
 import { polygonGeoJson } from '@squawk/geo';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
-import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
+import {
+  AIRSPACE_FILL_LAYER_ID,
+  AIRSPACE_LINE_LAYER_ID,
+  AIRSPACE_MATCH_KEY_PROPERTY,
+} from './layers/airspace-layer.tsx';
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
@@ -103,6 +107,103 @@ export function pickFeatureByPriority(
 }
 
 /**
+ * Outcome of classifying a multi-hit click. Discriminated by `kind`:
+ *
+ * - `empty`: the click hit no inspectable feature.
+ * - `unambiguous`: a single feature is the obvious target - either only
+ *   one inspectable feature was returned, or exactly one distinct
+ *   selection sits at the highest priority tier (e.g. a fill+line pair
+ *   for the same airspace, or several legs of a single airway).
+ * - `ambiguous`: 2+ distinct selections sit at the highest priority
+ *   tier (e.g. an airway intersection, two close VORs, two MOA
+ *   altitude bands sharing a lateral polygon, or stacked Class B and
+ *   ARTCC airspace). The caller should defer to a disambiguation UI
+ *   rather than auto-pick.
+ *
+ * `unambiguous` and `ambiguous` both carry `allFeatures` (MapLibre's
+ * full input list, in its original order) so the caller can populate
+ * the inspector's "Also here" sibling chip strip after the user lands
+ * on a final selection.
+ */
+export type ClickClassification =
+  | { kind: 'empty' }
+  | {
+      /** The click is unambiguous; auto-pick `winner`. */
+      kind: 'unambiguous';
+      /** The auto-pick winner, identical to {@link pickFeatureByPriority}. */
+      winner: InspectableFeature;
+      /** Every feature returned by the click event, in MapLibre's order. */
+      allFeatures: readonly InspectableFeature[];
+    }
+  | {
+      /** The click hit 2+ features at the highest non-airspace tier. */
+      kind: 'ambiguous';
+      /** Every feature returned by the click event, in MapLibre's order. */
+      allFeatures: readonly InspectableFeature[];
+    };
+
+/**
+ * Classifies a multi-hit click so the chart-mode handler can choose
+ * between auto-selecting the highest-priority feature and deferring to
+ * a disambiguation popover.
+ *
+ * Ambiguity rule: the highest-present priority tier holds 2 or more
+ * **distinct selections**. "Distinct" is computed via
+ * {@link selectedFromFeature} so multiple MapLibre features that
+ * resolve to the same entity (several MultiLineString legs of the
+ * same airway, or fill+line features for the same airspace polygon)
+ * collapse to one for the purpose of counting. Without this, a click
+ * that hits three legs of V16 with no other airway nearby would flag
+ * as ambiguous, the popover would dedupe to one row and refuse to
+ * render, and the URL would never update.
+ *
+ * Examples:
+ *
+ * - 1 airport + 1 Class B at KJFK: unambiguous (top tier holds 1 airport).
+ * - 2 close VORs: ambiguous (top tier holds 2 distinct navaids).
+ * - Airway intersection (V16 + V44 features): ambiguous (2 distinct airways).
+ * - 3 V16 legs only, no other airway: unambiguous (1 distinct airway).
+ * - MOA MEUREKAH + MEUREKAL stacked: ambiguous (2 distinct airspaces
+ *   sharing a lateral polygon - distinguished by the popover's
+ *   altitude subtitle since the map highlight cannot tell them apart).
+ * - Class B + ARTCC + Class E5 stacked: ambiguous (3 distinct
+ *   airspaces). Dense-airspace clicks pop the popover by design; the
+ *   altitude subtitles make the rows readable.
+ * - A single airspace's fill + line pair: unambiguous (one distinct
+ *   selection since both features encode to the same `airspace:type/id`).
+ *
+ * @param features - All features at (or near) the click point, as
+ *   returned by `map.queryRenderedFeatures` filtered to the chart's
+ *   inspectable layers.
+ * @returns The classification.
+ */
+export function classifyClick(features: readonly InspectableFeature[]): ClickClassification {
+  const winner = pickFeatureByPriority(features);
+  if (winner === undefined) {
+    return { kind: 'empty' };
+  }
+  const topRank = LAYER_PRIORITY[winner.layer.id];
+  if (topRank === undefined) {
+    return { kind: 'empty' };
+  }
+  const topTierSelections = new Set<string>();
+  for (const feature of features) {
+    if (LAYER_PRIORITY[feature.layer.id] !== topRank) {
+      continue;
+    }
+    const selection = selectedFromFeature(feature);
+    if (selection === undefined) {
+      continue;
+    }
+    topTierSelections.add(selection);
+  }
+  if (topTierSelections.size <= 1) {
+    return { kind: 'unambiguous', winner, allFeatures: features };
+  }
+  return { kind: 'ambiguous', allFeatures: features };
+}
+
+/**
  * Encodes a single MapLibre feature into the `{type}:{id}` string written
  * to the URL `selected` search param. Returns `undefined` when the feature
  * came from a non-inspectable layer or its properties lack the
@@ -144,9 +245,20 @@ export function selectedFromFeature(feature: InspectableFeature): string | undef
       if (identifier !== '') {
         return `airspace:${type}/${identifier}`;
       }
-      // Empty identifier: encode the polygon centroid as a stable
-      // URL-decodable disambiguator. The resolver detects the `c:`
-      // prefix and matches features by centroid coordinates.
+      // Empty identifier: prefer the match key attached at source-
+      // projection time, which encodes the centroid of the SOURCE
+      // polygon (computed in `airspace-layer.tsx::projectAirspaceSource`).
+      // Recomputing from `feature.geometry` here would use MapLibre's
+      // tile-clipped geometry, whose centroid is offset enough to fall
+      // outside the resolver's 0.0001-degree match tolerance and produce
+      // a "no matching record" panel after the click.
+      const matchKey = readString(feature.properties, AIRSPACE_MATCH_KEY_PROPERTY);
+      if (matchKey !== undefined) {
+        return `airspace:${matchKey}`;
+      }
+      // Fallback for hand-built features that did not pass through
+      // `projectAirspaceSource` (test fixtures, future imperative
+      // callers). The geometry centroid is the next best thing.
       const centroid = polygonCentroidFromGeometry(feature.geometry);
       if (centroid === undefined) {
         return undefined;
