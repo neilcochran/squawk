@@ -853,4 +853,57 @@ describe('EntityInspector', () => {
     fireEvent.mouseLeave(chip);
     expect(easeToMock).not.toHaveBeenCalled();
   });
+
+  it('pans to the chip target on commit click and calls navigate with the new selection', () => {
+    const easeToMock = vi.fn();
+    // project returns a centered point so isPointOutsideComfortableArea
+    // is false during hover - this isolates the pan-on-commit test from
+    // any preview-pan behavior. Even with the chip target onscreen,
+    // commit should pan because committing is a deliberate selection,
+    // not a preview hover.
+    useMapMock.mockReturnValue({
+      default: {
+        getMap: () => ({
+          easeTo: easeToMock,
+          project: vi.fn().mockReturnValue({ x: 400, y: 400 }),
+          getCanvas: vi.fn().mockReturnValue({ clientWidth: 1280, clientHeight: 800 }),
+          getCenter: vi.fn().mockReturnValue({ lng: -71, lat: 42 }),
+          getBounds: vi.fn().mockReturnValue({
+            getWest: () => -180,
+            getEast: () => 180,
+            getSouth: () => -90,
+            getNorth: () => 90,
+          }),
+          on: vi.fn(),
+          off: vi.fn(),
+        }),
+      },
+    });
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({
+      'airport:BOS': airportResolution,
+      'navaid:BOS': navaidResolution,
+    });
+    render(
+      <EntityInspector siblings={[buildSiblingFeature(NAVAIDS_LAYER_ID, { identifier: 'BOS' })]} />,
+    );
+    expandSiblingChips();
+    const chip = screen.getByRole('button', { name: 'BOS' });
+
+    fireEvent.click(chip);
+
+    // Pan-on-commit should fire with the navaid's centroid and the
+    // standard inspector-aware offset.
+    expect(easeToMock).toHaveBeenCalledTimes(1);
+    expect(easeToMock.mock.calls[0]?.[0]).toMatchObject({
+      center: [sampleNavaid.lon, sampleNavaid.lat],
+      offset: [-180, 0],
+    });
+    // And the URL navigation should still fire.
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    expect(navigateMock.mock.calls[0]?.[0]).toMatchObject({
+      search: expect.any(Function),
+      replace: true,
+    });
+  });
 });

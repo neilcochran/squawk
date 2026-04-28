@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useState } from 'react';
-import type { MouseEvent, PointerEvent, ReactElement } from 'react';
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_ROUTE_PATH, LAYER_IDS } from './url-state.ts';
@@ -211,7 +211,7 @@ export function LayerToggle(): ReactElement {
 
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="absolute right-3 top-3 z-10 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
+      <DropdownMenu.Trigger className="absolute right-3 top-3 z-10 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:py-1.5">
         Layers
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -296,7 +296,7 @@ function SimpleParentRow({ label, checked, onCheckedChange }: SimpleParentRowPro
       checked={checked}
       onCheckedChange={onCheckedChange}
       onSelect={(event) => event.preventDefault()}
-      className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100"
+      className="flex cursor-default items-center gap-2 rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5"
     >
       <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
         <DropdownMenu.ItemIndicator>
@@ -327,11 +327,16 @@ interface ExpandableParentRowProps {
 }
 
 /**
- * Row for a layer with sub-types. Split-action layout: the row itself is a
- * Radix `Item` whose `onSelect` toggles the inline expansion, and a small
- * checkbox button at the left toggles the parent layer independently. The
- * checkbox stops pointer + click propagation so toggling it does not also
- * expand the row. Renders a "X/Y" chip and a chevron at the right.
+ * Row for a layer with sub-types. Unified click semantics: the row itself
+ * is a Radix `CheckboxItem` whose `onCheckedChange` toggles the parent
+ * layer (identical to {@link SimpleParentRow}), and a dedicated chevron
+ * button at the right toggles the inline expansion. Stopping pointer
+ * propagation on the chevron prevents the parent CheckboxItem from also
+ * firing its `onCheckedChange` from the same click. Keyboard users
+ * navigate to the row with arrow keys; ArrowRight expands and ArrowLeft
+ * collapses, mirroring the standard tree-style menu pattern. The chevron
+ * button is intentionally non-tabbable (`tabIndex=-1`) so the keyboard
+ * focus chain remains the menu items, not their internal sub-controls.
  */
 function ExpandableParentRow({
   label,
@@ -342,60 +347,79 @@ function ExpandableParentRow({
   enabledCount,
   totalCount,
 }: ExpandableParentRowProps): ReactElement {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === 'ArrowRight' && !expanded) {
+      event.preventDefault();
+      onToggleExpanded();
+    } else if (event.key === 'ArrowLeft' && expanded) {
+      event.preventDefault();
+      onToggleExpanded();
+    }
+  };
   return (
-    <DropdownMenu.Item
-      onSelect={(event) => {
-        event.preventDefault();
-        onToggleExpanded();
-      }}
-      className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100"
+    <DropdownMenu.CheckboxItem
+      checked={checked}
+      onCheckedChange={onCheckedChange}
+      onSelect={(event) => event.preventDefault()}
+      onKeyDown={handleKeyDown}
+      className="flex cursor-default items-center gap-2 rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5"
     >
-      <ParentCheckbox label={label} checked={checked} onCheckedChange={onCheckedChange} />
+      <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
+        <DropdownMenu.ItemIndicator>
+          <CheckIcon />
+        </DropdownMenu.ItemIndicator>
+      </span>
       <span className="flex-1">{label}</span>
       <SubCountChip enabled={enabledCount} total={totalCount} dimmed={!checked} />
-      <ChevronIcon expanded={expanded} />
-    </DropdownMenu.Item>
+      <ExpandToggleButton label={label} expanded={expanded} onToggleExpanded={onToggleExpanded} />
+    </DropdownMenu.CheckboxItem>
   );
 }
 
-/** Props for {@link ParentCheckbox}. */
-interface ParentCheckboxProps {
+/** Props for {@link ExpandToggleButton}. */
+interface ExpandToggleButtonProps {
   /** Layer label, used for the accessible name. */
   label: string;
-  /** Whether the parent layer is currently enabled. */
-  checked: boolean;
-  /** Called with the new checked state when the checkbox is toggled. */
-  onCheckedChange: (checked: boolean) => void;
+  /** Whether the inline sub-list is currently expanded. */
+  expanded: boolean;
+  /** Called when the chevron is clicked. */
+  onToggleExpanded: () => void;
 }
 
 /**
- * Small checkbox button used inside an {@link ExpandableParentRow}. Stops
- * pointer + click propagation so its click does not also fire the row's
- * `onSelect`. Renders the same checkmark glyph as the simple parent rows
- * inside a slot of the same width, so all parent rows align vertically.
+ * Dedicated chevron button rendered inside an {@link ExpandableParentRow}
+ * to toggle the inline sub-list expansion. Stops pointer + click
+ * propagation so its click does NOT also flip the parent CheckboxItem's
+ * checked state (which would toggle the layer at the same time as
+ * expanding). Sized at 44px on mobile (touch target) and 28px on desktop;
+ * `tabIndex=-1` keeps it out of the keyboard focus chain so arrow-key
+ * menu navigation lands on the row, not separately on the chevron.
  */
-function ParentCheckbox({ label, checked, onCheckedChange }: ParentCheckboxProps): ReactElement {
+function ExpandToggleButton({
+  label,
+  expanded,
+  onToggleExpanded,
+}: ExpandToggleButtonProps): ReactElement {
   const stopPointer = (event: PointerEvent<HTMLButtonElement>): void => {
     event.stopPropagation();
   };
   const handleClick = (event: MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation();
     event.preventDefault();
-    onCheckedChange(!checked);
+    onToggleExpanded();
   };
   return (
     <button
       type="button"
-      role="checkbox"
-      aria-checked={checked}
-      aria-label={`Toggle ${label} layer`}
+      aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label} sub-list`}
+      aria-expanded={expanded}
       tabIndex={-1}
       onClick={handleClick}
       onPointerDown={stopPointer}
       onPointerUp={stopPointer}
-      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+      className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-700 md:h-7 md:w-7"
     >
-      {checked ? <CheckIcon /> : null}
+      <ChevronIcon expanded={expanded} />
     </button>
   );
 }
@@ -421,7 +445,7 @@ function SubRow({ label, checked, onCheckedChange }: SubRowProps): ReactElement 
       checked={checked}
       onCheckedChange={onCheckedChange}
       onSelect={(event) => event.preventDefault()}
-      className="flex cursor-default items-center gap-2 rounded py-1.5 pl-8 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100"
+      className="flex cursor-default items-center gap-2 rounded py-2.5 pl-8 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5"
     >
       <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
         <DropdownMenu.ItemIndicator>

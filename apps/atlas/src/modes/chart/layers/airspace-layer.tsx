@@ -8,6 +8,11 @@ import type { Feature, FeatureCollection } from 'geojson';
 import { polygonGeoJson } from '@squawk/geo';
 import type { AirspaceType } from '@squawk/types';
 import { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
+import {
+  CHART_AIRSPACE_BADGE_COLORS,
+  CHART_AIRSPACE_COLORS,
+  CHART_HIGHLIGHT_COLORS,
+} from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef, useHoveredFeatureIndex } from '../highlight-context.ts';
 import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 
@@ -161,7 +166,7 @@ const AIRSPACE_HIGHLIGHT_LAYER_BASE: LayerProps = {
     'line-join': 'round',
   },
   paint: {
-    'line-color': '#fde047',
+    'line-color': CHART_HIGHLIGHT_COLORS.primary,
     'line-width': 3,
     'line-opacity': 1,
   },
@@ -205,7 +210,7 @@ const AIRSPACE_FEATURE_FOCUS_LAYER_BASE: LayerProps = {
     'line-join': 'round',
   },
   paint: {
-    'line-color': '#fef9c3',
+    'line-color': CHART_HIGHLIGHT_COLORS.focusOutline,
     'line-width': 5,
     'line-opacity': 1,
   },
@@ -238,8 +243,8 @@ const AIRSPACE_FEATURE_BADGE_LAYER_BASE: LayerProps = {
     'text-ignore-placement': true,
   },
   paint: {
-    'text-color': '#fef08a',
-    'text-halo-color': '#0f172a',
+    'text-color': CHART_AIRSPACE_BADGE_COLORS.text,
+    'text-halo-color': CHART_AIRSPACE_BADGE_COLORS.halo,
     'text-halo-width': 2.5,
   },
 };
@@ -257,28 +262,28 @@ const TYPE_COLOR_EXPRESSION = [
   'match',
   ['get', 'type'],
   'CLASS_B',
-  '#1e3a8a',
+  CHART_AIRSPACE_COLORS.classB,
   'CLASS_C',
-  '#be185d',
+  CHART_AIRSPACE_COLORS.classC,
   'CLASS_D',
-  '#2563eb',
+  CHART_AIRSPACE_COLORS.classD,
   ['CLASS_E2', 'CLASS_E3', 'CLASS_E4', 'CLASS_E5', 'CLASS_E6', 'CLASS_E7'],
-  '#ec4899',
+  CHART_AIRSPACE_COLORS.classE,
   'MOA',
-  '#d97706',
+  CHART_AIRSPACE_COLORS.moa,
   'RESTRICTED',
-  '#dc2626',
+  CHART_AIRSPACE_COLORS.restricted,
   'PROHIBITED',
-  '#991b1b',
+  CHART_AIRSPACE_COLORS.prohibited,
   'WARNING',
-  '#f97316',
+  CHART_AIRSPACE_COLORS.warning,
   'ALERT',
-  '#facc15',
+  CHART_AIRSPACE_COLORS.alert,
   'NSA',
-  '#6b7280',
+  CHART_AIRSPACE_COLORS.nsa,
   'ARTCC',
-  '#94a3b8',
-  '#64748b',
+  CHART_AIRSPACE_COLORS.artcc,
+  CHART_AIRSPACE_COLORS.fallback,
 ] satisfies ExpressionSpecification;
 
 /**
@@ -580,7 +585,7 @@ function createHatchPatternImage():
   if (ctx === null) {
     return undefined;
   }
-  ctx.strokeStyle = '#fde047';
+  ctx.strokeStyle = CHART_HIGHLIGHT_COLORS.primary;
   ctx.lineWidth = 1.5;
   ctx.lineCap = 'square';
   // Three diagonal segments so the pattern tiles seamlessly across

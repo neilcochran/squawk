@@ -1,5 +1,18 @@
 @import 'tailwindcss';
 
+/*
+ * Atlas-specific Tailwind theme extensions. Each `--spacing-*` entry
+ * extends Tailwind's spacing scale and is reachable via every spacing
+ * utility (`w-*`, `h-*`, `p-*`, `m-*`, `min-w-*`, etc.). Add a token
+ * here when a fixed dimension is referenced from more than one place
+ * or needs a semantic name; one-off dimensions stay inline as rem
+ * arbitrary values (e.g. `min-w-[12.5rem]`).
+ */
+@theme {
+  /* Width of the desktop entity inspector overlay (360px @ 16px root). Mirrored by INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX in use-chip-hover-pan.ts for MapLibre canvas math. */
+  --spacing-inspector: 22.5rem;
+}
+
 html,
 body,
 #root {

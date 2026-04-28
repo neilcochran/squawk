@@ -14,6 +14,7 @@ import {
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
+import { useCanHover } from '../../shared/styles/use-can-hover.ts';
 import { formatChipLabel, selectedFromFeature } from './click-to-select.ts';
 import type { InspectableFeature } from './click-to-select.ts';
 import { useSetHoveredChipSelection } from './highlight-context.ts';
@@ -89,6 +90,7 @@ export function DisambiguationPopover({
   const map = useMap();
   const mapRef = map.current ?? map.default;
   const setHoveredChipSelection = useSetHoveredChipSelection();
+  const canHover = useCanHover();
 
   // Build the visible entry list. Drops features whose layer cannot
   // produce a selection (e.g. an airport feature missing `faaId`) and
@@ -176,7 +178,7 @@ export function DisambiguationPopover({
       clampKey={entries.length}
       role="menu"
       aria-label="Select a feature"
-      className="absolute z-30 flex max-h-[70vh] min-w-[200px] flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+      className="absolute z-30 flex max-h-[70vh] min-w-[12.5rem] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
     >
       <p className="flex shrink-0 items-baseline justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 uppercase">
         <span>Select a feature</span>
@@ -189,11 +191,13 @@ export function DisambiguationPopover({
               type="button"
               role="menuitem"
               onClick={(): void => onSelect(entry.selection)}
-              onMouseEnter={(): void => setHoveredChipSelection(entry.selection)}
-              onMouseLeave={(): void => setHoveredChipSelection(undefined)}
+              {...(canHover && {
+                onMouseEnter: (): void => setHoveredChipSelection(entry.selection),
+                onMouseLeave: (): void => setHoveredChipSelection(undefined),
+              })}
               onFocus={(): void => setHoveredChipSelection(entry.selection)}
               onBlur={(): void => setHoveredChipSelection(undefined)}
-              className="flex w-full items-baseline gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 focus:bg-indigo-50 focus:text-indigo-700 focus:outline-none"
+              className="flex w-full items-baseline gap-2 px-3 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 focus:bg-indigo-50 focus:text-indigo-700 focus:outline-none md:py-1.5"
             >
               <span className="w-14 shrink-0 text-[10px] font-semibold tracking-wide text-slate-500 uppercase">
                 {entry.type}

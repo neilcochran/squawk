@@ -7,6 +7,10 @@ import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, MultiLineString } from 'geojson';
 import type { Airway, AirwayType } from '@squawk/types';
 import { useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
+import {
+  CHART_AIRWAY_COLORS,
+  CHART_HIGHLIGHT_COLORS,
+} from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 import { AIRWAY_CATEGORY_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 import { buildSegments } from './airway-segments.ts';
@@ -59,7 +63,7 @@ const AIRWAYS_HIGHLIGHT_LAYER_BASE: LayerProps = {
     'line-join': 'round',
   },
   paint: {
-    'line-color': '#fde047',
+    'line-color': CHART_HIGHLIGHT_COLORS.primary,
     'line-width': 4,
     'line-opacity': 0.95,
   },
@@ -115,10 +119,10 @@ const AIRWAYS_LAYER_BASE: LayerProps = {
       'match',
       ['get', 'type'],
       ['VICTOR', 'RNAV_T'],
-      '#475569',
+      CHART_AIRWAY_COLORS.low,
       ['JET', 'RNAV_Q'],
-      '#4338ca',
-      '#94a3b8',
+      CHART_AIRWAY_COLORS.high,
+      CHART_AIRWAY_COLORS.regional,
     ],
     'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 7, 1.6, 10, 2.6],
     'line-opacity': 0.45,
