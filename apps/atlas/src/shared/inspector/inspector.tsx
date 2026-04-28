@@ -4,23 +4,22 @@ import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useMap } from '@vis.gl/react-maplibre';
 import type { Polygon } from 'geojson';
 import { polygonGeoJson } from '@squawk/geo';
-import type { AirspaceFeature } from '@squawk/types';
 import {
   formatAirspaceLabel,
   formatChipLabel,
   selectedFromFeature,
 } from '../../modes/chart/click-to-select.ts';
 import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
-import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.ts';
 import { AIRSPACE_CLASS_FOR_TYPE, CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
 import { isAirspacePolygonFeature } from './airspace-feature.ts';
 import { ENTITY_TYPES, parseSelected } from './entity.ts';
 import type { EntityType } from './entity.ts';
-import { bboxFromCoords } from './geometry.ts';
+import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.ts';
 import type { BoundingBox } from './geometry.ts';
 import { resolveSelectionFromState, useDatasetStates } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
+import { useChipHoverPan } from './use-chip-hover-pan.ts';
 import { AirportPanel } from './renderers/airport-panel.tsx';
 import { AirspacePanel } from './renderers/airspace-panel.tsx';
 import { AirwayPanel } from './renderers/airway-panel.tsx';
@@ -118,23 +117,40 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapRef, lat, lon, zoom]);
   const state = useMemo(() => resolveSelectionFromState(selected, datasets), [selected, datasets]);
-  const setHoveredChipSelection = useSetHoveredChipSelection();
+
+  // All chip-hover panning, recenter, and viewport-freeze state lives
+  // in `useChipHoverPan`. The hook owns the pre-pan capture, the
+  // bounce-fix freeze, the dragstart subscription, and the
+  // selection-change cleanup; the inspector wires its outputs into
+  // the chip strip, the recenter button, and the chip useMemo.
+  const { handleChipHover, handleRecenter, chipViewportBounds, resetSession } = useChipHoverPan({
+    selected,
+    mapRef,
+    datasets,
+    viewportBounds,
+    state,
+  });
 
   const handleClose = useCallback((): void => {
+    resetSession();
     void navigate({
       search: (prev) => ({ ...prev, selected: undefined }),
       replace: true,
     });
-  }, [navigate]);
+  }, [navigate, resetSession]);
 
   const handleSwitchSelected = useCallback(
     (next: string): void => {
+      // Chip click commits: drop any in-flight hover session so the
+      // unhover restore does NOT yank the user back to a position
+      // that no longer matches the new selection.
+      resetSession();
       void navigate({
         search: (prev) => ({ ...prev, selected: next }),
         replace: true,
       });
     },
-    [navigate],
+    [navigate, resetSession],
   );
 
   // Build the chip list. Two sources are merged, with same-pixel chips
@@ -198,7 +214,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
         selectedAirspaceKey,
         datasets,
         seen,
-        viewportBounds,
+        chipViewportBounds,
         airspaceClasses,
       )) {
         if (result.length >= MAX_OVERLAP_CHIPS) {
@@ -214,7 +230,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
     }
 
     return disambiguateLabels(result);
-  }, [siblings, selected, datasets, state, layers, airspaceClasses, viewportBounds]);
+  }, [siblings, selected, datasets, state, layers, airspaceClasses, chipViewportBounds]);
 
   if (state.status === 'idle') {
     return null;
@@ -225,13 +241,13 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
       className="absolute top-0 right-0 bottom-0 z-20 w-[360px] overflow-y-auto border-l border-slate-200 bg-white shadow-lg"
       aria-label="Entity inspector"
     >
-      <InspectorHeader state={state} onClose={handleClose} />
+      <InspectorHeader
+        state={state}
+        onClose={handleClose}
+        {...(state.status === 'resolved' && { onRecenter: handleRecenter })}
+      />
       {chips.length === 0 ? null : (
-        <SiblingChips
-          chips={chips}
-          onSelect={handleSwitchSelected}
-          onHover={setHoveredChipSelection}
-        />
+        <SiblingChips chips={chips} onSelect={handleSwitchSelected} onHover={handleChipHover} />
       )}
       <InspectorBody state={state} />
     </aside>
@@ -398,22 +414,6 @@ function footprintForSelection(
   return undefined;
 }
 
-/** Bounding box from an airway's ordered list of waypoints. */
-function bboxFromWaypoints(
-  waypoints: readonly { lat: number; lon: number }[],
-): BoundingBox | undefined {
-  return bboxFromCoords(coordsOfWaypoints(waypoints));
-}
-
-/** Yields each waypoint as a `[lon, lat]` pair for the bbox reducer. */
-function* coordsOfWaypoints(
-  waypoints: readonly { lat: number; lon: number }[],
-): Generator<readonly [number, number]> {
-  for (const wp of waypoints) {
-    yield [wp.lon, wp.lat];
-  }
-}
-
 /**
  * Generator for "Switch to another feature here" chips that come from
  * airspace polygons that actually overlap the selected entity's
@@ -564,46 +564,6 @@ function disambiguateLabels<T extends { selection: string; label: string }>(
 }
 
 /**
- * Combined bounding box across every feature in an airspace grouping. A
- * Class B has multiple ring features; an ARTCC has multiple strata. The
- * combined bbox is the smallest rectangle that contains all of them.
- * Returns undefined if no feature has any coordinates.
- */
-function combinedBboxFromAirspaceFeatures(
-  features: readonly AirspaceFeature[],
-): BoundingBox | undefined {
-  return bboxFromCoords(coordsOfAirspaceFeatures(features));
-}
-
-/** Yields every defined `[lon, lat]` pair across a list of airspace feature boundaries. */
-function* coordsOfAirspaceFeatures(
-  features: readonly AirspaceFeature[],
-): Generator<readonly [number, number]> {
-  for (const feature of features) {
-    yield* coordsOfPolygon(feature.boundary);
-  }
-}
-
-/**
- * Yields every defined `[lon, lat]` pair across all rings of a polygon.
- * GeoJSON's `Position` is typed as `number[]`, so the inner coords can be
- * shorter than two elements at the type level; entries with an undefined
- * lon or lat are skipped.
- */
-function* coordsOfPolygon(polygon: Polygon): Generator<readonly [number, number]> {
-  for (const ring of polygon.coordinates) {
-    for (const coord of ring) {
-      const lon = coord[0];
-      const lat = coord[1];
-      if (lon === undefined || lat === undefined) {
-        continue;
-      }
-      yield [lon, lat];
-    }
-  }
-}
-
-/**
  * Caret-style chevron used in the sibling-chip disclosure header.
  * Rotates 180 degrees via a CSS transform when `expanded` is true so
  * the same SVG path serves both states; the surrounding button owns
@@ -648,27 +608,46 @@ function SwitchIcon(): ReactElement {
 }
 
 /**
- * Sticky header at the top of the panel showing a one-line summary (entity
- * type + identifier or status) and a close button.
+ * Sticky header at the top of the panel showing a one-line summary
+ * (entity type + identifier or status), an optional recenter button
+ * that brings the selected entity back into view, and a close button.
+ * The recenter button is only rendered when an `onRecenter` handler is
+ * supplied, which the inspector ties to the resolved-entity state -
+ * loading and not-found states have nothing to recenter on.
  */
 function InspectorHeader({
   state,
   onClose,
+  onRecenter,
 }: {
   state: ResolvedEntityState;
   onClose: () => void;
+  onRecenter?: () => void;
 }): ReactElement {
   return (
-    <header className="sticky top-0 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+    <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
       <HeaderText state={state} />
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close inspector"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-      >
-        <CloseIcon />
-      </button>
+      <div className="flex shrink-0 items-center gap-1">
+        {onRecenter === undefined ? null : (
+          <button
+            type="button"
+            onClick={onRecenter}
+            aria-label="Recenter on this feature"
+            title="Recenter on this feature"
+            className="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          >
+            <RecenterIcon />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close inspector"
+          className="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        >
+          <CloseIcon />
+        </button>
+      </div>
     </header>
   );
 }
@@ -806,6 +785,26 @@ function CloseIcon(): ReactElement {
       aria-hidden="true"
     >
       <path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" />
+    </svg>
+  );
+}
+
+/** Crosshair / target icon used by the recenter button. */
+function RecenterIcon(): ReactElement {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="7" cy="7" r="3" />
+      <path d="M7 1V3M7 11V13M1 7H3M11 7H13" />
     </svg>
   );
 }

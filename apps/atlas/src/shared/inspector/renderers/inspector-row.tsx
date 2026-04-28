@@ -36,6 +36,15 @@ export interface InspectorSectionProps {
   title: string;
   /** Section body, typically one or more {@link InspectorRow} children. */
   children: ReactNode;
+  /**
+   * Optional pointer-enter handler. The airspace renderer uses this so
+   * hovering a per-feature section brightens just that polygon on the
+   * map. Other renderers leave it unset; the section behaves as static
+   * content.
+   */
+  onPointerEnter?: () => void;
+  /** Optional pointer-leave handler that pairs with {@link onPointerEnter}. */
+  onPointerLeave?: () => void;
 }
 
 /**
@@ -43,10 +52,36 @@ export interface InspectorSectionProps {
  * that mix several logical groupings (e.g. an airport's "Location" and
  * "Runways") use one section per group so the visual structure of the
  * panel matches the data structure.
+ *
+ * When `onPointerEnter` is supplied (the airspace renderer's per-feature
+ * sections), the section paints with a subtle amber hover tint and a
+ * left-edge accent so the user reads it as interactive - hovering
+ * brightens the matching polygon on the map. Sections without a hover
+ * handler stay flat (the airport / navaid / fix panels' static sections).
  */
-export function InspectorSection({ title, children }: InspectorSectionProps): ReactElement {
+export function InspectorSection({
+  title,
+  children,
+  onPointerEnter,
+  onPointerLeave,
+}: InspectorSectionProps): ReactElement {
+  const interactive = onPointerEnter !== undefined;
   return (
-    <section className="border-b border-slate-100 px-4 py-3 last:border-b-0">
+    <section
+      className={
+        interactive
+          ? 'group relative border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-slate-100'
+          : 'border-b border-slate-100 px-4 py-3 last:border-b-0'
+      }
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+    >
+      {interactive ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-indigo-500 opacity-0 transition-opacity group-hover:opacity-100"
+        />
+      ) : null}
       <h3 className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">{title}</h3>
       <dl>{children}</dl>
     </section>

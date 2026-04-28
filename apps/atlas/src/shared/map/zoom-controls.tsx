@@ -37,13 +37,16 @@ const BOUND_EPSILON = 0.001;
 
 /**
  * Floating zoom and tilt controls for the map. Renders a vertical stack of
- * `+`, `-`, tilt-up, and tilt-down buttons in the bottom-right corner of the
+ * `+`, `-`, tilt-up, and tilt-down buttons in the bottom-left corner of the
  * map area, raised enough that the MapLibre / OSM / Protomaps attribution
- * can sit underneath without overlap. Uses MapLibre's `easeTo({ zoom })`
- * and `easeTo({ pitch })` to animate; the `moveend` event triggers the
- * existing view-state callback for the URL (zoom only - pitch is
- * intentionally not URL-persisted yet, mirroring map-canvas.tsx's
- * deliberate omission of bearing/pitch).
+ * can sit underneath without overlap. The bottom-left position keeps the
+ * controls clear of the right-side entity inspector overlay; the user
+ * can zoom or tilt without losing sight of the controls when an inspector
+ * panel opens. Uses MapLibre's `easeTo({ zoom })` and `easeTo({ pitch })`
+ * to animate; the `moveend` event triggers the existing view-state
+ * callback for the URL (zoom only - pitch is intentionally not
+ * URL-persisted yet, mirroring map-canvas.tsx's deliberate omission of
+ * bearing/pitch).
  *
  * Each button reflects whether it can act: zoom-in disables at the map's
  * `getMaxZoom()`, zoom-out at `getMinZoom()`, tilt-up at `TILT_MAX_DEG`, and
@@ -133,7 +136,7 @@ export function ZoomControls(): ReactElement {
   }, [mapRef]);
 
   return (
-    <div className="absolute bottom-10 right-3 z-10 flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-md">
+    <div className="absolute bottom-10 left-3 z-10 flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-md">
       <button
         type="button"
         onClick={handleZoomIn}

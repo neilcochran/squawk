@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import type { ReactElement } from 'react';
 import type { AirspaceFeature, AltitudeBound } from '@squawk/types';
+import { useSetHoveredFeatureIndex } from '../../../modes/chart/highlight-context.ts';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**
@@ -18,25 +20,84 @@ export interface AirspacePanelProps {
 }
 
 /**
- * Per-type renderer for an `airspace` entity. Each section corresponds to
- * one underlying feature - a Class B ring, an ARTCC stratum, or a single
- * SUA polygon - so the user can read floor / ceiling / state separately
- * for each piece of the grouping. The grouping label (type + identifier)
- * is rendered in the inspector header above; this body shows the per-feature
- * detail.
+ * Per-type renderer for an `airspace` entity. Layout depends on grouping
+ * size:
+ *
+ * - **Single feature**: one merged section with every detail row, since
+ *   there is no overview-vs-per-feature distinction worth making for a
+ *   single polygon.
+ * - **Multi feature** (Class B rings, ARTCC strata, antimeridian-split
+ *   oceanic boundaries): an "Overview" section at the top with the
+ *   fields that are shared across every feature in the grouping (Name,
+ *   State, Controlling, Schedule), followed by one per-feature section
+ *   showing only the fields that genuinely vary - Floor, Ceiling, and
+ *   Stratum. The split mirrors the FAA NASR data shape: a
+ *   `(type, identifier)` group is one airspace whose lateral extent has
+ *   been broken into multiple polygons; every polygon shares its parent
+ *   metadata.
+ *
+ * Per-feature sections are interactive: hovering one drives the
+ * airspace layer's feature-focus filter to brighten the matching
+ * polygon on the map, mirroring the inspector "Feature N" / "Stratum:
+ * X" badges.
  */
 export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
+  const setHoveredFeatureIndex = useSetHoveredFeatureIndex();
+  // Defensive cleanup: when the panel unmounts (e.g. the user clicks
+  // away or switches to a non-airspace selection) any in-flight hover
+  // index would otherwise stick and leave a phantom polygon brightened.
+  // Pointer-leave handlers cover the common path; this effect catches
+  // the unmount-without-leave case.
+  useEffect(
+    () => (): void => {
+      setHoveredFeatureIndex(undefined);
+    },
+    [setHoveredFeatureIndex],
+  );
+  if (features.length === 1) {
+    const feature = features[0];
+    if (feature === undefined) {
+      return <></>;
+    }
+    return (
+      <InspectorSection title={sectionTitle(feature, 0)}>
+        <InspectorRow label="Floor">{formatAltitudeBound(feature.floor)}</InspectorRow>
+        <InspectorRow label="Ceiling">{formatAltitudeBound(feature.ceiling)}</InspectorRow>
+        <InspectorRow label="Name">{feature.name}</InspectorRow>
+        <InspectorRow label="State">{feature.state}</InspectorRow>
+        <InspectorRow label="Controlling">{feature.controllingFacility}</InspectorRow>
+        <InspectorRow label="Stratum">{feature.artccStratum}</InspectorRow>
+        <InspectorRow label="Schedule">{feature.scheduleDescription}</InspectorRow>
+      </InspectorSection>
+    );
+  }
+  // Multi-feature: lift shared fields into an Overview section. We
+  // read them off the first feature; the FAA data model guarantees
+  // these are identical across every feature in a `(type, identifier)`
+  // group, so this is not a "first wins" hack - they are always the
+  // same value.
+  const first = features[0];
+  if (first === undefined) {
+    return <></>;
+  }
   return (
     <>
+      <InspectorSection title="Overview">
+        <InspectorRow label="Name">{first.name}</InspectorRow>
+        <InspectorRow label="State">{first.state}</InspectorRow>
+        <InspectorRow label="Controlling">{first.controllingFacility}</InspectorRow>
+        <InspectorRow label="Schedule">{first.scheduleDescription}</InspectorRow>
+      </InspectorSection>
       {features.map((feature, idx) => (
-        <InspectorSection key={featureKey(feature, idx)} title={sectionTitle(feature, idx)}>
+        <InspectorSection
+          key={featureKey(feature, idx)}
+          title={sectionTitle(feature, idx)}
+          onPointerEnter={(): void => setHoveredFeatureIndex(idx)}
+          onPointerLeave={(): void => setHoveredFeatureIndex(undefined)}
+        >
           <InspectorRow label="Floor">{formatAltitudeBound(feature.floor)}</InspectorRow>
           <InspectorRow label="Ceiling">{formatAltitudeBound(feature.ceiling)}</InspectorRow>
-          <InspectorRow label="Name">{feature.name}</InspectorRow>
-          <InspectorRow label="State">{feature.state}</InspectorRow>
-          <InspectorRow label="Controlling">{feature.controllingFacility}</InspectorRow>
           <InspectorRow label="Stratum">{feature.artccStratum}</InspectorRow>
-          <InspectorRow label="Schedule">{feature.scheduleDescription}</InspectorRow>
         </InspectorSection>
       ))}
     </>
