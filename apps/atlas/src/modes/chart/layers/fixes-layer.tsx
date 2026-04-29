@@ -32,7 +32,7 @@ const FIXES_SOURCE_ID = 'atlas-fixes';
 export const FIXES_LAYER_ID = 'atlas-fixes-circle';
 
 /** MapLibre layer id for the fix selection-highlight overlay. */
-const FIXES_HIGHLIGHT_LAYER_ID = 'atlas-fixes-highlight';
+export const FIXES_HIGHLIGHT_LAYER_ID = 'atlas-fixes-highlight';
 
 /**
  * Filter expression that matches no feature. Used as the default for the

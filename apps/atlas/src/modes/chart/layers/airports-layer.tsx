@@ -33,7 +33,7 @@ const AIRPORTS_SOURCE_ID = 'atlas-airports';
 export const AIRPORTS_LAYER_ID = 'atlas-airports-circle';
 
 /** MapLibre layer id for the airport selection-highlight overlay. */
-const AIRPORTS_HIGHLIGHT_LAYER_ID = 'atlas-airports-highlight';
+export const AIRPORTS_HIGHLIGHT_LAYER_ID = 'atlas-airports-highlight';
 
 /**
  * Filter expression that matches no feature. Used as the default for the

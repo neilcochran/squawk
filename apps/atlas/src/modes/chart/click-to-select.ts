@@ -1,7 +1,11 @@
 import type { GeoJsonProperties, Geometry } from 'geojson';
 import { polygonGeoJson } from '@squawk/geo';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
-import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
+import {
+  AIRSPACE_FILL_EXTRUSION_LAYER_ID,
+  AIRSPACE_FILL_LAYER_ID,
+  AIRSPACE_LINE_LAYER_ID,
+} from './layers/airspace-layer.tsx';
 import { AIRSPACE_MATCH_KEY_PROPERTY } from '../../shared/inspector/airspace-feature.ts';
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
@@ -46,6 +50,7 @@ export const INSPECTABLE_LAYER_IDS = [
   AIRWAYS_LAYER_ID,
   AIRSPACE_FILL_LAYER_ID,
   AIRSPACE_LINE_LAYER_ID,
+  AIRSPACE_FILL_EXTRUSION_LAYER_ID,
 ] as const;
 
 /**
@@ -57,8 +62,11 @@ export const INSPECTABLE_LAYER_IDS = [
  * a Class B airspace polygon: the user almost certainly meant the airport,
  * even though the airspace covers the same pixel.
  *
- * Airspace fill and line share the lowest rank so a click on the airspace
- * outline behaves identically to a click on the fill body.
+ * Airspace fill, line, and 3D extrusion share the lowest rank so a
+ * click on any of the three behaves identically - selecting the same
+ * underlying airspace whether the user clicked the ground footprint
+ * (fill / line in plan view) or a side wall / top face of the
+ * extruded box at high pitch.
  *
  * Adding a new inspectable layer requires adding a slot here; otherwise
  * the new layer's features will be silently skipped (the lookup returns
@@ -72,6 +80,7 @@ const LAYER_PRIORITY: Record<string, number> = {
   [AIRWAYS_LAYER_ID]: 3,
   [AIRSPACE_FILL_LAYER_ID]: 4,
   [AIRSPACE_LINE_LAYER_ID]: 4,
+  [AIRSPACE_FILL_EXTRUSION_LAYER_ID]: 4,
 };
 
 /**
@@ -233,7 +242,8 @@ export function selectedFromFeature(feature: InspectableFeature): string | undef
       return designation === undefined ? undefined : `airway:${designation}`;
     }
     case AIRSPACE_FILL_LAYER_ID:
-    case AIRSPACE_LINE_LAYER_ID: {
+    case AIRSPACE_LINE_LAYER_ID:
+    case AIRSPACE_FILL_EXTRUSION_LAYER_ID: {
       const type = readString(feature.properties, 'type');
       const identifier = readString(feature.properties, 'identifier');
       if (type === undefined || identifier === undefined) {
@@ -336,7 +346,8 @@ export function formatChipLabel(feature: InspectableFeature): string {
     case AIRWAYS_LAYER_ID:
       return readString(props, 'designation') ?? 'Airway';
     case AIRSPACE_FILL_LAYER_ID:
-    case AIRSPACE_LINE_LAYER_ID: {
+    case AIRSPACE_LINE_LAYER_ID:
+    case AIRSPACE_FILL_EXTRUSION_LAYER_ID: {
       const type = readString(props, 'type') ?? 'Airspace';
       const identifier = readString(props, 'identifier') ?? '';
       const name = readString(props, 'name') ?? '';
