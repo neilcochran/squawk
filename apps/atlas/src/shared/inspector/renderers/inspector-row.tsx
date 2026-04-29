@@ -43,14 +43,14 @@ export function InspectorRow({
     <div
       className={
         interactive
-          ? 'flex justify-between gap-3 rounded py-1.5 text-sm transition-colors hover:bg-slate-100'
+          ? 'flex justify-between gap-3 rounded py-1.5 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800'
           : 'flex justify-between gap-3 py-1.5 text-sm'
       }
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
     >
-      <dt className="shrink-0 text-slate-500">{label}</dt>
-      <dd className="text-right text-slate-900">{children}</dd>
+      <dt className="shrink-0 text-slate-500 dark:text-slate-400">{label}</dt>
+      <dd className="text-right text-slate-900 dark:text-slate-100">{children}</dd>
     </div>
   );
 }
@@ -97,8 +97,8 @@ export function InspectorSection({
     <section
       className={
         interactive
-          ? 'group relative border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-slate-100'
-          : 'border-b border-slate-100 px-4 py-3 last:border-b-0'
+          ? 'group relative border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
+          : 'border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800'
       }
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
@@ -106,10 +106,12 @@ export function InspectorSection({
       {interactive ? (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-indigo-500 opacity-0 transition-opacity group-hover:opacity-100"
+          className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-indigo-500 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-indigo-400"
         />
       ) : null}
-      <h3 className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">{title}</h3>
+      <h3 className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+        {title}
+      </h3>
       <dl>{children}</dl>
     </section>
   );

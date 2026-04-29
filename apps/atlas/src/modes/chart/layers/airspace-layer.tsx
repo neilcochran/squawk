@@ -8,10 +8,11 @@ import type { Feature, FeatureCollection } from 'geojson';
 import { polygonGeoJson } from '@squawk/geo';
 import type { AirspaceType } from '@squawk/types';
 import { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
-import {
-  CHART_AIRSPACE_BADGE_COLORS,
-  CHART_AIRSPACE_COLORS,
-  CHART_HIGHLIGHT_COLORS,
+import { useChartColors } from '../../../shared/styles/chart-colors.ts';
+import type {
+  ChartAirspaceBadgeColors,
+  ChartAirspaceColors,
+  ChartHighlightColors,
 } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef, useHoveredFeatureIndex } from '../highlight-context.ts';
 import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
@@ -65,11 +66,22 @@ const TOP_OF_STACK_LAYER_IDS = [
 ] as const;
 
 /**
- * MapLibre image id for the diagonal hatch pattern used by the
- * highlight fill. Registered once per map instance via `addImage` and
- * referenced by name from the layer's `fill-pattern` paint property.
+ * Base name for the diagonal hatch pattern image used by the highlight
+ * fill. The actual MapLibre image id is suffixed with the highlight
+ * color so a theme switch registers a fresh image instead of reusing
+ * the stale one from the previous palette - MapLibre's `hasImage`
+ * short-circuit would otherwise keep the original color forever.
  */
-const HATCH_IMAGE_ID = 'atlas-airspace-hatch';
+const HATCH_IMAGE_BASE_ID = 'atlas-airspace-hatch';
+
+/**
+ * Builds the MapLibre image id for the hatch pattern, suffixed by the
+ * highlight color so light and dark themes reference distinct images
+ * and a theme switch never sees a stale color through `hasImage`.
+ */
+function hatchImageId(highlightPrimary: string): string {
+  return `${HATCH_IMAGE_BASE_ID}-${highlightPrimary}`;
+}
 
 /**
  * Synthetic per-feature property added at source-projection time so the
@@ -153,174 +165,46 @@ const MATCH_NONE_FILTER: ExpressionSpecification = [
 ];
 
 /**
- * Highlight overlay for the currently-selected (or chip-hovered) airspace.
- * Thick yellow stroke makes the active polygon pop against the basemap and
- * against neighbouring airspaces of the same type.
- */
-const AIRSPACE_HIGHLIGHT_LAYER_BASE: LayerProps = {
-  id: AIRSPACE_HIGHLIGHT_LAYER_ID,
-  source: AIRSPACE_SOURCE_ID,
-  type: 'line',
-  layout: {
-    'line-cap': 'round',
-    'line-join': 'round',
-  },
-  paint: {
-    'line-color': CHART_HIGHLIGHT_COLORS.primary,
-    'line-width': 3,
-    'line-opacity': 1,
-  },
-};
-
-/**
- * Cross-hatched fill rendered across the entire interior of the
- * highlighted airspace. Lives on top of the regular tinted fill so the
- * underlying class color stays visible underneath; rendered at moderate
- * opacity so dense overlapping selections do not wash out the basemap.
+ * Builds the MapLibre `match` expression that maps airspace type to
+ * color. Shared between the fill and outline layers so they always
+ * agree. Covers every `AirspaceType` value the dataset emits; the
+ * trailing string is the default fallback for any unrecognized future
+ * type. Class E subtypes (E2 through E7) all share a single pink,
+ * mirroring how sectional charts use a magenta family for every Class
+ * E variant.
  *
- * Without this layer, panning so the polygon's outline goes offscreen
- * would leave the user with no visual indicator of which airspace is
- * selected (the yellow outline alone is offscreen). With the hatch,
- * the visible portion of the polygon shows the pattern, anchoring the
- * selection even at extreme zooms.
+ * Built per-render from the resolved palette so a theme switch flips
+ * every airspace fill/outline color in lockstep.
  */
-const AIRSPACE_HIGHLIGHT_FILL_LAYER_BASE: LayerProps = {
-  id: AIRSPACE_HIGHLIGHT_FILL_LAYER_ID,
-  source: AIRSPACE_SOURCE_ID,
-  type: 'fill',
-  paint: {
-    'fill-pattern': HATCH_IMAGE_ID,
-    'fill-opacity': 0.6,
-  },
-};
-
-/**
- * Per-feature focus outline. Rendered on top of the entity-level
- * highlight stroke so the hovered feature stands out from its
- * siblings. Brighter, lighter yellow + slightly thicker line so the
- * eye registers it as "the one". Filter is empty (matches nothing)
- * when no inspector section is hovered.
- */
-const AIRSPACE_FEATURE_FOCUS_LAYER_BASE: LayerProps = {
-  id: AIRSPACE_FEATURE_FOCUS_LAYER_ID,
-  source: AIRSPACE_SOURCE_ID,
-  type: 'line',
-  layout: {
-    'line-cap': 'round',
-    'line-join': 'round',
-  },
-  paint: {
-    'line-color': CHART_HIGHLIGHT_COLORS.focusOutline,
-    'line-width': 5,
-    'line-opacity': 1,
-  },
-};
-
-/**
- * Per-feature badge label rendered at each polygon centroid. Symbol
- * layers default to point-placement on Polygon source features, so
- * MapLibre auto-positions the label at the polygon's representative
- * point without a separate Point source. The dark halo gives the text
- * legibility against any basemap or fill underneath. Filter is empty
- * when no airspace is selected or when the selected airspace has only
- * one feature (single-feature airspaces need no disambiguation).
- */
-const AIRSPACE_FEATURE_BADGE_LAYER_BASE: LayerProps = {
-  id: AIRSPACE_FEATURE_BADGE_LAYER_ID,
-  source: AIRSPACE_SOURCE_ID,
-  type: 'symbol',
-  layout: {
-    'text-field': ['get', AIRSPACE_FEATURE_LABEL_PROPERTY],
-    'text-font': ['Noto Sans Bold'],
-    'text-size': 13,
-    // Per-feature offset attached at projection time. Distributes
-    // badges into a vertical column centered on the polygon centroid
-    // so concentric rings (Class B) and stacked strata (ARTCC) -
-    // whose centroids would otherwise sit on the same pixel - end
-    // up readable at any zoom.
-    'text-offset': ['get', AIRSPACE_BADGE_OFFSET_PROPERTY],
-    'text-allow-overlap': true,
-    'text-ignore-placement': true,
-  },
-  paint: {
-    'text-color': CHART_AIRSPACE_BADGE_COLORS.text,
-    'text-halo-color': CHART_AIRSPACE_BADGE_COLORS.halo,
-    'text-halo-width': 2.5,
-  },
-};
-
-/**
- * MapLibre `match` expression mapping airspace type to color. Shared
- * between the fill and outline layers so they always agree. Covers every
- * `AirspaceType` value the dataset emits; the trailing string is the
- * default fallback for any unrecognized future type.
- *
- * Class E subtypes (E2 through E7) all share a single pink, mirroring how
- * sectional charts use a magenta family for every Class E variant.
- */
-const TYPE_COLOR_EXPRESSION = [
-  'match',
-  ['get', 'type'],
-  'CLASS_B',
-  CHART_AIRSPACE_COLORS.classB,
-  'CLASS_C',
-  CHART_AIRSPACE_COLORS.classC,
-  'CLASS_D',
-  CHART_AIRSPACE_COLORS.classD,
-  ['CLASS_E2', 'CLASS_E3', 'CLASS_E4', 'CLASS_E5', 'CLASS_E6', 'CLASS_E7'],
-  CHART_AIRSPACE_COLORS.classE,
-  'MOA',
-  CHART_AIRSPACE_COLORS.moa,
-  'RESTRICTED',
-  CHART_AIRSPACE_COLORS.restricted,
-  'PROHIBITED',
-  CHART_AIRSPACE_COLORS.prohibited,
-  'WARNING',
-  CHART_AIRSPACE_COLORS.warning,
-  'ALERT',
-  CHART_AIRSPACE_COLORS.alert,
-  'NSA',
-  CHART_AIRSPACE_COLORS.nsa,
-  'ARTCC',
-  CHART_AIRSPACE_COLORS.artcc,
-  CHART_AIRSPACE_COLORS.fallback,
-] satisfies ExpressionSpecification;
-
-/**
- * Polygon fill layer styling, sans filter. Uses a low alpha so airspace
- * boundaries read as gentle tints rather than dominant blocks of color,
- * leaving the basemap and other overlays legible. The visibility filter is
- * built per-render from the active `airspaceClasses` URL state.
- */
-const AIRSPACE_FILL_LAYER_BASE: LayerProps = {
-  id: AIRSPACE_FILL_LAYER_ID,
-  source: AIRSPACE_SOURCE_ID,
-  type: 'fill',
-  paint: {
-    'fill-color': TYPE_COLOR_EXPRESSION,
-    'fill-opacity': 0.08,
-  },
-};
-
-/**
- * Polygon outline layer styling, sans filter. Stroke color matches the
- * fill so each airspace is visually a single unit; stroke is thin so
- * dense areas do not clutter.
- */
-const AIRSPACE_LINE_LAYER_BASE: LayerProps = {
-  id: AIRSPACE_LINE_LAYER_ID,
-  source: AIRSPACE_SOURCE_ID,
-  type: 'line',
-  layout: {
-    'line-cap': 'round',
-    'line-join': 'round',
-  },
-  paint: {
-    'line-color': TYPE_COLOR_EXPRESSION,
-    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.6, 8, 1.2, 12, 2],
-    'line-opacity': 0.7,
-  },
-};
+function buildTypeColorExpression(airspace: ChartAirspaceColors): ExpressionSpecification {
+  return [
+    'match',
+    ['get', 'type'],
+    'CLASS_B',
+    airspace.classB,
+    'CLASS_C',
+    airspace.classC,
+    'CLASS_D',
+    airspace.classD,
+    ['CLASS_E2', 'CLASS_E3', 'CLASS_E4', 'CLASS_E5', 'CLASS_E6', 'CLASS_E7'],
+    airspace.classE,
+    'MOA',
+    airspace.moa,
+    'RESTRICTED',
+    airspace.restricted,
+    'PROHIBITED',
+    airspace.prohibited,
+    'WARNING',
+    airspace.warning,
+    'ALERT',
+    airspace.alert,
+    'NSA',
+    airspace.nsa,
+    'ARTCC',
+    airspace.artcc,
+    airspace.fallback,
+  ];
+}
 
 /**
  * Chart-mode overlay that renders airspace polygons from
@@ -337,6 +221,8 @@ export function AirspaceLayer(): ReactElement | null {
   const { airspaceClasses } = route.useSearch();
   const state = useAirspaceDataset();
   const activeRef = useActiveHighlightRef();
+  const colors = useChartColors();
+  const hatchId = hatchImageId(colors.highlight.primary);
 
   const enabledTypes = useMemo<readonly AirspaceType[]>(
     () => airspaceClasses.flatMap((cls) => AIRSPACE_CLASS_TYPES[cls]),
@@ -348,14 +234,44 @@ export function AirspaceLayer(): ReactElement | null {
     [enabledTypes],
   );
 
+  // Polygon fill layer. Uses a low alpha so airspace boundaries read
+  // as gentle tints rather than dominant blocks of color, leaving the
+  // basemap and other overlays legible. Re-memoized when the resolved
+  // palette flips so the type-color expression follows the theme.
   const fillLayerProps = useMemo<LayerProps>(
-    () => ({ ...AIRSPACE_FILL_LAYER_BASE, filter }),
-    [filter],
+    () => ({
+      id: AIRSPACE_FILL_LAYER_ID,
+      source: AIRSPACE_SOURCE_ID,
+      type: 'fill',
+      filter,
+      paint: {
+        'fill-color': buildTypeColorExpression(colors.airspace),
+        'fill-opacity': 0.08,
+      },
+    }),
+    [filter, colors],
   );
 
+  // Polygon outline layer. Stroke color matches the fill so each
+  // airspace reads as a single unit; stroke is thin so dense areas do
+  // not clutter.
   const lineLayerProps = useMemo<LayerProps>(
-    () => ({ ...AIRSPACE_LINE_LAYER_BASE, filter }),
-    [filter],
+    () => ({
+      id: AIRSPACE_LINE_LAYER_ID,
+      source: AIRSPACE_SOURCE_ID,
+      type: 'line',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+      },
+      filter,
+      paint: {
+        'line-color': buildTypeColorExpression(colors.airspace),
+        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.6, 8, 1.2, 12, 2],
+        'line-opacity': 0.7,
+      },
+    }),
+    [filter, colors],
   );
 
   // Project the source dataset to add a synthetic match-key property
@@ -377,21 +293,55 @@ export function AirspaceLayer(): ReactElement | null {
     return MATCH_NONE_FILTER;
   }, [activeRef]);
 
+  // Highlight outline overlay for the currently-selected (or
+  // chip-hovered) airspace. Thick yellow stroke makes the active
+  // polygon pop against the basemap and against neighbouring
+  // airspaces of the same type.
   const highlightLayerProps = useMemo<LayerProps>(
-    () => ({ ...AIRSPACE_HIGHLIGHT_LAYER_BASE, filter: highlightFilter }),
-    [highlightFilter],
+    () => ({
+      id: AIRSPACE_HIGHLIGHT_LAYER_ID,
+      source: AIRSPACE_SOURCE_ID,
+      type: 'line',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+      },
+      filter: highlightFilter,
+      paint: {
+        'line-color': colors.highlight.primary,
+        'line-width': 3,
+        'line-opacity': 1,
+      },
+    }),
+    [highlightFilter, colors],
   );
 
+  // Cross-hatched fill rendered across the entire interior of the
+  // highlighted airspace. Lives on top of the regular tinted fill so
+  // the underlying class color stays visible underneath; rendered at
+  // moderate opacity so dense overlapping selections do not wash out
+  // the basemap. Without this layer, panning so the polygon's outline
+  // goes offscreen would leave the user with no visual indicator of
+  // which airspace is selected.
   const highlightFillLayerProps = useMemo<LayerProps>(
-    () => ({ ...AIRSPACE_HIGHLIGHT_FILL_LAYER_BASE, filter: highlightFilter }),
-    [highlightFilter],
+    () => ({
+      id: AIRSPACE_HIGHLIGHT_FILL_LAYER_ID,
+      source: AIRSPACE_SOURCE_ID,
+      type: 'fill',
+      filter: highlightFilter,
+      paint: {
+        'fill-pattern': hatchId,
+        'fill-opacity': 0.6,
+      },
+    }),
+    [highlightFilter, hatchId],
   );
 
-  // Register the hatch pattern image once per map instance. The fill
-  // layer references it by name; if the image is missing MapLibre
-  // silently skips the fill, so a slight delay between mount and
-  // pattern-load is harmless.
-  useHatchPatternImage();
+  // Register the hatch pattern image once per map instance per theme.
+  // The fill layer references the per-theme image by name; if the
+  // image is missing MapLibre silently skips the fill, so a slight
+  // delay between mount and pattern-load is harmless.
+  useHatchPatternImage(hatchId, colors.highlight.primary);
 
   if (state.status !== 'loaded' || sourceData === undefined) {
     return null;
@@ -423,6 +373,7 @@ export function AirspaceFeatureOverlayLayers(): ReactElement | null {
   const state = useAirspaceDataset();
   const activeRef = useActiveHighlightRef();
   const hoveredFeatureIndex = useHoveredFeatureIndex();
+  const colors = useChartColors();
 
   // Badge filter: visible when an airspace with 2+ features is the
   // active selection. Single-feature airspaces don't need disambiguation
@@ -438,9 +389,17 @@ export function AirspaceFeatureOverlayLayers(): ReactElement | null {
     return MATCH_NONE_FILTER;
   }, [activeRef]);
 
+  // Per-feature badge label rendered at each polygon centroid. Symbol
+  // layers default to point-placement on Polygon source features, so
+  // MapLibre auto-positions the label at the polygon's representative
+  // point without a separate Point source. The dark halo gives the
+  // text legibility against any basemap or fill underneath. Filter is
+  // empty when no airspace is selected or when the selected airspace
+  // has only one feature (single-feature airspaces need no
+  // disambiguation).
   const badgeLayerProps = useMemo<LayerProps>(
-    () => ({ ...AIRSPACE_FEATURE_BADGE_LAYER_BASE, filter: badgeFilter }),
-    [badgeFilter],
+    () => buildBadgeLayerProps(badgeFilter, colors.airspaceBadge),
+    [badgeFilter, colors],
   );
 
   // Feature-focus filter: matches the polygon whose inspector section
@@ -462,9 +421,14 @@ export function AirspaceFeatureOverlayLayers(): ReactElement | null {
     return MATCH_NONE_FILTER;
   }, [activeRef, hoveredFeatureIndex]);
 
+  // Per-feature focus outline. Rendered on top of the entity-level
+  // highlight stroke so the hovered feature stands out from its
+  // siblings. Brighter, lighter yellow + slightly thicker line so the
+  // eye registers it as "the one". Filter is empty (matches nothing)
+  // when no inspector section is hovered.
   const featureFocusLayerProps = useMemo<LayerProps>(
-    () => ({ ...AIRSPACE_FEATURE_FOCUS_LAYER_BASE, filter: featureFocusFilter }),
-    [featureFocusFilter],
+    () => buildFeatureFocusLayerProps(featureFocusFilter, colors.highlight),
+    [featureFocusFilter, colors],
   );
 
   // Force the focus + badge layers to the very top of MapLibre's layer
@@ -527,17 +491,79 @@ function useTopOfStack(layerIds: readonly string[]): void {
 }
 
 /**
- * Registers the cross-hatch pattern image with the underlying MapLibre
- * map exactly once per style load. The fill-pattern layer above
- * references the image by name, so the image must exist before the
- * layer paints (MapLibre silently skips fill-pattern when the image is
- * missing, then re-paints once it lands).
- *
- * Subscribes to `styledata` so the image is re-registered if the style
- * is reloaded (e.g. on basemap swap). `hasImage` short-circuits the
- * common "already there" case so we only allocate the canvas once.
+ * Builds the {@link LayerProps} for the per-feature focus outline,
+ * sourcing the line color from the resolved highlight palette so a
+ * theme switch flips the focused-polygon outline along with the rest
+ * of the highlight chrome.
  */
-function useHatchPatternImage(): void {
+function buildFeatureFocusLayerProps(
+  filter: ExpressionSpecification,
+  highlight: ChartHighlightColors,
+): LayerProps {
+  return {
+    id: AIRSPACE_FEATURE_FOCUS_LAYER_ID,
+    source: AIRSPACE_SOURCE_ID,
+    type: 'line',
+    layout: {
+      'line-cap': 'round',
+      'line-join': 'round',
+    },
+    filter,
+    paint: {
+      'line-color': highlight.focusOutline,
+      'line-width': 5,
+      'line-opacity': 1,
+    },
+  };
+}
+
+/**
+ * Builds the {@link LayerProps} for the per-feature badge label,
+ * sourcing the text and halo colors from the resolved badge palette.
+ */
+function buildBadgeLayerProps(
+  filter: ExpressionSpecification,
+  badge: ChartAirspaceBadgeColors,
+): LayerProps {
+  return {
+    id: AIRSPACE_FEATURE_BADGE_LAYER_ID,
+    source: AIRSPACE_SOURCE_ID,
+    type: 'symbol',
+    layout: {
+      'text-field': ['get', AIRSPACE_FEATURE_LABEL_PROPERTY],
+      'text-font': ['Noto Sans Bold'],
+      'text-size': 13,
+      // Per-feature offset attached at projection time. Distributes
+      // badges into a vertical column centered on the polygon
+      // centroid so concentric rings (Class B) and stacked strata
+      // (ARTCC) - whose centroids would otherwise sit on the same
+      // pixel - end up readable at any zoom.
+      'text-offset': ['get', AIRSPACE_BADGE_OFFSET_PROPERTY],
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    filter,
+    paint: {
+      'text-color': badge.text,
+      'text-halo-color': badge.halo,
+      'text-halo-width': 2.5,
+    },
+  };
+}
+
+/**
+ * Registers the cross-hatch pattern image with the underlying MapLibre
+ * map. The fill-pattern layer above references the image by name, so
+ * the image must exist before the layer paints (MapLibre silently
+ * skips fill-pattern when the image is missing, then re-paints once
+ * it lands).
+ *
+ * The image id is suffixed by the highlight color, so a theme switch
+ * registers a fresh image with the new color rather than reusing a
+ * stale one through `hasImage`. Subscribes to `styledata` so the image
+ * is re-registered if the style is reloaded (e.g. on basemap swap).
+ */
+function useHatchPatternImage(imageId: string, primary: string): void {
   const map = useMap();
   const mapRef = map.current ?? map.default;
   useEffect((): (() => void) | undefined => {
@@ -546,14 +572,14 @@ function useHatchPatternImage(): void {
     }
     const m = mapRef.getMap();
     function ensurePattern(): void {
-      if (m.hasImage(HATCH_IMAGE_ID)) {
+      if (m.hasImage(imageId)) {
         return;
       }
-      const image = createHatchPatternImage();
+      const image = createHatchPatternImage(primary);
       if (image === undefined) {
         return;
       }
-      m.addImage(HATCH_IMAGE_ID, image);
+      m.addImage(imageId, image);
     }
     if (m.isStyleLoaded()) {
       ensurePattern();
@@ -562,18 +588,18 @@ function useHatchPatternImage(): void {
     return (): void => {
       m.off('styledata', ensurePattern);
     };
-  }, [mapRef]);
+  }, [mapRef, imageId, primary]);
 }
 
 /**
- * Builds an 8x8 cross-hatch pattern image (yellow diagonal stripes on a
- * transparent background) used as the highlight fill. Returns undefined
- * if the canvas 2D context is unavailable (e.g. in a non-DOM test
- * environment).
+ * Builds an 8x8 cross-hatch pattern image (diagonal stripes in the
+ * supplied stroke color on a transparent background) used as the
+ * highlight fill. Returns undefined if the canvas 2D context is
+ * unavailable (e.g. in a non-DOM test environment).
  */
-function createHatchPatternImage():
-  | { width: number; height: number; data: Uint8Array }
-  | undefined {
+function createHatchPatternImage(
+  strokeColor: string,
+): { width: number; height: number; data: Uint8Array } | undefined {
   if (typeof document === 'undefined') {
     return undefined;
   }
@@ -585,7 +611,7 @@ function createHatchPatternImage():
   if (ctx === null) {
     return undefined;
   }
-  ctx.strokeStyle = CHART_HIGHLIGHT_COLORS.primary;
+  ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 1.5;
   ctx.lineCap = 'square';
   // Three diagonal segments so the pattern tiles seamlessly across

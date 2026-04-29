@@ -1,6 +1,21 @@
 @import 'tailwindcss';
 
 /*
+ * Class-based dark variant. Tailwind v4's default dark variant resolves
+ * via the `prefers-color-scheme` media query, which leaves no room for
+ * a user-driven toggle. The custom variant below activates the `dark:`
+ * utility for any element nested under `<html class="dark">` (or that
+ * carries `.dark` itself), so the in-app theme switcher in the shell
+ * can flip themes by writing the class to `documentElement` regardless
+ * of the OS preference.
+ *
+ * The `:where()` wrapper keeps the variant's selector specificity at
+ * zero so author classes (and the bare `dark:` prefix) continue to win
+ * the cascade as Tailwind users expect.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * Atlas-specific Tailwind theme extensions. Each `--spacing-*` entry
  * extends Tailwind's spacing scale and is reachable via every spacing
  * utility (`w-*`, `h-*`, `p-*`, `m-*`, `min-w-*`, etc.). Add a token
