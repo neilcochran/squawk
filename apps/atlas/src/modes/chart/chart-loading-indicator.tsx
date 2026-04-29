@@ -6,6 +6,7 @@ import { useAirspaceDataset } from '../../shared/data/airspace-dataset.ts';
 import { useAirwayDataset } from '../../shared/data/airway-dataset.ts';
 import { useFixDataset } from '../../shared/data/fix-dataset.ts';
 import { useNavaidDataset } from '../../shared/data/navaid-dataset.ts';
+import { FloatingPanel } from '../../shared/ui/floating-panel.tsx';
 
 /**
  * Brief hold after the map has finished painting before the card starts
@@ -150,7 +151,13 @@ export function ChartLoadingIndicator(): ReactElement | null {
         className="absolute inset-0 z-10 flex items-center justify-center bg-white/85 dark:bg-slate-950/85"
         role="alert"
       >
-        <div className="w-72 rounded-lg border border-red-200 bg-white px-5 py-4 text-center shadow-md dark:border-red-900 dark:bg-slate-900">
+        {/*
+         * Override the default slate border on FloatingPanel with red:
+         * the error variant is the only floating surface in the app
+         * with a red border, and the explicit override beats inventing
+         * a separate `<ErrorPanel>` primitive for one usage site.
+         */}
+        <FloatingPanel className="w-72 rounded-lg border-red-200 px-5 py-4 text-center shadow-md dark:border-red-900">
           <div className="text-sm font-medium text-red-700 dark:text-red-400">
             Couldn&apos;t load {erroredSlot.noun}.
           </div>
@@ -161,7 +168,7 @@ export function ChartLoadingIndicator(): ReactElement | null {
           >
             Reload
           </button>
-        </div>
+        </FloatingPanel>
       </div>
     );
   }
@@ -185,7 +192,7 @@ export function ChartLoadingIndicator(): ReactElement | null {
       role="status"
       aria-live="polite"
     >
-      <div className="flex w-72 items-center gap-3 rounded-lg border border-slate-200 bg-white px-5 py-3 shadow-md dark:border-slate-700 dark:bg-slate-900">
+      <FloatingPanel className="flex w-72 items-center gap-3 rounded-lg px-5 py-3 shadow-md">
         {complete ? (
           <span
             className="inline-block h-4 w-4 shrink-0 rounded-full bg-emerald-500"
@@ -198,7 +205,7 @@ export function ChartLoadingIndicator(): ReactElement | null {
           />
         )}
         <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{message}</span>
-      </div>
+      </FloatingPanel>
     </div>
   );
 }

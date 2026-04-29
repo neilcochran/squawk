@@ -1,8 +1,13 @@
 import { useEffect } from 'react';
 import type { ReactElement } from 'react';
-import type { Airway, AirwayWaypoint } from '@squawk/types';
+import type { Airway } from '@squawk/types';
 import { useSetHoveredAirwayWaypointIndex } from '../../../modes/chart/highlight-context.ts';
 import { useCanHover } from '../../styles/use-can-hover.ts';
+import {
+  formatAirwayRegion,
+  formatAirwayType,
+  formatAirwayWaypointAltitude,
+} from '../formatters.ts';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**
@@ -44,7 +49,7 @@ export function AirwayPanel({ record }: AirwayPanelProps): ReactElement {
     <>
       <InspectorSection title="Classification">
         <InspectorRow label="Type">{formatAirwayType(record.type)}</InspectorRow>
-        <InspectorRow label="Region">{formatRegion(record.region)}</InspectorRow>
+        <InspectorRow label="Region">{formatAirwayRegion(record.region)}</InspectorRow>
         <InspectorRow label="Waypoints">{record.waypoints.length}</InspectorRow>
       </InspectorSection>
       {record.waypoints.length > 0 ? (
@@ -58,74 +63,11 @@ export function AirwayPanel({ record }: AirwayPanelProps): ReactElement {
                 onPointerLeave: (): void => setHoveredAirwayWaypointIndex(undefined),
               })}
             >
-              {formatWaypointAltitude(waypoint)}
+              {formatAirwayWaypointAltitude(waypoint)}
             </InspectorRow>
           ))}
         </InspectorSection>
       ) : null}
     </>
   );
-}
-
-/** Converts the AirwayType discriminator to a sentence-cased label. */
-function formatAirwayType(type: Airway['type']): string {
-  switch (type) {
-    case 'VICTOR':
-      return 'Victor (low altitude)';
-    case 'JET':
-      return 'Jet (high altitude)';
-    case 'RNAV_T':
-      return 'RNAV T (low altitude)';
-    case 'RNAV_Q':
-      return 'RNAV Q (high altitude)';
-    case 'ATLANTIC':
-      return 'Atlantic';
-    case 'BAHAMA':
-      return 'Bahama';
-    case 'PACIFIC':
-      return 'Pacific';
-    case 'PUERTO_RICO':
-      return 'Puerto Rico';
-    case 'GREEN':
-      return 'Green';
-    case 'RED':
-      return 'Red';
-    case 'AMBER':
-      return 'Amber';
-    case 'BLUE':
-      return 'Blue';
-  }
-}
-
-/** Converts the AirwayRegion discriminator to a sentence-cased label. */
-function formatRegion(region: Airway['region']): string {
-  switch (region) {
-    case 'US':
-      return 'US';
-    case 'ALASKA':
-      return 'Alaska';
-    case 'HAWAII':
-      return 'Hawaii';
-  }
-}
-
-/**
- * Builds the right-hand cell for a waypoint row. Prefers `MEA / MAA` when
- * both are present, falls back to MEA alone, then MOCA, then a placeholder
- * em-style hyphen so empty rows still show a visible value column.
- */
-function formatWaypointAltitude(waypoint: AirwayWaypoint): string {
-  const mea = waypoint.minimumEnrouteAltitudeFt;
-  const maa = waypoint.maximumAuthorizedAltitudeFt;
-  const moca = waypoint.minimumObstructionClearanceAltitudeFt;
-  if (mea !== undefined && maa !== undefined) {
-    return `${mea} - ${maa}`;
-  }
-  if (mea !== undefined) {
-    return `MEA ${mea}`;
-  }
-  if (moca !== undefined) {
-    return `MOCA ${moca}`;
-  }
-  return '-';
 }
