@@ -31,6 +31,18 @@ export interface HighlightProviderProps {
    * mouseEnter / mouseLeave.
    */
   setHoveredFeatureIndex: (index: number | undefined) => void;
+  /**
+   * Index of the currently-hovered airway waypoint row within the
+   * active airway's `waypoints` array, or `undefined` when no
+   * inspector row is hovered. Drives the airway focus layer (waypoint
+   * dot + incoming leg) and the row-hover-pan hook.
+   */
+  hoveredAirwayWaypointIndex: number | undefined;
+  /**
+   * Callback the airway inspector panel calls on per-row
+   * mouseEnter / mouseLeave (hover-capable devices only).
+   */
+  setHoveredAirwayWaypointIndex: (index: number | undefined) => void;
   /** Children that may consume the context via the exported hooks. */
   children: ReactNode;
 }
@@ -49,6 +61,8 @@ export function HighlightProvider({
   setHoveredChipSelection,
   hoveredFeatureIndex,
   setHoveredFeatureIndex,
+  hoveredAirwayWaypointIndex,
+  setHoveredAirwayWaypointIndex,
   children,
 }: HighlightProviderProps): ReactElement {
   const value = useMemo<HighlightContextValue>(
@@ -57,8 +71,17 @@ export function HighlightProvider({
       setHoveredChipSelection,
       hoveredFeatureIndex,
       setHoveredFeatureIndex,
+      hoveredAirwayWaypointIndex,
+      setHoveredAirwayWaypointIndex,
     }),
-    [activeHighlight, setHoveredChipSelection, hoveredFeatureIndex, setHoveredFeatureIndex],
+    [
+      activeHighlight,
+      setHoveredChipSelection,
+      hoveredFeatureIndex,
+      setHoveredFeatureIndex,
+      hoveredAirwayWaypointIndex,
+      setHoveredAirwayWaypointIndex,
+    ],
   );
   return <HighlightContext.Provider value={value}>{children}</HighlightContext.Provider>;
 }

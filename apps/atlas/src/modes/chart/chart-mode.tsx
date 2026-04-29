@@ -17,7 +17,7 @@ import { ChartViewResetListener } from './view-reset-listener.tsx';
 import { LayerToggle } from './layer-toggle.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
 import { AirspaceFeatureOverlayLayers, AirspaceLayer } from './layers/airspace-layer.tsx';
-import { AirwaysLayer } from './layers/airways-layer.tsx';
+import { AirwayLegFocusLayer, AirwaysLayer } from './layers/airways-layer.tsx';
 import { FixesLayer } from './layers/fixes-layer.tsx';
 import { NavaidsLayer } from './layers/navaids-layer.tsx';
 import { CHART_ROUTE_PATH } from './url-state.ts';
@@ -82,6 +82,15 @@ export function ChartMode(): ReactElement {
   // mouseLeave; component-local because the hover state should not survive
   // refreshes or be shareable via URL.
   const [hoveredFeatureIndex, setHoveredFeatureIndex] = useState<number | undefined>(undefined);
+  // Index of the airway waypoint row that's currently hovered in the
+  // inspector, used by the airway focus layer to brighten the
+  // matching waypoint dot (and, when index > 0, its incoming leg) and
+  // by the row-hover-pan hook to ease the camera if that area is
+  // offscreen. Cleared on mouseLeave; component-local for the same
+  // reasons as `hoveredFeatureIndex`.
+  const [hoveredAirwayWaypointIndex, setHoveredAirwayWaypointIndex] = useState<number | undefined>(
+    undefined,
+  );
   // Snapshot of the most recent click that the click classifier ruled
   // ambiguous (e.g. an airway intersection or two close VORs at the
   // same pixel). Drives the disambiguation popover - when set, the
@@ -203,6 +212,8 @@ export function ChartMode(): ReactElement {
         setHoveredChipSelection={setHoveredChipSelection}
         hoveredFeatureIndex={hoveredFeatureIndex}
         setHoveredFeatureIndex={setHoveredFeatureIndex}
+        hoveredAirwayWaypointIndex={hoveredAirwayWaypointIndex}
+        setHoveredAirwayWaypointIndex={setHoveredAirwayWaypointIndex}
       >
         <MapCanvas
           lat={lat}
@@ -226,6 +237,14 @@ export function ChartMode(): ReactElement {
             symbols and get visually clipped.
           */}
           {layers.includes('airspace') ? <AirspaceFeatureOverlayLayers /> : null}
+          {/*
+            Airway-leg focus mounts after the airspace overlay so a
+            hovered leg's brighter stroke sits above every base layer
+            and above the airspace feature focus / badge stack. The
+            component returns null whenever the active selection is
+            not an airway, so it costs nothing for non-airway views.
+          */}
+          {layers.includes('airways') ? <AirwayLegFocusLayer /> : null}
         </MapCanvas>
         <InspectableHoverCursor />
         <ChartViewResetListener />

@@ -14,7 +14,7 @@ interface NavigateArg {
 }
 
 /** Subset of the search shape the toggle reads via `route.useSearch()`. */
-type ToggleSearch = Pick<ChartSearch, 'layers' | 'airspaceClasses' | 'airwayCategories'>;
+type ToggleSearch = Pick<ChartSearch, 'layers' | 'airspaceClasses' | 'airwayCategories' | 'zoom'>;
 
 const { useSearchMock, navigateMock } = vi.hoisted(() => ({
   useSearchMock: vi.fn<() => ToggleSearch>(),
@@ -144,12 +144,19 @@ function applyLatestSearchUpdate(prev: ChartSearch): ChartSearch {
   return lastCall[0].search(prev);
 }
 
-/** Builds a complete `ToggleSearch` with the all-on defaults plus overrides. */
+/**
+ * Builds a complete `ToggleSearch` with the all-on defaults plus overrides.
+ * The default `zoom` is intentionally above every threshold in `LAYER_MIN_ZOOM`
+ * so existing tests (which do not care about the zoom-gated hint) see no
+ * extra "Zoom N+" badges in their rendered rows. Hint-specific tests override
+ * `zoom` to a value below the threshold they want to exercise.
+ */
 function makeSearch(overrides: Partial<ToggleSearch> = {}): ToggleSearch {
   return {
     layers: [...LAYER_IDS],
     airspaceClasses: [...AIRSPACE_CLASSES],
     airwayCategories: [...AIRWAY_CATEGORIES],
+    zoom: 10,
     ...overrides,
   };
 }
@@ -502,5 +509,68 @@ describe('LayerToggle', () => {
       screen.queryByRole('menuitemcheckbox', { name: /low altitude/i }),
     ).not.toBeInTheDocument();
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  describe('zoom-gated hints', () => {
+    it('shows the hint on every gated row when current zoom is below all thresholds', () => {
+      // At zoom 4 (the chart-mode default), navaids (minzoom 5) and fixes
+      // (minzoom 7) are gated. Each row should advertise its own threshold
+      // so a user toggling that layer on knows when it will appear. Airways
+      // does not carry the hint here even though some of its features are
+      // zoom-gated internally - the layer always renders the major
+      // (HIGH-altitude) backbone, so toggling it on is never a "nothing
+      // happens" experience.
+      useSearchMock.mockReturnValue(makeSearch({ zoom: 4 }));
+      render(<LayerToggle />);
+
+      expect(within(getParentRow('fixes')).getByText('Zoom 7+')).toBeInTheDocument();
+      expect(within(getParentRow('navaids')).getByText('Zoom 5+')).toBeInTheDocument();
+      expect(within(getParentRow('airways')).queryByText(/Zoom \d+\+/)).toBeNull();
+    });
+
+    it('omits the hint for layers that have no minzoom regardless of current zoom', () => {
+      useSearchMock.mockReturnValue(makeSearch({ zoom: 4 }));
+      render(<LayerToggle />);
+
+      // airports, airspace, and airways have no entry in LAYER_MIN_ZOOM
+      // and must never carry the hint, even at the lowest zoom levels.
+      // (Airways gates non-major features internally; see the airways
+      // layer for the per-feature filter.)
+      expect(within(getParentRow('airports')).queryByText(/Zoom \d+\+/)).toBeNull();
+      expect(within(getParentRow('airspace')).queryByText(/Zoom \d+\+/)).toBeNull();
+      expect(within(getParentRow('airways')).queryByText(/Zoom \d+\+/)).toBeNull();
+    });
+
+    it('hides the hint once the current zoom has reached the layer threshold', () => {
+      // At zoom 5 the navaid gate has just opened (minzoom 5), so its
+      // hint disappears; fixes (minzoom 7) is still ahead. Airways
+      // never carries the hint at any zoom (gating is per-feature).
+      useSearchMock.mockReturnValue(makeSearch({ zoom: 5 }));
+      render(<LayerToggle />);
+
+      expect(within(getParentRow('navaids')).queryByText(/Zoom \d+\+/)).toBeNull();
+      expect(within(getParentRow('airways')).queryByText(/Zoom \d+\+/)).toBeNull();
+      expect(within(getParentRow('fixes')).getByText('Zoom 7+')).toBeInTheDocument();
+    });
+
+    it('hides the hint on every row when current zoom is above all thresholds', () => {
+      useSearchMock.mockReturnValue(makeSearch({ zoom: 12 }));
+      render(<LayerToggle />);
+
+      for (const id of ['airports', 'navaids', 'fixes', 'airways', 'airspace'] as const) {
+        expect(within(getParentRow(id)).queryByText(/Zoom \d+\+/)).toBeNull();
+      }
+    });
+
+    it('exposes the threshold to assistive tech via aria-label', () => {
+      useSearchMock.mockReturnValue(makeSearch({ zoom: 4 }));
+      render(<LayerToggle />);
+
+      // Screen readers benefit from the full sentence rather than the
+      // compact "Zoom 7+" glyph; aria-label is the canonical mechanism here.
+      expect(
+        within(getParentRow('fixes')).getByLabelText('Appears at zoom 7 and above'),
+      ).toBeInTheDocument();
+    });
   });
 });

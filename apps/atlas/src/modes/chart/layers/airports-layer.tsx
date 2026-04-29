@@ -108,31 +108,50 @@ const AIRPORTS_HIGHLIGHT_LAYER_BASE: LayerProps = {
 };
 
 /**
- * MapLibre layer styling. Radius interpolates by zoom and is gated by
- * runway length, so large airports stay visible at low zoom while smaller
- * fields appear as the user zooms in. Color separates major airports
- * (longest runway >= 8000 ft) from the rest.
+ * Per-tier zoom thresholds. An airport is visible at the current zoom
+ * iff its tier's threshold is met. A `circle-radius: 0` paint stop is
+ * not enough on its own - MapLibre still draws the 1px white stroke
+ * around a zero-radius circle, leaving thousands of speck-sized
+ * artifacts at CONUS zoom. The visibility filter on the layer below
+ * skips those features entirely so they neither paint nor respond to
+ * `queryRenderedFeatures`.
+ */
+const AIRPORT_MID_TIER_MIN_ZOOM = 6;
+/** Visibility threshold for the 3000-4999 ft tier. */
+const AIRPORT_SMALL_TIER_MIN_ZOOM = 9;
+/** Visibility threshold for the < 3000 ft tier. */
+const AIRPORT_TINY_TIER_MIN_ZOOM = 12;
+
+/**
+ * MapLibre layer styling. Visibility is gated by runway length: only
+ * 8000-ft+ airports show at low zoom, mid-size fields appear at z6,
+ * smaller ones at z9, and the long tail at z12. Color separates major
+ * airports (longest runway >= 8000 ft) from the rest.
+ *
+ * Within a single zoom stop every visible airport renders at the same
+ * radius - the visibility filter controls *whether* an airport is
+ * visible, while the radius interpolation only controls how big the
+ * dot grows as the user zooms in. So when 5000-ft airports appear at
+ * z6 they pop in at the same dot size as the 8000-ft airports already
+ * on screen, rather than as tinier sub-class specks.
  */
 const AIRPORTS_LAYER_PROPS: LayerProps = {
   id: AIRPORTS_LAYER_ID,
   source: AIRPORTS_SOURCE_ID,
   type: 'circle',
-  paint: {
-    'circle-radius': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      4,
-      ['case', ['>=', ['get', 'longestRunwayFt'], 8000], 2.5, 0],
-      6,
-      ['case', ['>=', ['get', 'longestRunwayFt'], 5000], 3, 1],
-      9,
-      ['case', ['>=', ['get', 'longestRunwayFt'], 3000], 4, 2],
-      12,
-      5,
-      16,
-      10,
+  filter: [
+    'any',
+    ['>=', ['get', 'longestRunwayFt'], 8000],
+    ['all', ['>=', ['zoom'], AIRPORT_MID_TIER_MIN_ZOOM], ['>=', ['get', 'longestRunwayFt'], 5000]],
+    [
+      'all',
+      ['>=', ['zoom'], AIRPORT_SMALL_TIER_MIN_ZOOM],
+      ['>=', ['get', 'longestRunwayFt'], 3000],
     ],
+    ['>=', ['zoom'], AIRPORT_TINY_TIER_MIN_ZOOM],
+  ],
+  paint: {
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 2.5, 6, 3, 9, 4, 12, 5, 16, 10],
     'circle-color': [
       'case',
       ['>=', ['get', 'longestRunwayFt'], 8000],

@@ -51,6 +51,8 @@ function withProvider(
         setHoveredChipSelection={setHoveredChipSelection}
         hoveredFeatureIndex={undefined}
         setHoveredFeatureIndex={vi.fn()}
+        hoveredAirwayWaypointIndex={undefined}
+        setHoveredAirwayWaypointIndex={vi.fn()}
       >
         {children}
       </HighlightProvider>
@@ -413,6 +415,81 @@ describe('DisambiguationPopover', () => {
     expect(handler).toBeDefined();
     handler?.();
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('orders airspace rows by altitude descending and keeps non-airspace rows ahead of them', () => {
+    // MapLibre's z-order returns points/lines before polygons, so a
+    // realistic candidate list looks like [airport, low MOA, high MOA].
+    // After the popover's sort, the airport stays first (it has no
+    // altitude key) and the airspace rows reorder to high-then-low so
+    // the popover reads top-down by altitude.
+    const airport = buildFeature(AIRPORTS_LAYER_ID, { faaId: 'BOS' });
+    const moaLow = buildFeature(AIRSPACE_FILL_LAYER_ID, {
+      type: 'MOA',
+      identifier: 'MEUREKAL',
+      __atlasFloorFt: 0,
+      __atlasFloorRef: 'SFC',
+      __atlasCeilingFt: 10000,
+      __atlasCeilingRef: 'MSL',
+    });
+    const moaHigh = buildFeature(AIRSPACE_FILL_LAYER_ID, {
+      type: 'MOA',
+      identifier: 'MEUREKAH',
+      __atlasFloorFt: 11000,
+      __atlasFloorRef: 'MSL',
+      __atlasCeilingFt: 18000,
+      __atlasCeilingRef: 'MSL',
+    });
+    render(
+      <DisambiguationPopover
+        screen={{ x: 0, y: 0 }}
+        candidates={[airport, moaLow, moaHigh]}
+        onSelect={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+      { wrapper: withProvider(vi.fn()) },
+    );
+
+    const rows = screen.getAllByRole('menuitem');
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveTextContent('BOS');
+    expect(rows[1]).toHaveTextContent('MEUREKAH');
+    expect(rows[2]).toHaveTextContent('MEUREKAL');
+  });
+
+  it('breaks airspace ties by floor descending so concentric Class B rings read outer-first', () => {
+    // Inner ring (10k/SFC) and outer ring (10k/3000 MSL) share a
+    // ceiling. The outer ring's higher floor should put it first when
+    // ceilings tie, matching the chart "altitude band, top down" model.
+    const innerRing = buildFeature(AIRSPACE_FILL_LAYER_ID, {
+      type: 'CLASS_B',
+      identifier: 'JFK-INNER',
+      __atlasFloorFt: 0,
+      __atlasFloorRef: 'SFC',
+      __atlasCeilingFt: 10000,
+      __atlasCeilingRef: 'MSL',
+    });
+    const outerRing = buildFeature(AIRSPACE_FILL_LAYER_ID, {
+      type: 'CLASS_B',
+      identifier: 'JFK-OUTER',
+      __atlasFloorFt: 3000,
+      __atlasFloorRef: 'MSL',
+      __atlasCeilingFt: 10000,
+      __atlasCeilingRef: 'MSL',
+    });
+    render(
+      <DisambiguationPopover
+        screen={{ x: 0, y: 0 }}
+        candidates={[innerRing, outerRing]}
+        onSelect={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+      { wrapper: withProvider(vi.fn()) },
+    );
+
+    const rows = screen.getAllByRole('menuitem');
+    expect(rows[0]).toHaveTextContent('JFK-OUTER');
+    expect(rows[1]).toHaveTextContent('JFK-INNER');
   });
 
   it('renders an altitude subtitle for airspace rows that distinguishes vertically-stacked features', () => {
