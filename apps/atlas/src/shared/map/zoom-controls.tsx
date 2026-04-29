@@ -1,6 +1,8 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
 import { useMap } from '@vis.gl/react-maplibre';
+import { FOCUS_RING_INSET_CLASSES } from '../styles/style-tokens.ts';
+import { FloatingPanel } from '../ui/floating-panel.tsx';
 import { MAP_MAX_PITCH } from './map-canvas.tsx';
 
 /** Animation duration for the +/- zoom transitions, in milliseconds. */
@@ -136,7 +138,7 @@ export function ZoomControls(): ReactElement {
   }, [mapRef]);
 
   return (
-    <div className="absolute bottom-10 left-3 z-10 flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900">
+    <FloatingPanel className="absolute bottom-10 left-3 z-10 flex flex-col overflow-hidden rounded-md shadow-md">
       <ZoomReadout zoom={currentZoom} />
       <div className="h-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
       <button
@@ -178,18 +180,18 @@ export function ZoomControls(): ReactElement {
       >
         <TiltDownIcon />
       </button>
-    </div>
+    </FloatingPanel>
   );
 }
 
 /**
- * Shared button styling for every control in the stack. Includes a Tailwind
- * `disabled:` variant block so at-bound buttons read as inert (lighter text,
- * not-allowed cursor, no hover wash) without losing their footprint in the
- * stack - keeping the control geometry stable at the bounds.
+ * Shared button styling for every control in the stack. Inset focus
+ * ring (so the ring sits flush against the panel edge), `disabled:`
+ * variants so at-bound buttons read as inert without losing their
+ * footprint, and a slightly larger desktop size (md:h-8 md:w-8) to
+ * match the panel's denser stacked layout.
  */
-const CONTROL_BUTTON_CLASS =
-  'flex h-11 w-11 items-center justify-center text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white md:h-8 md:w-8 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-500 dark:disabled:text-slate-600 dark:disabled:hover:bg-slate-900';
+const CONTROL_BUTTON_CLASS = `flex h-11 w-11 items-center justify-center text-slate-700 hover:bg-slate-50 ${FOCUS_RING_INSET_CLASSES} disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white md:h-8 md:w-8 dark:text-slate-200 dark:hover:bg-slate-800 dark:disabled:text-slate-600 dark:disabled:hover:bg-slate-900`;
 
 /**
  * Compact text formatter for the {@link ZoomReadout}: integer zooms

@@ -1,22 +1,19 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { useMap } from '@vis.gl/react-maplibre';
-import type { GeoJsonProperties } from 'geojson';
-import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
 import {
-  AIRSPACE_CEILING_FT_PROPERTY,
-  AIRSPACE_CEILING_REF_PROPERTY,
-  AIRSPACE_FILL_LAYER_ID,
-  AIRSPACE_FLOOR_FT_PROPERTY,
-  AIRSPACE_FLOOR_REF_PROPERTY,
-  AIRSPACE_LINE_LAYER_ID,
-} from './layers/airspace-layer.tsx';
+  compareAirspaceByAltitudeDesc,
+  formatAirspaceAltitudeRange,
+  readAirspaceAltitudeKey,
+} from '../../shared/inspector/airspace-feature.ts';
+import type { AirspaceAltitudeKey } from '../../shared/inspector/airspace-feature.ts';
+import { useCanHover } from '../../shared/styles/use-can-hover.ts';
+import { FLOATING_SURFACE_CLASSES } from '../../shared/styles/style-tokens.ts';
+import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
+import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
-import { useCanHover } from '../../shared/styles/use-can-hover.ts';
-import { compareAirspaceByAltitudeDesc } from '../../shared/inspector/airspace-feature.ts';
-import type { AirspaceAltitudeKey } from '../../shared/inspector/airspace-feature.ts';
 import { formatChipLabel, selectedFromFeature } from './click-to-select.ts';
 import type { InspectableFeature } from './click-to-select.ts';
 import { useSetHoveredChipSelection } from './highlight-context.ts';
@@ -136,7 +133,9 @@ export function DisambiguationPopover({
         label: formatChipLabel(feature),
         ...(subtitle !== undefined && { subtitle }),
       };
-      const altitudeKey = readAirspaceAltitudeKey(feature);
+      const altitudeKey = isAirspaceFeature(feature)
+        ? readAirspaceAltitudeKey(feature.properties)
+        : undefined;
       if (altitudeKey === undefined) {
         nonAirspace.push(entry);
       } else {
@@ -197,7 +196,7 @@ export function DisambiguationPopover({
       clampKey={entries.length}
       role="menu"
       aria-label="Select a feature"
-      className="absolute z-30 flex max-h-[70vh] min-w-[12.5rem] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
+      className={`absolute z-30 flex max-h-[70vh] max-w-[calc(100vw-1rem)] min-w-[12.5rem] flex-col overflow-hidden rounded-md shadow-lg ${FLOATING_SURFACE_CLASSES}`}
     >
       <p className="flex shrink-0 items-baseline justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 uppercase dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
         <span>Select a feature</span>
@@ -329,6 +328,15 @@ interface PopoverEntry {
 }
 
 /**
+ * Tiny predicate kept inline because it is only used in this module
+ * (the inspector reads its altitude key directly from the synthetic
+ * floor/ceiling primitives and does not need the layer-id check).
+ */
+function isAirspaceFeature(feature: InspectableFeature): boolean {
+  return feature.layer.id === AIRSPACE_FILL_LAYER_ID || feature.layer.id === AIRSPACE_LINE_LAYER_ID;
+}
+
+/**
  * Human-friendly type label for an inspectable feature, used as the
  * leading column of each popover row. Returns `undefined` for features
  * from layers the popover does not know how to label, which causes the
@@ -364,96 +372,8 @@ function featureTypeLabel(feature: InspectableFeature): string | undefined {
  * whose altitude bounds are missing or malformed.
  */
 function subtitleForFeature(feature: InspectableFeature): string | undefined {
-  if (feature.layer.id !== AIRSPACE_FILL_LAYER_ID && feature.layer.id !== AIRSPACE_LINE_LAYER_ID) {
+  if (!isAirspaceFeature(feature)) {
     return undefined;
   }
-  return readAirspaceAltitudeRange(feature.properties);
-}
-
-/**
- * Compact altitude bound for popover display.
- *
- * - SFC reference renders as the literal `SFC` (the value is always 0).
- * - MSL/AGL values land on a clean thousand render as `{N}k` (e.g.
- *   `11k`); other values render as `{N}ft` so an oddball "200 AGL"
- *   floor is not silently rounded.
- * - AGL values append the suffix; MSL is the implied default and
- *   stays bare to keep rows narrow.
- */
-function formatAltitudeBound(bound: { valueFt: number; reference: 'MSL' | 'AGL' | 'SFC' }): string {
-  if (bound.reference === 'SFC') {
-    return 'SFC';
-  }
-  const formatted = bound.valueFt % 1000 === 0 ? `${bound.valueFt / 1000}k` : `${bound.valueFt}ft`;
-  return bound.reference === 'AGL' ? `${formatted} AGL` : formatted;
-}
-
-/**
- * Reads the flat-primitive floor/ceiling properties added by
- * `projectAirspaceSource` and renders them as a compact range like
- * `11k-18k`. Reads primitives (not nested `{ valueFt, reference }`
- * objects) because MapLibre's GeoJSON worker pipeline does not
- * reliably round-trip nested objects through `queryRenderedFeatures`.
- *
- * Returns `undefined` when any required primitive is missing or has
- * an unexpected type - the popover row simply omits the subtitle in
- * that case.
- */
-function readAirspaceAltitudeRange(properties: GeoJsonProperties): string | undefined {
-  if (properties === null) {
-    return undefined;
-  }
-  const floor = readBoundPrimitives(
-    properties[AIRSPACE_FLOOR_FT_PROPERTY],
-    properties[AIRSPACE_FLOOR_REF_PROPERTY],
-  );
-  const ceiling = readBoundPrimitives(
-    properties[AIRSPACE_CEILING_FT_PROPERTY],
-    properties[AIRSPACE_CEILING_REF_PROPERTY],
-  );
-  if (floor === undefined || ceiling === undefined) {
-    return undefined;
-  }
-  return `${formatAltitudeBound(floor)}-${formatAltitudeBound(ceiling)}`;
-}
-
-/**
- * Validates a `(valueFt, reference)` primitive pair into an
- * `AltitudeBound` shape, defensively rejecting malformed inputs.
- */
-function readBoundPrimitives(
-  valueFt: unknown,
-  reference: unknown,
-): { valueFt: number; reference: 'MSL' | 'AGL' | 'SFC' } | undefined {
-  if (typeof valueFt !== 'number' || typeof reference !== 'string') {
-    return undefined;
-  }
-  if (reference !== 'MSL' && reference !== 'AGL' && reference !== 'SFC') {
-    return undefined;
-  }
-  return { valueFt, reference };
-}
-
-/**
- * Reads an {@link AirspaceAltitudeKey} from an airspace feature's
- * synthetic floor/ceiling primitive properties, used to drive the
- * altitude-descending sort. Returns `undefined` for non-airspace
- * features and for airspace features whose primitives are missing
- * - those rows fall through to the non-airspace bucket and keep
- * their natural MapLibre z-order position.
- */
-function readAirspaceAltitudeKey(feature: InspectableFeature): AirspaceAltitudeKey | undefined {
-  if (feature.layer.id !== AIRSPACE_FILL_LAYER_ID && feature.layer.id !== AIRSPACE_LINE_LAYER_ID) {
-    return undefined;
-  }
-  const props = feature.properties;
-  if (props === null) {
-    return undefined;
-  }
-  const ceilingFt = props[AIRSPACE_CEILING_FT_PROPERTY];
-  const floorFt = props[AIRSPACE_FLOOR_FT_PROPERTY];
-  if (typeof ceilingFt !== 'number' || typeof floorFt !== 'number') {
-    return undefined;
-  }
-  return { ceilingFt, floorFt };
+  return formatAirspaceAltitudeRange(feature.properties);
 }
