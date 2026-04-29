@@ -129,7 +129,10 @@ vi.mock('@radix-ui/react-dropdown-menu', () => {
       </div>
     );
   }
-  return { Root, Trigger, Portal, Content, CheckboxItem, ItemIndicator, Item };
+  function Separator({ className }: { className?: string }): ReactNode {
+    return <div role="separator" className={className} />;
+  }
+  return { Root, Trigger, Portal, Content, CheckboxItem, ItemIndicator, Item, Separator };
 });
 
 /**
