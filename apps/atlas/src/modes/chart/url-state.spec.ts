@@ -4,6 +4,7 @@ import {
   AIRWAY_CATEGORIES,
   CHART_DEFAULTS,
   LAYER_IDS,
+  LAYER_MIN_ZOOM,
   chartSearchSchema,
 } from './url-state.ts';
 
@@ -18,7 +19,7 @@ describe('chartSearchSchema', () => {
       ...input,
       pitch: CHART_DEFAULTS.pitch,
       layers: [...LAYER_IDS],
-      airspaceClasses: [...AIRSPACE_CLASSES],
+      airspaceClasses: [...CHART_DEFAULTS.airspaceClasses],
       airwayCategories: [...AIRWAY_CATEGORIES],
     });
   });
@@ -102,16 +103,17 @@ describe('chartSearchSchema', () => {
     expect(result.airspaceClasses).toEqual([]);
   });
 
-  it('falls back to all airspace classes when an unknown class appears', () => {
+  it('falls back to the default airspace classes when an unknown class appears', () => {
     const result = chartSearchSchema.parse({ airspaceClasses: ['CLASS_B', 'CLASS_E2'] });
     // CLASS_E2 is an underlying AirspaceType but not a user-facing class id;
-    // the schema treats it as unknown and falls back to the default.
-    expect(result.airspaceClasses).toEqual([...AIRSPACE_CLASSES]);
+    // the schema treats it as unknown and falls back to the default. The
+    // default is every user-facing class except ARTCC.
+    expect(result.airspaceClasses).toEqual([...CHART_DEFAULTS.airspaceClasses]);
   });
 
-  it('falls back to all airspace classes when airspaceClasses is not an array', () => {
+  it('falls back to the default airspace classes when airspaceClasses is not an array', () => {
     const result = chartSearchSchema.parse({ airspaceClasses: 'CLASS_B' });
-    expect(result.airspaceClasses).toEqual([...AIRSPACE_CLASSES]);
+    expect(result.airspaceClasses).toEqual([...CHART_DEFAULTS.airspaceClasses]);
   });
 
   it('preserves a valid subset of airway categories', () => {
@@ -152,5 +154,50 @@ describe('chartSearchSchema', () => {
     // boundary. Validation of the parsed string lives in entity.ts, not here.
     const result = chartSearchSchema.parse({ selected: ['airport:BOS'] });
     expect(result.selected).toBeUndefined();
+  });
+});
+
+describe('CHART_DEFAULTS', () => {
+  it('excludes ARTCC from the default airspace classes', () => {
+    // ARTCC sectors blanket the entire chart at the CONUS default zoom and
+    // visually drown out every other airspace tint, so they're opted out of
+    // the first-load view. The toggle still exposes ARTCC as an option, just
+    // not as a default.
+    expect(CHART_DEFAULTS.airspaceClasses).not.toContain('ARTCC');
+    expect(AIRSPACE_CLASSES).toContain('ARTCC');
+  });
+
+  it('includes every other airspace class in the defaults', () => {
+    // Every class besides ARTCC is in the default-on set. Re-asserting this
+    // here (rather than just trusting the filter expression) catches a
+    // future drift if someone reorders or renames a class without updating
+    // the default.
+    for (const cls of AIRSPACE_CLASSES) {
+      if (cls === 'ARTCC') {
+        continue;
+      }
+      expect(CHART_DEFAULTS.airspaceClasses).toContain(cls);
+    }
+  });
+});
+
+describe('LAYER_MIN_ZOOM', () => {
+  it('gates fixes at zoom 7 and below', () => {
+    expect(LAYER_MIN_ZOOM.fixes).toBe(7);
+  });
+
+  it('gates navaids at zoom 5 and below', () => {
+    expect(LAYER_MIN_ZOOM.navaids).toBe(5);
+  });
+
+  it('does not gate airports, airspace, or airways at the layer level', () => {
+    // Missing keys are the encoding for "no zoom gating"; the layer toggle
+    // and the MapLibre Layer both treat undefined as "render at every zoom".
+    // Airways are deliberately absent because the layer renders the
+    // high-altitude J / Q backbone at every zoom and gates the V/T web
+    // via an internal per-feature filter rather than a layer-level minzoom.
+    expect(LAYER_MIN_ZOOM.airports).toBeUndefined();
+    expect(LAYER_MIN_ZOOM.airspace).toBeUndefined();
+    expect(LAYER_MIN_ZOOM.airways).toBeUndefined();
   });
 });

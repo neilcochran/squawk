@@ -58,6 +58,11 @@ vi.mock('./entity-resolver.ts', () => ({
 vi.mock('../../modes/chart/highlight-context.ts', () => ({
   useSetHoveredChipSelection: () => setHoveredChipSelectionMock,
   useSetHoveredFeatureIndex: () => setHoveredFeatureIndexMock,
+  // Hooks the airway-panel + row-hover-pan use; tests do not exercise
+  // the airway-row hover code paths directly, so the value is
+  // undefined and the setter is a stable no-op stub.
+  useHoveredAirwayWaypointIndex: () => undefined,
+  useSetHoveredAirwayWaypointIndex: () => () => {},
 }));
 
 vi.mock('@vis.gl/react-maplibre', () => ({

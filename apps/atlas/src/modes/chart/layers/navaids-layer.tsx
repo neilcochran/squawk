@@ -12,6 +12,7 @@ import {
   CHART_SYMBOL_STROKE,
 } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
+import { LAYER_MIN_ZOOM } from '../url-state.ts';
 
 /**
  * Properties carried on each navaid point feature in the GeoJSON source.
@@ -50,12 +51,20 @@ const MATCH_NONE_FILTER: ExpressionSpecification = [
 /**
  * Highlight overlay for the currently-selected (or chip-hovered) navaid.
  * Mirrors the airport highlight (yellow + dark stroke) so the highlight
- * style is consistent across point layers.
+ * style is consistent across point layers. Inherits the same `minzoom`
+ * as the base layer so a stray highlight does not float over an empty
+ * viewport when the user is zoomed out below the threshold.
+ *
+ * `minzoom` is included via conditional spread so the property is omitted
+ * when {@link LAYER_MIN_ZOOM} carries no entry, satisfying
+ * `exactOptionalPropertyTypes` (which rejects an explicit `undefined` for
+ * an optional property).
  */
 const NAVAIDS_HIGHLIGHT_LAYER_BASE: LayerProps = {
   id: NAVAIDS_HIGHLIGHT_LAYER_ID,
   source: NAVAIDS_SOURCE_ID,
   type: 'circle',
+  ...(LAYER_MIN_ZOOM.navaids !== undefined && { minzoom: LAYER_MIN_ZOOM.navaids }),
   paint: {
     'circle-radius': 9,
     'circle-color': CHART_HIGHLIGHT_COLORS.primary,
@@ -108,32 +117,51 @@ function toFeatureCollection(records: Navaid[]): FeatureCollection<Point, Navaid
 }
 
 /**
- * MapLibre layer styling. Radius interpolates by zoom and is tiered by
- * navaid type so the IFR backbone (`VOR`, `VORTAC`, `VOR/DME`) stays
- * visible at low zoom while DMEs and NDBs only appear once the user has
- * zoomed in. Color uses a magenta hue to distinguish navaids from the
- * blue/slate airports layer at a glance.
+ * Visibility threshold for the second-tier navaid types (TACAN, DME).
+ * Below this zoom only the IFR-backbone primary types (VOR, VORTAC,
+ * VOR/DME) paint; from here on TACANs and DMEs join at the same dot
+ * size as the VOR they sit next to.
+ */
+const NAVAID_SECONDARY_TIER_MIN_ZOOM = 7;
+/** Visibility threshold for tertiary navaid types (NDB, NDB/DME). */
+const NAVAID_TERTIARY_TIER_MIN_ZOOM = 10;
+
+/**
+ * MapLibre layer styling. Visibility is gated by navaid type: the IFR
+ * backbone (VOR / VORTAC / VOR/DME) shows from the layer's `minzoom`,
+ * TACAN and DME join at z7, NDB and NDB/DME at z10. Color uses a
+ * magenta hue to distinguish navaids from the blue/slate airports
+ * layer at a glance.
+ *
+ * `minzoom` is sourced from the central {@link LAYER_MIN_ZOOM} table so
+ * the layer-toggle dropdown's "appears at z N+" hint and the actual
+ * paint cutoff stay in lockstep.
+ *
+ * Each tier appears at the same dot size as the tier(s) already on
+ * screen so a TACAN popping in at z7 is the same size as the VOR it
+ * sits next to, not a sub-class speck. Visibility runs through the
+ * layer's `filter` rather than a `circle-radius: 0` paint stop because
+ * MapLibre still draws the 1px white stroke around a zero-radius
+ * circle, and a chart at CONUS zoom would show thousands of speck-
+ * sized stroke artifacts otherwise.
  */
 const NAVAIDS_LAYER_PROPS: LayerProps = {
   id: NAVAIDS_LAYER_ID,
   source: NAVAIDS_SOURCE_ID,
   type: 'circle',
-  paint: {
-    'circle-radius': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      4,
-      ['match', ['get', 'type'], ['VOR', 'VORTAC', 'VOR/DME'], 2, 0],
-      6,
-      ['match', ['get', 'type'], ['VOR', 'VORTAC', 'VOR/DME'], 3, ['TACAN', 'DME'], 1.5, 0],
-      9,
-      ['match', ['get', 'type'], ['VOR', 'VORTAC', 'VOR/DME'], 4, 2.5],
-      12,
-      5,
-      16,
-      8,
+  ...(LAYER_MIN_ZOOM.navaids !== undefined && { minzoom: LAYER_MIN_ZOOM.navaids }),
+  filter: [
+    'any',
+    ['in', ['get', 'type'], ['literal', ['VOR', 'VORTAC', 'VOR/DME']]],
+    [
+      'all',
+      ['>=', ['zoom'], NAVAID_SECONDARY_TIER_MIN_ZOOM],
+      ['in', ['get', 'type'], ['literal', ['TACAN', 'DME']]],
     ],
+    ['>=', ['zoom'], NAVAID_TERTIARY_TIER_MIN_ZOOM],
+  ],
+  paint: {
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 4, 7, 5, 10, 6, 16, 10],
     'circle-color': CHART_NAVAID_COLOR,
     'circle-stroke-color': CHART_SYMBOL_STROKE,
     'circle-stroke-width': 1,

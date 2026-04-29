@@ -36,6 +36,26 @@ export interface HighlightContextValue {
    * to clear).
    */
   setHoveredFeatureIndex: (index: number | undefined) => void;
+  /**
+   * Index of the currently-hovered airway waypoint row within the
+   * active entity's `waypoints` array, or `undefined` when no row is
+   * hovered. The airway focus layer reads this to brighten the
+   * waypoint dot at `waypoints[i]` AND, when `i > 0`, the incoming
+   * leg from `waypoints[i - 1]` to `waypoints[i]`. Index `0` is the
+   * route's starting waypoint (no incoming leg, just the dot).
+   *
+   * Only meaningful for airway selections; ignored for other entity
+   * types.
+   */
+  hoveredAirwayWaypointIndex: number | undefined;
+  /**
+   * Sets the currently-hovered airway waypoint index. The airway
+   * inspector panel calls this on per-row mouseEnter / mouseLeave
+   * (with `undefined` to clear). Wired only on hover-capable devices
+   * via the inspector's existing `useCanHover()` gate so touch
+   * devices never fire it.
+   */
+  setHoveredAirwayWaypointIndex: (index: number | undefined) => void;
 }
 
 /**
@@ -87,6 +107,26 @@ export function useSetHoveredFeatureIndex(): (index: number | undefined) => void
   return ctx?.setHoveredFeatureIndex ?? noopFeatureIndexSetter;
 }
 
+/**
+ * Returns the index of the currently-hovered airway waypoint row
+ * within the active airway's `waypoints` array, or `undefined`.
+ * Consumed by the airway focus layer (which brightens the waypoint
+ * dot AND its incoming leg when index > 0) and by the row-hover-pan
+ * hook (which eases the camera if that area is offscreen).
+ */
+export function useHoveredAirwayWaypointIndex(): number | undefined {
+  return useContext(HighlightContext)?.hoveredAirwayWaypointIndex;
+}
+
+/**
+ * Returns the setter the airway inspector panel calls on per-row
+ * mouseEnter / mouseLeave. No-op when no provider is mounted.
+ */
+export function useSetHoveredAirwayWaypointIndex(): (index: number | undefined) => void {
+  const ctx = useContext(HighlightContext);
+  return ctx?.setHoveredAirwayWaypointIndex ?? noopWaypointIndexSetter;
+}
+
 /** Stable no-op setter used when the inspector renders without a provider. */
 function noopChipSelectionSetter(): void {
   // intentionally empty
@@ -94,5 +134,10 @@ function noopChipSelectionSetter(): void {
 
 /** Stable no-op feature-index setter used when no provider is mounted. */
 function noopFeatureIndexSetter(): void {
+  // intentionally empty
+}
+
+/** Stable no-op waypoint-index setter used when no provider is mounted. */
+function noopWaypointIndexSetter(): void {
   // intentionally empty
 }

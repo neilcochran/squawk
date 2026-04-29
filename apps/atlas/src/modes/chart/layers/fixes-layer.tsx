@@ -12,6 +12,7 @@ import {
   CHART_SYMBOL_STROKE,
 } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
+import { LAYER_MIN_ZOOM } from '../url-state.ts';
 
 /**
  * Properties carried on each fix point feature in the GeoJSON source.
@@ -50,11 +51,20 @@ const MATCH_NONE_FILTER: ExpressionSpecification = [
 /**
  * Highlight overlay for the currently-selected (or chip-hovered) fix.
  * Mirrors the airport / navaid highlight (yellow + dark stroke).
+ * Inherits the same `minzoom` as the base layer so a stray highlight
+ * does not float over an empty viewport when the user is zoomed out
+ * below the threshold.
+ *
+ * `minzoom` is included via conditional spread so the property is omitted
+ * when {@link LAYER_MIN_ZOOM} carries no entry, satisfying
+ * `exactOptionalPropertyTypes` (which rejects an explicit `undefined` for
+ * an optional property).
  */
 const FIXES_HIGHLIGHT_LAYER_BASE: LayerProps = {
   id: FIXES_HIGHLIGHT_LAYER_ID,
   source: FIXES_SOURCE_ID,
   type: 'circle',
+  ...(LAYER_MIN_ZOOM.fixes !== undefined && { minzoom: LAYER_MIN_ZOOM.fixes }),
   paint: {
     'circle-radius': 9,
     'circle-color': CHART_HIGHLIGHT_COLORS.primary,
@@ -102,32 +112,46 @@ function toFeatureCollection(records: Fix[]): FeatureCollection<Point, FixFeatur
 }
 
 /**
- * MapLibre layer styling. Radius interpolates by zoom and is tiered by
- * usage so compulsory reporting points appear earliest, then enroute
- * waypoints and reporting points, then military and other categories.
- * Color uses an amber hue to distinguish fixes from the blue airports
- * and magenta navaids layers.
+ * Visibility threshold for the secondary fix tier (military, VFR, NRS,
+ * MR, MW). At the layer's minzoom only compulsory reporting points and
+ * enroute waypoints (`WP` / `RP`) are visible; the remaining categories
+ * join from this zoom onward, at the same dot size as the WP they sit
+ * next to.
+ */
+const FIX_SECONDARY_TIER_MIN_ZOOM = 9;
+
+/**
+ * MapLibre layer styling. Visibility is gated by usage code: at the
+ * layer's minzoom only compulsory reporting points and enroute
+ * waypoints (`WP` / `RP`) paint, with the remaining categories
+ * joining at z9. Color uses an amber hue to distinguish fixes from
+ * the blue airports and magenta navaids layers.
+ *
+ * `minzoom` is sourced from the central {@link LAYER_MIN_ZOOM} table so
+ * the layer-toggle dropdown's "appears at z N+" hint and the actual
+ * paint cutoff stay in lockstep.
+ *
+ * Each tier appears at the same dot size as the tiers already on
+ * screen so a military or VFR fix popping in at z9 is the same size
+ * as the WP it sits next to, not a sub-class speck. Visibility runs
+ * through the layer's `filter` rather than a `circle-radius: 0` paint
+ * stop because MapLibre still draws the 0.75px white stroke around a
+ * zero-radius circle, and a chart at the layer's minzoom would show
+ * a fog of speck-sized stroke artifacts otherwise.
  */
 const FIXES_LAYER_PROPS: LayerProps = {
   id: FIXES_LAYER_ID,
   source: FIXES_SOURCE_ID,
   type: 'circle',
+  ...(LAYER_MIN_ZOOM.fixes !== undefined && { minzoom: LAYER_MIN_ZOOM.fixes }),
+  filter: [
+    'any',
+    ['get', 'compulsory'],
+    ['in', ['get', 'useCode'], ['literal', ['WP', 'RP']]],
+    ['>=', ['zoom'], FIX_SECONDARY_TIER_MIN_ZOOM],
+  ],
   paint: {
-    'circle-radius': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      5,
-      ['case', ['get', 'compulsory'], 1.5, 0],
-      7,
-      ['case', ['get', 'compulsory'], 2.5, ['match', ['get', 'useCode'], ['WP', 'RP'], 1.5, 0]],
-      9,
-      ['match', ['get', 'useCode'], ['WP', 'RP'], 2.5, 1.5],
-      12,
-      3,
-      16,
-      8,
-    ],
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 3, 9, 4, 12, 5, 16, 9],
     'circle-color': CHART_FIX_COLOR,
     'circle-stroke-color': CHART_SYMBOL_STROKE,
     'circle-stroke-width': 0.75,

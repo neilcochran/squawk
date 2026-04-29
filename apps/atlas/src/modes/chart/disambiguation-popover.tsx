@@ -15,6 +15,8 @@ import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
 import { useCanHover } from '../../shared/styles/use-can-hover.ts';
+import { compareAirspaceByAltitudeDesc } from '../../shared/inspector/airspace-feature.ts';
+import type { AirspaceAltitudeKey } from '../../shared/inspector/airspace-feature.ts';
 import { formatChipLabel, selectedFromFeature } from './click-to-select.ts';
 import type { InspectableFeature } from './click-to-select.ts';
 import { useSetHoveredChipSelection } from './highlight-context.ts';
@@ -101,9 +103,19 @@ export function DisambiguationPopover({
   // "11k-18k" or "SFC-10k") so two MOA components or ARTCC strata that
   // share an identical lateral polygon - and therefore an identical map
   // highlight - remain visually distinguishable in the list.
+  //
+  // Airspace rows are then sorted by altitude descending (highest
+  // ceiling first, floor as tie-break) so a stack of vertically-layered
+  // airspaces (Class B + ARTCC + Class E5; MOA HIGH + MOA LOW) reads
+  // top-down. Non-airspace rows keep their MapLibre z-order position
+  // since they have no altitude to sort against; in practice
+  // queryRenderedFeatures returns them ahead of airspace anyway, so
+  // the visible result is "points/lines first, then airspace by
+  // altitude".
   const entries = useMemo<readonly PopoverEntry[]>(() => {
     const seen = new Set<string>();
-    const result: PopoverEntry[] = [];
+    const nonAirspace: PopoverEntry[] = [];
+    const airspace: { entry: PopoverEntry; key: AirspaceAltitudeKey }[] = [];
     for (const feature of candidates) {
       const selection = selectedFromFeature(feature);
       if (selection === undefined) {
@@ -118,14 +130,21 @@ export function DisambiguationPopover({
       }
       seen.add(selection);
       const subtitle = subtitleForFeature(feature);
-      result.push({
+      const entry: PopoverEntry = {
         selection,
         type,
         label: formatChipLabel(feature),
         ...(subtitle !== undefined && { subtitle }),
-      });
+      };
+      const altitudeKey = readAirspaceAltitudeKey(feature);
+      if (altitudeKey === undefined) {
+        nonAirspace.push(entry);
+      } else {
+        airspace.push({ entry, key: altitudeKey });
+      }
     }
-    return result;
+    airspace.sort((a, b) => compareAirspaceByAltitudeDesc(a.key, b.key));
+    return [...nonAirspace, ...airspace.map((it) => it.entry)];
   }, [candidates]);
 
   useEffect((): (() => void) => {
@@ -413,4 +432,28 @@ function readBoundPrimitives(
     return undefined;
   }
   return { valueFt, reference };
+}
+
+/**
+ * Reads an {@link AirspaceAltitudeKey} from an airspace feature's
+ * synthetic floor/ceiling primitive properties, used to drive the
+ * altitude-descending sort. Returns `undefined` for non-airspace
+ * features and for airspace features whose primitives are missing
+ * - those rows fall through to the non-airspace bucket and keep
+ * their natural MapLibre z-order position.
+ */
+function readAirspaceAltitudeKey(feature: InspectableFeature): AirspaceAltitudeKey | undefined {
+  if (feature.layer.id !== AIRSPACE_FILL_LAYER_ID && feature.layer.id !== AIRSPACE_LINE_LAYER_ID) {
+    return undefined;
+  }
+  const props = feature.properties;
+  if (props === null) {
+    return undefined;
+  }
+  const ceilingFt = props[AIRSPACE_CEILING_FT_PROPERTY];
+  const floorFt = props[AIRSPACE_FLOOR_FT_PROPERTY];
+  if (typeof ceilingFt !== 'number' || typeof floorFt !== 'number') {
+    return undefined;
+  }
+  return { ceilingFt, floorFt };
 }
