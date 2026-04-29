@@ -74,7 +74,7 @@ const AIRWAYS_SOURCE_ID = 'atlas-airways';
 export const AIRWAYS_LAYER_ID = 'atlas-airways-line';
 
 /** MapLibre layer id for the airway selection-highlight overlay. */
-const AIRWAYS_HIGHLIGHT_LAYER_ID = 'atlas-airways-highlight';
+export const AIRWAYS_HIGHLIGHT_LAYER_ID = 'atlas-airways-highlight';
 
 /**
  * Filter expression that matches no feature. Used as the default for the

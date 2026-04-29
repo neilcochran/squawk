@@ -51,13 +51,21 @@ function protomapsSpriteUrl(theme: ResolvedTheme): string {
 }
 
 /**
- * Maximum pitch (in degrees) the map will accept. Raised above MapLibre's
- * default of 60 so the chart-mode tilt stepper in
- * `src/shared/map/zoom-controls.tsx` can climb one extra 15-degree step
- * past the default cap. Exported so the chrome can use the same value as
- * its upper bound and the two cannot drift.
+ * Maximum pitch (in degrees) the map will accept. Raised above
+ * MapLibre's default of 60 so the chart-mode tilt stepper in
+ * `src/shared/map/zoom-controls.tsx` can drive the camera close to a
+ * horizontal view, which is the natural endpoint when inspecting
+ * tall 3D airspace structures (Class B inverted wedding-cake, MOA
+ * stacks, restricted areas). MapLibre allows up to 180 in
+ * {@link MapOptions.maxPitch}, but 90 (camera parallel to ground)
+ * produces visual artifacts - the basemap stretches into the
+ * horizon, fill-extrusion side walls render unevenly, and the
+ * camera-distance-aware exaggeration breaks down. 85 is the
+ * sweet-spot near-horizontal view that keeps the projection clean.
+ * Exported so the chrome can use the same value as its upper bound
+ * and the two cannot drift.
  */
-export const MAP_MAX_PITCH = 75;
+export const MAP_MAX_PITCH = 85;
 
 /**
  * Builds the MapLibre `StyleSpecification` for the basemap matching

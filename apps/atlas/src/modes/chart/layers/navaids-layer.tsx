@@ -32,7 +32,7 @@ const NAVAIDS_SOURCE_ID = 'atlas-navaids';
 export const NAVAIDS_LAYER_ID = 'atlas-navaids-circle';
 
 /** MapLibre layer id for the navaid selection-highlight overlay. */
-const NAVAIDS_HIGHLIGHT_LAYER_ID = 'atlas-navaids-highlight';
+export const NAVAIDS_HIGHLIGHT_LAYER_ID = 'atlas-navaids-highlight';
 
 /**
  * Filter expression that matches no feature. Used as the default for the

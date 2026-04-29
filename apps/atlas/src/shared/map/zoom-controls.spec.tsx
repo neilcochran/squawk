@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { MAP_MAX_PITCH } from './map-canvas.tsx';
 import { ZoomControls } from './zoom-controls.tsx';
 
 const {
@@ -192,11 +193,11 @@ describe('ZoomControls', () => {
     expect(easeToMock).toHaveBeenCalledWith(expect.objectContaining({ pitch: 45 }));
   });
 
-  it('clamps pitch to MAP_MAX_PITCH (75) at the upper bound', () => {
-    getPitchMock.mockReturnValue(70);
+  it('clamps pitch to MAP_MAX_PITCH at the upper bound', () => {
+    getPitchMock.mockReturnValue(MAP_MAX_PITCH - 5);
     render(<ZoomControls />);
     fireEvent.click(screen.getByRole('button', { name: /tilt up/i }));
-    expect(easeToMock).toHaveBeenCalledWith(expect.objectContaining({ pitch: 75 }));
+    expect(easeToMock).toHaveBeenCalledWith(expect.objectContaining({ pitch: MAP_MAX_PITCH }));
   });
 
   it('eases pitch down by 15 deg from the current pitch', () => {
@@ -242,7 +243,7 @@ describe('ZoomControls', () => {
     expect(screen.getByRole('button', { name: /tilt up/i })).not.toBeDisabled();
 
     getZoomMock.mockReturnValue(22);
-    getPitchMock.mockReturnValue(75);
+    getPitchMock.mockReturnValue(MAP_MAX_PITCH);
     const handler = getViewChangeHandler();
     expect(handler).toBeDefined();
     act(() => {

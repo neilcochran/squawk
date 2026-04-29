@@ -7,7 +7,11 @@ import {
 } from './click-to-select.ts';
 import type { InspectableFeature } from './click-to-select.ts';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
-import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
+import {
+  AIRSPACE_FILL_EXTRUSION_LAYER_ID,
+  AIRSPACE_FILL_LAYER_ID,
+  AIRSPACE_LINE_LAYER_ID,
+} from './layers/airspace-layer.tsx';
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
@@ -61,6 +65,18 @@ describe('selectedFromFeature', () => {
         buildFeature(AIRSPACE_LINE_LAYER_ID, { type: 'ARTCC', identifier: 'ZNY' }),
       ),
     ).toBe('airspace:ARTCC/ZNY');
+  });
+
+  it('encodes an airspace 3D extrusion feature the same way as a fill feature', () => {
+    // A click on the side wall or top face of the 3D extruded box at
+    // high pitch produces a feature whose layer id is the extrusion
+    // layer; the encoded selection should be identical to a click on
+    // the flat fill at z=0 so the inspector's URL state is the same.
+    expect(
+      selectedFromFeature(
+        buildFeature(AIRSPACE_FILL_EXTRUSION_LAYER_ID, { type: 'CLASS_B', identifier: 'JFK' }),
+      ),
+    ).toBe('airspace:CLASS_B/JFK');
   });
 
   it('returns undefined when an airport feature is missing faaId', () => {
@@ -194,6 +210,34 @@ describe('pickFeatureByPriority', () => {
     expect(pickFeatureByPriority([line, fill])).toBe(line);
   });
 
+  it('treats airspace fill, line, and 3D extrusion as equal priority', () => {
+    // The 3D extrusion is registered as inspectable so a click on the
+    // tilted box's side wall or top face resolves to the same airspace
+    // selection a click on the flat footprint would.
+    const fill = buildFeature(AIRSPACE_FILL_LAYER_ID, { type: 'CLASS_B', identifier: 'JFK' });
+    const line = buildFeature(AIRSPACE_LINE_LAYER_ID, { type: 'CLASS_B', identifier: 'JFK' });
+    const extrusion = buildFeature(AIRSPACE_FILL_EXTRUSION_LAYER_ID, {
+      type: 'CLASS_B',
+      identifier: 'JFK',
+    });
+    expect(pickFeatureByPriority([fill, extrusion])).toBe(fill);
+    expect(pickFeatureByPriority([extrusion, fill])).toBe(extrusion);
+    expect(pickFeatureByPriority([line, extrusion])).toBe(line);
+  });
+
+  it('lets a point feature beat a 3D extrusion at the same pixel', () => {
+    // At high pitch, a click on the side wall of an extruded Class B
+    // and on KBOS's airport circle at the same screen pixel resolves
+    // to the airport - the more specific feature - matching the v0
+    // behavior for the 2D fill / line.
+    const airport = buildFeature(AIRPORTS_LAYER_ID, { faaId: 'BOS' });
+    const extrusion = buildFeature(AIRSPACE_FILL_EXTRUSION_LAYER_ID, {
+      type: 'CLASS_B',
+      identifier: 'BOS',
+    });
+    expect(pickFeatureByPriority([extrusion, airport])).toBe(airport);
+  });
+
   it('skips features from unknown layers', () => {
     const unknown = buildFeature('atlas-future-layer', { something: 'else' });
     const airspace = buildFeature(AIRSPACE_FILL_LAYER_ID, {
@@ -235,6 +279,14 @@ describe('formatChipLabel', () => {
     expect(
       formatChipLabel(buildFeature(AIRSPACE_LINE_LAYER_ID, { type: 'ARTCC', identifier: 'ZNY' })),
     ).toBe('ARTCC ZNY');
+  });
+
+  it('labels an airspace 3D extrusion feature the same way as a fill feature', () => {
+    expect(
+      formatChipLabel(
+        buildFeature(AIRSPACE_FILL_EXTRUSION_LAYER_ID, { type: 'MOA', identifier: 'BOARDMAN' }),
+      ),
+    ).toBe('MOA BOARDMAN');
   });
 
   it('falls back to a generic type label when an airport is missing faaId', () => {

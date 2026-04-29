@@ -2,6 +2,7 @@ import { Fragment, useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { MenuItemRow } from '../../shared/ui/menu-item-row.tsx';
 import { FLOATING_SURFACE_CLASSES, FOCUS_RING_CLASSES } from '../../shared/styles/style-tokens.ts';
 import {
   AIRSPACE_CLASSES,
@@ -12,6 +13,8 @@ import {
 } from './url-state.ts';
 import type { AirspaceClass, AirwayCategory, LayerId } from './url-state.ts';
 import { ExpandableParentRow, SimpleParentRow, SubRow } from './layer-toggle-rows.tsx';
+import { CheckIcon } from './layer-toggle-icons.tsx';
+import { useAirspace3DAutoHidePreference } from './airspace-3d-preference.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 
@@ -96,6 +99,20 @@ export function LayerToggle(): ReactElement {
   const { layers, airspaceClasses, airwayCategories, zoom } = route.useSearch();
   const navigate = useNavigate({ from: CHART_ROUTE_PATH });
   const [expanded, setExpanded] = useState<ReadonlySet<LayerId>>(() => new Set());
+  const [autoHidePreference, setAutoHidePreference] = useAirspace3DAutoHidePreference();
+
+  // Toggle handler for the auto-hide setting row at the bottom of the
+  // dropdown. The row is a binary checkbox - checked means the
+  // preference is `'always'`, unchecked means `'never'`. The third
+  // possible state (`'ask'`) is the initial default for users who have
+  // not yet interacted with the dialog or this row; flipping the
+  // checkbox once collapses it into one of the explicit values.
+  const handleAutoHideChange = useCallback(
+    (checked: boolean): void => {
+      setAutoHidePreference(checked ? 'always' : 'never');
+    },
+    [setAutoHidePreference],
+  );
 
   const toggleExpanded = useCallback((id: LayerId): void => {
     setExpanded((prev) => {
@@ -287,6 +304,28 @@ export function LayerToggle(): ReactElement {
               </Fragment>
             );
           })}
+          {/*
+            Settings row for the 3D auto-hide preference. Lives below
+            the layer rows behind a separator so the visual hierarchy
+            reads as "layers above, settings below". The checkbox is
+            binary (always vs never); the initial `'ask'` default
+            renders unchecked, and flipping the row collapses the
+            preference into an explicit value.
+          */}
+          <DropdownMenu.Separator className="my-1 h-px bg-slate-200 dark:bg-slate-700" />
+          <MenuItemRow
+            checked={autoHidePreference === 'always'}
+            onCheckedChange={handleAutoHideChange}
+            onSelect={(event) => event.preventDefault()}
+            className="px-2 py-2.5 md:py-1.5"
+          >
+            <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
+              <DropdownMenu.ItemIndicator>
+                <CheckIcon />
+              </DropdownMenu.ItemIndicator>
+            </span>
+            <span className="flex-1">Auto-hide Class E, Warning, ARTCC in 3D</span>
+          </MenuItemRow>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
