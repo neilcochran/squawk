@@ -10,7 +10,11 @@ import type { AirspaceAltitudeKey } from '../../shared/inspector/airspace-featur
 import { useCanHover } from '../../shared/styles/use-can-hover.ts';
 import { FLOATING_SURFACE_CLASSES } from '../../shared/styles/style-tokens.ts';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
-import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
+import {
+  AIRSPACE_FILL_EXTRUSION_LAYER_ID,
+  AIRSPACE_FILL_LAYER_ID,
+  AIRSPACE_LINE_LAYER_ID,
+} from './layers/airspace-layer.tsx';
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
@@ -333,7 +337,11 @@ interface PopoverEntry {
  * floor/ceiling primitives and does not need the layer-id check).
  */
 function isAirspaceFeature(feature: InspectableFeature): boolean {
-  return feature.layer.id === AIRSPACE_FILL_LAYER_ID || feature.layer.id === AIRSPACE_LINE_LAYER_ID;
+  return (
+    feature.layer.id === AIRSPACE_FILL_LAYER_ID ||
+    feature.layer.id === AIRSPACE_LINE_LAYER_ID ||
+    feature.layer.id === AIRSPACE_FILL_EXTRUSION_LAYER_ID
+  );
 }
 
 /**
@@ -356,6 +364,7 @@ function featureTypeLabel(feature: InspectableFeature): string | undefined {
       return 'Airway';
     case AIRSPACE_FILL_LAYER_ID:
     case AIRSPACE_LINE_LAYER_ID:
+    case AIRSPACE_FILL_EXTRUSION_LAYER_ID:
       return 'Airspace';
     default:
       return undefined;

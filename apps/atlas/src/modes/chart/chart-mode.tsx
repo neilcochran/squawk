@@ -16,11 +16,18 @@ import { InspectableHoverCursor } from './inspectable-cursor.tsx';
 import { ChartViewResetListener } from './view-reset-listener.tsx';
 import { LayerToggle } from './layer-toggle.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
-import { AirspaceFeatureOverlayLayers, AirspaceLayer } from './layers/airspace-layer.tsx';
+import {
+  AirspaceExtrusionLayer,
+  AirspaceFeatureOverlayLayers,
+  AirspaceLayer,
+} from './layers/airspace-layer.tsx';
 import { AirwayLegFocusLayer, AirwaysLayer } from './layers/airways-layer.tsx';
 import { FixesLayer } from './layers/fixes-layer.tsx';
 import { NavaidsLayer } from './layers/navaids-layer.tsx';
+import type { AirspaceClass, LayerId } from './url-state.ts';
 import { CHART_ROUTE_PATH } from './url-state.ts';
+import { Airspace3DAutoHideDialog } from './airspace-3d-dialog.tsx';
+import { useAirspace3DAutoHide } from './use-airspace-3d-auto-hide.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 
@@ -60,7 +67,7 @@ function clickQueryRadiusPx(zoom: number): number {
  * through the URL.
  */
 export function ChartMode(): ReactElement {
-  const { lat, lon, zoom, pitch, layers, selected } = route.useSearch();
+  const { lat, lon, zoom, pitch, layers, airspaceClasses, selected } = route.useSearch();
   const navigate = useNavigate({ from: CHART_ROUTE_PATH });
   // Snapshot of every feature returned by the most recent map click. The
   // inspector reads this to render an "Also here" chip strip so the user
@@ -103,6 +110,33 @@ export function ChartMode(): ReactElement {
   >(undefined);
   const activeHighlight = hoveredChipSelection ?? selected;
 
+  // Writes the airspace-class set and top-level layers list back to URL
+  // state in one navigate call. Used by the auto-hide hook to apply or
+  // restore class visibility when the camera tilts in / out of 3D, with
+  // the parent `airspace` toggle following the class set the same way
+  // {@link LayerToggle} couples them.
+  const applyAirspaceState = useCallback(
+    (next: { airspaceClasses: readonly AirspaceClass[]; layers: readonly LayerId[] }): void => {
+      void navigate({
+        search: (prev) => ({
+          ...prev,
+          airspaceClasses: [...next.airspaceClasses],
+          layers: [...next.layers],
+        }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
+
+  const { dialogOpen: airspace3DDialogOpen, onDialogResolve: onAirspace3DDialogResolve } =
+    useAirspace3DAutoHide({
+      pitch,
+      airspaceClasses,
+      layers,
+      applyAirspaceState,
+    });
+
   const handleViewStateChange = useCallback(
     (view: ViewStateChange): void => {
       void navigate({
@@ -121,6 +155,18 @@ export function ChartMode(): ReactElement {
 
   const handleMapClick = useCallback(
     (event: MapLayerMouseEvent): void => {
+      // A map click is a commit: clear any sticky chip-hover preview
+      // so the post-click highlight follows the new URL selection
+      // rather than whatever feature the cursor was last hovering in
+      // the inspector. Without this, hovering an "Also here" chip
+      // and then clicking somewhere else on the map leaves the chip's
+      // feature highlighted on top of the new selection - the user
+      // sees a yellow ring around the previous airspace even though
+      // the inspector now shows the just-clicked navaid. mouseLeave
+      // does not fire reliably when the chip unmounts (e.g. the
+      // chip strip collapses), so we cannot rely on the chip's own
+      // onMouseLeave to clean up here.
+      setHoveredChipSelection(undefined);
       // Widen from MapLibre's default point-query (`event.features`) to a
       // small bbox so dense fix/navaid clusters and near-miss clicks both
       // surface in the popover. The bbox is centered on the click pixel
@@ -180,7 +226,10 @@ export function ChartMode(): ReactElement {
     (next: string): void => {
       // Promote the deferred candidates to the chip strip so the
       // inspector's "Also here" list reflects the click that produced
-      // the popover (matching the post-auto-pick experience).
+      // the popover (matching the post-auto-pick experience). Also
+      // clear any sticky chip-hover preview so the new selection's
+      // highlight is not occluded by a stale hover override.
+      setHoveredChipSelection(undefined);
       setPendingDisambiguation((current) => {
         if (current !== undefined) {
           setFeaturesAtLastClick(current.candidates);
@@ -196,6 +245,10 @@ export function ChartMode(): ReactElement {
   );
 
   const handleDisambiguationDismiss = useCallback((): void => {
+    // Closing the popover ends the decision phase; clear chip hover
+    // so the highlight reverts to whatever the URL selection is
+    // rather than a stale preview from a popover row.
+    setHoveredChipSelection(undefined);
     setPendingDisambiguation(undefined);
   }, []);
 
@@ -230,6 +283,17 @@ export function ChartMode(): ReactElement {
           {layers.includes('navaids') ? <NavaidsLayer /> : null}
           {layers.includes('airports') ? <AirportsLayer /> : null}
           {/*
+            3D airspace extrusion mounts AFTER every ground-feature
+            layer so it paints above airport / fix / navaid circles
+            and airway lines in MapLibre's draw stack at high pitch.
+            The 3D box is at altitude; the points underneath are at
+            ground level, so visually the extrusion should occlude
+            them. MapLibre's 2D circle layers don't participate in
+            the depth buffer, so this is the only way to get the
+            "airspace overlays the ground" effect.
+          */}
+          {layers.includes('airspace') ? <AirspaceExtrusionLayer /> : null}
+          {/*
             Airspace feature-focus outline and per-feature badge labels
             mount LAST so MapLibre stacks them above every other source's
             layers - airport / navaid / fix circles included. Without
@@ -260,6 +324,9 @@ export function ChartMode(): ReactElement {
         ) : null}
         <EntityInspector siblings={featuresAtLastClick} />
         <ChartLoadingIndicator />
+        {airspace3DDialogOpen ? (
+          <Airspace3DAutoHideDialog onResolve={onAirspace3DDialogResolve} />
+        ) : null}
       </HighlightProvider>
     </MapProvider>
   );
