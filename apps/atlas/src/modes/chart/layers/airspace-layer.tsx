@@ -1,11 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 import { getRouteApi } from '@tanstack/react-router';
-import { Source, Layer, useMap } from '@vis.gl/react-maplibre';
+import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
-import type { Feature, FeatureCollection } from 'geojson';
-import { polygonGeoJson } from '@squawk/geo';
 import type { AirspaceType } from '@squawk/types';
 import { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
@@ -16,6 +14,16 @@ import type {
 } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef, useHoveredFeatureIndex } from '../highlight-context.ts';
 import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
+import { AIRSPACE_MATCH_KEY_PROPERTY } from '../../../shared/inspector/airspace-feature.ts';
+import { hatchImageId, useHatchPatternImage } from './airspace-hatch-pattern.ts';
+import {
+  AIRSPACE_BADGE_OFFSET_PROPERTY,
+  AIRSPACE_FEATURE_COUNT_PROPERTY,
+  AIRSPACE_FEATURE_INDEX_PROPERTY,
+  AIRSPACE_FEATURE_LABEL_PROPERTY,
+  projectAirspaceSource,
+} from './airspace-source-projection.ts';
+import { useTopOfStack } from './use-top-of-stack.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 
@@ -64,95 +72,6 @@ const TOP_OF_STACK_LAYER_IDS = [
   AIRSPACE_FEATURE_FOCUS_LAYER_ID,
   AIRSPACE_FEATURE_BADGE_LAYER_ID,
 ] as const;
-
-/**
- * Base name for the diagonal hatch pattern image used by the highlight
- * fill. The actual MapLibre image id is suffixed with the highlight
- * color so a theme switch registers a fresh image instead of reusing
- * the stale one from the previous palette - MapLibre's `hasImage`
- * short-circuit would otherwise keep the original color forever.
- */
-const HATCH_IMAGE_BASE_ID = 'atlas-airspace-hatch';
-
-/**
- * Builds the MapLibre image id for the hatch pattern, suffixed by the
- * highlight color so light and dark themes reference distinct images
- * and a theme switch never sees a stale color through `hasImage`.
- */
-function hatchImageId(highlightPrimary: string): string {
-  return `${HATCH_IMAGE_BASE_ID}-${highlightPrimary}`;
-}
-
-/**
- * Synthetic per-feature property added at source-projection time so the
- * highlight filter can match against the same encoding the chip / URL
- * path uses. Format mirrors `selectedFromFeature` in `click-to-select.ts`:
- * `{TYPE}/{IDENTIFIER}` for named features, `{TYPE}/c:{LON},{LAT}` (5dp
- * centroid) for empty-id features. Without this, the highlight filter
- * for a centroid-encoded selection would never match because the real
- * `identifier` field is empty.
- *
- * Exported so the click-time encoder in `click-to-select.ts` can read
- * the same value rather than recomputing the centroid from MapLibre's
- * tile-clipped geometry (which would not round-trip through the
- * resolver's source-geometry centroid lookup).
- */
-export const AIRSPACE_MATCH_KEY_PROPERTY = '__atlasMatchKey';
-
-/**
- * Synthetic per-feature properties carrying the floor / ceiling values
- * as primitives (number + string), copied at source-projection time
- * from the `floor` / `ceiling` `AltitudeBound` objects on the original
- * dataset feature. Primitive copies are necessary because MapLibre's
- * GeoJSON worker pipeline does not reliably round-trip nested object
- * properties through `queryRenderedFeatures` - downstream consumers
- * (e.g. the disambiguation popover) only see strings, numbers, and
- * booleans. The primitive split (Ft + Ref) preserves enough fidelity
- * to format an "11k-18k" or "700ft AGL" subtitle without re-fetching
- * the source dataset. Exported so the popover and any other consumer
- * stay aligned on the property names.
- */
-export const AIRSPACE_FLOOR_FT_PROPERTY = '__atlasFloorFt';
-/** Reference datum for the floor altitude. One of `'MSL'`, `'AGL'`, `'SFC'`. */
-export const AIRSPACE_FLOOR_REF_PROPERTY = '__atlasFloorRef';
-/** Ceiling altitude in feet. See {@link AIRSPACE_FLOOR_FT_PROPERTY}. */
-export const AIRSPACE_CEILING_FT_PROPERTY = '__atlasCeilingFt';
-/** Reference datum for the ceiling altitude. */
-export const AIRSPACE_CEILING_REF_PROPERTY = '__atlasCeilingRef';
-
-/**
- * Synthetic per-feature `[xEm, yEm]` offset applied to the badge layer's
- * `text-offset` so badges in a multi-feature airspace whose polygons
- * share a centroid (Class B's concentric rings, ARTCC's stacked strata)
- * spread out into a readable vertical column instead of stacking on the
- * same pixel. Computed at projection time: each feature gets a unique
- * Y offset proportional to its index within the grouping, centered on
- * the centroid so the column hangs symmetrically above and below it.
- */
-export const AIRSPACE_BADGE_OFFSET_PROPERTY = '__atlasBadgeOffset';
-
-/**
- * Vertical spacing (in EMs) between consecutive badges in the same
- * airspace grouping. 1.4em at the badge text-size (13px) lands ~18px
- * apart, comfortable to read without crowding.
- */
-const BADGE_VERTICAL_SPACING_EM = 1.4;
-
-/**
- * Synthetic per-feature properties that label individual features
- * inside a multi-feature airspace grouping (Class B rings, ARTCC
- * strata, MOA altitude bands, antimeridian-split oceanic boundaries).
- * Computed at source-projection time by walking the dataset and
- * counting features that share a `(type, identifier)` key. Without
- * these, the inspector's "Feature 1 / Feature 2" sections have no
- * visible counterpart on the map and the user cannot tell which
- * polygon corresponds to which section.
- */
-export const AIRSPACE_FEATURE_INDEX_PROPERTY = '__atlasFeatureIndex';
-/** Total feature count in this feature's `(type, identifier)` grouping. Used as the badge-visibility filter so single-feature airspaces stay unlabeled. */
-export const AIRSPACE_FEATURE_COUNT_PROPERTY = '__atlasFeatureCount';
-/** Display label for the badge: ARTCC stratum (e.g. `LOW`, `HIGH`) when set on the source feature, otherwise the 1-based feature index. */
-export const AIRSPACE_FEATURE_LABEL_PROPERTY = '__atlasFeatureLabel';
 
 /**
  * Filter expression that matches no feature. Used as the default highlight
@@ -454,43 +373,6 @@ export function AirspaceFeatureOverlayLayers(): ReactElement | null {
 }
 
 /**
- * Subscribes to MapLibre layer-stack changes (`styledata`) and re-asserts
- * the supplied layer ids at the top of the stack each time. Order within
- * the input array is preserved - the last id ends up topmost. Used to
- * keep the airspace feature-focus + badge labels above every other
- * layer's symbology even when other layer components re-add themselves
- * during the session.
- *
- * The hook tolerates layers that have not been registered yet (initial
- * mount race) by silently skipping any id that `getLayer` cannot find;
- * the next `styledata` event after the layer mounts triggers another
- * pass.
- */
-function useTopOfStack(layerIds: readonly string[]): void {
-  const map = useMap();
-  const mapRef = map.current ?? map.default;
-  useEffect((): (() => void) | undefined => {
-    if (mapRef === undefined) {
-      return undefined;
-    }
-    const m = mapRef.getMap();
-    function reassertOrder(): void {
-      for (const id of layerIds) {
-        if (m.getLayer(id) !== undefined) {
-          // moveLayer with no `beforeId` moves the layer to the top.
-          m.moveLayer(id);
-        }
-      }
-    }
-    reassertOrder();
-    m.on('styledata', reassertOrder);
-    return (): void => {
-      m.off('styledata', reassertOrder);
-    };
-  }, [mapRef, layerIds]);
-}
-
-/**
  * Builds the {@link LayerProps} for the per-feature focus outline,
  * sourcing the line color from the resolved highlight palette so a
  * theme switch flips the focused-polygon outline along with the rest
@@ -549,231 +431,4 @@ function buildBadgeLayerProps(
       'text-halo-width': 2.5,
     },
   };
-}
-
-/**
- * Registers the cross-hatch pattern image with the underlying MapLibre
- * map. The fill-pattern layer above references the image by name, so
- * the image must exist before the layer paints (MapLibre silently
- * skips fill-pattern when the image is missing, then re-paints once
- * it lands).
- *
- * The image id is suffixed by the highlight color, so a theme switch
- * registers a fresh image with the new color rather than reusing a
- * stale one through `hasImage`. Subscribes to `styledata` so the image
- * is re-registered if the style is reloaded (e.g. on basemap swap).
- */
-function useHatchPatternImage(imageId: string, primary: string): void {
-  const map = useMap();
-  const mapRef = map.current ?? map.default;
-  useEffect((): (() => void) | undefined => {
-    if (mapRef === undefined) {
-      return undefined;
-    }
-    const m = mapRef.getMap();
-    function ensurePattern(): void {
-      if (m.hasImage(imageId)) {
-        return;
-      }
-      const image = createHatchPatternImage(primary);
-      if (image === undefined) {
-        return;
-      }
-      m.addImage(imageId, image);
-    }
-    if (m.isStyleLoaded()) {
-      ensurePattern();
-    }
-    m.on('styledata', ensurePattern);
-    return (): void => {
-      m.off('styledata', ensurePattern);
-    };
-  }, [mapRef, imageId, primary]);
-}
-
-/**
- * Builds an 8x8 cross-hatch pattern image (diagonal stripes in the
- * supplied stroke color on a transparent background) used as the
- * highlight fill. Returns undefined if the canvas 2D context is
- * unavailable (e.g. in a non-DOM test environment).
- */
-function createHatchPatternImage(
-  strokeColor: string,
-): { width: number; height: number; data: Uint8Array } | undefined {
-  if (typeof document === 'undefined') {
-    return undefined;
-  }
-  const size = 8;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (ctx === null) {
-    return undefined;
-  }
-  ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = 'square';
-  // Three diagonal segments so the pattern tiles seamlessly across
-  // adjacent 8x8 cells: the main diagonal plus the two corner wraps.
-  ctx.beginPath();
-  ctx.moveTo(0, size);
-  ctx.lineTo(size, 0);
-  ctx.moveTo(-2, 2);
-  ctx.lineTo(2, -2);
-  ctx.moveTo(size - 2, size + 2);
-  ctx.lineTo(size + 2, size - 2);
-  ctx.stroke();
-  const imageData = ctx.getImageData(0, 0, size, size);
-  return { width: size, height: size, data: new Uint8Array(imageData.data) };
-}
-
-/**
- * Adds the synthetic `__atlasMatchKey` property (used by the highlight
- * filters), per-feature index/count/label properties (used by the
- * feature-badge layer to disambiguate multi-feature airspace
- * groupings), and primitive altitude properties (used by the
- * disambiguation popover's altitude subtitle) to every feature in the
- * airspace dataset. Returns undefined while the dataset is still
- * loading or errored.
- *
- * Two-pass: the first pass tallies how many features share each
- * `(type, identifier)` match key; the second pass walks the dataset
- * again to assign each feature a 0-based index within its group plus
- * the final group count. The order of `__atlasFeatureIndex` matches
- * the order `entity-resolver.ts` uses when grouping features for the
- * inspector, so badge "1" on the map maps to "Feature 1" in the panel.
- */
-function projectAirspaceSource(
-  state: ReturnType<typeof useAirspaceDataset>,
-): FeatureCollection | undefined {
-  if (state.status !== 'loaded') {
-    return undefined;
-  }
-  const groupCounts = new Map<string, number>();
-  for (const feature of state.dataset.features) {
-    const matchKey = computeAirspaceMatchKey(feature);
-    if (matchKey !== undefined) {
-      groupCounts.set(matchKey, (groupCounts.get(matchKey) ?? 0) + 1);
-    }
-  }
-  const runningIndex = new Map<string, number>();
-  const projected: Feature[] = state.dataset.features.map((feature) => {
-    const props = feature.properties;
-    if (props === null || feature.geometry.type !== 'Polygon') {
-      return feature;
-    }
-    const matchKey = computeAirspaceMatchKey(feature);
-    if (matchKey === undefined) {
-      return feature;
-    }
-    const featureIndex = runningIndex.get(matchKey) ?? 0;
-    runningIndex.set(matchKey, featureIndex + 1);
-    const featureCount = groupCounts.get(matchKey) ?? 1;
-    const featureLabel = computeFeatureLabel(props, featureIndex);
-    // Center the badge column on the centroid: the middle index sits
-    // at offset 0, indices below shift up, indices above shift down.
-    // For a 2-feature group: offsets land at -0.7em and +0.7em.
-    // For a 12-feature group: offsets span -7.7em to +7.7em.
-    const badgeOffsetY = (featureIndex - (featureCount - 1) / 2) * BADGE_VERTICAL_SPACING_EM;
-    const floorPrimitives = readAltitudePrimitives(props['floor']);
-    const ceilingPrimitives = readAltitudePrimitives(props['ceiling']);
-    return {
-      ...feature,
-      properties: {
-        ...props,
-        [AIRSPACE_MATCH_KEY_PROPERTY]: matchKey,
-        [AIRSPACE_FEATURE_INDEX_PROPERTY]: featureIndex,
-        [AIRSPACE_FEATURE_COUNT_PROPERTY]: featureCount,
-        [AIRSPACE_FEATURE_LABEL_PROPERTY]: featureLabel,
-        [AIRSPACE_BADGE_OFFSET_PROPERTY]: [0, badgeOffsetY],
-        ...(floorPrimitives !== undefined && {
-          [AIRSPACE_FLOOR_FT_PROPERTY]: floorPrimitives.valueFt,
-          [AIRSPACE_FLOOR_REF_PROPERTY]: floorPrimitives.reference,
-        }),
-        ...(ceilingPrimitives !== undefined && {
-          [AIRSPACE_CEILING_FT_PROPERTY]: ceilingPrimitives.valueFt,
-          [AIRSPACE_CEILING_REF_PROPERTY]: ceilingPrimitives.reference,
-        }),
-      },
-    };
-  });
-  return { type: 'FeatureCollection', features: projected };
-}
-
-/**
- * Computes the match-key string used by the highlight filters and the
- * feature-grouping count. Format mirrors `selectedFromFeature` in
- * `click-to-select.ts`: `{TYPE}/{IDENTIFIER}` for named features,
- * `{TYPE}/c:{LON},{LAT}` (5dp centroid) for empty-id features.
- *
- * Returns `undefined` for non-Polygon geometry, missing/non-string
- * type or identifier, or empty-id features whose centroid cannot be
- * derived. Pulled into a helper so the per-feature projection and the
- * pre-projection group tally share the same exact key derivation.
- */
-function computeAirspaceMatchKey(feature: Feature): string | undefined {
-  const props = feature.properties;
-  if (props === null) {
-    return undefined;
-  }
-  if (feature.geometry.type !== 'Polygon') {
-    return undefined;
-  }
-  const type = props['type'];
-  const identifier = props['identifier'];
-  if (typeof type !== 'string' || typeof identifier !== 'string') {
-    return undefined;
-  }
-  if (identifier !== '') {
-    return `${type}/${identifier}`;
-  }
-  const centroid = polygonGeoJson.polygonCentroid(feature.geometry);
-  if (centroid === undefined) {
-    return undefined;
-  }
-  return `${type}/c:${centroid[0].toFixed(5)},${centroid[1].toFixed(5)}`;
-}
-
-/**
- * Computes the badge label for one feature. ARTCC features carry a
- * stratum string ("LOW" / "HIGH" / "UTA") that disambiguates them
- * meaningfully on the map; for everything else the badge is the
- * 1-based index, which matches the inspector's "Feature 1" /
- * "Feature 2" section titles.
- */
-function computeFeatureLabel(props: Record<string, unknown>, index: number): string {
-  const stratum = props['artccStratum'];
-  if (typeof stratum === 'string' && stratum.length > 0) {
-    return stratum;
-  }
-  return String(index + 1);
-}
-
-/**
- * Narrows a `floor` or `ceiling` value from the airspace dataset's
- * GeoJSON property bag into the `{ valueFt, reference }` shape, ready
- * to be flattened into primitive feature properties for downstream
- * MapLibre consumers. Returns `undefined` when the input is missing
- * or has an unexpected shape; callers omit the corresponding primitive
- * properties in that case so the popover row falls back to no
- * subtitle.
- */
-function readAltitudePrimitives(
-  value: unknown,
-): { valueFt: number; reference: 'MSL' | 'AGL' | 'SFC' } | undefined {
-  if (typeof value !== 'object' || value === null) {
-    return undefined;
-  }
-  if (!('valueFt' in value) || !('reference' in value)) {
-    return undefined;
-  }
-  const { valueFt, reference } = value;
-  if (typeof valueFt !== 'number' || typeof reference !== 'string') {
-    return undefined;
-  }
-  if (reference !== 'MSL' && reference !== 'AGL' && reference !== 'SFC') {
-    return undefined;
-  }
-  return { valueFt, reference };
 }

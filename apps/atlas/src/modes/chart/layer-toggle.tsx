@@ -1,7 +1,8 @@
 import { Fragment, useCallback, useState } from 'react';
-import type { KeyboardEvent, MouseEvent, PointerEvent, ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { FLOATING_SURFACE_CLASSES, FOCUS_RING_CLASSES } from '../../shared/styles/style-tokens.ts';
 import {
   AIRSPACE_CLASSES,
   AIRWAY_CATEGORIES,
@@ -10,6 +11,7 @@ import {
   LAYER_MIN_ZOOM,
 } from './url-state.ts';
 import type { AirspaceClass, AirwayCategory, LayerId } from './url-state.ts';
+import { ExpandableParentRow, SimpleParentRow, SubRow } from './layer-toggle-rows.tsx';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 
@@ -217,14 +219,16 @@ export function LayerToggle(): ReactElement {
 
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="absolute right-3 top-3 z-10 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:py-1.5 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-500">
+      <DropdownMenu.Trigger
+        className={`absolute top-3 right-3 z-10 rounded-md px-3 py-2.5 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50 ${FLOATING_SURFACE_CLASSES} ${FOCUS_RING_CLASSES} md:py-1.5 dark:text-slate-200 dark:hover:bg-slate-800`}
+      >
         Layers
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
           sideOffset={4}
-          className="min-w-[14rem] rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+          className={`min-w-[14rem] rounded-md p-1 shadow-lg ${FLOATING_SURFACE_CLASSES}`}
         >
           {LAYER_OPTIONS.map((option) => {
             const isExpandable = EXPANDABLE_LAYERS.has(option.id);
@@ -286,319 +290,5 @@ export function LayerToggle(): ReactElement {
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
-  );
-}
-
-/** Props for {@link SimpleParentRow}. */
-interface SimpleParentRowProps {
-  /** Visible label. */
-  label: string;
-  /** Whether the layer is currently enabled. */
-  checked: boolean;
-  /** Called with the new checked state when the row is toggled. */
-  onCheckedChange: (checked: boolean) => void;
-  /**
-   * Minimum zoom at which this layer paints, when the current map zoom is
-   * below it. Drives the inline "appears at z N+" hint so a user toggling
-   * the layer on at low zoom understands why nothing has appeared. Absent
-   * means no hint (either the layer has no zoom gating, or the user is
-   * already above the threshold).
-   */
-  hintMinZoom: number | undefined;
-}
-
-/**
- * Row for a layer without sub-types. The whole row is the click target -
- * Radix `CheckboxItem` semantics, identical to today's behavior for the
- * three non-expandable layers.
- */
-function SimpleParentRow({
-  label,
-  checked,
-  onCheckedChange,
-  hintMinZoom,
-}: SimpleParentRowProps): ReactElement {
-  return (
-    <DropdownMenu.CheckboxItem
-      checked={checked}
-      onCheckedChange={onCheckedChange}
-      onSelect={(event) => event.preventDefault()}
-      className="flex cursor-default items-center gap-2 rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5 dark:text-slate-200 dark:data-[highlighted]:bg-slate-800"
-    >
-      <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
-        <DropdownMenu.ItemIndicator>
-          <CheckIcon />
-        </DropdownMenu.ItemIndicator>
-      </span>
-      <span className="flex-1">{label}</span>
-      {hintMinZoom !== undefined ? <ZoomGatedHint minZoom={hintMinZoom} /> : null}
-    </DropdownMenu.CheckboxItem>
-  );
-}
-
-/** Props for {@link ExpandableParentRow}. */
-interface ExpandableParentRowProps {
-  /** Visible label. */
-  label: string;
-  /** Whether the parent layer is currently enabled. */
-  checked: boolean;
-  /** Called with the new checked state when the parent checkbox is toggled. */
-  onCheckedChange: (checked: boolean) => void;
-  /** Whether the inline sub-list is currently expanded. */
-  expanded: boolean;
-  /** Called when the user clicks anywhere on the row outside the checkbox. */
-  onToggleExpanded: () => void;
-  /** Number of sub-classes / categories currently enabled, for the chip. */
-  enabledCount: number;
-  /** Total sub-classes / categories available, for the chip. */
-  totalCount: number;
-  /**
-   * Minimum zoom at which this layer paints, when the current map zoom is
-   * below it. Drives the inline "appears at z N+" hint so a user toggling
-   * the layer on at low zoom understands why nothing has appeared. Absent
-   * means no hint (either the layer has no zoom gating, or the user is
-   * already above the threshold).
-   */
-  hintMinZoom: number | undefined;
-}
-
-/**
- * Row for a layer with sub-types. Unified click semantics: the row itself
- * is a Radix `CheckboxItem` whose `onCheckedChange` toggles the parent
- * layer (identical to {@link SimpleParentRow}), and a dedicated chevron
- * button at the right toggles the inline expansion. Stopping pointer
- * propagation on the chevron prevents the parent CheckboxItem from also
- * firing its `onCheckedChange` from the same click. Keyboard users
- * navigate to the row with arrow keys; ArrowRight expands and ArrowLeft
- * collapses, mirroring the standard tree-style menu pattern. The chevron
- * button is intentionally non-tabbable (`tabIndex=-1`) so the keyboard
- * focus chain remains the menu items, not their internal sub-controls.
- */
-function ExpandableParentRow({
-  label,
-  checked,
-  onCheckedChange,
-  expanded,
-  onToggleExpanded,
-  enabledCount,
-  totalCount,
-  hintMinZoom,
-}: ExpandableParentRowProps): ReactElement {
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === 'ArrowRight' && !expanded) {
-      event.preventDefault();
-      onToggleExpanded();
-    } else if (event.key === 'ArrowLeft' && expanded) {
-      event.preventDefault();
-      onToggleExpanded();
-    }
-  };
-  return (
-    <DropdownMenu.CheckboxItem
-      checked={checked}
-      onCheckedChange={onCheckedChange}
-      onSelect={(event) => event.preventDefault()}
-      onKeyDown={handleKeyDown}
-      className="flex cursor-default items-center gap-2 rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5 dark:text-slate-200 dark:data-[highlighted]:bg-slate-800"
-    >
-      <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
-        <DropdownMenu.ItemIndicator>
-          <CheckIcon />
-        </DropdownMenu.ItemIndicator>
-      </span>
-      <span className="flex-1">{label}</span>
-      {hintMinZoom !== undefined ? <ZoomGatedHint minZoom={hintMinZoom} /> : null}
-      <SubCountChip enabled={enabledCount} total={totalCount} dimmed={!checked} />
-      <ExpandToggleButton label={label} expanded={expanded} onToggleExpanded={onToggleExpanded} />
-    </DropdownMenu.CheckboxItem>
-  );
-}
-
-/** Props for {@link ExpandToggleButton}. */
-interface ExpandToggleButtonProps {
-  /** Layer label, used for the accessible name. */
-  label: string;
-  /** Whether the inline sub-list is currently expanded. */
-  expanded: boolean;
-  /** Called when the chevron is clicked. */
-  onToggleExpanded: () => void;
-}
-
-/**
- * Dedicated chevron button rendered inside an {@link ExpandableParentRow}
- * to toggle the inline sub-list expansion. Stops pointer + click
- * propagation so its click does NOT also flip the parent CheckboxItem's
- * checked state (which would toggle the layer at the same time as
- * expanding). Sized at 44px on mobile (touch target) and 28px on desktop;
- * `tabIndex=-1` keeps it out of the keyboard focus chain so arrow-key
- * menu navigation lands on the row, not separately on the chevron.
- */
-function ExpandToggleButton({
-  label,
-  expanded,
-  onToggleExpanded,
-}: ExpandToggleButtonProps): ReactElement {
-  const stopPointer = (event: PointerEvent<HTMLButtonElement>): void => {
-    event.stopPropagation();
-  };
-  const handleClick = (event: MouseEvent<HTMLButtonElement>): void => {
-    event.stopPropagation();
-    event.preventDefault();
-    onToggleExpanded();
-  };
-  return (
-    <button
-      type="button"
-      aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label} sub-list`}
-      aria-expanded={expanded}
-      tabIndex={-1}
-      onClick={handleClick}
-      onPointerDown={stopPointer}
-      onPointerUp={stopPointer}
-      className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-700 md:h-7 md:w-7 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
-    >
-      <ChevronIcon expanded={expanded} />
-    </button>
-  );
-}
-
-/** Props for {@link SubRow}. */
-interface SubRowProps {
-  /** Visible label (shown to the right of the checkbox indicator). */
-  label: string;
-  /** Whether this sub-class / category is currently enabled. */
-  checked: boolean;
-  /** Called with the new checked state when the user toggles the row. */
-  onCheckedChange: (checked: boolean) => void;
-}
-
-/**
- * Indented sub-row rendered directly under an expanded parent layer. Same
- * Radix CheckboxItem semantics as {@link SimpleParentRow} but with extra
- * left padding so the visual hierarchy reads as nested.
- */
-function SubRow({ label, checked, onCheckedChange }: SubRowProps): ReactElement {
-  return (
-    <DropdownMenu.CheckboxItem
-      checked={checked}
-      onCheckedChange={onCheckedChange}
-      onSelect={(event) => event.preventDefault()}
-      className="flex cursor-default items-center gap-2 rounded py-2.5 pl-8 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5 dark:text-slate-200 dark:data-[highlighted]:bg-slate-800"
-    >
-      <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
-        <DropdownMenu.ItemIndicator>
-          <CheckIcon />
-        </DropdownMenu.ItemIndicator>
-      </span>
-      <span>{label}</span>
-    </DropdownMenu.CheckboxItem>
-  );
-}
-
-/** Props for {@link SubCountChip}. */
-interface SubCountChipProps {
-  /** Number of sub-classes currently enabled. */
-  enabled: number;
-  /** Total sub-classes available. */
-  total: number;
-  /** When true, render in a dimmed style (used when the parent layer is off). */
-  dimmed: boolean;
-}
-
-/**
- * Compact "X/Y" indicator showing how many sub-classes a parent layer has
- * enabled out of the total. Helps users see at a glance whether a layer's
- * sub-list has been filtered without having to expand it.
- */
-function SubCountChip({ enabled, total, dimmed }: SubCountChipProps): ReactElement {
-  const baseClasses =
-    'inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums';
-  // Enabled: filled dark badge so the count reads as a live indicator.
-  // Dimmed: outline-only with very light text so the chip clearly recedes
-  // when the parent layer is off (and thus the count is informational, not
-  // representing visible features).
-  const colorClasses = dimmed
-    ? 'border border-slate-200 bg-transparent text-slate-400 dark:border-slate-700 dark:text-slate-500'
-    : 'bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900';
-  return (
-    <span
-      className={`${baseClasses} ${colorClasses}`}
-      aria-label={`${enabled} of ${total} enabled`}
-    >
-      {enabled}/{total}
-    </span>
-  );
-}
-
-/** Props for {@link ZoomGatedHint}. */
-interface ZoomGatedHintProps {
-  /** Minimum zoom at which the gated layer paints. */
-  minZoom: number;
-}
-
-/**
- * Inline "Zoom N+" indicator shown next to a layer row when the current
- * map zoom is below the layer's `minzoom`. Tells the user the layer is
- * on (or would be on) but is not painting yet because the camera is too
- * far out. Reads the same threshold as the MapLibre `Layer` so the
- * advertised number always matches the real cutoff. The `Zoom` prefix
- * spells out the unit so the chip pairs cleanly with the current-zoom
- * readout in the bottom-left zoom controls (also a numeric value).
- */
-function ZoomGatedHint({ minZoom }: ZoomGatedHintProps): ReactElement {
-  return (
-    <span
-      className="inline-flex shrink-0 items-center rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
-      aria-label={`Appears at zoom ${minZoom} and above`}
-    >
-      Zoom {minZoom}+
-    </span>
-  );
-}
-
-/** Inline checkmark glyph rendered inside the parent checkbox or Radix `ItemIndicator`. */
-function CheckIcon(): ReactElement {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2 6.5L4.5 9L10 3.5" />
-    </svg>
-  );
-}
-
-/**
- * Inline chevron glyph for expandable parent rows. A single right-pointing
- * caret that rotates 90 degrees when the row is expanded so the same icon
- * reads as "open down" while expanded and "open right" while collapsed.
- */
-function ChevronIcon({ expanded }: { expanded: boolean }): ReactElement {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 10 10"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={
-        expanded
-          ? 'rotate-90 text-slate-500 transition-transform dark:text-slate-400'
-          : 'text-slate-500 transition-transform dark:text-slate-400'
-      }
-    >
-      <path d="M3.5 2L7 5L3.5 8" />
-    </svg>
   );
 }

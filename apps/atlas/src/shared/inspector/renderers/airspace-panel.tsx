@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import type { ReactElement } from 'react';
-import type { AirspaceFeature, AltitudeBound } from '@squawk/types';
+import type { AirspaceFeature } from '@squawk/types';
 import { useSetHoveredFeatureIndex } from '../../../modes/chart/highlight-context.ts';
+import { formatAltitudeBoundVerbose } from '../airspace-feature.ts';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**
@@ -61,8 +62,8 @@ export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
     }
     return (
       <InspectorSection title={sectionTitle(feature, 0)}>
-        <InspectorRow label="Floor">{formatAltitudeBound(feature.floor)}</InspectorRow>
-        <InspectorRow label="Ceiling">{formatAltitudeBound(feature.ceiling)}</InspectorRow>
+        <InspectorRow label="Floor">{formatAltitudeBoundVerbose(feature.floor)}</InspectorRow>
+        <InspectorRow label="Ceiling">{formatAltitudeBoundVerbose(feature.ceiling)}</InspectorRow>
         <InspectorRow label="Name">{feature.name}</InspectorRow>
         <InspectorRow label="State">{feature.state}</InspectorRow>
         <InspectorRow label="Controlling">{feature.controllingFacility}</InspectorRow>
@@ -95,8 +96,8 @@ export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
           onPointerEnter={(): void => setHoveredFeatureIndex(idx)}
           onPointerLeave={(): void => setHoveredFeatureIndex(undefined)}
         >
-          <InspectorRow label="Floor">{formatAltitudeBound(feature.floor)}</InspectorRow>
-          <InspectorRow label="Ceiling">{formatAltitudeBound(feature.ceiling)}</InspectorRow>
+          <InspectorRow label="Floor">{formatAltitudeBoundVerbose(feature.floor)}</InspectorRow>
+          <InspectorRow label="Ceiling">{formatAltitudeBoundVerbose(feature.ceiling)}</InspectorRow>
           <InspectorRow label="Stratum">{feature.artccStratum}</InspectorRow>
         </InspectorSection>
       ))}
@@ -123,17 +124,4 @@ function sectionTitle(feature: AirspaceFeature, idx: number): string {
     return `Stratum: ${feature.artccStratum}`;
   }
   return `Feature ${idx + 1}`;
-}
-
-/**
- * Formats an `AltitudeBound` for display. The reference datum matters for
- * pilots reading the panel: an SFC floor and a 700 ft AGL floor are very
- * different things. SFC features show as "SFC" alone; AGL / MSL show their
- * value plus the reference suffix.
- */
-function formatAltitudeBound(bound: AltitudeBound): string {
-  if (bound.reference === 'SFC') {
-    return 'SFC';
-  }
-  return `${bound.valueFt} ft ${bound.reference}`;
 }

@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import type { Fix } from '@squawk/types';
+import { formatFixUseCode } from '../formatters.ts';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**
@@ -20,7 +21,7 @@ export function FixPanel({ record }: FixPanelProps): ReactElement {
   return (
     <>
       <InspectorSection title="Classification">
-        <InspectorRow label="Use">{formatUseCode(record.useCode)}</InspectorRow>
+        <InspectorRow label="Use">{formatFixUseCode(record.useCode)}</InspectorRow>
         <InspectorRow label="Compulsory">{record.compulsory ?? null}</InspectorRow>
         <InspectorRow label="MRA">
           {record.minimumReceptionAltitudeFt !== undefined
@@ -53,26 +54,4 @@ export function FixPanel({ record }: FixPanelProps): ReactElement {
       ) : null}
     </>
   );
-}
-
-/** Converts the FixUseCode discriminator to a sentence-cased label. */
-function formatUseCode(use: Fix['useCode']): string {
-  switch (use) {
-    case 'WP':
-      return 'Waypoint';
-    case 'RP':
-      return 'Reporting point';
-    case 'MW':
-      return 'Military waypoint';
-    case 'MR':
-      return 'Military reporting point';
-    case 'CN':
-      return 'Computer nav';
-    case 'VFR':
-      return 'VFR waypoint';
-    case 'NRS':
-      return 'NRS waypoint';
-    case 'RADAR':
-      return 'Radar fix';
-  }
 }
