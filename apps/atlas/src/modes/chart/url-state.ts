@@ -23,6 +23,32 @@ export const LAYER_IDS = ['airports', 'navaids', 'fixes', 'airways', 'airspace']
 export type LayerId = (typeof LAYER_IDS)[number];
 
 /**
+ * Minimum zoom level at which each data layer paints. Layers without an
+ * entry are visible at every zoom level. Used by both the MapLibre `Layer`
+ * components (passed through as the layer's `minzoom`) and by the
+ * layer-toggle UI (to flag a row as "appears at z N+" when the current
+ * map zoom is below the threshold). Centralizing the table here keeps
+ * the gating logic and the dropdown hint pinned to the same number, so
+ * adjusting a threshold updates both consumers in lockstep.
+ *
+ * Numbers are tuned for the chart-mode default zoom of 4 (CONUS view):
+ * - `navaids`: matches the airports layer's CONUS-clean threshold.
+ * - `fixes`: even compulsory fixes are sub-pixel specks below 7; they only
+ *   become useful when the user is zoomed enough to read identifiers.
+ *
+ * The airways layer deliberately has no entry: the high-altitude J / Q
+ * backbone stays visible at every zoom so users can see the whole length
+ * of cross-country routes at CONUS view, while the dense V/T web is gated
+ * by a per-feature filter inside the airways layer (see
+ * `MINOR_AIRWAY_MIN_ZOOM` in `layers/airways-layer.tsx`). The toggle row
+ * for airways therefore has no "z N+" hint - something is always visible.
+ */
+export const LAYER_MIN_ZOOM: Partial<Record<LayerId, number>> = {
+  navaids: 5,
+  fixes: 7,
+};
+
+/**
  * User-facing airspace classes exposed by the layer toggle. `CLASS_E`
  * collapses the underlying `CLASS_E2` through `CLASS_E7` AirspaceType
  * variants into a single concept matching how pilots think about Class E
@@ -121,7 +147,10 @@ export const AIRWAY_CATEGORY_TYPES: Record<AirwayCategory, readonly AirwayType[]
 
 /**
  * Default chart-mode map view: continental US center at a zoom that shows the
- * full CONUS area, with every data layer and every sub-class enabled.
+ * full CONUS area, with every data layer enabled and most airspace classes
+ * enabled. ARTCC is opted out by default because its sector boundaries cover
+ * essentially the entire chart and dominate every other airspace tint at the
+ * default CONUS zoom; users who want it can flip it on from the layer toggle.
  */
 export const CHART_DEFAULTS = {
   /** Default map center latitude in decimal degrees, positive north. */
@@ -134,8 +163,11 @@ export const CHART_DEFAULTS = {
   pitch: 0,
   /** Default active layer set: every layer visible. */
   layers: LAYER_IDS,
-  /** Default active airspace classes: every class visible. */
-  airspaceClasses: AIRSPACE_CLASSES,
+  /**
+   * Default active airspace classes. Every class except ARTCC is on; ARTCC
+   * is excluded so the CONUS view is not dominated by sector outlines.
+   */
+  airspaceClasses: AIRSPACE_CLASSES.filter((cls) => cls !== 'ARTCC'),
   /** Default active airway categories: every category visible. */
   airwayCategories: AIRWAY_CATEGORIES,
 } as const;
@@ -176,8 +208,9 @@ export const chartSearchSchema = z.object({
     .catch([...CHART_DEFAULTS.layers]),
   /**
    * Active airspace classes (consulted only when `layers` includes `airspace`).
-   * Default is every class enabled; an empty array yields a layer that renders
-   * no features. Unknown ids or non-array values fall back to the default.
+   * Default is every class except ARTCC; an empty array yields a layer that
+   * renders no features. Unknown ids or non-array values fall back to the
+   * default.
    */
   airspaceClasses: z
     .array(z.enum(AIRSPACE_CLASSES))

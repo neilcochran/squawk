@@ -77,6 +77,50 @@ describe('ZoomControls', () => {
     expect(screen.getByRole('button', { name: /tilt down/i })).toBeInTheDocument();
   });
 
+  it('renders the current zoom as a readout chip with an aria-label', () => {
+    // The chip pairs with the layer-toggle dropdown's "Zoom N+" hint, so
+    // it shares the same numeric language. Integer zooms drop the
+    // decimal for a cleaner glyph.
+    render(<ZoomControls />);
+    const readout = screen.getByRole('status');
+    expect(readout).toHaveTextContent('4');
+    expect(readout).toHaveAttribute('aria-label', 'Current zoom: 4');
+  });
+
+  it('renders a magnifying glass icon next to the zoom number so the readout reads as a zoom level', () => {
+    // The icon makes the meaning of "4" obvious - without it the
+    // chip looks like a generic count. Stays decorative (aria-hidden)
+    // because the readout's aria-label already conveys the meaning.
+    render(<ZoomControls />);
+    const readout = screen.getByRole('status');
+    const icon = readout.querySelector('svg');
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('formats fractional zooms to one decimal in the readout', () => {
+    getZoomMock.mockReturnValue(4.5);
+    render(<ZoomControls />);
+    const readout = screen.getByRole('status');
+    expect(readout).toHaveTextContent('4.5');
+    expect(readout).toHaveAttribute('aria-label', 'Current zoom: 4.5');
+  });
+
+  it('rounds zooms before formatting so 4.04 reads as "4" and 4.95 reads as "5"', () => {
+    // Without the round-then-format step a naive toFixed(1) on 4.04
+    // would yield "4.0" (with a stray decimal) and 4.95 would render
+    // "5.0" - both surprises. The formatter rounds first so the chip
+    // stays compact and predictable.
+    getZoomMock.mockReturnValue(4.04);
+    const { unmount } = render(<ZoomControls />);
+    expect(screen.getByRole('status')).toHaveTextContent('4');
+    unmount();
+
+    getZoomMock.mockReturnValue(4.95);
+    render(<ZoomControls />);
+    expect(screen.getByRole('status')).toHaveTextContent('5');
+  });
+
   it('eases to current zoom + 1 when the zoom-in button is clicked', () => {
     render(<ZoomControls />);
     fireEvent.click(screen.getByRole('button', { name: /zoom in/i }));

@@ -374,7 +374,7 @@ function chipCentroid(
  * the camera does not jolt for chip-hovers on already-visible
  * features.
  */
-function isPointOutsideComfortableArea(
+export function isPointOutsideComfortableArea(
   lngLat: { lng: number; lat: number },
   map: MaplibreMap,
 ): boolean {
@@ -402,7 +402,7 @@ function isPointOutsideComfortableArea(
  * mobile the negative y-offset shifts the focal point up so the
  * target appears in the visible top strip above the bottom sheet.
  */
-function panToFeatureWithInspectorOffset(
+export function panToFeatureWithInspectorOffset(
   lngLat: { lng: number; lat: number },
   map: MaplibreMap,
 ): void {
@@ -426,7 +426,7 @@ function panToFeatureWithInspectorOffset(
  * user's pre-pan view exactly, with no inspector compensation needed
  * since the user established that view themselves.
  */
-function restoreCenter(lngLat: { lng: number; lat: number }, map: MaplibreMap): void {
+export function restoreCenter(lngLat: { lng: number; lat: number }, map: MaplibreMap): void {
   map.easeTo({
     center: [lngLat.lng, lngLat.lat],
     duration: PAN_DURATION_MS,
@@ -439,6 +439,6 @@ function restoreCenter(lngLat: { lng: number; lat: number }, map: MaplibreMap): 
  * inspector renders before MapLibre has initialized, or in tests
  * where `useMap` returns an empty collection).
  */
-function getMapInstance(mapRef: MapRef | undefined): MaplibreMap | undefined {
+export function getMapInstance(mapRef: MapRef | undefined): MaplibreMap | undefined {
   return mapRef?.getMap();
 }

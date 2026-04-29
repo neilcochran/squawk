@@ -11,7 +11,7 @@ import { useFixDataset } from '../data/fix-dataset.ts';
 import type { FixDatasetState } from '../data/fix-dataset.ts';
 import { useNavaidDataset } from '../data/navaid-dataset.ts';
 import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
-import { isAirspacePolygonFeature } from './airspace-feature.ts';
+import { compareAirspaceByAltitudeDesc, isAirspacePolygonFeature } from './airspace-feature.ts';
 import type { AirspacePolygonFeature } from './airspace-feature.ts';
 import { parseSelected } from './entity.ts';
 import type { EntityRef } from './entity.ts';
@@ -305,6 +305,18 @@ export function resolveSelectionFromState(
           features.push({ ...feature.properties, boundary: feature.geometry });
         }
       }
+      // Sort the matched features so the highest "vertical layer" is
+      // first. Without this the panel's per-feature sub-sections render
+      // in dataset order, which is essentially random for stacked
+      // airspaces (ARTCC LOW/HIGH, MOA altitude bands, Class B
+      // concentric rings) and forces the user to scan to find the
+      // section they care about.
+      features.sort((a, b) =>
+        compareAirspaceByAltitudeDesc(
+          { ceilingFt: a.ceiling.valueFt, floorFt: a.floor.valueFt },
+          { ceilingFt: b.ceiling.valueFt, floorFt: b.floor.valueFt },
+        ),
+      );
       const first = features[0];
       if (first === undefined) {
         return { status: 'not-found', ref };
