@@ -14,10 +14,7 @@ import type {
 } from 'geojson';
 import type { Airway, AirwayType } from '@squawk/types';
 import { useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
-import {
-  CHART_AIRWAY_COLORS,
-  CHART_HIGHLIGHT_COLORS,
-} from '../../../shared/styles/chart-colors.ts';
+import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef, useHoveredAirwayWaypointIndex } from '../highlight-context.ts';
 import { AIRWAY_CATEGORY_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 import { buildSegments } from './airway-segments.ts';
@@ -90,30 +87,6 @@ const MATCH_NONE_FILTER: ExpressionSpecification = [
 ];
 
 /**
- * Highlight overlay for the currently-selected (or chip-hovered) airway.
- * Thicker stroke in dark slate over a wider yellow halo so the airway
- * still reads as a line (not a band) at any zoom. The per-render
- * filter combines the entity-match clause with
- * {@link ZOOM_AWARE_VISIBILITY} so the halo follows the same fade-in
- * rules as the base layer - selecting a hidden V-route at low zoom
- * does not leave a yellow ring floating over nothing.
- */
-const AIRWAYS_HIGHLIGHT_LAYER_BASE: LayerProps = {
-  id: AIRWAYS_HIGHLIGHT_LAYER_ID,
-  source: AIRWAYS_SOURCE_ID,
-  type: 'line',
-  layout: {
-    'line-cap': 'round',
-    'line-join': 'round',
-  },
-  paint: {
-    'line-color': CHART_HIGHLIGHT_COLORS.primary,
-    'line-width': 4,
-    'line-opacity': 0.95,
-  },
-};
-
-/**
  * Projects the bundled airway records into a GeoJSON `FeatureCollection`
  * suitable for a MapLibre `geojson` source. One `MultiLineString` feature
  * per airway, drawn through the embedded waypoint coordinates in
@@ -143,39 +116,6 @@ function toFeatureCollection(
 }
 
 /**
- * MapLibre layer styling, sans filter. Lines are thin and semi-transparent
- * so the airway web reads as a structural underlay rather than dominant
- * symbology. Color is tiered by airway type: low-altitude V-routes and
- * RNAV T-routes in slate, high-altitude J-routes and RNAV Q-routes in
- * indigo, regional and oceanic routes in muted gray. The visibility filter
- * is built per-render from the active `airwayCategories` URL state plus
- * {@link ZOOM_AWARE_VISIBILITY} so non-major airways are zoom-gated at
- * the feature level rather than hiding the entire layer.
- */
-const AIRWAYS_LAYER_BASE: LayerProps = {
-  id: AIRWAYS_LAYER_ID,
-  source: AIRWAYS_SOURCE_ID,
-  type: 'line',
-  layout: {
-    'line-cap': 'round',
-    'line-join': 'round',
-  },
-  paint: {
-    'line-color': [
-      'match',
-      ['get', 'type'],
-      ['VICTOR', 'RNAV_T'],
-      CHART_AIRWAY_COLORS.low,
-      ['JET', 'RNAV_Q'],
-      CHART_AIRWAY_COLORS.high,
-      CHART_AIRWAY_COLORS.regional,
-    ],
-    'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 7, 1.6, 10, 2.6],
-    'line-opacity': 0.45,
-  },
-};
-
-/**
  * Chart-mode overlay that renders airways from `@squawk/airway-data` as
  * MapLibre line features. Reads the active `airwayCategories` from URL
  * state and applies a MapLibre `filter` expression so toggling categories
@@ -183,11 +123,21 @@ const AIRWAYS_LAYER_BASE: LayerProps = {
  * source. Returns `null` while the dataset is still being fetched or if
  * the load failed; callers needing fetch-state UI should read the same
  * hook directly.
+ *
+ * Lines are thin and semi-transparent so the airway web reads as a
+ * structural underlay rather than dominant symbology. Color is tiered
+ * by airway type: low-altitude V-routes and RNAV T-routes use the
+ * `low` token, high-altitude J-routes and RNAV Q-routes use `high`,
+ * regional and oceanic routes use `regional`. The visibility filter is
+ * built per-render from the active `airwayCategories` URL state plus
+ * {@link ZOOM_AWARE_VISIBILITY} so non-major airways are zoom-gated at
+ * the feature level rather than hiding the entire layer.
  */
 export function AirwaysLayer(): ReactElement | null {
   const { airwayCategories } = route.useSearch();
   const state = useAirwayDataset();
   const activeRef = useActiveHighlightRef();
+  const colors = useChartColors();
 
   const enabledTypes = useMemo<readonly AirwayType[]>(
     () => airwayCategories.flatMap((category) => AIRWAY_CATEGORY_TYPES[category]),
@@ -199,15 +149,60 @@ export function AirwaysLayer(): ReactElement | null {
     [enabledTypes],
   );
 
-  const layerProps = useMemo<LayerProps>(() => ({ ...AIRWAYS_LAYER_BASE, filter }), [filter]);
+  const layerProps = useMemo<LayerProps>(
+    () => ({
+      id: AIRWAYS_LAYER_ID,
+      source: AIRWAYS_SOURCE_ID,
+      type: 'line',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+      },
+      filter,
+      paint: {
+        'line-color': [
+          'match',
+          ['get', 'type'],
+          ['VICTOR', 'RNAV_T'],
+          colors.airway.low,
+          ['JET', 'RNAV_Q'],
+          colors.airway.high,
+          colors.airway.regional,
+        ],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 7, 1.6, 10, 2.6],
+        'line-opacity': 0.45,
+      },
+    }),
+    [filter, colors],
+  );
 
+  // Highlight overlay for the currently-selected (or chip-hovered) airway.
+  // Thicker yellow stroke that still reads as a line (not a band) at any
+  // zoom. The filter combines the entity-match clause with
+  // {@link ZOOM_AWARE_VISIBILITY} so the halo follows the same fade-in
+  // rules as the base layer - selecting a hidden V-route at low zoom
+  // does not leave a yellow ring floating over nothing.
   const highlightLayerProps = useMemo<LayerProps>(() => {
     const highlightFilter: ExpressionSpecification =
       activeRef?.type === 'airway'
         ? ['all', ['==', ['get', 'designation'], activeRef.id], ZOOM_AWARE_VISIBILITY]
         : MATCH_NONE_FILTER;
-    return { ...AIRWAYS_HIGHLIGHT_LAYER_BASE, filter: highlightFilter };
-  }, [activeRef]);
+    return {
+      id: AIRWAYS_HIGHLIGHT_LAYER_ID,
+      source: AIRWAYS_SOURCE_ID,
+      type: 'line',
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+      },
+      filter: highlightFilter,
+      paint: {
+        'line-color': colors.highlight.primary,
+        'line-width': 4,
+        'line-opacity': 0.95,
+      },
+    };
+  }, [activeRef, colors]);
 
   const data = useMemo<
     FeatureCollection<MultiLineString, AirwayFeatureProperties> | undefined
@@ -300,6 +295,7 @@ export function AirwayLegFocusLayer(): ReactElement | null {
   const activeRef = useActiveHighlightRef();
   const hoveredWaypointIndex = useHoveredAirwayWaypointIndex();
   const state = useAirwayDataset();
+  const colors = useChartColors();
 
   // Build the mixed waypoint + leg feature collection only when the
   // active selection is an airway; otherwise keep the source absent
@@ -369,13 +365,13 @@ export function AirwayLegFocusLayer(): ReactElement | null {
         // regular highlight on whichever underlying point layer the
         // waypoint sits on (fix / navaid / airport).
         'circle-radius': 8,
-        'circle-color': CHART_HIGHLIGHT_COLORS.focusOutline,
-        'circle-stroke-color': CHART_HIGHLIGHT_COLORS.stroke,
+        'circle-color': colors.highlight.focusOutline,
+        'circle-stroke-color': colors.highlight.stroke,
         'circle-stroke-width': 2,
         'circle-opacity': 0.85,
       },
     }),
-    [indexFilter],
+    [indexFilter, colors],
   );
 
   const legLayerProps = useMemo<LayerProps>(
@@ -393,12 +389,12 @@ export function AirwayLegFocusLayer(): ReactElement | null {
         // airway highlight. Wider than the highlight stroke so the
         // focused leg is visible even when an airport / navaid circle
         // sits on top of one of its waypoints.
-        'line-color': CHART_HIGHLIGHT_COLORS.focusOutline,
+        'line-color': colors.highlight.focusOutline,
         'line-width': 6,
         'line-opacity': 1,
       },
     }),
-    [indexFilter],
+    [indexFilter, colors],
   );
 
   if (data === undefined) {
