@@ -217,14 +217,14 @@ export function LayerToggle(): ReactElement {
 
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="absolute right-3 top-3 z-10 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:py-1.5">
+      <DropdownMenu.Trigger className="absolute right-3 top-3 z-10 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 shadow-md hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:py-1.5 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-500">
         Layers
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
           sideOffset={4}
-          className="min-w-[14rem] rounded-md border border-slate-200 bg-white p-1 shadow-lg"
+          className="min-w-[14rem] rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
         >
           {LAYER_OPTIONS.map((option) => {
             const isExpandable = EXPANDABLE_LAYERS.has(option.id);
@@ -323,7 +323,7 @@ function SimpleParentRow({
       checked={checked}
       onCheckedChange={onCheckedChange}
       onSelect={(event) => event.preventDefault()}
-      className="flex cursor-default items-center gap-2 rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5"
+      className="flex cursor-default items-center gap-2 rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5 dark:text-slate-200 dark:data-[highlighted]:bg-slate-800"
     >
       <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
         <DropdownMenu.ItemIndicator>
@@ -399,7 +399,7 @@ function ExpandableParentRow({
       onCheckedChange={onCheckedChange}
       onSelect={(event) => event.preventDefault()}
       onKeyDown={handleKeyDown}
-      className="flex cursor-default items-center gap-2 rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5"
+      className="flex cursor-default items-center gap-2 rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5 dark:text-slate-200 dark:data-[highlighted]:bg-slate-800"
     >
       <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
         <DropdownMenu.ItemIndicator>
@@ -455,7 +455,7 @@ function ExpandToggleButton({
       onClick={handleClick}
       onPointerDown={stopPointer}
       onPointerUp={stopPointer}
-      className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-700 md:h-7 md:w-7"
+      className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-700 md:h-7 md:w-7 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
     >
       <ChevronIcon expanded={expanded} />
     </button>
@@ -483,7 +483,7 @@ function SubRow({ label, checked, onCheckedChange }: SubRowProps): ReactElement 
       checked={checked}
       onCheckedChange={onCheckedChange}
       onSelect={(event) => event.preventDefault()}
-      className="flex cursor-default items-center gap-2 rounded py-2.5 pl-8 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5"
+      className="flex cursor-default items-center gap-2 rounded py-2.5 pl-8 pr-2 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 md:py-1.5 dark:text-slate-200 dark:data-[highlighted]:bg-slate-800"
     >
       <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
         <DropdownMenu.ItemIndicator>
@@ -518,8 +518,8 @@ function SubCountChip({ enabled, total, dimmed }: SubCountChipProps): ReactEleme
   // when the parent layer is off (and thus the count is informational, not
   // representing visible features).
   const colorClasses = dimmed
-    ? 'border border-slate-200 bg-transparent text-slate-400'
-    : 'bg-slate-700 text-white';
+    ? 'border border-slate-200 bg-transparent text-slate-400 dark:border-slate-700 dark:text-slate-500'
+    : 'bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900';
   return (
     <span
       className={`${baseClasses} ${colorClasses}`}
@@ -548,7 +548,7 @@ interface ZoomGatedHintProps {
 function ZoomGatedHint({ minZoom }: ZoomGatedHintProps): ReactElement {
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-500"
+      className="inline-flex shrink-0 items-center rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
       aria-label={`Appears at zoom ${minZoom} and above`}
     >
       Zoom {minZoom}+
@@ -594,8 +594,8 @@ function ChevronIcon({ expanded }: { expanded: boolean }): ReactElement {
       aria-hidden="true"
       className={
         expanded
-          ? 'rotate-90 text-slate-500 transition-transform'
-          : 'text-slate-500 transition-transform'
+          ? 'rotate-90 text-slate-500 transition-transform dark:text-slate-400'
+          : 'text-slate-500 transition-transform dark:text-slate-400'
       }
     >
       <path d="M3.5 2L7 5L3.5 8" />

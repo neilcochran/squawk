@@ -147,17 +147,17 @@ export function ChartLoadingIndicator(): ReactElement | null {
   if (erroredSlot !== undefined) {
     return (
       <div
-        className="absolute inset-0 z-10 flex items-center justify-center bg-white/85"
+        className="absolute inset-0 z-10 flex items-center justify-center bg-white/85 dark:bg-slate-950/85"
         role="alert"
       >
-        <div className="w-72 rounded-lg border border-red-200 bg-white px-5 py-4 text-center shadow-md">
-          <div className="text-sm font-medium text-red-700">
+        <div className="w-72 rounded-lg border border-red-200 bg-white px-5 py-4 text-center shadow-md dark:border-red-900 dark:bg-slate-900">
+          <div className="text-sm font-medium text-red-700 dark:text-red-400">
             Couldn&apos;t load {erroredSlot.noun}.
           </div>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-3 rounded-md bg-slate-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-slate-800 md:py-1.5"
+            className="mt-3 rounded-md bg-slate-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-slate-800 md:py-1.5 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-300"
           >
             Reload
           </button>
@@ -177,7 +177,7 @@ export function ChartLoadingIndicator(): ReactElement | null {
 
   return (
     <div
-      className="absolute inset-0 z-10 flex items-center justify-center bg-white/85 transition-opacity"
+      className="absolute inset-0 z-10 flex items-center justify-center bg-white/85 transition-opacity dark:bg-slate-950/85"
       style={{
         transitionDuration: `${FADE_OUT_MS}ms`,
         opacity: dismissing ? 0 : 1,
@@ -185,7 +185,7 @@ export function ChartLoadingIndicator(): ReactElement | null {
       role="status"
       aria-live="polite"
     >
-      <div className="flex w-72 items-center gap-3 rounded-lg border border-slate-200 bg-white px-5 py-3 shadow-md">
+      <div className="flex w-72 items-center gap-3 rounded-lg border border-slate-200 bg-white px-5 py-3 shadow-md dark:border-slate-700 dark:bg-slate-900">
         {complete ? (
           <span
             className="inline-block h-4 w-4 shrink-0 rounded-full bg-emerald-500"
@@ -193,11 +193,11 @@ export function ChartLoadingIndicator(): ReactElement | null {
           />
         ) : (
           <span
-            className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600"
+            className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
             aria-hidden="true"
           />
         )}
-        <span className="text-sm font-medium text-slate-700">{message}</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{message}</span>
       </div>
     </div>
   );

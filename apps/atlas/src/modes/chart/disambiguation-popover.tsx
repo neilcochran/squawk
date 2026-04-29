@@ -197,11 +197,11 @@ export function DisambiguationPopover({
       clampKey={entries.length}
       role="menu"
       aria-label="Select a feature"
-      className="absolute z-30 flex max-h-[70vh] min-w-[12.5rem] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+      className="absolute z-30 flex max-h-[70vh] min-w-[12.5rem] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
     >
-      <p className="flex shrink-0 items-baseline justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 uppercase">
+      <p className="flex shrink-0 items-baseline justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold tracking-wide text-slate-600 uppercase dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
         <span>Select a feature</span>
-        <span className="font-mono text-slate-400">{entries.length}</span>
+        <span className="font-mono text-slate-400 dark:text-slate-500">{entries.length}</span>
       </p>
       <ul className="flex flex-col overflow-y-auto">
         {entries.map((entry) => (
@@ -216,14 +216,14 @@ export function DisambiguationPopover({
               })}
               onFocus={(): void => setHoveredChipSelection(entry.selection)}
               onBlur={(): void => setHoveredChipSelection(undefined)}
-              className="flex w-full items-baseline gap-2 px-3 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 focus:bg-indigo-50 focus:text-indigo-700 focus:outline-none md:py-1.5"
+              className="flex w-full items-baseline gap-2 px-3 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 focus:bg-indigo-50 focus:text-indigo-700 focus:outline-none md:py-1.5 dark:text-slate-200 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-300 dark:focus:bg-indigo-950/50 dark:focus:text-indigo-300"
             >
-              <span className="w-14 shrink-0 text-[10px] font-semibold tracking-wide text-slate-500 uppercase">
+              <span className="w-14 shrink-0 text-[10px] font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
                 {entry.type}
               </span>
               <span className="font-medium">{entry.label}</span>
               {entry.subtitle === undefined ? null : (
-                <span className="ml-auto pl-2 font-mono text-xs text-slate-500">
+                <span className="ml-auto pl-2 font-mono text-xs text-slate-500 dark:text-slate-400">
                   {entry.subtitle}
                 </span>
               )}
@@ -232,7 +232,7 @@ export function DisambiguationPopover({
         ))}
       </ul>
       {entries.length > HINT_THRESHOLD ? (
-        <p className="shrink-0 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] tracking-wide text-slate-500 italic">
+        <p className="shrink-0 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] tracking-wide text-slate-500 italic dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
           Zoom in for fewer options
         </p>
       ) : null}

@@ -6,11 +6,7 @@ import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { Navaid, NavaidType } from '@squawk/types';
 import { useNavaidDataset } from '../../../shared/data/navaid-dataset.ts';
-import {
-  CHART_HIGHLIGHT_COLORS,
-  CHART_NAVAID_COLOR,
-  CHART_SYMBOL_STROKE,
-} from '../../../shared/styles/chart-colors.ts';
+import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 import { LAYER_MIN_ZOOM } from '../url-state.ts';
 
@@ -47,31 +43,6 @@ const MATCH_NONE_FILTER: ExpressionSpecification = [
   ['get', 'identifier'],
   '__atlas-no-match__',
 ];
-
-/**
- * Highlight overlay for the currently-selected (or chip-hovered) navaid.
- * Mirrors the airport highlight (yellow + dark stroke) so the highlight
- * style is consistent across point layers. Inherits the same `minzoom`
- * as the base layer so a stray highlight does not float over an empty
- * viewport when the user is zoomed out below the threshold.
- *
- * `minzoom` is included via conditional spread so the property is omitted
- * when {@link LAYER_MIN_ZOOM} carries no entry, satisfying
- * `exactOptionalPropertyTypes` (which rejects an explicit `undefined` for
- * an optional property).
- */
-const NAVAIDS_HIGHLIGHT_LAYER_BASE: LayerProps = {
-  id: NAVAIDS_HIGHLIGHT_LAYER_ID,
-  source: NAVAIDS_SOURCE_ID,
-  type: 'circle',
-  ...(LAYER_MIN_ZOOM.navaids !== undefined && { minzoom: LAYER_MIN_ZOOM.navaids }),
-  paint: {
-    'circle-radius': 9,
-    'circle-color': CHART_HIGHLIGHT_COLORS.primary,
-    'circle-stroke-color': CHART_HIGHLIGHT_COLORS.stroke,
-    'circle-stroke-width': 2,
-  },
-};
 
 /**
  * Navaid types we render. `FAN_MARKER`, `MARINE_NDB`, and `VOT` are
@@ -127,15 +98,35 @@ const NAVAID_SECONDARY_TIER_MIN_ZOOM = 7;
 const NAVAID_TERTIARY_TIER_MIN_ZOOM = 10;
 
 /**
- * MapLibre layer styling. Visibility is gated by navaid type: the IFR
- * backbone (VOR / VORTAC / VOR/DME) shows from the layer's `minzoom`,
- * TACAN and DME join at z7, NDB and NDB/DME at z10. Color uses a
- * magenta hue to distinguish navaids from the blue/slate airports
- * layer at a glance.
+ * Visibility filter shared by every render of {@link NavaidsLayer}.
+ * Pulled out so the per-render `useMemo` building the layer props
+ * does not need to recreate the filter array (which is color-
+ * independent) when the theme changes.
+ */
+const NAVAIDS_VISIBILITY_FILTER: ExpressionSpecification = [
+  'any',
+  ['in', ['get', 'type'], ['literal', ['VOR', 'VORTAC', 'VOR/DME']]],
+  [
+    'all',
+    ['>=', ['zoom'], NAVAID_SECONDARY_TIER_MIN_ZOOM],
+    ['in', ['get', 'type'], ['literal', ['TACAN', 'DME']]],
+  ],
+  ['>=', ['zoom'], NAVAID_TERTIARY_TIER_MIN_ZOOM],
+];
+
+/**
+ * Chart-mode overlay that renders navaids from `@squawk/navaid-data` as
+ * MapLibre circle symbols. Returns `null` while the dataset is still being
+ * fetched or if the load failed; callers needing fetch-state UI should read
+ * the same hook directly.
  *
- * `minzoom` is sourced from the central {@link LAYER_MIN_ZOOM} table so
- * the layer-toggle dropdown's "appears at z N+" hint and the actual
- * paint cutoff stay in lockstep.
+ * Visibility is gated by navaid type: the IFR backbone (VOR / VORTAC /
+ * VOR/DME) shows from the layer's `minzoom`, TACAN and DME join at z7,
+ * NDB and NDB/DME at z10. Color uses a magenta hue to distinguish
+ * navaids from the blue/slate airports layer at a glance. `minzoom` is
+ * sourced from the central {@link LAYER_MIN_ZOOM} table so the
+ * layer-toggle dropdown's "appears at z N+" hint and the actual paint
+ * cutoff stay in lockstep.
  *
  * Each tier appears at the same dot size as the tier(s) already on
  * screen so a TACAN popping in at z7 is the same size as the VOR it
@@ -145,38 +136,10 @@ const NAVAID_TERTIARY_TIER_MIN_ZOOM = 10;
  * circle, and a chart at CONUS zoom would show thousands of speck-
  * sized stroke artifacts otherwise.
  */
-const NAVAIDS_LAYER_PROPS: LayerProps = {
-  id: NAVAIDS_LAYER_ID,
-  source: NAVAIDS_SOURCE_ID,
-  type: 'circle',
-  ...(LAYER_MIN_ZOOM.navaids !== undefined && { minzoom: LAYER_MIN_ZOOM.navaids }),
-  filter: [
-    'any',
-    ['in', ['get', 'type'], ['literal', ['VOR', 'VORTAC', 'VOR/DME']]],
-    [
-      'all',
-      ['>=', ['zoom'], NAVAID_SECONDARY_TIER_MIN_ZOOM],
-      ['in', ['get', 'type'], ['literal', ['TACAN', 'DME']]],
-    ],
-    ['>=', ['zoom'], NAVAID_TERTIARY_TIER_MIN_ZOOM],
-  ],
-  paint: {
-    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 4, 7, 5, 10, 6, 16, 10],
-    'circle-color': CHART_NAVAID_COLOR,
-    'circle-stroke-color': CHART_SYMBOL_STROKE,
-    'circle-stroke-width': 1,
-  },
-};
-
-/**
- * Chart-mode overlay that renders navaids from `@squawk/navaid-data` as
- * MapLibre circle symbols. Returns `null` while the dataset is still being
- * fetched or if the load failed; callers needing fetch-state UI should read
- * the same hook directly.
- */
 export function NavaidsLayer(): ReactElement | null {
   const state = useNavaidDataset();
   const activeRef = useActiveHighlightRef();
+  const colors = useChartColors();
 
   const data = useMemo<FeatureCollection<Point, NavaidFeatureProperties> | undefined>(() => {
     if (state.status !== 'loaded') {
@@ -185,13 +148,50 @@ export function NavaidsLayer(): ReactElement | null {
     return toFeatureCollection(state.dataset.records);
   }, [state]);
 
+  // Layer paint props are themed: re-memoize when the resolved chart
+  // palette flips so MapLibre receives the new color values through
+  // its declarative `paint` prop pipeline.
+  const layerProps = useMemo<LayerProps>(
+    () => ({
+      id: NAVAIDS_LAYER_ID,
+      source: NAVAIDS_SOURCE_ID,
+      type: 'circle',
+      ...(LAYER_MIN_ZOOM.navaids !== undefined && { minzoom: LAYER_MIN_ZOOM.navaids }),
+      filter: NAVAIDS_VISIBILITY_FILTER,
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 4, 7, 5, 10, 6, 16, 10],
+        'circle-color': colors.navaid,
+        'circle-stroke-color': colors.symbolStroke,
+        'circle-stroke-width': 1,
+      },
+    }),
+    [colors],
+  );
+
+  // Highlight overlay for the currently-selected (or chip-hovered)
+  // navaid. Mirrors the airport / fix highlight so the affordance is
+  // consistent across point layers. Inherits the base layer's
+  // `minzoom` so a stray highlight does not float over an empty
+  // viewport when the user is zoomed out below the threshold.
   const highlightLayerProps = useMemo<LayerProps>(() => {
     const filter: ExpressionSpecification =
       activeRef?.type === 'navaid'
         ? ['==', ['get', 'identifier'], activeRef.id]
         : MATCH_NONE_FILTER;
-    return { ...NAVAIDS_HIGHLIGHT_LAYER_BASE, filter };
-  }, [activeRef]);
+    return {
+      id: NAVAIDS_HIGHLIGHT_LAYER_ID,
+      source: NAVAIDS_SOURCE_ID,
+      type: 'circle',
+      ...(LAYER_MIN_ZOOM.navaids !== undefined && { minzoom: LAYER_MIN_ZOOM.navaids }),
+      filter,
+      paint: {
+        'circle-radius': 9,
+        'circle-color': colors.highlight.primary,
+        'circle-stroke-color': colors.highlight.stroke,
+        'circle-stroke-width': 2,
+      },
+    };
+  }, [activeRef, colors]);
 
   if (data === undefined) {
     return null;
@@ -199,7 +199,7 @@ export function NavaidsLayer(): ReactElement | null {
 
   return (
     <Source id={NAVAIDS_SOURCE_ID} type="geojson" data={data}>
-      <Layer {...NAVAIDS_LAYER_PROPS} />
+      <Layer {...layerProps} />
       <Layer {...highlightLayerProps} />
     </Source>
   );

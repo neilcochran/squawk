@@ -136,9 +136,9 @@ export function ZoomControls(): ReactElement {
   }, [mapRef]);
 
   return (
-    <div className="absolute bottom-10 left-3 z-10 flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-md">
+    <div className="absolute bottom-10 left-3 z-10 flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900">
       <ZoomReadout zoom={currentZoom} />
-      <div className="h-px bg-slate-200" aria-hidden="true" />
+      <div className="h-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
       <button
         type="button"
         onClick={handleZoomIn}
@@ -148,7 +148,7 @@ export function ZoomControls(): ReactElement {
       >
         <PlusIcon />
       </button>
-      <div className="h-px bg-slate-200" aria-hidden="true" />
+      <div className="h-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
       <button
         type="button"
         onClick={handleZoomOut}
@@ -158,7 +158,7 @@ export function ZoomControls(): ReactElement {
       >
         <MinusIcon />
       </button>
-      <div className="h-px bg-slate-200" aria-hidden="true" />
+      <div className="h-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
       <button
         type="button"
         onClick={handleTiltUp}
@@ -168,7 +168,7 @@ export function ZoomControls(): ReactElement {
       >
         <TiltUpIcon />
       </button>
-      <div className="h-px bg-slate-200" aria-hidden="true" />
+      <div className="h-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
       <button
         type="button"
         onClick={handleTiltDown}
@@ -189,7 +189,7 @@ export function ZoomControls(): ReactElement {
  * stack - keeping the control geometry stable at the bounds.
  */
 const CONTROL_BUTTON_CLASS =
-  'flex h-11 w-11 items-center justify-center text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white md:h-8 md:w-8';
+  'flex h-11 w-11 items-center justify-center text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white md:h-8 md:w-8 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-500 dark:disabled:text-slate-600 dark:disabled:hover:bg-slate-900';
 
 /**
  * Compact text formatter for the {@link ZoomReadout}: integer zooms
@@ -224,7 +224,7 @@ function ZoomReadout({ zoom }: { zoom: number }): ReactElement {
     <div
       role="status"
       aria-label={`Current zoom: ${text}`}
-      className="flex h-11 w-11 flex-col items-center justify-center text-[10px] font-medium leading-none tabular-nums text-slate-600 md:h-8 md:w-8"
+      className="flex h-11 w-11 flex-col items-center justify-center text-[10px] font-medium leading-none tabular-nums text-slate-600 md:h-8 md:w-8 dark:text-slate-300"
     >
       <ZoomIcon />
       <span className="mt-0.5">{text}</span>
