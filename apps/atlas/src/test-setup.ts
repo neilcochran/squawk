@@ -10,12 +10,17 @@
  * accumulate in the document.
  *
  * Provides a minimal `window.matchMedia` shim for jsdom, which omits the
- * API entirely. Defaults every query to `matches: true` so hooks like
+ * API entirely. Most queries default to `matches: true` so hooks like
  * `useCanHover` (which inspects `(hover: hover)`) treat the test
  * environment as a desktop with a real hover gesture - matching the
- * default UX that hover-dependent specs were originally written
- * against. Tests that need to exercise the touch / no-hover path can
- * override this per-suite by stubbing `window.matchMedia`.
+ * default UX that hover-dependent specs were originally written against.
+ *
+ * `prefers-color-scheme: dark` is the one explicit exception: it
+ * defaults to `false` so tests that resolve theme from the system
+ * preference deterministically pick the light theme regardless of the
+ * host machine's OS setting. Tests that need to exercise the dark /
+ * touch / no-hover path can override this per-suite by stubbing
+ * `window.matchMedia`.
  */
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
@@ -23,7 +28,7 @@ import { afterEach } from 'vitest';
 
 if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
   window.matchMedia = (query: string): MediaQueryList => ({
-    matches: true,
+    matches: query !== '(prefers-color-scheme: dark)',
     media: query,
     onchange: null,
     addListener: (): void => {},

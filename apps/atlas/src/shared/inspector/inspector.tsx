@@ -302,7 +302,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
 
   return (
     <aside
-      className="absolute right-0 bottom-0 left-0 z-20 max-h-[60vh] overflow-y-auto rounded-t-xl border-t border-slate-200 bg-white shadow-lg md:top-0 md:left-auto md:max-h-none md:w-inspector md:rounded-none md:border-t-0 md:border-l"
+      className="absolute right-0 bottom-0 left-0 z-20 max-h-[60vh] overflow-y-auto rounded-t-xl border-t border-slate-200 bg-white shadow-lg md:top-0 md:left-auto md:max-h-none md:w-inspector md:rounded-none md:border-t-0 md:border-l dark:border-slate-700 dark:bg-slate-900"
       aria-label="Entity inspector"
     >
       <InspectorHeader
@@ -393,12 +393,12 @@ function SiblingChips({
     chips.length === 1 ? '1 other feature here' : `${chips.length} other features here`;
 
   return (
-    <div className="border-y-2 border-indigo-200 bg-indigo-50">
+    <div className="border-y-2 border-indigo-200 bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/40">
       <button
         type="button"
         onClick={(): void => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        className="flex w-full items-center gap-1.5 px-4 py-3 text-left text-xs font-semibold tracking-wide text-indigo-700 uppercase hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400 md:py-2"
+        className="flex w-full items-center gap-1.5 px-4 py-3 text-left text-xs font-semibold tracking-wide text-indigo-700 uppercase hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-400 md:py-2 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
       >
         <SwitchIcon />
         <span className="flex-1">{headerText}</span>
@@ -408,7 +408,7 @@ function SiblingChips({
         <div className="flex flex-col gap-2 px-4 pt-1 pb-3">
           {groups.map((group) => (
             <div key={group.type}>
-              <p className="mb-1 text-[10px] font-semibold tracking-wider text-indigo-600/80 uppercase">
+              <p className="mb-1 text-[10px] font-semibold tracking-wider text-indigo-600/80 uppercase dark:text-indigo-300/80">
                 {CHIP_GROUP_LABELS[group.type]}
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -423,7 +423,7 @@ function SiblingChips({
                     })}
                     onFocus={(): void => onHover(chip.selection)}
                     onBlur={(): void => onHover(undefined)}
-                    className="rounded-full border border-indigo-300 bg-white px-3 py-2 text-xs font-medium text-indigo-700 shadow-sm hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 md:px-2.5 md:py-1"
+                    className="rounded-full border border-indigo-300 bg-white px-3 py-2 text-xs font-medium text-indigo-700 shadow-sm hover:border-indigo-400 hover:bg-indigo-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 md:px-2.5 md:py-1 dark:border-indigo-700 dark:bg-slate-900 dark:text-indigo-300 dark:hover:border-indigo-500 dark:hover:bg-indigo-900/50"
                   >
                     {chip.label}
                   </button>
@@ -726,7 +726,7 @@ function InspectorHeader({
   onRecenter?: () => void;
 }): ReactElement {
   return (
-    <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+    <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
       <HeaderText state={state} />
       <div className="flex shrink-0 items-center gap-1">
         {onRecenter === undefined ? null : (
@@ -735,7 +735,7 @@ function InspectorHeader({
             onClick={onRecenter}
             aria-label="Recenter on this feature"
             title="Recenter on this feature"
-            className="flex h-11 w-11 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:h-7 md:w-7"
+            className="flex h-11 w-11 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:h-7 md:w-7 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus-visible:ring-slate-500"
           >
             <RecenterIcon />
           </button>
@@ -765,22 +765,26 @@ function HeaderText({ state }: { state: ResolvedEntityState }): ReactElement | n
   if (state.status === 'loading') {
     return (
       <div>
-        <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+        <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
           {state.ref.type}
         </p>
-        <h2 className="text-base font-semibold text-slate-900">{state.ref.id}</h2>
-        <p className="mt-1 text-xs text-slate-500">Loading dataset...</p>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+          {state.ref.id}
+        </h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Loading dataset...</p>
       </div>
     );
   }
   if (state.status === 'not-found') {
     return (
       <div>
-        <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+        <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
           {state.ref.type}
         </p>
-        <h2 className="text-base font-semibold text-slate-900">{state.ref.id}</h2>
-        <p className="mt-1 text-xs text-rose-600">No matching record</p>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+          {state.ref.id}
+        </h2>
+        <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">No matching record</p>
       </div>
     );
   }
@@ -796,50 +800,64 @@ function ResolvedHeaderText({ entity }: { entity: ResolvedEntity }): ReactElemen
     case 'airport':
       return (
         <div>
-          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">Airport</p>
-          <h2 className="text-base font-semibold text-slate-900">
+          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+            Airport
+          </p>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
             {entity.record.faaId}
             {entity.record.icao !== undefined ? (
-              <span className="ml-2 text-sm font-normal text-slate-500">{entity.record.icao}</span>
+              <span className="ml-2 text-sm font-normal text-slate-500 dark:text-slate-400">
+                {entity.record.icao}
+              </span>
             ) : null}
           </h2>
-          <p className="mt-0.5 text-xs text-slate-600">{entity.record.name}</p>
+          <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{entity.record.name}</p>
         </div>
       );
     case 'navaid':
       return (
         <div>
-          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
             {entity.record.type}
           </p>
-          <h2 className="text-base font-semibold text-slate-900">{entity.record.identifier}</h2>
-          <p className="mt-0.5 text-xs text-slate-600">{entity.record.name}</p>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {entity.record.identifier}
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{entity.record.name}</p>
         </div>
       );
     case 'fix':
       return (
         <div>
-          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">Fix</p>
-          <h2 className="text-base font-semibold text-slate-900">{entity.record.identifier}</h2>
+          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+            Fix
+          </p>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {entity.record.identifier}
+          </h2>
         </div>
       );
     case 'airway':
       return (
         <div>
-          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
             {entity.record.type} airway
           </p>
-          <h2 className="text-base font-semibold text-slate-900">{entity.record.designation}</h2>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {entity.record.designation}
+          </h2>
         </div>
       );
     case 'airspace':
       return (
         <div>
-          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
             {entity.airspaceType.replace(/_/g, ' ')}
           </p>
-          <h2 className="text-base font-semibold text-slate-900">{entity.identifier}</h2>
-          <p className="mt-0.5 text-xs text-slate-600">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            {entity.identifier}
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
             {entity.features.length} feature{entity.features.length === 1 ? '' : 's'}
           </p>
         </div>

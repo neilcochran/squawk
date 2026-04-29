@@ -48,7 +48,7 @@ export function FixPanel({ record }: FixPanelProps): ReactElement {
       ) : null}
       {record.chartingRemark !== undefined ? (
         <InspectorSection title="Remark">
-          <p className="text-sm text-slate-700">{record.chartingRemark}</p>
+          <p className="text-sm text-slate-700 dark:text-slate-300">{record.chartingRemark}</p>
         </InspectorSection>
       ) : null}
     </>
