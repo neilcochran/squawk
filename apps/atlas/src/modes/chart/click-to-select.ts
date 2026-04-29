@@ -1,11 +1,8 @@
 import type { GeoJsonProperties, Geometry } from 'geojson';
 import { polygonGeoJson } from '@squawk/geo';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
-import {
-  AIRSPACE_FILL_LAYER_ID,
-  AIRSPACE_LINE_LAYER_ID,
-  AIRSPACE_MATCH_KEY_PROPERTY,
-} from './layers/airspace-layer.tsx';
+import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
+import { AIRSPACE_MATCH_KEY_PROPERTY } from '../../shared/inspector/airspace-feature.ts';
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';

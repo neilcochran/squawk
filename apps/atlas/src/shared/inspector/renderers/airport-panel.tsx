@@ -1,5 +1,10 @@
 import type { ReactElement } from 'react';
 import type { Airport } from '@squawk/types';
+import {
+  formatAirportFacilityType,
+  formatAirportRunway,
+  formatAirportStatus,
+} from '../formatters.ts';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**
@@ -29,8 +34,8 @@ export function AirportPanel({ record }: AirportPanelProps): ReactElement {
         <InspectorRow label="Time zone">{record.timezone}</InspectorRow>
       </InspectorSection>
       <InspectorSection title="Facility">
-        <InspectorRow label="Type">{formatFacilityType(record.facilityType)}</InspectorRow>
-        <InspectorRow label="Status">{formatStatus(record.status)}</InspectorRow>
+        <InspectorRow label="Type">{formatAirportFacilityType(record.facilityType)}</InspectorRow>
+        <InspectorRow label="Status">{formatAirportStatus(record.status)}</InspectorRow>
         <InspectorRow label="Use">
           {record.useType === 'PUBLIC' ? 'Public' : 'Private'}
         </InspectorRow>
@@ -42,7 +47,7 @@ export function AirportPanel({ record }: AirportPanelProps): ReactElement {
         <InspectorSection title={`Runways (${record.runways.length})`}>
           {record.runways.map((runway) => (
             <InspectorRow key={runway.id} label={runway.id}>
-              {formatRunway(runway.lengthFt, runway.widthFt, runway.surfaceType)}
+              {formatAirportRunway(runway.lengthFt, runway.widthFt, runway.surfaceType)}
             </InspectorRow>
           ))}
         </InspectorSection>
@@ -58,55 +63,4 @@ export function AirportPanel({ record }: AirportPanelProps): ReactElement {
       ) : null}
     </>
   );
-}
-
-/** Converts the FacilityType discriminator to a sentence-cased label. */
-function formatFacilityType(type: Airport['facilityType']): string {
-  switch (type) {
-    case 'AIRPORT':
-      return 'Airport';
-    case 'HELIPORT':
-      return 'Heliport';
-    case 'SEAPLANE_BASE':
-      return 'Seaplane base';
-    case 'GLIDERPORT':
-      return 'Gliderport';
-    case 'ULTRALIGHT':
-      return 'Ultralight';
-    case 'BALLOONPORT':
-      return 'Balloonport';
-  }
-}
-
-/** Converts the FacilityStatus discriminator to a sentence-cased label. */
-function formatStatus(status: Airport['status']): string {
-  switch (status) {
-    case 'OPEN':
-      return 'Open';
-    case 'CLOSED_INDEFINITELY':
-      return 'Closed (indefinite)';
-    case 'CLOSED_PERMANENTLY':
-      return 'Closed (permanent)';
-  }
-}
-
-/**
- * Builds a one-line "{length} ft x {width} ft, {surface}" runway summary,
- * skipping any field that is undefined in the source record.
- */
-function formatRunway(
-  lengthFt: number | undefined,
-  widthFt: number | undefined,
-  surface: string | undefined,
-): string {
-  const parts: string[] = [];
-  if (lengthFt !== undefined && widthFt !== undefined) {
-    parts.push(`${lengthFt} x ${widthFt} ft`);
-  } else if (lengthFt !== undefined) {
-    parts.push(`${lengthFt} ft`);
-  }
-  if (surface !== undefined) {
-    parts.push(surface);
-  }
-  return parts.length === 0 ? '-' : parts.join(', ');
 }
