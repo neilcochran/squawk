@@ -3,7 +3,9 @@ import { render, renderHook } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import {
   useActiveHighlightRef,
+  useHoveredAirwayWaypointIndex,
   useHoveredFeatureIndex,
+  useSetHoveredAirwayWaypointIndex,
   useSetHoveredChipSelection,
   useSetHoveredFeatureIndex,
 } from './highlight-context.ts';
@@ -14,6 +16,8 @@ function wrap(
   setHoveredChipSelection: (selection: string | undefined) => void = vi.fn(),
   hoveredFeatureIndex: number | undefined = undefined,
   setHoveredFeatureIndex: (index: number | undefined) => void = vi.fn(),
+  hoveredAirwayWaypointIndex: number | undefined = undefined,
+  setHoveredAirwayWaypointIndex: (index: number | undefined) => void = vi.fn(),
 ): (props: { children: ReactNode }) => ReactElement {
   function Wrapper({ children }: { children: ReactNode }): ReactElement {
     return (
@@ -22,6 +26,8 @@ function wrap(
         setHoveredChipSelection={setHoveredChipSelection}
         hoveredFeatureIndex={hoveredFeatureIndex}
         setHoveredFeatureIndex={setHoveredFeatureIndex}
+        hoveredAirwayWaypointIndex={hoveredAirwayWaypointIndex}
+        setHoveredAirwayWaypointIndex={setHoveredAirwayWaypointIndex}
       >
         {children}
       </HighlightProvider>
@@ -95,11 +101,46 @@ describe('HighlightProvider rendering', () => {
         setHoveredChipSelection={() => {}}
         hoveredFeatureIndex={undefined}
         setHoveredFeatureIndex={() => {}}
+        hoveredAirwayWaypointIndex={undefined}
+        setHoveredAirwayWaypointIndex={() => {}}
       >
         <span>child content</span>
       </HighlightProvider>,
     );
     expect(getByText('child content')).toBeInTheDocument();
+  });
+});
+
+describe('useHoveredAirwayWaypointIndex', () => {
+  it('returns the provider-supplied waypoint index', () => {
+    const { result } = renderHook(() => useHoveredAirwayWaypointIndex(), {
+      wrapper: wrap(undefined, vi.fn(), undefined, vi.fn(), 3),
+    });
+    expect(result.current).toBe(3);
+  });
+
+  it('returns undefined when no provider is mounted', () => {
+    const { result } = renderHook(() => useHoveredAirwayWaypointIndex());
+    expect(result.current).toBeUndefined();
+  });
+});
+
+describe('useSetHoveredAirwayWaypointIndex', () => {
+  it('forwards the supplied setter', () => {
+    const setter = vi.fn();
+    const { result } = renderHook(() => useSetHoveredAirwayWaypointIndex(), {
+      wrapper: wrap(undefined, vi.fn(), undefined, vi.fn(), undefined, setter),
+    });
+    result.current(2);
+    expect(setter).toHaveBeenCalledWith(2);
+    result.current(undefined);
+    expect(setter).toHaveBeenCalledWith(undefined);
+  });
+
+  it('returns a no-op setter when no provider is mounted', () => {
+    const { result } = renderHook(() => useSetHoveredAirwayWaypointIndex());
+    expect(() => result.current(1)).not.toThrow();
+    expect(() => result.current(undefined)).not.toThrow();
   });
 });
 

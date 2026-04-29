@@ -4,18 +4,58 @@ import { getRouteApi } from '@tanstack/react-router';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
 import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
-import type { Feature, FeatureCollection, MultiLineString } from 'geojson';
+import type {
+  Feature,
+  FeatureCollection,
+  Geometry,
+  LineString,
+  MultiLineString,
+  Point,
+} from 'geojson';
 import type { Airway, AirwayType } from '@squawk/types';
 import { useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
 import {
   CHART_AIRWAY_COLORS,
   CHART_HIGHLIGHT_COLORS,
 } from '../../../shared/styles/chart-colors.ts';
-import { useActiveHighlightRef } from '../highlight-context.ts';
+import { useActiveHighlightRef, useHoveredAirwayWaypointIndex } from '../highlight-context.ts';
 import { AIRWAY_CATEGORY_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 import { buildSegments } from './airway-segments.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
+
+/**
+ * Per-feature zoom threshold below which non-major airways stop
+ * rendering. The high-altitude `JET` / `RNAV_Q` backbone (the long
+ * cross-country routes) is exempt and stays visible at every zoom so
+ * users can read end-to-end on the CONUS view; everything else
+ * (V-routes, T-routes, oceanic, Alaska colored) only paints once the
+ * camera has zoomed in far enough that the dense web is legible.
+ *
+ * Implemented as a per-feature filter (not a layer-level `minzoom`)
+ * because the layer is no longer all-or-nothing - the major subset
+ * always paints.
+ */
+const MINOR_AIRWAY_MIN_ZOOM = 5;
+
+/**
+ * Filter sub-expression that resolves to `true` for any airway feature
+ * that should render at the current camera zoom. A feature passes if
+ * either it belongs to the major (HIGH-altitude) bucket, or the camera
+ * is already at or past {@link MINOR_AIRWAY_MIN_ZOOM}. Composed into
+ * both the base layer's category filter and the selection-highlight
+ * filter so the yellow halo inherits the same gating - no stray
+ * highlight floats over a hidden V-route at low zoom.
+ *
+ * MapLibre re-evaluates the `["zoom"]` expression as the camera
+ * moves, so features fade in / out smoothly without a re-render of
+ * the GeoJSON source.
+ */
+const ZOOM_AWARE_VISIBILITY: ExpressionSpecification = [
+  'any',
+  ['in', ['get', 'type'], ['literal', [...AIRWAY_CATEGORY_TYPES.HIGH]]],
+  ['>=', ['zoom'], MINOR_AIRWAY_MIN_ZOOM],
+];
 
 /**
  * Properties carried on each airway line feature in the GeoJSON source.
@@ -52,7 +92,11 @@ const MATCH_NONE_FILTER: ExpressionSpecification = [
 /**
  * Highlight overlay for the currently-selected (or chip-hovered) airway.
  * Thicker stroke in dark slate over a wider yellow halo so the airway
- * still reads as a line (not a band) at any zoom.
+ * still reads as a line (not a band) at any zoom. The per-render
+ * filter combines the entity-match clause with
+ * {@link ZOOM_AWARE_VISIBILITY} so the halo follows the same fade-in
+ * rules as the base layer - selecting a hidden V-route at low zoom
+ * does not leave a yellow ring floating over nothing.
  */
 const AIRWAYS_HIGHLIGHT_LAYER_BASE: LayerProps = {
   id: AIRWAYS_HIGHLIGHT_LAYER_ID,
@@ -104,7 +148,9 @@ function toFeatureCollection(
  * symbology. Color is tiered by airway type: low-altitude V-routes and
  * RNAV T-routes in slate, high-altitude J-routes and RNAV Q-routes in
  * indigo, regional and oceanic routes in muted gray. The visibility filter
- * is built per-render from the active `airwayCategories` URL state.
+ * is built per-render from the active `airwayCategories` URL state plus
+ * {@link ZOOM_AWARE_VISIBILITY} so non-major airways are zoom-gated at
+ * the feature level rather than hiding the entire layer.
  */
 const AIRWAYS_LAYER_BASE: LayerProps = {
   id: AIRWAYS_LAYER_ID,
@@ -149,7 +195,7 @@ export function AirwaysLayer(): ReactElement | null {
   );
 
   const filter = useMemo<ExpressionSpecification>(
-    () => ['in', ['get', 'type'], ['literal', [...enabledTypes]]],
+    () => ['all', ['in', ['get', 'type'], ['literal', [...enabledTypes]]], ZOOM_AWARE_VISIBILITY],
     [enabledTypes],
   );
 
@@ -158,7 +204,7 @@ export function AirwaysLayer(): ReactElement | null {
   const highlightLayerProps = useMemo<LayerProps>(() => {
     const highlightFilter: ExpressionSpecification =
       activeRef?.type === 'airway'
-        ? ['==', ['get', 'designation'], activeRef.id]
+        ? ['all', ['==', ['get', 'designation'], activeRef.id], ZOOM_AWARE_VISIBILITY]
         : MATCH_NONE_FILTER;
     return { ...AIRWAYS_HIGHLIGHT_LAYER_BASE, filter: highlightFilter };
   }, [activeRef]);
@@ -180,6 +226,194 @@ export function AirwaysLayer(): ReactElement | null {
     <Source id={AIRWAYS_SOURCE_ID} type="geojson" data={data}>
       <Layer {...layerProps} />
       <Layer {...highlightLayerProps} />
+    </Source>
+  );
+}
+
+/** MapLibre source id for the airway-row focus overlay. */
+const AIRWAY_FOCUS_SOURCE_ID = 'atlas-airway-focus';
+
+/** MapLibre layer id for the focused waypoint dot. */
+const AIRWAY_WAYPOINT_FOCUS_LAYER_ID = 'atlas-airway-focus-waypoint';
+
+/** MapLibre layer id for the focused incoming-leg stroke. */
+const AIRWAY_LEG_FOCUS_LAYER_ID = 'atlas-airway-focus-leg';
+
+/**
+ * Discriminator string distinguishing leg LineString features from
+ * waypoint Point features in the same focus source. The single mixed
+ * source keeps the airway-focus geojson local to one component; each
+ * MapLibre layer's filter selects the right shape via this property.
+ */
+type AirwayFocusFeatureKind = 'leg' | 'waypoint';
+
+/**
+ * Properties carried on every focus feature. Both legs and waypoints
+ * share the source schema; the `kind` discriminator routes each
+ * feature to the matching MapLibre layer (line vs. circle), and
+ * `waypointIndex` is the canonical hover-target identifier:
+ *
+ * - For a `kind: 'waypoint'` feature, the index is its own position
+ *   in the active airway's `waypoints` array.
+ * - For a `kind: 'leg'` feature, the index is the END waypoint of the
+ *   leg (so leg index 1 connects waypoint 0 to waypoint 1, and is
+ *   tagged with `waypointIndex: 1`). This way both layers filter on
+ *   the same index value the inspector hover writes - no separate
+ *   `legIndex` arithmetic at the consumer.
+ */
+interface AirwayFocusProperties {
+  /** Discriminator: leg LineString vs. waypoint Point. */
+  kind: AirwayFocusFeatureKind;
+  /** Waypoint index this feature is keyed on (see interface docs). */
+  waypointIndex: number;
+}
+
+/**
+ * Filter expression that matches nothing. Used as the focus filter
+ * when no inspector row is hovered, so each layer renders empty
+ * without unmounting / re-mounting.
+ */
+const FOCUS_MATCH_NONE_FILTER: ExpressionSpecification = ['==', ['get', 'waypointIndex'], -1];
+
+/**
+ * Top-of-stack overlay that brightens the hovered waypoint and (when
+ * the row has an incoming leg) the leg ending at that waypoint. The
+ * inspector airway panel writes a context-stored waypoint index; this
+ * layer reads it and filters two layers off a shared geojson source -
+ * a circle layer for the waypoint dot, a line layer for the incoming
+ * leg.
+ *
+ * Hovering the first waypoint row (`waypointIndex === 0`) lights up
+ * just the dot - there is no incoming leg, and the line filter
+ * naturally excludes leg index 0 since legs are tagged with the END
+ * waypoint's index (which starts at 1). Hovering any other row lights
+ * up both the dot and the leg.
+ *
+ * The source rebuilds whenever the active airway changes - one Point
+ * per waypoint plus one LineString per consecutive waypoint pair -
+ * and is empty (returns null) for any non-airway selection. Mounted
+ * as a sibling of {@link AirwaysLayer} because the focus shapes need
+ * their own source so the data lifecycle is decoupled from the
+ * always-on airway dataset.
+ */
+export function AirwayLegFocusLayer(): ReactElement | null {
+  const activeRef = useActiveHighlightRef();
+  const hoveredWaypointIndex = useHoveredAirwayWaypointIndex();
+  const state = useAirwayDataset();
+
+  // Build the mixed waypoint + leg feature collection only when the
+  // active selection is an airway; otherwise keep the source absent
+  // so MapLibre does not hold a stale geojson around for a non-airway
+  // selection.
+  const data = useMemo<FeatureCollection<Geometry, AirwayFocusProperties> | undefined>(() => {
+    if (activeRef?.type !== 'airway' || activeRef.id.length === 0) {
+      return undefined;
+    }
+    if (state.status !== 'loaded') {
+      return undefined;
+    }
+    const airway = state.dataset.records.find((record) => record.designation === activeRef.id);
+    if (airway === undefined || airway.waypoints.length === 0) {
+      return undefined;
+    }
+    const features: Feature<Geometry, AirwayFocusProperties>[] = [];
+    // Waypoint Points (one per waypoint, keyed on the waypoint index).
+    airway.waypoints.forEach((waypoint, idx) => {
+      const point: Feature<Point, AirwayFocusProperties> = {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [waypoint.lon, waypoint.lat] },
+        properties: { kind: 'waypoint', waypointIndex: idx },
+      };
+      features.push(point);
+    });
+    // Leg LineStrings (one per consecutive pair, keyed on the END
+    // waypoint's index so the line filter matches the same index the
+    // inspector hover writes).
+    for (let i = 0; i < airway.waypoints.length - 1; i += 1) {
+      const start = airway.waypoints[i];
+      const end = airway.waypoints[i + 1];
+      if (start === undefined || end === undefined) {
+        continue;
+      }
+      const line: Feature<LineString, AirwayFocusProperties> = {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [start.lon, start.lat],
+            [end.lon, end.lat],
+          ],
+        },
+        properties: { kind: 'leg', waypointIndex: i + 1 },
+      };
+      features.push(line);
+    }
+    return { type: 'FeatureCollection', features };
+  }, [activeRef, state]);
+
+  const indexFilter = useMemo<ExpressionSpecification>(() => {
+    if (hoveredWaypointIndex === undefined) {
+      return FOCUS_MATCH_NONE_FILTER;
+    }
+    return ['==', ['get', 'waypointIndex'], hoveredWaypointIndex];
+  }, [hoveredWaypointIndex]);
+
+  const waypointLayerProps = useMemo<LayerProps>(
+    () => ({
+      id: AIRWAY_WAYPOINT_FOCUS_LAYER_ID,
+      source: AIRWAY_FOCUS_SOURCE_ID,
+      type: 'circle',
+      filter: ['all', ['==', ['get', 'kind'], 'waypoint'], indexFilter],
+      paint: {
+        // Lighter yellow so the focused waypoint pops against the
+        // regular highlight on whichever underlying point layer the
+        // waypoint sits on (fix / navaid / airport).
+        'circle-radius': 8,
+        'circle-color': CHART_HIGHLIGHT_COLORS.focusOutline,
+        'circle-stroke-color': CHART_HIGHLIGHT_COLORS.stroke,
+        'circle-stroke-width': 2,
+        'circle-opacity': 0.85,
+      },
+    }),
+    [indexFilter],
+  );
+
+  const legLayerProps = useMemo<LayerProps>(
+    () => ({
+      id: AIRWAY_LEG_FOCUS_LAYER_ID,
+      source: AIRWAY_FOCUS_SOURCE_ID,
+      type: 'line',
+      filter: ['all', ['==', ['get', 'kind'], 'leg'], indexFilter],
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+      },
+      paint: {
+        // Lighter yellow so the focused leg pops against the regular
+        // airway highlight. Wider than the highlight stroke so the
+        // focused leg is visible even when an airport / navaid circle
+        // sits on top of one of its waypoints.
+        'line-color': CHART_HIGHLIGHT_COLORS.focusOutline,
+        'line-width': 6,
+        'line-opacity': 1,
+      },
+    }),
+    [indexFilter],
+  );
+
+  if (data === undefined) {
+    return null;
+  }
+
+  return (
+    <Source id={AIRWAY_FOCUS_SOURCE_ID} type="geojson" data={data}>
+      {/*
+        Leg first, waypoint second so the dot draws on top of the leg
+        terminus - otherwise the wider line would mask the dot when
+        the user hovers the leg's destination row.
+      */}
+      <Layer {...legLayerProps} />
+      <Layer {...waypointLayerProps} />
     </Source>
   );
 }

@@ -2,7 +2,13 @@ import { Fragment, useCallback, useState } from 'react';
 import type { KeyboardEvent, MouseEvent, PointerEvent, ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_ROUTE_PATH, LAYER_IDS } from './url-state.ts';
+import {
+  AIRSPACE_CLASSES,
+  AIRWAY_CATEGORIES,
+  CHART_ROUTE_PATH,
+  LAYER_IDS,
+  LAYER_MIN_ZOOM,
+} from './url-state.ts';
 import type { AirspaceClass, AirwayCategory, LayerId } from './url-state.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
@@ -85,7 +91,7 @@ const AIRWAY_CATEGORY_OPTIONS: readonly AirwayCategoryOption[] = [
  * users can flip several at once.
  */
 export function LayerToggle(): ReactElement {
-  const { layers, airspaceClasses, airwayCategories } = route.useSearch();
+  const { layers, airspaceClasses, airwayCategories, zoom } = route.useSearch();
   const navigate = useNavigate({ from: CHART_ROUTE_PATH });
   const [expanded, setExpanded] = useState<ReadonlySet<LayerId>>(() => new Set());
 
@@ -223,6 +229,12 @@ export function LayerToggle(): ReactElement {
           {LAYER_OPTIONS.map((option) => {
             const isExpandable = EXPANDABLE_LAYERS.has(option.id);
             const parentChecked = layers.includes(option.id);
+            // Resolve the layer's zoom-gating threshold from the central
+            // table and pass it through only when the current map zoom is
+            // below it. Above the threshold (or when the layer has no
+            // entry) the hint is suppressed by passing undefined.
+            const minZoom = LAYER_MIN_ZOOM[option.id];
+            const hintMinZoom = minZoom !== undefined && zoom < minZoom ? minZoom : undefined;
             return (
               <Fragment key={option.id}>
                 {isExpandable ? (
@@ -238,12 +250,14 @@ export function LayerToggle(): ReactElement {
                     totalCount={
                       option.id === 'airways' ? AIRWAY_CATEGORIES.length : AIRSPACE_CLASSES.length
                     }
+                    hintMinZoom={hintMinZoom}
                   />
                 ) : (
                   <SimpleParentRow
                     label={option.label}
                     checked={parentChecked}
                     onCheckedChange={(checked) => handleLayerChange(option.id, checked)}
+                    hintMinZoom={hintMinZoom}
                   />
                 )}
                 {option.id === 'airways' && expanded.has('airways')
@@ -283,6 +297,14 @@ interface SimpleParentRowProps {
   checked: boolean;
   /** Called with the new checked state when the row is toggled. */
   onCheckedChange: (checked: boolean) => void;
+  /**
+   * Minimum zoom at which this layer paints, when the current map zoom is
+   * below it. Drives the inline "appears at z N+" hint so a user toggling
+   * the layer on at low zoom understands why nothing has appeared. Absent
+   * means no hint (either the layer has no zoom gating, or the user is
+   * already above the threshold).
+   */
+  hintMinZoom: number | undefined;
 }
 
 /**
@@ -290,7 +312,12 @@ interface SimpleParentRowProps {
  * Radix `CheckboxItem` semantics, identical to today's behavior for the
  * three non-expandable layers.
  */
-function SimpleParentRow({ label, checked, onCheckedChange }: SimpleParentRowProps): ReactElement {
+function SimpleParentRow({
+  label,
+  checked,
+  onCheckedChange,
+  hintMinZoom,
+}: SimpleParentRowProps): ReactElement {
   return (
     <DropdownMenu.CheckboxItem
       checked={checked}
@@ -304,6 +331,7 @@ function SimpleParentRow({ label, checked, onCheckedChange }: SimpleParentRowPro
         </DropdownMenu.ItemIndicator>
       </span>
       <span className="flex-1">{label}</span>
+      {hintMinZoom !== undefined ? <ZoomGatedHint minZoom={hintMinZoom} /> : null}
     </DropdownMenu.CheckboxItem>
   );
 }
@@ -324,6 +352,14 @@ interface ExpandableParentRowProps {
   enabledCount: number;
   /** Total sub-classes / categories available, for the chip. */
   totalCount: number;
+  /**
+   * Minimum zoom at which this layer paints, when the current map zoom is
+   * below it. Drives the inline "appears at z N+" hint so a user toggling
+   * the layer on at low zoom understands why nothing has appeared. Absent
+   * means no hint (either the layer has no zoom gating, or the user is
+   * already above the threshold).
+   */
+  hintMinZoom: number | undefined;
 }
 
 /**
@@ -346,6 +382,7 @@ function ExpandableParentRow({
   onToggleExpanded,
   enabledCount,
   totalCount,
+  hintMinZoom,
 }: ExpandableParentRowProps): ReactElement {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.key === 'ArrowRight' && !expanded) {
@@ -370,6 +407,7 @@ function ExpandableParentRow({
         </DropdownMenu.ItemIndicator>
       </span>
       <span className="flex-1">{label}</span>
+      {hintMinZoom !== undefined ? <ZoomGatedHint minZoom={hintMinZoom} /> : null}
       <SubCountChip enabled={enabledCount} total={totalCount} dimmed={!checked} />
       <ExpandToggleButton label={label} expanded={expanded} onToggleExpanded={onToggleExpanded} />
     </DropdownMenu.CheckboxItem>
@@ -488,6 +526,32 @@ function SubCountChip({ enabled, total, dimmed }: SubCountChipProps): ReactEleme
       aria-label={`${enabled} of ${total} enabled`}
     >
       {enabled}/{total}
+    </span>
+  );
+}
+
+/** Props for {@link ZoomGatedHint}. */
+interface ZoomGatedHintProps {
+  /** Minimum zoom at which the gated layer paints. */
+  minZoom: number;
+}
+
+/**
+ * Inline "Zoom N+" indicator shown next to a layer row when the current
+ * map zoom is below the layer's `minzoom`. Tells the user the layer is
+ * on (or would be on) but is not painting yet because the camera is too
+ * far out. Reads the same threshold as the MapLibre `Layer` so the
+ * advertised number always matches the real cutoff. The `Zoom` prefix
+ * spells out the unit so the chip pairs cleanly with the current-zoom
+ * readout in the bottom-left zoom controls (also a numeric value).
+ */
+function ZoomGatedHint({ minZoom }: ZoomGatedHintProps): ReactElement {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center rounded-sm border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-500"
+      aria-label={`Appears at zoom ${minZoom} and above`}
+    >
+      Zoom {minZoom}+
     </span>
   );
 }

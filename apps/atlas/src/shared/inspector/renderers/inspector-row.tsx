@@ -8,6 +8,14 @@ export interface InspectorRowProps {
   label: string;
   /** Right-column value. May be a string, number, or richer JSX. */
   children: ReactNode;
+  /**
+   * Optional pointer-enter handler. The airway renderer uses this so
+   * hovering a per-leg row brightens that segment on the map.
+   * Renderers that leave it unset get a static row.
+   */
+  onPointerEnter?: () => void;
+  /** Optional pointer-leave handler that pairs with {@link onPointerEnter}. */
+  onPointerLeave?: () => void;
 }
 
 /**
@@ -15,13 +23,32 @@ export interface InspectorRowProps {
  * shared building block for every renderer's definition-list layout. Skips
  * rendering when `children` is `null` or `undefined` so callers can pass
  * optional fields directly without a guard at every site.
+ *
+ * When `onPointerEnter` is supplied the row paints with a subtle hover
+ * tint so the user reads it as interactive - hovering drives a
+ * downstream effect (e.g. brightening the matching airway leg on the
+ * map). Static rows without a hover handler keep the flat layout.
  */
-export function InspectorRow({ label, children }: InspectorRowProps): ReactElement | null {
+export function InspectorRow({
+  label,
+  children,
+  onPointerEnter,
+  onPointerLeave,
+}: InspectorRowProps): ReactElement | null {
   if (children === null || children === undefined) {
     return null;
   }
+  const interactive = onPointerEnter !== undefined;
   return (
-    <div className="flex justify-between gap-3 py-1.5 text-sm">
+    <div
+      className={
+        interactive
+          ? 'flex justify-between gap-3 rounded py-1.5 text-sm transition-colors hover:bg-slate-100'
+          : 'flex justify-between gap-3 py-1.5 text-sm'
+      }
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+    >
       <dt className="shrink-0 text-slate-500">{label}</dt>
       <dd className="text-right text-slate-900">{children}</dd>
     </div>

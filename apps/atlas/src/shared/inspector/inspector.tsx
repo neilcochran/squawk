@@ -10,16 +10,23 @@ import {
   selectedFromFeature,
 } from '../../modes/chart/click-to-select.ts';
 import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
+import {
+  AIRSPACE_CEILING_FT_PROPERTY,
+  AIRSPACE_FLOOR_FT_PROPERTY,
+} from '../../modes/chart/layers/airspace-layer.tsx';
+import { useHoveredAirwayWaypointIndex } from '../../modes/chart/highlight-context.ts';
 import { AIRSPACE_CLASS_FOR_TYPE, CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
 import { useCanHover } from '../styles/use-can-hover.ts';
-import { isAirspacePolygonFeature } from './airspace-feature.ts';
+import { compareAirspaceByAltitudeDesc, isAirspacePolygonFeature } from './airspace-feature.ts';
+import type { AirspaceAltitudeKey } from './airspace-feature.ts';
 import { ENTITY_TYPES, parseSelected } from './entity.ts';
 import type { EntityType } from './entity.ts';
 import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.ts';
 import type { BoundingBox } from './geometry.ts';
 import { resolveSelectionFromState, useDatasetStates } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
+import { useAirwayLegHoverPan } from './use-airway-leg-hover-pan.ts';
 import { useChipHoverPan } from './use-chip-hover-pan.ts';
 import { AirportPanel } from './renderers/airport-panel.tsx';
 import { AirspacePanel } from './renderers/airspace-panel.tsx';
@@ -50,6 +57,13 @@ interface Chip {
   label: string;
   /** Entity type, used to drive the disclosure's per-type grouping. */
   type: EntityType;
+  /**
+   * Altitude key for airspace chips. Drives the altitude-descending
+   * sort so a stack of vertically-layered airspaces (Class B + ARTCC,
+   * MOA HIGH + MOA LOW) reads top-down. Undefined for non-airspace
+   * chips, which keep their natural collection order.
+   */
+  altitudeKey?: AirspaceAltitudeKey;
 }
 
 /**
@@ -139,6 +153,21 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
       state,
     });
 
+  // Drives the camera while the user hovers per-row entries in the
+  // airway inspector panel. The panel writes
+  // `hoveredAirwayWaypointIndex` into the highlight context (gated on
+  // `useCanHover()` so touch devices never fire it); this hook eases
+  // the camera to the leg midpoint (or the start waypoint for row 0)
+  // when the area is offscreen, restoring the pre-pan center on
+  // unhover.
+  const hoveredAirwayWaypointIndex = useHoveredAirwayWaypointIndex();
+  useAirwayLegHoverPan({
+    selected,
+    hoveredWaypointIndex: hoveredAirwayWaypointIndex,
+    mapRef,
+    state,
+  });
+
   const handleClose = useCallback((): void => {
     resetSession();
     void navigate({
@@ -202,7 +231,13 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
         continue;
       }
       seen.add(selection);
-      result.push({ selection, label: formatChipLabel(feature), type: ref.type });
+      const altitudeKey = readAirspaceAltitudeKeyFromSibling(feature);
+      result.push({
+        selection,
+        label: formatChipLabel(feature),
+        type: ref.type,
+        ...(altitudeKey !== undefined && { altitudeKey }),
+      });
     }
 
     // Overlap chips: walk the airspace dataset for features that
@@ -240,7 +275,25 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
       }
     }
 
-    return disambiguateLabels(result);
+    // Sort airspace chips by altitude descending (highest ceiling first,
+    // floor as tie-break) so a stack of vertically-layered airspaces -
+    // whether from the click siblings (Class B + ARTCC at the same
+    // pixel) or from the overlap walk (MOA HIGH + MOA LOW underneath
+    // the selected feature) - reads top-down. Non-airspace chips keep
+    // their collection order, and the airspace block sits where it
+    // naturally landed in the result list. Sort happens before label
+    // disambiguation so any `(N)` suffix follows the post-sort order.
+    const nonAirspace: Chip[] = [];
+    const airspace: { chip: Chip; key: AirspaceAltitudeKey }[] = [];
+    for (const chip of result) {
+      if (chip.altitudeKey === undefined) {
+        nonAirspace.push(chip);
+      } else {
+        airspace.push({ chip, key: chip.altitudeKey });
+      }
+    }
+    airspace.sort((a, b) => compareAirspaceByAltitudeDesc(a.key, b.key));
+    return disambiguateLabels([...nonAirspace, ...airspace.map((it) => it.chip)]);
   }, [siblings, selected, datasets, state, layers, airspaceClasses, chipViewportBounds]);
 
   if (state.status === 'idle') {
@@ -467,7 +520,7 @@ function* buildOverlappingAirspaceChips(
   seen: ReadonlySet<string>,
   viewportBounds: BoundingBox | undefined,
   activeClasses: readonly AirspaceClass[],
-): Generator<{ selection: string; label: string }, void, void> {
+): Generator<{ selection: string; label: string; altitudeKey: AirspaceAltitudeKey }, void, void> {
   if (datasets.airspace.status !== 'loaded') {
     return;
   }
@@ -530,8 +583,36 @@ function* buildOverlappingAirspaceChips(
         continue;
       }
     }
-    yield { selection, label: formatAirspaceLabel(props.type, props.identifier, props.name) };
+    yield {
+      selection,
+      label: formatAirspaceLabel(props.type, props.identifier, props.name),
+      altitudeKey: { ceilingFt: props.ceiling.valueFt, floorFt: props.floor.valueFt },
+    };
   }
+}
+
+/**
+ * Reads an {@link AirspaceAltitudeKey} off a click-derived sibling
+ * feature's synthetic floor/ceiling primitive properties (added by
+ * `projectAirspaceSource` in the airspace layer). Returns `undefined`
+ * for any feature whose properties bag does not carry the primitive
+ * pair - non-airspace features and any defensive-fallback case land
+ * here, and the chip falls through to the non-airspace bucket so it
+ * keeps its natural collection order.
+ */
+function readAirspaceAltitudeKeyFromSibling(
+  feature: InspectableFeature,
+): AirspaceAltitudeKey | undefined {
+  const props = feature.properties;
+  if (props === null) {
+    return undefined;
+  }
+  const ceilingFt = props[AIRSPACE_CEILING_FT_PROPERTY];
+  const floorFt = props[AIRSPACE_FLOOR_FT_PROPERTY];
+  if (typeof ceilingFt !== 'number' || typeof floorFt !== 'number') {
+    return undefined;
+  }
+  return { ceilingFt, floorFt };
 }
 
 /**

@@ -189,4 +189,59 @@ describe('useResolvedEntity', () => {
     const { result } = renderHook(() => useResolvedEntity('airspace:JFK'));
     expect(result.current.status).toBe('not-found');
   });
+
+  it('orders matched airspace features by altitude descending', () => {
+    // Insert in low-to-high order; the resolver must return high-to-low
+    // so the inspector renders the top stratum first. Tie-break by floor
+    // descending puts the outer Class B ring before its inner ring.
+    const surfaceCore = buildAirspaceFeature({
+      type: 'CLASS_B',
+      identifier: 'JFK',
+      floor: { valueFt: 0, reference: 'SFC' },
+      ceiling: { valueFt: 7000, reference: 'MSL' },
+    });
+    const innerRing = buildAirspaceFeature({
+      type: 'CLASS_B',
+      identifier: 'JFK',
+      floor: { valueFt: 0, reference: 'SFC' },
+      ceiling: { valueFt: 10000, reference: 'MSL' },
+    });
+    const outerRing = buildAirspaceFeature({
+      type: 'CLASS_B',
+      identifier: 'JFK',
+      floor: { valueFt: 3000, reference: 'MSL' },
+      ceiling: { valueFt: 10000, reference: 'MSL' },
+    });
+    airspaceStateMock.mockReturnValue({
+      status: 'loaded',
+      dataset: {
+        features: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [] },
+            properties: surfaceCore,
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [] },
+            properties: innerRing,
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [] },
+            properties: outerRing,
+          },
+        ],
+      },
+    });
+    const { result } = renderHook(() => useResolvedEntity('airspace:CLASS_B/JFK'));
+    expect(result.current.status).toBe('resolved');
+    if (result.current.status === 'resolved' && result.current.entity.kind === 'airspace') {
+      const ceilings = result.current.entity.features.map((f) => f.ceiling.valueFt);
+      const floors = result.current.entity.features.map((f) => f.floor.valueFt);
+      // outerRing (10k/3k) -> innerRing (10k/0) -> surfaceCore (7k/0)
+      expect(ceilings).toEqual([10000, 10000, 7000]);
+      expect(floors).toEqual([3000, 0, 0]);
+    }
+  });
 });

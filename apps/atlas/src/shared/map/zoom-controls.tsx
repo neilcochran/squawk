@@ -137,6 +137,8 @@ export function ZoomControls(): ReactElement {
 
   return (
     <div className="absolute bottom-10 left-3 z-10 flex flex-col overflow-hidden rounded-md border border-slate-200 bg-white shadow-md">
+      <ZoomReadout zoom={currentZoom} />
+      <div className="h-px bg-slate-200" aria-hidden="true" />
       <button
         type="button"
         onClick={handleZoomIn}
@@ -188,6 +190,78 @@ export function ZoomControls(): ReactElement {
  */
 const CONTROL_BUTTON_CLASS =
   'flex h-11 w-11 items-center justify-center text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-white md:h-8 md:w-8';
+
+/**
+ * Compact text formatter for the {@link ZoomReadout}: integer zooms
+ * render bare ("4"), fractional zooms render to one decimal ("4.5").
+ * Matches the threshold style in the layer-toggle hints so a user can
+ * visually compare "Zoom 4.5" with a "Zoom 5+" hint at a glance.
+ */
+function formatZoomText(zoom: number): string {
+  // Round first so 4.04 does not display as "4.0" and 4.95 does not
+  // display as "5.0" (toFixed alone would produce both surprises).
+  const rounded = Math.round(zoom * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+/**
+ * Static readout chip showing the current map zoom, rendered atop the
+ * zoom/tilt control stack. Drives the same numeric language as the
+ * layer-toggle dropdown's "Zoom N+" hint so the user can sanity-check
+ * whether a zoom-gated layer is about to appear or recently appeared.
+ *
+ * Non-interactive by design - clicking does nothing, the surrounding
+ * `+ / -` buttons are the way to change zoom. The icon stacks above
+ * the digits rather than sitting inline so the magnifying-glass shape
+ * stays large enough to be unambiguous (an inline 11px icon next to
+ * the digits visually compresses into a "Q" at desktop chip width).
+ * `tabular-nums` keeps the digit width stable across "4" / "10" /
+ * "12.5" so the chip footprint does not breathe.
+ */
+function ZoomReadout({ zoom }: { zoom: number }): ReactElement {
+  const text = formatZoomText(zoom);
+  return (
+    <div
+      role="status"
+      aria-label={`Current zoom: ${text}`}
+      className="flex h-11 w-11 flex-col items-center justify-center text-[10px] font-medium leading-none tabular-nums text-slate-600 md:h-8 md:w-8"
+    >
+      <ZoomIcon />
+      <span className="mt-0.5">{text}</span>
+    </div>
+  );
+}
+
+/**
+ * Magnifying-glass glyph used in the {@link ZoomReadout} chip. Sized
+ * at 14x14 (mobile) / 12x12 (desktop) so the round lens reads clearly
+ * - small enough to leave room for the digits below, large enough not
+ * to be mistaken for a "Q" formed by a tiny circle plus inline text.
+ * A small `+` inside the lens disambiguates the icon further: a
+ * magnifying-glass-with-plus is the universally-read "zoom" affordance,
+ * while a plain magnifying glass alone often reads as "search".
+ */
+function ZoomIcon(): ReactElement {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="md:h-3.5 md:w-3.5"
+    >
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="M5 7H9" />
+      <path d="M7 5V9" />
+      <path d="M10.5 10.5L13.5 13.5" />
+    </svg>
+  );
+}
 
 /** Inline plus glyph for the zoom-in button. */
 function PlusIcon(): ReactElement {
