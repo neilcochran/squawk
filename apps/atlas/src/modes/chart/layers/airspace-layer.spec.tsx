@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import {
@@ -10,13 +10,25 @@ import {
   AirspaceLayer,
 } from './airspace-layer.tsx';
 
-const { useAirspaceDatasetMock, useSearchMock } = vi.hoisted(() => ({
+const {
+  useAirspaceDatasetMock,
+  useSearchMock,
+  useActiveHighlightRefMock,
+  useHoveredFeatureIndexMock,
+} = vi.hoisted(() => ({
   useAirspaceDatasetMock: vi.fn(),
   useSearchMock: vi.fn(),
+  useActiveHighlightRefMock: vi.fn(),
+  useHoveredFeatureIndexMock: vi.fn(),
 }));
 
 vi.mock('../../../shared/data/airspace-dataset.ts', () => ({
   useAirspaceDataset: useAirspaceDatasetMock,
+}));
+
+vi.mock('../highlight-context.ts', () => ({
+  useActiveHighlightRef: useActiveHighlightRefMock,
+  useHoveredFeatureIndex: useHoveredFeatureIndexMock,
 }));
 
 // Mock the chart route api so `route.useSearch()` returns a controlled
@@ -41,11 +53,44 @@ vi.mock('@vis.gl/react-maplibre', () => ({
   }),
 }));
 
+const LOADED_DATASET = {
+  status: 'loaded' as const,
+  dataset: {
+    type: 'FeatureCollection',
+    features: [],
+    properties: {
+      nasrCycleDate: '2026-01-22',
+      generatedAt: '2026-01-22T00:00:00Z',
+      featureCount: 0,
+    },
+  },
+};
+
 describe('AirspaceLayer', () => {
+  beforeEach(() => {
+    useActiveHighlightRefMock.mockReturnValue(undefined);
+    useHoveredFeatureIndexMock.mockReturnValue(undefined);
+  });
+
   it('exports stable MapLibre layer ids consumed by chart-mode click handling', () => {
     expect(AIRSPACE_FILL_LAYER_ID).toBe('atlas-airspace-fill');
     expect(AIRSPACE_LINE_LAYER_ID).toBe('atlas-airspace-line');
     expect(AIRSPACE_FILL_EXTRUSION_LAYER_ID).toBe('atlas-airspace-fill-extrusion');
+  });
+
+  it('switches the highlight filter when an airspace is selected', () => {
+    useActiveHighlightRefMock.mockReturnValue({ type: 'airspace', id: 'CLASS_B/JFK' });
+    useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B'], pitch: 0 });
+    useAirspaceDatasetMock.mockReturnValue(LOADED_DATASET);
+    const { getByTestId } = render(<AirspaceLayer />);
+    expect(getByTestId('maplibre-source')).toBeInTheDocument();
+  });
+
+  it('renders without highlight filter when nothing is selected', () => {
+    useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B', 'CLASS_E'], pitch: 0 });
+    useAirspaceDatasetMock.mockReturnValue(LOADED_DATASET);
+    const { getByTestId } = render(<AirspaceLayer />);
+    expect(getByTestId('maplibre-source')).toBeInTheDocument();
   });
 
   it('returns null while the airspace dataset is still loading', () => {
@@ -82,19 +127,57 @@ describe('AirspaceLayer', () => {
 });
 
 describe('AirspaceExtrusionLayer', () => {
+  beforeEach(() => {
+    useActiveHighlightRefMock.mockReturnValue(undefined);
+    useHoveredFeatureIndexMock.mockReturnValue(undefined);
+  });
+
   it('returns null while the airspace dataset is still loading', () => {
     useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B'], pitch: 60 });
     useAirspaceDatasetMock.mockReturnValue({ status: 'loading' });
     const { container } = render(<AirspaceExtrusionLayer />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('returns null in plan view (pitch 0)', () => {
+    useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B'], pitch: 0 });
+    useAirspaceDatasetMock.mockReturnValue(LOADED_DATASET);
+    const { container } = render(<AirspaceExtrusionLayer />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders without throwing at non-zero pitch', () => {
+    useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B'], pitch: 45 });
+    useAirspaceDatasetMock.mockReturnValue(LOADED_DATASET);
+    expect(() => render(<AirspaceExtrusionLayer />)).not.toThrow();
+  });
 });
 
 describe('AirspaceFeatureOverlayLayers', () => {
+  beforeEach(() => {
+    useActiveHighlightRefMock.mockReturnValue(undefined);
+    useHoveredFeatureIndexMock.mockReturnValue(undefined);
+  });
+
   it('returns null while the airspace dataset is still loading', () => {
     useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B'], pitch: 0 });
     useAirspaceDatasetMock.mockReturnValue({ status: 'loading' });
     const { container } = render(<AirspaceFeatureOverlayLayers />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders without throwing when an airspace is selected', () => {
+    useActiveHighlightRefMock.mockReturnValue({ type: 'airspace', id: 'CLASS_B/JFK' });
+    useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B'], pitch: 0 });
+    useAirspaceDatasetMock.mockReturnValue(LOADED_DATASET);
+    expect(() => render(<AirspaceFeatureOverlayLayers />)).not.toThrow();
+  });
+
+  it('uses the hovered feature index in the focus filter when set', () => {
+    useActiveHighlightRefMock.mockReturnValue({ type: 'airspace', id: 'CLASS_B/JFK' });
+    useHoveredFeatureIndexMock.mockReturnValue(1);
+    useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B'], pitch: 0 });
+    useAirspaceDatasetMock.mockReturnValue(LOADED_DATASET);
+    expect(() => render(<AirspaceFeatureOverlayLayers />)).not.toThrow();
   });
 });

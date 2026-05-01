@@ -296,6 +296,26 @@ describe('formatChipLabel', () => {
   it('returns a non-empty label even when an airspace is missing both type and identifier', () => {
     expect(formatChipLabel(buildFeature(AIRSPACE_FILL_LAYER_ID, {}))).toBe('Airspace');
   });
+
+  it('uses an empty-id airspace name as the label when present', () => {
+    expect(
+      formatChipLabel(
+        buildFeature(AIRSPACE_FILL_LAYER_ID, {
+          type: 'CLASS_E5',
+          identifier: '',
+          name: 'BILLINGS CLASS E5',
+        }),
+      ),
+    ).toBe('BILLINGS CLASS E5');
+  });
+
+  it('returns "Unknown" for a feature from an unrecognized layer', () => {
+    expect(formatChipLabel(buildFeature('atlas-future-layer', {}))).toBe('Unknown');
+  });
+
+  it('treats null feature properties as missing fields', () => {
+    expect(formatChipLabel({ layer: { id: AIRPORTS_LAYER_ID }, properties: null })).toBe('Airport');
+  });
 });
 
 describe('classifyClick', () => {

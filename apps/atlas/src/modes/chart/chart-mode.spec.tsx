@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { ChartMode } from './chart-mode.tsx';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
@@ -16,6 +16,20 @@ import type { ChartSearch } from './url-state.ts';
  * a controllable Map stub.
  */
 const onMapClickRef: { current: ((event: unknown) => void) | undefined } = {
+  current: undefined,
+};
+
+const onViewStateChangeRef: { current: ((view: unknown) => void) | undefined } = {
+  current: undefined,
+};
+
+interface DisambiguationProps {
+  screen: { x: number; y: number };
+  candidates: readonly unknown[];
+  onSelect: (next: string) => void;
+  onDismiss: () => void;
+}
+const disambiguationRef: { current: DisambiguationProps | undefined } = {
   current: undefined,
 };
 
@@ -45,12 +59,15 @@ vi.mock('../../shared/map/map-canvas.tsx', async (importOriginal) => {
     ...actual,
     MapCanvas: ({
       onMapClick,
+      onViewStateChange,
       children,
     }: {
       onMapClick?: (event: unknown) => void;
+      onViewStateChange?: (view: unknown) => void;
       children?: ReactNode;
     }): ReactElement => {
       onMapClickRef.current = onMapClick;
+      onViewStateChangeRef.current = onViewStateChange;
       return <div data-testid="map-canvas">{children}</div>;
     },
   };
@@ -62,7 +79,12 @@ vi.mock('../../shared/map/map-canvas.tsx', async (importOriginal) => {
 vi.mock('../../shared/map/zoom-controls.tsx', () => ({ ZoomControls: () => null }));
 vi.mock('../../shared/inspector/inspector.tsx', () => ({ EntityInspector: () => null }));
 vi.mock('./chart-loading-indicator.tsx', () => ({ ChartLoadingIndicator: () => null }));
-vi.mock('./disambiguation-popover.tsx', () => ({ DisambiguationPopover: () => null }));
+vi.mock('./disambiguation-popover.tsx', () => ({
+  DisambiguationPopover: (props: DisambiguationProps): ReactElement => {
+    disambiguationRef.current = props;
+    return <div data-testid="disambiguation" />;
+  },
+}));
 vi.mock('./highlight-provider.tsx', () => ({
   HighlightProvider: ({ children }: { children: ReactNode }): ReactElement => <>{children}</>,
 }));
@@ -159,6 +181,8 @@ function buildClickEvent(
 describe('ChartMode', () => {
   beforeEach(() => {
     onMapClickRef.current = undefined;
+    onViewStateChangeRef.current = undefined;
+    disambiguationRef.current = undefined;
     useSearchMock.mockReturnValue(DEFAULT_SEARCH);
     useNavigateMock.mockReturnValue(navigateMock);
     navigateMock.mockReset();
@@ -247,6 +271,26 @@ describe('ChartMode', () => {
     expect(bbox[1]).toEqual([110, 110]);
   });
 
+  it('interpolates the bbox radius linearly between zoom 5 and 8', () => {
+    render(<ChartMode />);
+    const { event, queryRenderedFeatures } = buildClickEvent([AIRPORTS_LAYER_ID], [], 6.5);
+    onMapClickRef.current?.(event);
+    const bbox = queryRenderedFeatures.mock.calls[0]?.[0] as [[number, number], [number, number]];
+    // (6.5 - 5) / (8 - 5) * 4 = 2 px each side.
+    expect(bbox[0]).toEqual([98, 98]);
+    expect(bbox[1]).toEqual([102, 102]);
+  });
+
+  it('interpolates the bbox radius linearly between zoom 8 and 12', () => {
+    render(<ChartMode />);
+    const { event, queryRenderedFeatures } = buildClickEvent([AIRPORTS_LAYER_ID], [], 10);
+    onMapClickRef.current?.(event);
+    const bbox = queryRenderedFeatures.mock.calls[0]?.[0] as [[number, number], [number, number]];
+    // 4 + (10 - 8) / (12 - 8) * (10 - 4) = 7 px each side.
+    expect(bbox[0]).toEqual([93, 93]);
+    expect(bbox[1]).toEqual([107, 107]);
+  });
+
   it('skips the query entirely when no inspectable layer is registered yet', () => {
     render(<ChartMode />);
     const clickHandler = onMapClickRef.current;
@@ -258,6 +302,99 @@ describe('ChartMode', () => {
     // No layers registered -> no point asking; the URL should not
     // change either.
     expect(queryRenderedFeatures).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('writes the new view state to the URL on each move-end', () => {
+    render(<ChartMode />);
+    const handler = onViewStateChangeRef.current;
+    expect(handler).toBeDefined();
+    handler?.({ lat: 41, lon: -71, zoom: 8, pitch: 30 });
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    expect(search({ lat: 0, lon: 0, zoom: 0, pitch: 0 })).toMatchObject({
+      lat: 41,
+      lon: -71,
+      zoom: 8,
+      pitch: 30,
+    });
+  });
+
+  it('updates the URL selection on an unambiguous click and clears any pending disambiguation', () => {
+    render(<ChartMode />);
+    const clickHandler = onMapClickRef.current;
+    const airportFeature = {
+      layer: { id: AIRPORTS_LAYER_ID },
+      properties: { faaId: 'BOS' },
+    };
+    const { event } = buildClickEvent([AIRPORTS_LAYER_ID], [airportFeature]);
+    clickHandler?.(event);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    expect(search({ selected: undefined }).selected).toBe('airport:BOS');
+  });
+
+  it('clears the URL selection on an empty click', () => {
+    render(<ChartMode />);
+    const clickHandler = onMapClickRef.current;
+    const { event } = buildClickEvent([AIRPORTS_LAYER_ID], []);
+    clickHandler?.(event);
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    expect(search({ selected: 'airport:OLD' }).selected).toBeUndefined();
+  });
+
+  it('opens the disambiguation popover on an ambiguous click without writing the URL', () => {
+    render(<ChartMode />);
+    const clickHandler = onMapClickRef.current;
+    const ambiguousFeatures = [
+      { layer: { id: AIRPORTS_LAYER_ID }, properties: { faaId: 'BOS' } },
+      { layer: { id: AIRPORTS_LAYER_ID }, properties: { faaId: 'MHT' } },
+    ];
+    const { event } = buildClickEvent([AIRPORTS_LAYER_ID], ambiguousFeatures);
+    act(() => {
+      clickHandler?.(event);
+    });
+    expect(disambiguationRef.current).toBeDefined();
+    expect(disambiguationRef.current?.candidates).toHaveLength(2);
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('promotes a disambiguation choice into a URL selection when the user picks a row', () => {
+    render(<ChartMode />);
+    const clickHandler = onMapClickRef.current;
+    const ambiguousFeatures = [
+      { layer: { id: AIRPORTS_LAYER_ID }, properties: { faaId: 'BOS' } },
+      { layer: { id: AIRPORTS_LAYER_ID }, properties: { faaId: 'MHT' } },
+    ];
+    act(() => {
+      clickHandler?.(buildClickEvent([AIRPORTS_LAYER_ID], ambiguousFeatures).event);
+    });
+    const popover = disambiguationRef.current;
+    expect(popover).toBeDefined();
+    act(() => {
+      popover?.onSelect('airport:BOS');
+    });
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    expect(search({ selected: undefined }).selected).toBe('airport:BOS');
+  });
+
+  it('dismisses the disambiguation popover without changing the URL', () => {
+    render(<ChartMode />);
+    const clickHandler = onMapClickRef.current;
+    const ambiguousFeatures = [
+      { layer: { id: AIRPORTS_LAYER_ID }, properties: { faaId: 'BOS' } },
+      { layer: { id: AIRPORTS_LAYER_ID }, properties: { faaId: 'MHT' } },
+    ];
+    act(() => {
+      clickHandler?.(buildClickEvent([AIRPORTS_LAYER_ID], ambiguousFeatures).event);
+    });
+    const popover = disambiguationRef.current;
+    expect(popover).toBeDefined();
+    act(() => {
+      popover?.onDismiss();
+    });
     expect(navigateMock).not.toHaveBeenCalled();
   });
 });

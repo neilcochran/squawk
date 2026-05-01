@@ -190,6 +190,116 @@ describe('useResolvedEntity', () => {
     expect(result.current.status).toBe('not-found');
   });
 
+  it('returns not-found when the airport dataset is in error', () => {
+    airportStateMock.mockReturnValue({ status: 'error', error: new Error('boom') });
+    const { result } = renderHook(() => useResolvedEntity('airport:BOS'));
+    expect(result.current.status).toBe('not-found');
+  });
+
+  it('returns loading/not-found through the navaid pipeline', () => {
+    navaidStateMock.mockReturnValue({ status: 'loading' });
+    expect(renderHook(() => useResolvedEntity('navaid:BOS')).result.current.status).toBe('loading');
+    navaidStateMock.mockReturnValue({ status: 'error', error: new Error('x') });
+    expect(renderHook(() => useResolvedEntity('navaid:BOS')).result.current.status).toBe(
+      'not-found',
+    );
+    navaidStateMock.mockReturnValue({ status: 'loaded', dataset: { records: [] } });
+    expect(renderHook(() => useResolvedEntity('navaid:UNKNOWN')).result.current.status).toBe(
+      'not-found',
+    );
+  });
+
+  it('returns loading/not-found through the fix pipeline', () => {
+    fixStateMock.mockReturnValue({ status: 'loading' });
+    expect(renderHook(() => useResolvedEntity('fix:MERIT')).result.current.status).toBe('loading');
+    fixStateMock.mockReturnValue({ status: 'error', error: new Error('x') });
+    expect(renderHook(() => useResolvedEntity('fix:MERIT')).result.current.status).toBe(
+      'not-found',
+    );
+    fixStateMock.mockReturnValue({ status: 'loaded', dataset: { records: [] } });
+    expect(renderHook(() => useResolvedEntity('fix:UNKNOWN')).result.current.status).toBe(
+      'not-found',
+    );
+  });
+
+  it('returns loading/not-found through the airway pipeline', () => {
+    airwayStateMock.mockReturnValue({ status: 'loading' });
+    expect(renderHook(() => useResolvedEntity('airway:V16')).result.current.status).toBe('loading');
+    airwayStateMock.mockReturnValue({ status: 'error', error: new Error('x') });
+    expect(renderHook(() => useResolvedEntity('airway:V16')).result.current.status).toBe(
+      'not-found',
+    );
+    airwayStateMock.mockReturnValue({ status: 'loaded', dataset: { records: [] } });
+    expect(renderHook(() => useResolvedEntity('airway:UNKNOWN')).result.current.status).toBe(
+      'not-found',
+    );
+  });
+
+  it('returns loading/not-found through the airspace pipeline', () => {
+    airspaceStateMock.mockReturnValue({ status: 'loading' });
+    expect(renderHook(() => useResolvedEntity('airspace:CLASS_B/JFK')).result.current.status).toBe(
+      'loading',
+    );
+    airspaceStateMock.mockReturnValue({ status: 'error', error: new Error('x') });
+    expect(renderHook(() => useResolvedEntity('airspace:CLASS_B/JFK')).result.current.status).toBe(
+      'not-found',
+    );
+  });
+
+  it('returns not-found when the airspace compound key has an empty identifier (slash at end)', () => {
+    const { result } = renderHook(() => useResolvedEntity('airspace:CLASS_B/'));
+    expect(result.current.status).toBe('not-found');
+  });
+
+  it('resolves an airspace centroid-encoded selection', () => {
+    const polygon = {
+      type: 'Polygon' as const,
+      coordinates: [
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+          [0, 0],
+        ],
+      ],
+    };
+    const feature = buildAirspaceFeature({
+      type: 'CLASS_E5',
+      identifier: '',
+      boundary: polygon,
+    });
+    airspaceStateMock.mockReturnValue({
+      status: 'loaded',
+      dataset: {
+        features: [
+          {
+            type: 'Feature',
+            geometry: polygon,
+            properties: feature,
+          },
+        ],
+      },
+    });
+    // Centroid of the unit square at origin per @squawk/geo's
+    // polygonCentroid is approximately (0.4, 0.4); encode that.
+    const { result } = renderHook(() => useResolvedEntity('airspace:CLASS_E5/c:0.40000,0.40000'));
+    expect(result.current.status).toBe('resolved');
+    if (result.current.status === 'resolved' && result.current.entity.kind === 'airspace') {
+      expect(result.current.entity.identifier).toBe('');
+    }
+  });
+
+  it('returns not-found for a centroid encoding with the wrong number of components', () => {
+    const { result } = renderHook(() => useResolvedEntity('airspace:CLASS_E5/c:0.40000'));
+    expect(result.current.status).toBe('not-found');
+  });
+
+  it('returns not-found for a centroid encoding with non-numeric coordinates', () => {
+    const { result } = renderHook(() => useResolvedEntity('airspace:CLASS_E5/c:foo,bar'));
+    expect(result.current.status).toBe('not-found');
+  });
+
   it('orders matched airspace features by altitude descending', () => {
     // Insert in low-to-high order; the resolver must return high-to-low
     // so the inspector renders the top stratum first. Tie-break by floor
