@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import {
   setAirspace3DAutoHidePreference,
@@ -104,6 +104,74 @@ describe('useAirspace3DAutoHidePreference', () => {
       fireEvent.click(screen.getByText('set always'));
     });
     expect(window.localStorage.getItem('atlas:chart:airspace-3d-auto-hide:v1')).toBe('always');
+  });
+
+  it('falls back to "ask" when localStorage holds a corrupted value', async () => {
+    vi.resetModules();
+    window.localStorage.setItem('atlas:chart:airspace-3d-auto-hide:v1', 'garbage');
+    const m = await import('./airspace-3d-preference.ts');
+    function Reader(): ReactElement {
+      const [pref] = m.useAirspace3DAutoHidePreference();
+      return <span data-testid="r">{pref}</span>;
+    }
+    render(<Reader />);
+    expect(screen.getByTestId('r').textContent).toBe('ask');
+  });
+
+  it('reads a previously persisted "always" value from localStorage on first import', async () => {
+    vi.resetModules();
+    window.localStorage.setItem('atlas:chart:airspace-3d-auto-hide:v1', 'always');
+    const m = await import('./airspace-3d-preference.ts');
+    function Reader(): ReactElement {
+      const [pref] = m.useAirspace3DAutoHidePreference();
+      return <span data-testid="r">{pref}</span>;
+    }
+    render(<Reader />);
+    expect(screen.getByTestId('r').textContent).toBe('always');
+  });
+
+  it('falls back to "ask" when localStorage.getItem throws (storage disabled)', async () => {
+    vi.resetModules();
+    const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get: () => {
+        throw new Error('storage disabled');
+      },
+    });
+    try {
+      const m = await import('./airspace-3d-preference.ts');
+      function Reader(): ReactElement {
+        const [pref] = m.useAirspace3DAutoHidePreference();
+        return <span data-testid="r">{pref}</span>;
+      }
+      render(<Reader />);
+      expect(screen.getByTestId('r').textContent).toBe('ask');
+    } finally {
+      if (original !== undefined) {
+        Object.defineProperty(window, 'localStorage', original);
+      }
+    }
+  });
+
+  it('swallows write errors from a failing localStorage.setItem', () => {
+    const original = window.localStorage.setItem.bind(window.localStorage);
+    const setItemSpy = vi.spyOn(window.localStorage.__proto__, 'setItem').mockImplementation(() => {
+      throw new Error('quota exceeded');
+    });
+    try {
+      // Should not throw despite the storage failure; in-memory state
+      // still updates.
+      expect(() => {
+        act(() => {
+          setAirspace3DAutoHidePreference('always');
+        });
+      }).not.toThrow();
+    } finally {
+      setItemSpy.mockRestore();
+      // Restore the real setItem in case any other tests depend on it.
+      window.localStorage.setItem = original;
+    }
   });
 
   it('skips notifications when the value is unchanged', () => {

@@ -1,13 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { FIXES_HIGHLIGHT_LAYER_ID, FIXES_LAYER_ID, FixesLayer } from './fixes-layer.tsx';
 import type { FixDataset } from '@squawk/fix-data';
 
-const { useFixDatasetMock } = vi.hoisted(() => ({ useFixDatasetMock: vi.fn() }));
+const { useFixDatasetMock, useActiveHighlightRefMock } = vi.hoisted(() => ({
+  useFixDatasetMock: vi.fn(),
+  useActiveHighlightRefMock: vi.fn(),
+}));
 
 vi.mock('../../../shared/data/fix-dataset.ts', () => ({
   useFixDataset: useFixDatasetMock,
+}));
+
+vi.mock('../highlight-context.ts', () => ({
+  useActiveHighlightRef: useActiveHighlightRefMock,
 }));
 
 // Stub MapLibre primitives. `Source` renders its children inside a
@@ -25,7 +32,31 @@ const EMPTY_DATASET: FixDataset = {
   records: [],
 };
 
+function buildFix(
+  overrides: Partial<import('@squawk/types').Fix> &
+    Pick<import('@squawk/types').Fix, 'identifier' | 'useCode'>,
+): import('@squawk/types').Fix {
+  return {
+    identifier: overrides.identifier,
+    useCode: overrides.useCode,
+    icaoRegionCode: overrides.icaoRegionCode ?? 'K6',
+    country: overrides.country ?? 'US',
+    lat: overrides.lat ?? 0,
+    lon: overrides.lon ?? 0,
+    pitch: overrides.pitch ?? false,
+    catch: overrides.catch ?? false,
+    suaAtcaa: overrides.suaAtcaa ?? false,
+    chartTypes: overrides.chartTypes ?? [],
+    navaidAssociations: overrides.navaidAssociations ?? [],
+    ...(overrides.compulsory !== undefined && { compulsory: overrides.compulsory }),
+  } as import('@squawk/types').Fix;
+}
+
 describe('FixesLayer', () => {
+  beforeEach(() => {
+    useActiveHighlightRefMock.mockReturnValue(undefined);
+  });
+
   it('exports stable MapLibre layer ids consumed by chart-mode click handling', () => {
     expect(FIXES_LAYER_ID).toBe('atlas-fixes-circle');
     expect(FIXES_HIGHLIGHT_LAYER_ID).toBe('atlas-fixes-highlight');
@@ -44,6 +75,31 @@ describe('FixesLayer', () => {
   });
 
   it('renders a MapLibre source once the dataset resolves', () => {
+    useFixDatasetMock.mockReturnValue({ status: 'loaded', dataset: EMPTY_DATASET });
+    const { getByTestId } = render(<FixesLayer />);
+    expect(getByTestId('maplibre-source')).toBeInTheDocument();
+  });
+
+  it('drops fixes whose use code is not rendered (CN, RADAR)', () => {
+    useFixDatasetMock.mockReturnValue({
+      status: 'loaded',
+      dataset: {
+        properties: EMPTY_DATASET.properties,
+        records: [
+          buildFix({ identifier: 'MERIT', useCode: 'WP' }),
+          buildFix({ identifier: 'CHURN', useCode: 'CN' }),
+          buildFix({ identifier: 'RDAR', useCode: 'RADAR' }),
+          // Compulsory non-WP fix exercises the compulsory != undefined path.
+          buildFix({ identifier: 'COMP', useCode: 'RP', compulsory: 'C' as never }),
+        ],
+      },
+    });
+    const { getByTestId } = render(<FixesLayer />);
+    expect(getByTestId('maplibre-source')).toBeInTheDocument();
+  });
+
+  it('switches the highlight filter when a fix is selected', () => {
+    useActiveHighlightRefMock.mockReturnValue({ type: 'fix', id: 'MERIT' });
     useFixDatasetMock.mockReturnValue({ status: 'loaded', dataset: EMPTY_DATASET });
     const { getByTestId } = render(<FixesLayer />);
     expect(getByTestId('maplibre-source')).toBeInTheDocument();

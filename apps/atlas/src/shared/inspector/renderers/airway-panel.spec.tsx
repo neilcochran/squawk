@@ -116,4 +116,9 @@ describe('AirwayPanel', () => {
     unmount();
     expect(setHoveredAirwayWaypointIndexMock).toHaveBeenCalledWith(undefined);
   });
+
+  it('does not render the Route section when the airway has no waypoints', () => {
+    render(<AirwayPanel record={buildAirway(0)} />);
+    expect(screen.queryByText('Route')).toBeNull();
+  });
 });

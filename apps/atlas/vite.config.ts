@@ -15,5 +15,23 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**'],
+      exclude: [
+        'src/**/*.spec.{ts,tsx}',
+        'src/test-setup.ts',
+        'src/routeTree.gen.ts',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+        'src/routes/**',
+        'src/shared/map/map-canvas.tsx',
+        'src/modes/chart/inspectable-cursor.tsx',
+        'src/modes/chart/view-reset-listener.tsx',
+        'src/modes/chart/layers/airspace-hatch-pattern.ts',
+        'src/modes/chart/layers/use-top-of-stack.ts',
+      ],
+    },
   },
 });
