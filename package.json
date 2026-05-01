@@ -19,11 +19,13 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
     "lint": "turbo run lint",
     "lint:pack": "turbo run lint:pack",
     "dev": "turbo run dev",
     "docs": "typedoc",
     "build:data": "node scripts/build-data.js",
+    "check-coverage": "node scripts/check-coverage.js",
     "clean": "node scripts/clean.js",
     "publish": "changeset publish",
     "version-packages": "changeset version && npm install --package-lock-only",

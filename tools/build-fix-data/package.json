@@ -11,6 +11,7 @@
   "scripts": {
     "build": "tsc",
     "test": "node --test 'dist/**/*.spec.js'",
+    "test:coverage": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='dist/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info 'dist/**/*.spec.js'",
     "start": "node dist/index.js"
   },
   "dependencies": {

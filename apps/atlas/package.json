@@ -22,7 +22,8 @@
     "dev": "vite",
     "prebuild": "tsr generate",
     "build": "tsc -b && vite build",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
+    "test:coverage": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
