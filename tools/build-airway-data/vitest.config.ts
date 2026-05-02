@@ -6,6 +6,9 @@ export default mergeConfig(
   defineProject({
     test: {
       name: '@squawk/build-airway-data',
+      coverage: {
+        exclude: ['src/index.ts'],
+      },
     },
   }),
 );

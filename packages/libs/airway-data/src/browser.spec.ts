@@ -51,4 +51,28 @@ describe('loadUsBundledAirways', () => {
 
     expect(received).toBe('https://cdn.example/airways.json.gz');
   });
+
+  it('throws when the response body is null', async () => {
+    await expect(
+      loadUsBundledAirways({
+        fetch: async () => new Response(null),
+      }),
+    ).rejects.toThrow(/body is null/);
+  });
+
+  it('falls back to globalThis.fetch when no fetch override is provided', async () => {
+    const original = globalThis.fetch;
+    let called = false;
+    globalThis.fetch = async () => {
+      called = true;
+      return new Response(gzBytes);
+    };
+    try {
+      const dataset = await loadUsBundledAirways();
+      expect(called).toBe(true);
+      expect(dataset).toEqual(usBundledAirways);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
 });

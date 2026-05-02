@@ -69,4 +69,11 @@ describe('resolveInput', () => {
   it('throws when passed a missing path', () => {
     expect(() => resolveInput(join(sandbox, 'does-not-exist'))).toThrow();
   });
+
+  it('throws when unzip rejects a corrupt .zip file', () => {
+    const corruptZip = join(sandbox, 'corrupt.zip');
+    writeFileSync(corruptZip, 'not a real zip file', 'utf-8');
+
+    expect(() => resolveInput(corruptZip)).toThrow(/unzip exited with code/);
+  });
 });

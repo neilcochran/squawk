@@ -1488,4 +1488,24 @@ describe('edge cases', () => {
     const withoutAlt = magneticField(40, -105, { decimalYear: 2025.0 });
     expect(withAlt.declinationDeg).toBe(withoutAlt.declinationDeg);
   });
+
+  it('derives decimal year from a Date when decimalYear is not provided', () => {
+    const fromDate = magneticField(40, -105, { date: new Date(Date.UTC(2025, 0, 1)) });
+    const fromDecimalYear = magneticField(40, -105, { decimalYear: 2025.0 });
+    assert(
+      close(fromDate.declinationDeg, fromDecimalYear.declinationDeg, 0.001),
+      `Date should match equivalent decimalYear: ${fromDate.declinationDeg} vs ${fromDecimalYear.declinationDeg}`,
+    );
+  });
+
+  it('falls back to current date when neither decimalYear nor date is provided', () => {
+    const result = magneticField(40, -105);
+    assert(Number.isFinite(result.declinationDeg), 'declination should be finite');
+    assert(Number.isFinite(result.totalIntensityNt), 'F should be finite');
+  });
+
+  it('magneticDeclination accepts no options', () => {
+    const result = magneticDeclination(40, -105);
+    assert(Number.isFinite(result), 'declination should be finite');
+  });
 });

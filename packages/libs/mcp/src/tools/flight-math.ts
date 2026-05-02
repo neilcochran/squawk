@@ -29,6 +29,7 @@ import {
 } from '@squawk/flight-math';
 import type { MagneticFieldOptions } from '@squawk/flight-math';
 import { z } from 'zod';
+import { extractErrorMessage } from './tool-helpers.js';
 
 /** Reusable zod fragment describing a latitude input. */
 const latFragment = z
@@ -85,7 +86,7 @@ function buildMagneticOptions(
     try {
       date = parseIsoDate(dateUtc);
     } catch (err) {
-      return { ok: false, message: err instanceof Error ? err.message : String(err) };
+      return { ok: false, message: extractErrorMessage(err) };
     }
   }
   const options: MagneticFieldOptions = {
@@ -619,7 +620,7 @@ export function registerFlightMathTools(server: McpServer): void {
       try {
         date = parseIsoDate(dateUtc);
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = extractErrorMessage(err);
         return {
           content: [{ type: 'text', text: message }],
           structuredContent: { times: null },
@@ -657,7 +658,7 @@ export function registerFlightMathTools(server: McpServer): void {
       try {
         date = parseIsoDate(dateTimeUtc);
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = extractErrorMessage(err);
         return {
           content: [{ type: 'text', text: message }],
           structuredContent: { isDaytime: null },

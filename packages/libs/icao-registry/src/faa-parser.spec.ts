@@ -66,6 +66,28 @@ describe('parseMasterCsv', () => {
   it('returns empty array for empty content', () => {
     expect(parseMasterCsv('').length).toBe(0);
   });
+
+  it('skips blank lines in the middle of the file', () => {
+    const content =
+      MASTER_HEADER +
+      '\n12345,28246,7100510,00000,2005,4,ACME LLC,,,ANYTOWN,VA,20001,2,001,US,,,1N,4,1,A,50012345,,,,,,,,,12345678,,,A004B3' +
+      '\n   ' +
+      '\n67890,28247,7100510,00000,2010,4,BETA LLC,,,ANYTOWN,VA,20001,2,001,US,,,1N,4,1,A,50012346,,,,,,,,,12345679,,,A004B4';
+
+    const records = parseMasterCsv(content);
+    expect(records.length).toBe(2);
+  });
+
+  it('returns empty string for missing optional columns', () => {
+    // Header omits NAME so getField returns "" via the columns.get(idx)===undefined branch.
+    const minimalHeader =
+      'N-NUMBER,SERIAL NUMBER,MFR MDL CODE,ENG MFR MDL,YEAR MFR,TYPE AIRCRAFT,TYPE ENGINE,MODE S CODE HEX';
+    const content = minimalHeader + '\n12345,28246,7100510,00000,2005,4,1,A004B3';
+
+    const records = parseMasterCsv(content);
+    expect(records[0]?.name).toBe('');
+    expect(records[0]?.icaoHex).toBe('A004B3');
+  });
 });
 
 describe('parseAcftRefCsv', () => {
@@ -88,6 +110,17 @@ describe('parseAcftRefCsv', () => {
 
   it('returns empty map for empty content', () => {
     expect(parseAcftRefCsv('').size).toBe(0);
+  });
+
+  it('skips blank lines in the middle of the file', () => {
+    const content =
+      ACFTREF_HEADER +
+      '\n7100510,CESSNA,172S,4,1,1,0,1,4,CLASS 1,126,,' +
+      '\n  ' +
+      '\n7100511,CESSNA,182,4,1,1,0,1,4,CLASS 1,135,,';
+
+    const ref = parseAcftRefCsv(content);
+    expect(ref.size).toBe(2);
   });
 });
 

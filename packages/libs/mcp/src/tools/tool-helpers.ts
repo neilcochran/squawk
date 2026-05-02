@@ -40,8 +40,23 @@ export function summarizeParseErrors(
 ): ParseRecordErrorSummary[] {
   return errors.map((err) => ({
     raw: err.raw,
-    message: err.error instanceof Error ? err.error.message : String(err.error),
+    message: extractErrorMessage(err.error),
   }));
+}
+
+/**
+ * Reduces an unknown thrown value to a string message. Used uniformly by tool
+ * handlers that catch errors thrown by lower-level parsers so the resulting
+ * MCP payloads never leak raw `Error` objects, while non-`Error` throwables
+ * (rare, but possible from third-party code) still produce a meaningful
+ * message via `String(err)`.
+ *
+ * @param err - The thrown value caught in a `try`/`catch`.
+ * @returns The error's message string when `err` is an `Error`, otherwise
+ *          `String(err)`.
+ */
+export function extractErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 /**

@@ -201,6 +201,72 @@ describe('parseArtcc end-to-end', () => {
     }
   });
 
+  it('skips blank lines in both ARB_BASE.csv and ARB_SEG.csv', async () => {
+    const { dir, cleanup } = makeTempDir();
+    try {
+      const arbBasePath = join(dir, 'ARB_BASE.csv');
+      const arbSegPath = join(dir, 'ARB_SEG.csv');
+      writeFileSync(
+        arbBasePath,
+        ['LOCATION_ID,LOCATION_NAME,COUNTRY_CODE,STATE', '', '   ', 'ZBW,BOSTON,US,MA', ''].join(
+          '\n',
+        ),
+      );
+      writeFileSync(
+        arbSegPath,
+        [
+          'LOCATION_ID,ALTITUDE,TYPE,POINT_SEQ,LAT_DECIMAL,LONG_DECIMAL,BNDRY_PT_DESCRIP',
+          '',
+          '   ',
+          'ZBW,LOW,ARTCC,1,42.0,-71.0,A',
+          'ZBW,LOW,ARTCC,2,42.0,-70.0,B',
+          'ZBW,LOW,ARTCC,3,43.0,-70.0,C',
+          'ZBW,LOW,ARTCC,4,43.0,-71.0,D',
+          'ZBW,LOW,ARTCC,5,42.0,-71.0,POINT OF BEGINNING',
+          '',
+        ].join('\n'),
+      );
+      const features = await parseArtcc(arbBasePath, arbSegPath);
+      assert(features.find((f) => f.identifier === 'ZBW'));
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('skips ARB_SEG rows whose LOCATION_ID has no matching ARB_BASE entry', async () => {
+    const { dir, cleanup } = makeTempDir();
+    try {
+      const arbBasePath = join(dir, 'ARB_BASE.csv');
+      const arbSegPath = join(dir, 'ARB_SEG.csv');
+      writeFileSync(
+        arbBasePath,
+        ['LOCATION_ID,LOCATION_NAME,COUNTRY_CODE,STATE', 'ZBW,BOSTON,US,MA'].join('\n'),
+      );
+      writeFileSync(
+        arbSegPath,
+        [
+          'LOCATION_ID,ALTITUDE,TYPE,POINT_SEQ,LAT_DECIMAL,LONG_DECIMAL,BNDRY_PT_DESCRIP',
+          // ZZZ has no entry in ARB_BASE so its rows should be silently dropped.
+          'ZZZ,LOW,ARTCC,1,40.0,-74.0,A',
+          'ZZZ,LOW,ARTCC,2,40.0,-73.0,B',
+          'ZZZ,LOW,ARTCC,3,41.0,-73.0,C',
+          'ZZZ,LOW,ARTCC,4,41.0,-74.0,D',
+          'ZZZ,LOW,ARTCC,5,40.0,-74.0,POINT OF BEGINNING',
+          'ZBW,LOW,ARTCC,1,42.0,-71.0,A',
+          'ZBW,LOW,ARTCC,2,42.0,-70.0,B',
+          'ZBW,LOW,ARTCC,3,43.0,-70.0,C',
+          'ZBW,LOW,ARTCC,4,43.0,-71.0,D',
+          'ZBW,LOW,ARTCC,5,42.0,-71.0,POINT OF BEGINNING',
+        ].join('\n'),
+      );
+      const features = await parseArtcc(arbBasePath, arbSegPath);
+      expect(features.find((f) => f.identifier === 'ZZZ')).toBe(undefined);
+      assert(features.find((f) => f.identifier === 'ZBW'));
+    } finally {
+      cleanup();
+    }
+  });
+
   it('warns and skips shapes with too few points', async () => {
     const { dir, cleanup } = makeTempDir();
     const originalWarn = console.warn;

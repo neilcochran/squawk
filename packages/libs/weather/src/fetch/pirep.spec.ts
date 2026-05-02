@@ -77,6 +77,19 @@ describe('fetchPirep', () => {
     expect(parsed.searchParams.has('inten')).toBe(false);
   });
 
+  it('forwards the abort signal to the underlying fetch', async () => {
+    let observedSignal: AbortSignal | null | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async (_url: string | URL | Request, init?: RequestInit) => {
+        observedSignal = init?.signal;
+        return new Response('', { status: 200 });
+      },
+    );
+    const controller = new AbortController();
+    await fetchPirep('KDEN', { signal: controller.signal });
+    expect(observedSignal).toBe(controller.signal);
+  });
+
   it('surfaces AWC 400 for an empty id as AwcFetchError', async () => {
     let observedUrl: string | undefined;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {

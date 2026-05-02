@@ -71,4 +71,17 @@ describe('fetchInternationalSigmets', () => {
     );
     await expect(() => fetchInternationalSigmets()).rejects.toThrow(AwcFetchError);
   });
+
+  it('forwards the abort signal to the underlying fetch', async () => {
+    let observedSignal: AbortSignal | null | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async (_url: string | URL | Request, init?: RequestInit) => {
+        observedSignal = init?.signal;
+        return new Response('', { status: 200 });
+      },
+    );
+    const controller = new AbortController();
+    await fetchInternationalSigmets({ signal: controller.signal });
+    expect(observedSignal).toBe(controller.signal);
+  });
 });

@@ -6,6 +6,9 @@ export default mergeConfig(
   defineProject({
     test: {
       name: '@squawk/mcp',
+      coverage: {
+        exclude: ['src/bin.ts'],
+      },
     },
   }),
 );

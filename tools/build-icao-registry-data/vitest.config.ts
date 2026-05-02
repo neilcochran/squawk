@@ -6,6 +6,9 @@ export default mergeConfig(
   defineProject({
     test: {
       name: '@squawk/build-icao-registry-data',
+      coverage: {
+        exclude: ['src/index.ts'],
+      },
     },
   }),
 );
