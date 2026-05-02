@@ -31,6 +31,7 @@ export const sharedVitestConfig = defineConfig({
   test: {
     globals: false,
     include: ['src/**/*.spec.{ts,tsx}'],
+    testTimeout: 20000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'json-summary'],

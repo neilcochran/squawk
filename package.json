@@ -20,6 +20,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage --continue=always && node scripts/check-coverage.js",
+    "test:coverage:fresh": "turbo run test:coverage --force --continue=always && node scripts/check-coverage.js",
     "lint": "turbo run lint",
     "lint:pack": "turbo run lint:pack",
     "dev": "turbo run dev",
