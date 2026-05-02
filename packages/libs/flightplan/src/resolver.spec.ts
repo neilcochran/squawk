@@ -728,8 +728,8 @@ describe('FAA Coded Departure Routes', () => {
 
   // CDR: ABECLTHV - Allentown to Charlotte via J64 and many waypoints
   // Exercises: J-route mid-route, many fix/navaid waypoints between airways, STAR
-  it('parses KABE ETX RAV J64 BURNI TYROO QUARM AIR HVQ LNDIZ PARQR4 KCLT', () => {
-    const result = resolver.parse('KABE ETX RAV J64 BURNI TYROO QUARM AIR HVQ LNDIZ PARQR4 KCLT');
+  it('parses KABE ETX RAV J64 BURNI TYROO QUARM AIR HVQ LNDIZ PARQR5 KCLT', () => {
+    const result = resolver.parse('KABE ETX RAV J64 BURNI TYROO QUARM AIR HVQ LNDIZ PARQR5 KCLT');
     expect(result.elements.length).toBe(11);
 
     // KABE - departure
@@ -757,11 +757,11 @@ describe('FAA Coded Departure Routes', () => {
     expect(result.elements[7]!.type).toBe('waypoint');
     expect(result.elements[8]!.type).toBe('waypoint');
 
-    // PARQR4 - STAR
+    // PARQR5 - STAR
     const el9 = result.elements[9]!;
     expect(el9.type).toBe('star');
     if (el9.type === 'star') {
-      expect(el9.procedure.identifier).toBe('PARQR4');
+      expect(el9.procedure.identifier).toBe('PARQR5');
     }
 
     // KCLT - arrival
@@ -771,9 +771,9 @@ describe('FAA Coded Departure Routes', () => {
   // CDR: ABQBWIVZ - Albuquerque to Baltimore via SID, multiple J and Q routes
   // Exercises: SID, J-route, mixed Q-routes, many fix waypoints, STAR
   // This is a long complex route with 18 tokens
-  it('parses KABQ MNZNO3 CME J15 INK J4 FUZ UIM ELD IZAAC Q30 VLKNN THRSR KBLER KELLN Q58 PEETT THHMP RAVNN8 KBWI', () => {
+  it('parses KABQ MNZNO3 CME J15 INK J4 FUZ UIM ELD IZAAC Q30 VLKNN THRSR KBLER KELLN Q58 PEETT THHMP RAVNN9 KBWI', () => {
     const result = resolver.parse(
-      'KABQ MNZNO3 CME J15 INK J4 FUZ UIM ELD IZAAC Q30 VLKNN THRSR KBLER KELLN Q58 PEETT THHMP RAVNN8 KBWI',
+      'KABQ MNZNO3 CME J15 INK J4 FUZ UIM ELD IZAAC Q30 VLKNN THRSR KBLER KELLN Q58 PEETT THHMP RAVNN9 KBWI',
     );
 
     // No element should be unresolved
@@ -806,11 +806,11 @@ describe('FAA Coded Departure Routes', () => {
     assert(airwayDesignations.includes('Q30'), 'expected Q30 airway');
     assert(airwayDesignations.includes('Q58'), 'expected Q58 airway');
 
-    // RAVNN8 - STAR
+    // RAVNN9 - STAR
     const starEl = result.elements.find((e) => e.type === 'star');
     assert(starEl, 'expected a STAR element');
     if (starEl && starEl.type === 'star') {
-      expect(starEl.procedure.identifier).toBe('RAVNN8');
+      expect(starEl.procedure.identifier).toBe('RAVNN9');
     }
 
     // KBWI - arrival
