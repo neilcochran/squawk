@@ -4,14 +4,14 @@
 
 ### Patch Changes
 
-- c7e6e12: ### Changed
+- b47b118: ### Changed
   - Updated `repository.directory` in each package's manifest to reflect the monorepo's new internal layout. The "View repository" link on npmjs.com now points to `packages/libs/<name>/` instead of `packages/<name>/`. No code or API changes - this is package metadata only.
 
 ## 0.5.0
 
 ### Minor Changes
 
-- 6122b65: ### Added
+- 73be796: ### Added
   - Browser / SPA support on every `@squawk/*-data` package. New `/browser` subpath export with an async `loadUsBundled<X>()` loader that fetches and decompresses the bundled `.gz` using Web Streams (`DecompressionStream`) and the global `fetch`, returning the same dataset shape the Node entry exports. Works in browsers, Cloudflare Workers, Deno Deploy, and any runtime without `node:fs`. Pair with the corresponding logic package (`@squawk/airports`, `@squawk/airspace`, etc.) for zero-config SPA usage. The Node entry (`@squawk/<pkg>`) is unchanged; existing `import { usBundled<X> } from '@squawk/<pkg>'` calls keep working.
   - `Load<X>DatasetOptions` accepts an optional `url` (default resolves relative to `import.meta.url`, which any modern ESM bundler rewrites as a hashed asset URL when the package is installed normally) and an optional `fetch` (useful for tests, configured fetchers, or edge runtimes).
   - The browser loader handles transport-level gzip: when a server advertises `Content-Encoding: gzip` (Vite's preview server, nginx with `gzip_static on`, many CDNs), `fetch()` decodes the body automatically and the loader skips its own `DecompressionStream` step. Servers that serve the `.gz` as opaque bytes still trigger the in-loader decompression.
@@ -25,7 +25,7 @@
 
 ### Minor Changes
 
-- 7152f08: ### Added
+- 32f4925: ### Added
 
   **@squawk/types**
   - New `'ARTCC'` value on the `AirspaceType` union for Air Route Traffic Control Center boundary features.
@@ -54,35 +54,35 @@
 
 ### Patch Changes
 
-- d52b90b: Update internal npm dependencies
+- 9b4c21b: Update internal npm dependencies
 
 ## 0.3.1
 
 ### Patch Changes
 
-- 8563ada: Make the bundled data source data more visible in squawk/ data package READMEs
+- 6cbc367: Make the bundled data source data more visible in squawk/ data package READMEs
 
 ## 0.3.0
 
 ### Minor Changes
 
-- 6f91bf8: Update bundled data from FAA NASR cycle effective 2026-04-16
+- 78f8169: Update bundled data from FAA NASR cycle effective 2026-04-16
 
 ### Patch Changes
 
-- 16d7bf1: Correct READMEs and TSDoc
+- fe66cec: Correct READMEs and TSDoc
 
 ## 0.2.0
 
 ### Minor Changes
 
-- fc890a7: Add @squawk/airspace
-- b28de20: Add airspace data build pipeline and @squawk/airspace-data package
-- ec14992: Add squawk/fixes and squawk/fix-data
-- 893af47: Add squawk Navaid packages
-- 53b25b2: Add Class-E support and data to squawk/airspace-data
-- c7edad0: Add @squawk/airport-data package
+- 7d0383e: Add @squawk/airspace
+- 1be39b2: Add airspace data build pipeline and @squawk/airspace-data package
+- 40f0b9d: Add squawk/fixes and squawk/fix-data
+- c1e728c: Add squawk Navaid packages
+- d554f7c: Add Class-E support and data to squawk/airspace-data
+- a409b07: Add @squawk/airport-data package
 
 ### Patch Changes
 
-- 2df8e41: Add basic sanity tests to @squawk/airspace-data
+- 182a11d: Add basic sanity tests to @squawk/airspace-data

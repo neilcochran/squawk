@@ -4,8 +4,8 @@
 
 ### Patch Changes
 
-- Updated dependencies [d67e540]
-- Updated dependencies [d67e540]
+- Updated dependencies [49b1d6f]
+- Updated dependencies [49b1d6f]
   - @squawk/icao-registry-data@0.8.0
   - @squawk/procedure-data@0.7.0
 
@@ -13,7 +13,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [5a181dc]
+- Updated dependencies [2ac2985]
   - @squawk/geo@0.4.0
   - @squawk/airports@0.5.3
   - @squawk/airspace@0.6.2
@@ -25,10 +25,10 @@
 
 ### Patch Changes
 
-- c7e6e12: ### Changed
+- b47b118: ### Changed
   - Updated `repository.directory` in each package's manifest to reflect the monorepo's new internal layout. The "View repository" link on npmjs.com now points to `packages/libs/<name>/` instead of `packages/<name>/`. No code or API changes - this is package metadata only.
 
-- Updated dependencies [c7e6e12]
+- Updated dependencies [b47b118]
   - @squawk/airport-data@0.7.1
   - @squawk/airports@0.5.2
   - @squawk/airspace@0.6.1
@@ -54,14 +54,14 @@
 
 ### Patch Changes
 
-- Updated dependencies [239ef23]
+- Updated dependencies [8904c7b]
   - @squawk/icao-registry-data@0.7.0
 
 ## 0.8.2
 
 ### Patch Changes
 
-- Updated dependencies [6122b65]
+- Updated dependencies [73be796]
   - @squawk/airport-data@0.7.0
   - @squawk/airspace-data@0.5.0
   - @squawk/airway-data@0.5.0
@@ -74,14 +74,14 @@
 
 ### Patch Changes
 
-- Updated dependencies [9c27256]
+- Updated dependencies [c21271d]
   - @squawk/icao-registry-data@0.5.0
 
 ## 0.8.0
 
 ### Minor Changes
 
-- 7152f08: ### Added
+- 32f4925: ### Added
 
   **@squawk/types**
   - New `'ARTCC'` value on the `AirspaceType` union for Air Route Traffic Control Center boundary features.
@@ -108,7 +108,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [7152f08]
+- Updated dependencies [32f4925]
   - @squawk/types@0.7.0
   - @squawk/airspace-data@0.4.0
   - @squawk/airspace@0.6.0
@@ -133,7 +133,7 @@
 
 ### Minor Changes
 
-- b4c9ec8: ### Added
+- 93430b6: ### Added
   - `parseWindsAloft` parser in `@squawk/weather` for FD (Forecast Winds and Temperatures Aloft) bulletins - sometimes referred to by its older name "FB". Handles the AWC wire-format preamble (`(Extracted from ...)` and plain WMO header variants), fixed-width altitude columns, light-and-variable winds (raw code `9900`), high-speed wind encoding (direction codes 51-86 for speeds >= 100 kt), implicit-negative temperatures above the `TEMPS NEG ABV` threshold, and blank columns for altitudes outside a station's forecast range. Returns a structured `WindsAloftForecast` with per-station rows; each `WindsAloftLevel` carries `isMissing` and `isLightAndVariable` flags so variable winds aren't confused with zero speed.
   - `getLevelAtFt(station, altitudeFt)` helper in `@squawk/weather` that returns the `WindsAloftLevel` matching a given altitude column, or `undefined` when no column matches. No interpolation is performed.
   - `fetchWindsAloft` live-fetch helper in `@squawk/weather/fetch` wrapping the AWC `/api/data/windtemp` endpoint. Library-facing options use full-word names (`region`, `altitudeBand`, `forecastHours`) that map internally to the AWC wire params; region values include `contiguousUs`, `northeast`, `southeast`, `northCentral`, `southCentral`, `rockyMountain`, `pacificCoast`, `alaska`, `hawaii`, and `westernPacific`. All three parameters are optional - AWC applies its own defaults when omitted. Pairs with `@squawk/flight-math`'s wind-triangle solver for enroute time and fuel planning against real forecast winds.
@@ -142,14 +142,14 @@
 
 ### Patch Changes
 
-- Updated dependencies [b4c9ec8]
+- Updated dependencies [93430b6]
   - @squawk/weather@0.5.0
 
 ## 0.6.0
 
 ### Minor Changes
 
-- d72e966: ### Added
+- 15fa9cf: ### Added
   - Required `timezone: string` field on the `Airport` type in `@squawk/types`, carrying an IANA zone identifier (e.g. `America/New_York`) resolved from the airport's lat/lon. Pass directly to `Intl.DateTimeFormat`, `Temporal`, `date-fns-tz`, `luxon`, etc. to format timestamps in the airport's local time with no runtime timezone dependency. Consumers constructing `Airport` objects by hand must now populate the field.
   - IANA `timezone` resolved for every record in `@squawk/airport-data` (19,097 US, territorial, and selected foreign facilities the FAA publishes). Resolved at build time from timezone-boundary-builder polygons.
   - "Local time at an airport" section in the `@squawk/airports` README showing `Intl.DateTimeFormat` usage.
@@ -159,7 +159,7 @@
 
 ### Patch Changes
 
-- Updated dependencies [d72e966]
+- Updated dependencies [15fa9cf]
   - @squawk/types@0.6.0
   - @squawk/airport-data@0.6.0
   - @squawk/airports@0.5.0
@@ -183,7 +183,7 @@
 
 ### Minor Changes
 
-- 772b90d: Rewrite and expand the procedure tool surface to cover the new CIFP-sourced procedure resolver.
+- ff22bd5: Rewrite and expand the procedure tool surface to cover the new CIFP-sourced procedure resolver.
 
   ### Breaking changes:
   - Remove `get_procedure_by_code`. Replaced by `find_procedures_by_identifier` (returns all matches across airports) and `get_procedure_by_airport_and_identifier` (resolves a specific adaptation).
@@ -200,11 +200,11 @@
 
 ### Patch Changes
 
-- Updated dependencies [772b90d]
-- Updated dependencies [772b90d]
-- Updated dependencies [772b90d]
-- Updated dependencies [772b90d]
-- Updated dependencies [772b90d]
+- Updated dependencies [ff22bd5]
+- Updated dependencies [ff22bd5]
+- Updated dependencies [ff22bd5]
+- Updated dependencies [ff22bd5]
+- Updated dependencies [ff22bd5]
   - @squawk/procedure-data@0.5.0
   - @squawk/flightplan@0.4.0
   - @squawk/procedures@0.4.0
@@ -228,8 +228,8 @@
 
 ### Patch Changes
 
-- 51a9ddc: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
-- Updated dependencies [51a9ddc]
+- a4ba760: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
+- Updated dependencies [a4ba760]
   - @squawk/icao-registry-data@0.3.3
   - @squawk/procedure-data@0.3.3
   - @squawk/icao-registry@0.2.3
@@ -254,17 +254,17 @@
 
 ### Minor Changes
 
-- 6fe3325: - Change `state` to optional (`string | undefined`) on `Airport`, `Navaid`, and `Fix` in `@squawk/types`. Consumers that read `.state` must now handle `undefined` for non-US records.
+- dc5eeae: - Change `state` to optional (`string | undefined`) on `Airport`, `Navaid`, and `Fix` in `@squawk/types`. Consumers that read `.state` must now handle `undefined` for non-US records.
   - Include selected Canadian, Mexican, Caribbean, and Pacific facilities published by the FAA in `@squawk/airport-data`, `@squawk/navaid-data`, and `@squawk/fix-data` (+147 airports, +59 navaids, +645 fixes). Foreign records have `country` populated and `state` undefined.
   - Export `lookupCode` from `@squawk/build-shared`, a classification-map lookup helper that logs a one-time warning on unknown NASR codes so future cycle additions do not silently drop records.
 
 ### Patch Changes
 
-- fd8f93a: - Resolve dotted `PROCCODE.TRANSITION` tokens (e.g. `NUBLE4.JJIMY`) in flight plan routes; previously the parser marked them as unresolved and `compute_route_distance` skipped the procedure entirely.
+- 3b242d5: - Resolve dotted `PROCCODE.TRANSITION` tokens (e.g. `NUBLE4.JJIMY`) in flight plan routes; previously the parser marked them as unresolved and `compute_route_distance` skipped the procedure entirely.
   - Order SID transition expansions in departure order (common route then transition) so `procedures.expand()` and downstream route-distance calculations no longer backtrack through the procedure or duplicate the connecting fix.
   - Split multi-station TAF responses correctly when AWC separates records with a single newline; previously the second station's forecast groups were attributed to the first station, leaving its own `forecast` array empty.
-- Updated dependencies [fd8f93a]
-- Updated dependencies [6fe3325]
+- Updated dependencies [3b242d5]
+- Updated dependencies [dc5eeae]
   - @squawk/flightplan@0.3.2
   - @squawk/procedures@0.2.3
   - @squawk/weather@0.3.3
@@ -278,7 +278,7 @@
 
 ### Minor Changes
 
-- 59289ef: **@squawk/airspace**
+- 6c9a1f0: **@squawk/airspace**
   - `AirspaceResolver` is now an object with `.query()` and `.byAirport()` methods instead of a bare callable. Migrate `resolver(query)` call sites to `resolver.query(query)`.
   - `byAirport(identifier, types?)` returns every airspace feature whose `identifier` matches (case-insensitive), with full polygon boundary coordinates preserved. Intended for fetching all sectors of a Class B/C/D/E2 airspace around a given airport.
 
@@ -287,21 +287,21 @@
 
 ### Patch Changes
 
-- Updated dependencies [59289ef]
+- Updated dependencies [6c9a1f0]
   - @squawk/airspace@0.3.0
 
 ## 0.2.1
 
 ### Patch Changes
 
-- 27594d8: **@squawk/notams**
+- 7bac924: **@squawk/notams**
   - Fix ReDoS in `parseNotam` Q-line extraction. A NOTAM containing many slashes after the Q-line could cause exponential regex backtracking (a 129-byte input previously hung the event loop for ~4s; now linear in input length).
 
   **@squawk/weather**
   - Fix polynomial-time slowdown in international SIGMET header stripping (used by `parseSigmet` and `parseSigmetBulletin`). Bulletins with many leading 4-letter tokens and no trailing dash on the SIGMET line previously took O(N²) time; now linear.
   - When a SIGMET prefix contains multiple FIR codes that survive WMO/AWIPS header stripping, all of them are now preserved in the body for downstream FIR parsing instead of only the FIR closest to `SIGMET`.
 
-- Updated dependencies [27594d8]
+- Updated dependencies [7bac924]
   - @squawk/weather@0.3.2
   - @squawk/notams@0.2.2
 
@@ -309,7 +309,7 @@
 
 ### Minor Changes
 
-- acd8576: - Add `@squawk/mcp` package: a Model Context Protocol stdio server that exposes squawk libraries as tools for LLM clients like Claude Desktop and Cursor.
+- d1caace: - Add `@squawk/mcp` package: a Model Context Protocol stdio server that exposes squawk libraries as tools for LLM clients like Claude Desktop and Cursor.
   - Add `squawk-mcp` CLI binary, runnable via `npx @squawk/mcp`.
   - Add `createSquawkMcpServer()` factory for embedding the server in a custom MCP host.
   - Add 5 great-circle geometry tools wrapping `@squawk/geo`: `great_circle_distance`, `great_circle_bearing`, `great_circle_bearing_and_distance`, `great_circle_midpoint`, `great_circle_destination`.

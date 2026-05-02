@@ -4,7 +4,7 @@
 
 ### Minor Changes
 
-- 5a181dc: ### Added
+- 2ac2985: ### Added
   - New `polygonGeoJson` namespace exposing helpers that operate directly on `geojson.Polygon`, alongside the existing `polygon.*` raw-coordinates API. Useful for app-level rendering and selection code that already speaks GeoJSON and would otherwise have to unpack rings into bare `number[][]` first. The `polygon.*` namespace is unchanged and remains the right level for indexing-heavy paths like `@squawk/airspace`'s point-in-airspace pipeline.
     - `polygonGeoJson.pointInPolygon(point, polygon)` - multi-ring aware: ring 0 is treated as the outer boundary, subsequent rings as holes (a point inside a hole is outside the polygon). Strictly more capable than `polygon.pointInPolygon`, which only takes a single ring.
     - `polygonGeoJson.polygonCentroid(polygon)` - arithmetic mean of outer-ring vertices, returns `undefined` when the ring is missing or has no usable coordinates.
@@ -18,10 +18,10 @@
 
 ### Patch Changes
 
-- c7e6e12: ### Changed
+- b47b118: ### Changed
   - Updated `repository.directory` in each package's manifest to reflect the monorepo's new internal layout. The "View repository" link on npmjs.com now points to `packages/libs/<name>/` instead of `packages/<name>/`. No code or API changes - this is package metadata only.
 
-- Updated dependencies [c7e6e12]
+- Updated dependencies [b47b118]
   - @squawk/types@0.7.1
   - @squawk/units@0.4.1
 
@@ -29,40 +29,40 @@
 
 ### Patch Changes
 
-- Updated dependencies [7152f08]
+- Updated dependencies [32f4925]
   - @squawk/types@0.7.0
 
 ## 0.3.1
 
 ### Patch Changes
 
-- Updated dependencies [d72e966]
+- Updated dependencies [15fa9cf]
   - @squawk/types@0.6.0
 
 ## 0.3.0
 
 ### Minor Changes
 
-- 772b90d: Bump `@squawk/types` peer dependency to `^0.4.0` for the procedures CIFP migration. No behavioral changes.
+- ff22bd5: Bump `@squawk/types` peer dependency to `^0.4.0` for the procedures CIFP migration. No behavioral changes.
 
 ### Patch Changes
 
-- Updated dependencies [772b90d]
+- Updated dependencies [ff22bd5]
   - @squawk/types@0.5.0
 
 ## 0.2.1
 
 ### Patch Changes
 
-- 51a9ddc: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
-- Updated dependencies [51a9ddc]
+- a4ba760: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
+- Updated dependencies [a4ba760]
   - @squawk/types@0.3.1
 
 ## 0.2.0
 
 ### Minor Changes
 
-- 3c224c1: ### Added
+- 58257db: ### Added
   - `@squawk/geo` package for shared geospatial utilities, grouping exports into `greatCircle` (`distanceNm`, `bearing`, `bearingAndDistance`, `midpoint`, `destination`) and `polygon` (`pointInPolygon`, `boundingBox`, `pointInBoundingBox`) namespaces. `greatCircle.midpoint` and `greatCircle.destination` are new capabilities; the rest are consolidated from existing packages.
 
   ### Removed
@@ -74,5 +74,5 @@
 
 ### Patch Changes
 
-- Updated dependencies [3c224c1]
+- Updated dependencies [58257db]
   - @squawk/units@0.3.0

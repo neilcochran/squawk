@@ -4,14 +4,14 @@
 
 ### Patch Changes
 
-- c7e6e12: ### Changed
+- b47b118: ### Changed
   - Updated `repository.directory` in each package's manifest to reflect the monorepo's new internal layout. The "View repository" link on npmjs.com now points to `packages/libs/<name>/` instead of `packages/<name>/`. No code or API changes - this is package metadata only.
 
 ## 0.7.0
 
 ### Minor Changes
 
-- 7152f08: ### Added
+- 32f4925: ### Added
 
   **@squawk/types**
   - New `'ARTCC'` value on the `AirspaceType` union for Air Route Traffic Control Center boundary features.
@@ -40,7 +40,7 @@
 
 ### Minor Changes
 
-- d72e966: ### Added
+- 15fa9cf: ### Added
   - Required `timezone: string` field on the `Airport` type in `@squawk/types`, carrying an IANA zone identifier (e.g. `America/New_York`) resolved from the airport's lat/lon. Pass directly to `Intl.DateTimeFormat`, `Temporal`, `date-fns-tz`, `luxon`, etc. to format timestamps in the airport's local time with no runtime timezone dependency. Consumers constructing `Airport` objects by hand must now populate the field.
   - IANA `timezone` resolved for every record in `@squawk/airport-data` (19,097 US, territorial, and selected foreign facilities the FAA publishes). Resolved at build time from timezone-boundary-builder polygons.
   - "Local time at an airport" section in the `@squawk/airports` README showing `Intl.DateTimeFormat` usage.
@@ -52,7 +52,7 @@
 
 ### Minor Changes
 
-- 772b90d: Expand the procedure type system for full ARINC 424 coverage of SIDs, STARs, and IAPs.
+- ff22bd5: Expand the procedure type system for full ARINC 424 coverage of SIDs, STARs, and IAPs.
 
   ### Breaking changes:
   - Remove `ProcedureWaypoint`, `ProcedureWaypointTypeCode`, `ProcedureWaypointCategory`, `PROCEDURE_TYPE_MAP`, and `PROCEDURE_WAYPOINT_CATEGORY_MAP`. Use `ProcedureLeg` and `ProcedureLegFixCategory` instead.
@@ -72,13 +72,13 @@
 
 ### Patch Changes
 
-- 51a9ddc: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
+- a4ba760: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
 
 ## 0.3.0
 
 ### Minor Changes
 
-- 6fe3325: - Change `state` to optional (`string | undefined`) on `Airport`, `Navaid`, and `Fix` in `@squawk/types`. Consumers that read `.state` must now handle `undefined` for non-US records.
+- dc5eeae: - Change `state` to optional (`string | undefined`) on `Airport`, `Navaid`, and `Fix` in `@squawk/types`. Consumers that read `.state` must now handle `undefined` for non-US records.
   - Include selected Canadian, Mexican, Caribbean, and Pacific facilities published by the FAA in `@squawk/airport-data`, `@squawk/navaid-data`, and `@squawk/fix-data` (+147 airports, +59 navaids, +645 fixes). Foreign records have `country` populated and `state` undefined.
   - Export `lookupCode` from `@squawk/build-shared`, a classification-map lookup helper that logs a one-time warning on unknown NASR codes so future cycle additions do not silently drop records.
 
@@ -86,36 +86,36 @@
 
 ### Patch Changes
 
-- d52b90b: Update internal npm dependencies
+- 9b4c21b: Update internal npm dependencies
 
 ## 0.2.1
 
 ### Patch Changes
 
-- 16d7bf1: Correct READMEs and TSDoc
+- fe66cec: Correct READMEs and TSDoc
 
 ## 0.2.0
 
 ### Minor Changes
 
-- fc890a7: Add @squawk/airspace
-- 896ce8a: Add squawk/flightplan package and fix a bug in squawk/airways
-- 58a8dec: Add ILS info to runways and add Coast Gaurd airports
-- feaa9ab: Add squawk/weather with METAR and SPECI support
-- a41e8da: Add NOTAM parsing for legacy FAA format to squawk/notam
-- b28de20: Add airspace data build pipeline and @squawk/airspace-data package
-- ec14992: Add squawk/fixes and squawk/fix-data
-- 005c963: Add TAF types and parsing to squawk/weather
-- 893af47: Add squawk Navaid packages
-- 5999218: Move flight-math specific types from shared types to flight-math
-- f9cb361: Add AIRMET support to squawk/weather
-- 303997a: Add SIGMET parsing and shared types for DayTime and Coordinates
-- 53b25b2: Add Class-E support and data to squawk/airspace-data
-- 2bdf6be: Add @squawk/icon-registry and @squawk/icao-registry-data
-- c7edad0: Add @squawk/airport-data package
-- c4b7790: Add PIREP support to squawk/weather
-- a76df6f: Standardize naming of properties/funcs and abbreviations
-- 062f661: Move package specific types from squawk/types to their respective packages
+- 7d0383e: Add @squawk/airspace
+- 8edfb9b: Add squawk/flightplan package and fix a bug in squawk/airways
+- df74bd6: Add ILS info to runways and add Coast Gaurd airports
+- f92d3e2: Add squawk/weather with METAR and SPECI support
+- 3f23773: Add NOTAM parsing for legacy FAA format to squawk/notam
+- 1be39b2: Add airspace data build pipeline and @squawk/airspace-data package
+- 40f0b9d: Add squawk/fixes and squawk/fix-data
+- cac443c: Add TAF types and parsing to squawk/weather
+- c1e728c: Add squawk Navaid packages
+- 985f0a8: Move flight-math specific types from shared types to flight-math
+- 4711295: Add AIRMET support to squawk/weather
+- 6af10db: Add SIGMET parsing and shared types for DayTime and Coordinates
+- d554f7c: Add Class-E support and data to squawk/airspace-data
+- d7ac351: Add @squawk/icon-registry and @squawk/icao-registry-data
+- a409b07: Add @squawk/airport-data package
+- 746447f: Add PIREP support to squawk/weather
+- ffe41f2: Standardize naming of properties/funcs and abbreviations
+- 875fc8b: Move package specific types from squawk/types to their respective packages
 
 ## 0.1.1
 

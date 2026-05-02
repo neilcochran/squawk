@@ -4,17 +4,17 @@
 
 ### Patch Changes
 
-- c7e6e12: ### Changed
+- b47b118: ### Changed
   - Updated `repository.directory` in each package's manifest to reflect the monorepo's new internal layout. The "View repository" link on npmjs.com now points to `packages/libs/<name>/` instead of `packages/<name>/`. No code or API changes - this is package metadata only.
 
-- Updated dependencies [c7e6e12]
+- Updated dependencies [b47b118]
   - @squawk/types@0.7.1
 
 ## 0.6.0
 
 ### Minor Changes
 
-- 6122b65: ### Added
+- 73be796: ### Added
   - Browser / SPA support on every `@squawk/*-data` package. New `/browser` subpath export with an async `loadUsBundled<X>()` loader that fetches and decompresses the bundled `.gz` using Web Streams (`DecompressionStream`) and the global `fetch`, returning the same dataset shape the Node entry exports. Works in browsers, Cloudflare Workers, Deno Deploy, and any runtime without `node:fs`. Pair with the corresponding logic package (`@squawk/airports`, `@squawk/airspace`, etc.) for zero-config SPA usage. The Node entry (`@squawk/<pkg>`) is unchanged; existing `import { usBundled<X> } from '@squawk/<pkg>'` calls keep working.
   - `Load<X>DatasetOptions` accepts an optional `url` (default resolves relative to `import.meta.url`, which any modern ESM bundler rewrites as a hashed asset URL when the package is installed normally) and an optional `fetch` (useful for tests, configured fetchers, or edge runtimes).
   - The browser loader handles transport-level gzip: when a server advertises `Content-Encoding: gzip` (Vite's preview server, nginx with `gzip_static on`, many CDNs), `fetch()` decodes the body automatically and the loader skips its own `DecompressionStream` step. Servers that serve the `.gz` as opaque bytes still trigger the in-loader decompression.
@@ -28,100 +28,100 @@
 
 ### Patch Changes
 
-- Updated dependencies [7152f08]
+- Updated dependencies [32f4925]
   - @squawk/types@0.7.0
 
 ## 0.5.1
 
 ### Patch Changes
 
-- Updated dependencies [d72e966]
+- Updated dependencies [15fa9cf]
   - @squawk/types@0.6.0
 
 ## 0.5.0
 
 ### Minor Changes
 
-- 772b90d: Bump `@squawk/types` peer dependency to `^0.4.0` for the procedures CIFP migration. No behavioral changes.
+- ff22bd5: Bump `@squawk/types` peer dependency to `^0.4.0` for the procedures CIFP migration. No behavioral changes.
 
 ### Patch Changes
 
-- Updated dependencies [772b90d]
+- Updated dependencies [ff22bd5]
   - @squawk/types@0.5.0
 
 ## 0.4.1
 
 ### Patch Changes
 
-- 51a9ddc: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
-- Updated dependencies [51a9ddc]
+- a4ba760: - Pin internal `@squawk/*` workspace dependencies to caret ranges (e.g. `^0.3.2`) instead of `"*"` so `npm install` of any `@squawk/*` package resolves transitive workspace deps to compatible registry versions instead of reusing stale cached ones; previously `npx -y @squawk/mcp` could pair `@squawk/mcp@0.4.0` with an older cached `@squawk/flightplan@0.3.1` and serve buggy behavior even when `0.3.2` was already published.
+- Updated dependencies [a4ba760]
   - @squawk/types@0.3.1
 
 ## 0.4.0
 
 ### Minor Changes
 
-- 6fe3325: - Change `state` to optional (`string | undefined`) on `Airport`, `Navaid`, and `Fix` in `@squawk/types`. Consumers that read `.state` must now handle `undefined` for non-US records.
+- dc5eeae: - Change `state` to optional (`string | undefined`) on `Airport`, `Navaid`, and `Fix` in `@squawk/types`. Consumers that read `.state` must now handle `undefined` for non-US records.
   - Include selected Canadian, Mexican, Caribbean, and Pacific facilities published by the FAA in `@squawk/airport-data`, `@squawk/navaid-data`, and `@squawk/fix-data` (+147 airports, +59 navaids, +645 fixes). Foreign records have `country` populated and `state` undefined.
   - Export `lookupCode` from `@squawk/build-shared`, a classification-map lookup helper that logs a one-time warning on unknown NASR codes so future cycle additions do not silently drop records.
 
 ### Patch Changes
 
-- Updated dependencies [6fe3325]
+- Updated dependencies [dc5eeae]
   - @squawk/types@0.3.0
 
 ## 0.3.2
 
 ### Patch Changes
 
-- d52b90b: Update internal npm dependencies
-- Updated dependencies [d52b90b]
+- 9b4c21b: Update internal npm dependencies
+- Updated dependencies [9b4c21b]
   - @squawk/types@0.2.2
 
 ## 0.3.1
 
 ### Patch Changes
 
-- 8563ada: Make the bundled data source data more visible in squawk/ data package READMEs
+- 6cbc367: Make the bundled data source data more visible in squawk/ data package READMEs
 
 ## 0.3.0
 
 ### Minor Changes
 
-- 6f91bf8: Update bundled data from FAA NASR cycle effective 2026-04-16
+- 78f8169: Update bundled data from FAA NASR cycle effective 2026-04-16
 
 ### Patch Changes
 
-- 16d7bf1: Correct READMEs and TSDoc
-- Updated dependencies [16d7bf1]
+- fe66cec: Correct READMEs and TSDoc
+- Updated dependencies [fe66cec]
   - @squawk/types@0.2.1
 
 ## 0.2.0
 
 ### Minor Changes
 
-- ec14992: Add squawk/fixes and squawk/fix-data
-- 893af47: Add squawk Navaid packages
-- a76df6f: Standardize naming of properties/funcs and abbreviations
+- 40f0b9d: Add squawk/fixes and squawk/fix-data
+- c1e728c: Add squawk Navaid packages
+- ffe41f2: Standardize naming of properties/funcs and abbreviations
 
 ### Patch Changes
 
-- Updated dependencies [fc890a7]
-- Updated dependencies [896ce8a]
-- Updated dependencies [58a8dec]
-- Updated dependencies [feaa9ab]
-- Updated dependencies [a41e8da]
-- Updated dependencies [b28de20]
-- Updated dependencies [ec14992]
-- Updated dependencies [005c963]
-- Updated dependencies [893af47]
-- Updated dependencies [5999218]
-- Updated dependencies [f9cb361]
-- Updated dependencies [303997a]
-- Updated dependencies [53b25b2]
-- Updated dependencies [2bdf6be]
-- Updated dependencies [c7edad0]
-- Updated dependencies [c4b7790]
-- Updated dependencies [a76df6f]
-- Updated dependencies [062f661]
+- Updated dependencies [7d0383e]
+- Updated dependencies [8edfb9b]
+- Updated dependencies [df74bd6]
+- Updated dependencies [f92d3e2]
+- Updated dependencies [3f23773]
+- Updated dependencies [1be39b2]
+- Updated dependencies [40f0b9d]
+- Updated dependencies [cac443c]
+- Updated dependencies [c1e728c]
+- Updated dependencies [985f0a8]
+- Updated dependencies [4711295]
+- Updated dependencies [6af10db]
+- Updated dependencies [d554f7c]
+- Updated dependencies [d7ac351]
+- Updated dependencies [a409b07]
+- Updated dependencies [746447f]
+- Updated dependencies [ffe41f2]
+- Updated dependencies [875fc8b]
   - @squawk/types@0.2.0

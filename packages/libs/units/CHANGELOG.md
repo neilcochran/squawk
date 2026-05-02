@@ -4,14 +4,14 @@
 
 ### Patch Changes
 
-- c7e6e12: ### Changed
+- b47b118: ### Changed
   - Updated `repository.directory` in each package's manifest to reflect the monorepo's new internal layout. The "View repository" link on npmjs.com now points to `packages/libs/<name>/` instead of `packages/<name>/`. No code or API changes - this is package metadata only.
 
 ## 0.4.0
 
 ### Minor Changes
 
-- f92dbf4: - `fuel` namespace in `@squawk/units` with gal/L/lb/kg conversions
+- fe443e3: - `fuel` namespace in `@squawk/units` with gal/L/lb/kg conversions
   - `FuelDensity` discriminated union (`{ kgPerL }` or `{ lbPerGal }`) for density-aware volume <-> mass conversions
   - `FUEL_DENSITY` constants for common aviation fuels: 100LL, Jet A, Jet A-1, Jet B (nominal at 15 C)
   - `mb` (millibar) and `kPa` members of `PressureUnit`, with 14 new pairwise pressure conversions routing through hPa
@@ -22,7 +22,7 @@
 
 ### Minor Changes
 
-- 3c224c1: ### Added
+- 58257db: ### Added
   - `@squawk/geo` package for shared geospatial utilities, grouping exports into `greatCircle` (`distanceNm`, `bearing`, `bearingAndDistance`, `midpoint`, `destination`) and `polygon` (`pointInPolygon`, `boundingBox`, `pointInBoundingBox`) namespaces. `greatCircle.midpoint` and `greatCircle.destination` are new capabilities; the rest are consolidated from existing packages.
 
   ### Removed
@@ -36,21 +36,21 @@
 
 ### Patch Changes
 
-- d52b90b: Update internal npm dependencies
+- 9b4c21b: Update internal npm dependencies
 
 ## 0.2.1
 
 ### Patch Changes
 
-- 16d7bf1: Correct READMEs and TSDoc
+- fe66cec: Correct READMEs and TSDoc
 
 ## 0.2.0
 
 ### Minor Changes
 
-- b28de20: Add airspace data build pipeline and @squawk/airspace-data package
-- ec14992: Add squawk/fixes and squawk/fix-data
-- 893af47: Add squawk Navaid packages
-- 95863cd: Add squawk/procedures and squawk/procedure-data packages
-- a76df6f: Standardize naming of properties/funcs and abbreviations
+- 1be39b2: Add airspace data build pipeline and @squawk/airspace-data package
+- 40f0b9d: Add squawk/fixes and squawk/fix-data
+- c1e728c: Add squawk Navaid packages
+- ba098bd: Add squawk/procedures and squawk/procedure-data packages
+- ffe41f2: Standardize naming of properties/funcs and abbreviations
 - 51c15dd: Add @squawk/units: Aviation unit conversion and formatting utilities
