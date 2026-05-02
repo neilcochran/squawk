@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { buildAirport } from './parse-airports.js';
 import type { CsvRecord } from '@squawk/build-shared';

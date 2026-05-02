@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
 import type { Ats1Record, Ats2Record } from './parse-ats.js';

@@ -1,11 +1,11 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
 import { createAirwayResolver } from './resolver.js';
 import type { AirwayResolver } from './resolver.js';
 
 let resolver: AirwayResolver;
 
-before(async () => {
+beforeAll(async () => {
   const { usBundledAirways } = await import('@squawk/airway-data');
   resolver = createAirwayResolver({ data: usBundledAirways.records });
 });

@@ -1,16 +1,16 @@
-import { describe, it, mock, afterEach } from 'node:test';
+import { describe, it, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import { fetchPirep } from './pirep.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 describe('fetchPirep', () => {
   it('builds the expected URL using the id query parameter', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -23,7 +23,9 @@ describe('fetchPirep', () => {
       'UA /OV OKC063015/TM 1522/FL085/TP C172/SK BKN065-TOP090/TB LGT',
       'UA /OV DEN180030/TM 2012/FL120/TP B737/TB MOD',
     ].join('\n');
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { pireps, parseErrors, raw } = await fetchPirep('KDEN');
     assert.equal(pireps.length, 2);
     assert.equal(pireps[0]?.aircraftType, 'C172');
@@ -33,16 +35,14 @@ describe('fetchPirep', () => {
   });
 
   it('returns empty arrays for an empty body', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response('', { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 200 }));
     const { pireps, parseErrors } = await fetchPirep('KZZZZ');
     assert.deepEqual(pireps, []);
     assert.deepEqual(parseErrors, []);
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
     await assert.rejects(() => fetchPirep('KDEN'), AwcFetchError);
@@ -50,7 +50,7 @@ describe('fetchPirep', () => {
 
   it('includes optional filter params when provided', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -66,7 +66,7 @@ describe('fetchPirep', () => {
 
   it('omits optional filter params when not provided', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -80,7 +80,7 @@ describe('fetchPirep', () => {
 
   it('surfaces AWC 400 for an empty id as AwcFetchError', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('Invalid location specified', {
         status: 400,

@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { deriveFlightCategory } from './flight-category.js';
 import type { SkyCondition } from './types/index.js';

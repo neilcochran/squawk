@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 
 /**
- * Coverage aggregator and gate. Walks every workspace defined in the
- * root `package.json#workspaces` glob set, parses each workspace's
- * `coverage/lcov.info` (produced earlier by `turbo run test:coverage`),
- * computes per-package and aggregate line / function / branch coverage,
- * prints a summary table, and exits non-zero when aggregate coverage
- * falls below the configured thresholds.
+ * Aggregate coverage gate. Walks every workspace defined in the root
+ * `package.json#workspaces` glob set, reads each workspace's
+ * `coverage/coverage-summary.json` (produced earlier by
+ * `turbo run test:coverage` via Vitest's `json-summary` reporter), and
+ * exits non-zero when any package's aggregate coverage or the
+ * workspace-wide aggregate falls below the configured thresholds.
+ *
+ * Per-file gating lives in `vitest.shared.ts` (`thresholds.perFile: true`,
+ * 80% on every metric). Vitest cannot express both per-file and aggregate
+ * thresholds in one config block, so the aggregate gate stays here as a
+ * thin post-coverage check rather than a full lcov scanner.
  *
  * This script does NOT run tests. Run `npm run test:coverage` first
- * (or `turbo run test:coverage`) to populate the per-workspace lcov
- * files.
+ * (or `turbo run test:coverage`) to populate the per-workspace coverage
+ * summaries.
  *
  * Threshold defaults: 90 lines, 95 functions, 90 branches. Override
  * via the COVERAGE_LINES_THRESHOLD, COVERAGE_FUNCS_THRESHOLD, and
@@ -67,37 +72,29 @@ function discoverWorkspaceDirs() {
 }
 
 /**
- * Parses an LCOV report into aggregate counters. Each LCOV record is
- * one source file; the file is closed by an `end_of_record` line.
- * Counters appear as LF/LH (lines), FNF/FNH (functions),
- * BRF/BRH (branches).
+ * Reads Vitest's coverage-summary.json from a workspace. The summary
+ * contains a `total` entry plus one entry per covered file; the totals
+ * already aggregate across the package, so no per-file walk is needed.
  *
- * @param lcov - LCOV report text.
- * @returns Aggregate counters across every record in the report.
+ * Returns counters in the same shape used everywhere else in this
+ * script so the aggregation step can sum across packages.
+ *
+ * @param summaryPath - Absolute path to coverage/coverage-summary.json.
  */
-function parseLcov(lcov) {
-  let totalLines = 0;
-  let hitLines = 0;
-  let totalFuncs = 0;
-  let hitFuncs = 0;
-  let totalBranches = 0;
-  let hitBranches = 0;
-  for (const line of lcov.split('\n')) {
-    if (line.startsWith('LF:')) {
-      totalLines += Number(line.slice(3));
-    } else if (line.startsWith('LH:')) {
-      hitLines += Number(line.slice(3));
-    } else if (line.startsWith('FNF:')) {
-      totalFuncs += Number(line.slice(4));
-    } else if (line.startsWith('FNH:')) {
-      hitFuncs += Number(line.slice(4));
-    } else if (line.startsWith('BRF:')) {
-      totalBranches += Number(line.slice(4));
-    } else if (line.startsWith('BRH:')) {
-      hitBranches += Number(line.slice(4));
-    }
-  }
-  return { totalLines, hitLines, totalFuncs, hitFuncs, totalBranches, hitBranches };
+function readSummary(summaryPath) {
+  const summary = JSON.parse(readFileSync(summaryPath, 'utf-8'));
+  const total = summary.total ?? {};
+  const lines = total.lines ?? { total: 0, covered: 0 };
+  const functions = total.functions ?? { total: 0, covered: 0 };
+  const branches = total.branches ?? { total: 0, covered: 0 };
+  return {
+    totalLines: lines.total,
+    hitLines: lines.covered,
+    totalFuncs: functions.total,
+    hitFuncs: functions.covered,
+    totalBranches: branches.total,
+    hitBranches: branches.covered,
+  };
 }
 
 /**
@@ -156,18 +153,17 @@ const perWorkspace = [];
 const missing = [];
 
 for (const dir of workspaceDirs) {
-  const lcovPath = resolve(dir, 'coverage', 'lcov.info');
-  if (!existsSync(lcovPath)) {
+  const summaryPath = resolve(dir, 'coverage', 'coverage-summary.json');
+  if (!existsSync(summaryPath)) {
     missing.push(relative(root, dir));
     continue;
   }
-  const counters = parseLcov(readFileSync(lcovPath, 'utf-8'));
-  perWorkspace.push({ name: relative(root, dir), counters });
+  perWorkspace.push({ name: relative(root, dir), counters: readSummary(summaryPath) });
 }
 
 if (perWorkspace.length === 0) {
   console.error(
-    '[check-coverage] No coverage/lcov.info files found in any workspace. ' +
+    '[check-coverage] No coverage/coverage-summary.json files found in any workspace. ' +
       'Run `npm run test:coverage` first.',
   );
   process.exit(1);
@@ -224,7 +220,9 @@ console.log(sep);
 
 if (missing.length > 0) {
   console.log('');
-  console.log('Workspaces without coverage/lcov.info (no spec files or coverage script):');
+  console.log(
+    'Workspaces without coverage/coverage-summary.json (no spec files or coverage script):',
+  );
   for (const name of missing) {
     console.log(`  ${name}`);
   }

@@ -1,4 +1,4 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
 import type { Fix, FixUseCode } from '@squawk/types';
 import { createFixResolver } from './resolver.js';
@@ -15,7 +15,7 @@ async function loadRealData(): Promise<Fix[]> {
 
 let resolver: FixResolver;
 
-before(async () => {
+beforeAll(async () => {
   const data = await loadRealData();
   resolver = createFixResolver({ data });
 });

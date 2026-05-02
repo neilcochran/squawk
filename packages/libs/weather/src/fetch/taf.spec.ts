@@ -1,16 +1,16 @@
-import { describe, it, mock, afterEach } from 'node:test';
+import { describe, it, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import { fetchTaf } from './taf.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 describe('fetchTaf', () => {
   it('builds the expected URL for a single station', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -20,7 +20,7 @@ describe('fetchTaf', () => {
 
   it('comma-joins multiple station IDs', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -35,7 +35,9 @@ describe('fetchTaf', () => {
       '',
       'TAF KLAX 041730Z 0418/0524 25010KT P6SM SKC',
     ].join('\n');
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { tafs, parseErrors, raw } = await fetchTaf(['KJFK', 'KLAX']);
     assert.equal(tafs.length, 2);
     assert.equal(tafs[0]?.stationId, 'KJFK');
@@ -55,7 +57,9 @@ describe('fetchTaf', () => {
       '     FM192100 33012KT 3SM -RA BR OVC012',
       '     FM200000 VRB04KT P6SM OVC015',
     ].join('\n');
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { tafs, parseErrors } = await fetchTaf(['KBOS', 'KPWM']);
     assert.equal(tafs.length, 2);
     assert.deepEqual(parseErrors, []);
@@ -76,7 +80,9 @@ describe('fetchTaf', () => {
     const body = ['TAF KJFK 041730Z 0418/0524 21012KT P6SM FEW250', '', 'not a taf at all'].join(
       '\n',
     );
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { tafs, parseErrors } = await fetchTaf(['KJFK', 'NOPE']);
     assert.equal(tafs.length, 1);
     assert.equal(tafs[0]?.stationId, 'KJFK');
@@ -85,9 +91,7 @@ describe('fetchTaf', () => {
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
     await assert.rejects(() => fetchTaf('KJFK'), AwcFetchError);

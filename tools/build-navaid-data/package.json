@@ -10,8 +10,8 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "node --test 'dist/**/*.spec.js'",
-    "test:coverage": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='dist/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info 'dist/**/*.spec.js'",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "start": "node dist/index.js"
   },
   "dependencies": {
