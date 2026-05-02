@@ -1,5 +1,4 @@
-import { describe, it, mock, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, vi, afterEach, expect, assert } from 'vitest';
 import {
   AwcFetchError,
   buildAwcUrl,
@@ -12,103 +11,100 @@ import {
 } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 describe('buildAwcUrl', () => {
   it('joins the default base URL with the endpoint', () => {
     const url = buildAwcUrl('metar', { ids: 'KJFK', format: 'raw' });
-    assert.equal(url, `${DEFAULT_AWC_BASE_URL}/metar?ids=KJFK&format=raw`);
+    expect(url).toBe(`${DEFAULT_AWC_BASE_URL}/metar?ids=KJFK&format=raw`);
   });
 
   it('joins array values with commas', () => {
     const url = buildAwcUrl('metar', { ids: ['KJFK', 'KLAX'], format: 'raw' });
-    assert.equal(url, `${DEFAULT_AWC_BASE_URL}/metar?ids=KJFK%2CKLAX&format=raw`);
+    expect(url).toBe(`${DEFAULT_AWC_BASE_URL}/metar?ids=KJFK%2CKLAX&format=raw`);
   });
 
   it('drops undefined parameter values', () => {
     const url = buildAwcUrl('taf', { ids: 'KJFK', format: 'raw', hours: undefined });
-    assert.equal(url, `${DEFAULT_AWC_BASE_URL}/taf?ids=KJFK&format=raw`);
+    expect(url).toBe(`${DEFAULT_AWC_BASE_URL}/taf?ids=KJFK&format=raw`);
   });
 
   it('honors a custom base URL with a trailing slash', () => {
     const url = buildAwcUrl('metar', { ids: 'KJFK' }, 'https://example.test/api/');
-    assert.equal(url, 'https://example.test/api/metar?ids=KJFK');
+    expect(url).toBe('https://example.test/api/metar?ids=KJFK');
   });
 
   it('honors a custom base URL with a leading slash on the endpoint', () => {
     const url = buildAwcUrl('/metar', { ids: 'KJFK' }, 'https://example.test/api');
-    assert.equal(url, 'https://example.test/api/metar?ids=KJFK');
+    expect(url).toBe('https://example.test/api/metar?ids=KJFK');
   });
 });
 
 describe('requestAwcText', () => {
   it('returns the response body on 200 OK', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response('raw body', { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response('raw body', { status: 200 }),
+    );
     const body = await requestAwcText('https://example.test/metar');
-    assert.equal(body, 'raw body');
+    expect(body).toBe('raw body');
   });
 
   it('throws AwcFetchError on non-2xx responses with status and body', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () =>
         new Response('service unavailable', { status: 503, statusText: 'Service Unavailable' }),
     );
-    await assert.rejects(
-      () => requestAwcText('https://example.test/metar'),
-      (error: unknown) => {
-        assert.ok(error instanceof AwcFetchError);
-        assert.equal(error.status, 503);
-        assert.equal(error.statusText, 'Service Unavailable');
-        assert.equal(error.body, 'service unavailable');
-        assert.equal(error.url, 'https://example.test/metar');
-        return true;
-      },
+    const error: unknown = await requestAwcText('https://example.test/metar').catch(
+      (e: unknown) => e,
     );
+    assert(error instanceof AwcFetchError);
+    expect(error.status).toBe(503);
+    expect(error.statusText).toBe('Service Unavailable');
+    expect(error.body).toBe('service unavailable');
+    expect(error.url).toBe('https://example.test/metar');
   });
 
   it('forwards the AbortSignal to fetch', async () => {
     const controller = new AbortController();
     let observedSignal: AbortSignal | undefined;
-    mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url: unknown, init?: RequestInit) => {
       observedSignal = init?.signal ?? undefined;
       return new Response('ok', { status: 200 });
     });
     await requestAwcText('https://example.test/metar', { signal: controller.signal });
-    assert.equal(observedSignal, controller.signal);
+    expect(observedSignal).toBe(controller.signal);
   });
 
   it('rethrows network errors from fetch', async () => {
     const boom = new Error('network down');
-    mock.method(globalThis, 'fetch', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
       throw boom;
     });
-    await assert.rejects(() => requestAwcText('https://example.test/metar'), boom);
+    await expect(() => requestAwcText('https://example.test/metar')).rejects.toThrow(boom);
   });
 });
 
 describe('splitLines', () => {
   it('returns non-empty trimmed lines in order', () => {
     const lines = splitLines('KJFK ...\n\n  KLAX ...  \r\nKORD ...\n');
-    assert.deepEqual(lines, ['KJFK ...', 'KLAX ...', 'KORD ...']);
+    expect(lines).toEqual(['KJFK ...', 'KLAX ...', 'KORD ...']);
   });
 
   it('returns an empty array when the body is only whitespace', () => {
-    assert.deepEqual(splitLines('   \n\n  \r\n'), []);
+    expect(splitLines('   \n\n  \r\n')).toEqual([]);
   });
 
   it('handles CRLF line endings', () => {
     const lines = splitLines('KJFK ...\r\nKLAX ...\r\nKORD ...\r\n');
-    assert.deepEqual(lines, ['KJFK ...', 'KLAX ...', 'KORD ...']);
+    expect(lines).toEqual(['KJFK ...', 'KLAX ...', 'KORD ...']);
   });
 });
 
 describe('splitTafs', () => {
   it('splits on one or more blank lines and trims each block', () => {
     const body = 'TAF KJFK ...\n  FM050000 ...\n\nTAF KLAX ...\n  FM050000 ...';
-    assert.deepEqual(splitTafs(body), [
+    expect(splitTafs(body)).toEqual([
       'TAF KJFK ...\n  FM050000 ...',
       'TAF KLAX ...\n  FM050000 ...',
     ]);
@@ -120,7 +116,7 @@ describe('splitTafs', () => {
       '     FM200000 30012G21KT P6SM OVC035\n' +
       'TAF KPWM 190520Z 1906/2006 VRB03KT 3SM BR OVC002\n' +
       '     FM192100 33012KT 3SM -RA BR OVC012';
-    assert.deepEqual(splitTafs(body), [
+    expect(splitTafs(body)).toEqual([
       'TAF KBOS 190530Z 1906/2012 15003KT 2SM -DZ FG OVC003\n     FM200000 30012G21KT P6SM OVC035',
       'TAF KPWM 190520Z 1906/2006 VRB03KT 3SM BR OVC002\n     FM192100 33012KT 3SM -RA BR OVC012',
     ]);
@@ -132,26 +128,26 @@ describe('splitTafs', () => {
       'TAF AMD KLAX 041800Z 0418/0524 25010KT P6SM SKC\n' +
       'TAF COR KSFO 041830Z 0418/0524 27008KT P6SM SCT020';
     const blocks = splitTafs(body);
-    assert.equal(blocks.length, 3);
-    assert.ok(blocks[0]?.startsWith('TAF KJFK'));
-    assert.ok(blocks[1]?.startsWith('TAF AMD KLAX'));
-    assert.ok(blocks[2]?.startsWith('TAF COR KSFO'));
+    expect(blocks.length).toBe(3);
+    assert(blocks[0]?.startsWith('TAF KJFK'));
+    assert(blocks[1]?.startsWith('TAF AMD KLAX'));
+    assert(blocks[2]?.startsWith('TAF COR KSFO'));
   });
 
   it('returns an empty array when the body is only whitespace', () => {
-    assert.deepEqual(splitTafs('\n\n   \r\n\r\n'), []);
+    expect(splitTafs('\n\n   \r\n\r\n')).toEqual([]);
   });
 
   it('handles CRLF line endings for both blank-line and single-newline separators', () => {
     const blankSeparated = 'TAF KJFK ...\r\n  FM050000 ...\r\n\r\nTAF KLAX ...\r\n  FM050000 ...';
-    assert.deepEqual(splitTafs(blankSeparated), [
+    expect(splitTafs(blankSeparated)).toEqual([
       'TAF KJFK ...\r\n  FM050000 ...',
       'TAF KLAX ...\r\n  FM050000 ...',
     ]);
 
     const singleNewlineSeparated =
       'TAF KJFK ...\r\n  FM050000 ...\r\nTAF KLAX ...\r\n  FM050000 ...';
-    assert.deepEqual(splitTafs(singleNewlineSeparated), [
+    expect(splitTafs(singleNewlineSeparated)).toEqual([
       'TAF KJFK ...\r\n  FM050000 ...',
       'TAF KLAX ...\r\n  FM050000 ...',
     ]);
@@ -174,12 +170,12 @@ describe('splitAwcBulletins', () => {
       'VALID UNTIL 0155Z',
     ].join('\n');
     const bulletins = splitAwcBulletins(body);
-    assert.equal(bulletins.length, 2);
-    assert.ok(bulletins[0]?.startsWith('WSUS31 KKCI'));
-    assert.ok(bulletins[0]?.includes('CONVECTIVE SIGMET 39E'));
-    assert.ok(!bulletins[0]?.includes('Type:'));
-    assert.ok(!bulletins[0]?.includes('Hazard:'));
-    assert.ok(bulletins[1]?.includes('CONVECTIVE SIGMET 40E'));
+    expect(bulletins.length).toBe(2);
+    assert(bulletins[0]?.startsWith('WSUS31 KKCI'));
+    assert(bulletins[0]?.includes('CONVECTIVE SIGMET 39E'));
+    assert(!bulletins[0]?.includes('Type:'));
+    assert(!bulletins[0]?.includes('Hazard:'));
+    assert(bulletins[1]?.includes('CONVECTIVE SIGMET 40E'));
   });
 
   it('handles the international ISIGMET preamble (Hazard: only)', () => {
@@ -194,9 +190,9 @@ describe('splitAwcBulletins', () => {
       'SCCZ SIGMET 06 VALID 162020/170020 SCCI-',
     ].join('\n');
     const bulletins = splitAwcBulletins(body);
-    assert.equal(bulletins.length, 2);
-    assert.ok(bulletins[0]?.startsWith('WSMS31 WMKK'));
-    assert.ok(bulletins[1]?.startsWith('WSCH31 SCCI'));
+    expect(bulletins.length).toBe(2);
+    assert(bulletins[0]?.startsWith('WSMS31 WMKK'));
+    assert(bulletins[1]?.startsWith('WSCH31 SCCI'));
   });
 
   it('returns a single bulletin when there is no separator', () => {
@@ -207,12 +203,12 @@ describe('splitAwcBulletins', () => {
       'CONVECTIVE SIGMET 39E',
     ].join('\n');
     const bulletins = splitAwcBulletins(body);
-    assert.equal(bulletins.length, 1);
-    assert.ok(bulletins[0]?.startsWith('WSUS31 KKCI'));
+    expect(bulletins.length).toBe(1);
+    assert(bulletins[0]?.startsWith('WSUS31 KKCI'));
   });
 
   it('returns an empty array for a whitespace-only body', () => {
-    assert.deepEqual(splitAwcBulletins('\n\n   \n'), []);
+    expect(splitAwcBulletins('\n\n   \n')).toEqual([]);
   });
 
   it('leaves inline dashes inside bulletin geography unaffected', () => {
@@ -224,8 +220,8 @@ describe('splitAwcBulletins', () => {
       'FROM 60ENE ENE-70ESE ENE-30WNW BOS-10W CON-60ENE ENE',
     ].join('\n');
     const bulletins = splitAwcBulletins(body);
-    assert.equal(bulletins.length, 1);
-    assert.ok(bulletins[0]?.includes('FROM 60ENE ENE-70ESE ENE-30WNW BOS-10W CON-60ENE ENE'));
+    expect(bulletins.length).toBe(1);
+    assert(bulletins[0]?.includes('FROM 60ENE ENE-70ESE ENE-30WNW BOS-10W CON-60ENE ENE'));
   });
 
   it('handles CRLF line endings', () => {
@@ -241,11 +237,11 @@ describe('splitAwcBulletins', () => {
       'CONVECTIVE SIGMET 40E',
     ].join('\r\n');
     const bulletins = splitAwcBulletins(body);
-    assert.equal(bulletins.length, 2);
-    assert.ok(bulletins[0]?.startsWith('WSUS31 KKCI'));
-    assert.ok(bulletins[0]?.includes('CONVECTIVE SIGMET 39E'));
-    assert.ok(bulletins[1]?.includes('CONVECTIVE SIGMET 40E'));
-    assert.ok(!bulletins[0]?.includes('Type:'));
+    expect(bulletins.length).toBe(2);
+    assert(bulletins[0]?.startsWith('WSUS31 KKCI'));
+    assert(bulletins[0]?.includes('CONVECTIVE SIGMET 39E'));
+    assert(bulletins[1]?.includes('CONVECTIVE SIGMET 40E'));
+    assert(!bulletins[0]?.includes('Type:'));
   });
 
   it('strips preamble lines that have no space after the colon', () => {
@@ -256,9 +252,9 @@ describe('splitAwcBulletins', () => {
       'CONVECTIVE SIGMET 39E',
     ].join('\n');
     const bulletins = splitAwcBulletins(body);
-    assert.equal(bulletins.length, 1);
-    assert.ok(bulletins[0]?.startsWith('WSUS31 KKCI'));
-    assert.ok(!bulletins[0]?.includes('Type:'));
+    expect(bulletins.length).toBe(1);
+    assert(bulletins[0]?.startsWith('WSUS31 KKCI'));
+    assert(!bulletins[0]?.includes('Type:'));
   });
 });
 
@@ -272,15 +268,15 @@ describe('parseRecords', () => {
       return value;
     };
     const { results, parseErrors } = parseRecords(['1', 'oops', '3'], parser);
-    assert.deepEqual(results, [1, 3]);
-    assert.equal(parseErrors.length, 1);
-    assert.equal(parseErrors[0]?.raw, 'oops');
-    assert.ok(parseErrors[0]?.error instanceof Error);
+    expect(results).toEqual([1, 3]);
+    expect(parseErrors.length).toBe(1);
+    expect(parseErrors[0]?.raw).toBe('oops');
+    assert(parseErrors[0]?.error instanceof Error);
   });
 
   it('returns empty arrays when no records are provided', () => {
     const { results, parseErrors } = parseRecords<number>([], () => 0);
-    assert.deepEqual(results, []);
-    assert.deepEqual(parseErrors, []);
+    expect(results).toEqual([]);
+    expect(parseErrors).toEqual([]);
   });
 });

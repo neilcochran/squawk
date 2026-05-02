@@ -1,5 +1,4 @@
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -29,10 +28,10 @@ describe('parseNasrArgs', () => {
     process.argv = ['node', 'index.js', '--local', subDir];
     const result = parseNasrArgs({ defaultOutputPath: '/tmp/default.json.gz' });
 
-    assert.equal(result.subscriptionDir, subDir);
-    assert.equal(result.nasrCycleDate, '2026-04-16');
-    assert.equal(result.outputPath, '/tmp/default.json.gz');
-    assert.equal(typeof result.cleanup, 'function');
+    expect(result.subscriptionDir).toBe(subDir);
+    expect(result.nasrCycleDate).toBe('2026-04-16');
+    expect(result.outputPath).toBe('/tmp/default.json.gz');
+    expect(typeof result.cleanup).toBe('function');
   });
 
   it('honors the --output override', () => {
@@ -43,7 +42,7 @@ describe('parseNasrArgs', () => {
     process.argv = ['node', 'index.js', '--local', subDir, '--output', outPath];
     const result = parseNasrArgs({ defaultOutputPath: '/tmp/default.json.gz' });
 
-    assert.equal(result.outputPath, outPath);
+    expect(result.outputPath).toBe(outPath);
   });
 
   it('throws when the directory does not match the cycle date pattern', () => {
@@ -51,9 +50,51 @@ describe('parseNasrArgs', () => {
     mkdirSync(subDir);
 
     process.argv = ['node', 'index.js', '--local', subDir];
-    assert.throws(
-      () => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' }),
+    expect(() => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' })).toThrow(
       /Cannot determine NASR cycle date/,
     );
+  });
+
+  it('exits with usage when an unknown argument is provided', () => {
+    const exitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((_code?: string | number | null): never => {
+        throw new Error('process.exit called');
+      });
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      process.argv = ['node', 'index.js', '--bogus', 'value'];
+      expect(() => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' })).toThrow(
+        /process\.exit called/,
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      const stderrCalls = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
+      expect(stderrCalls).toMatch(/Unknown argument/);
+      expect(stderrCalls).toMatch(/Usage:/);
+    } finally {
+      exitSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
+  });
+
+  it('exits with usage when --local is missing', () => {
+    const exitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((_code?: string | number | null): never => {
+        throw new Error('process.exit called');
+      });
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      process.argv = ['node', 'index.js'];
+      expect(() => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' })).toThrow(
+        /process\.exit called/,
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      const stderrCalls = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
+      expect(stderrCalls).toMatch(/--local <path> is required/);
+    } finally {
+      exitSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
   });
 });

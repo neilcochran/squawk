@@ -12,7 +12,8 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "node --test 'dist/**/*.spec.js'",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "start": "node dist/index.js"
   },
   "dependencies": {

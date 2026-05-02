@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { parseSigmet, parseSigmetBulletin } from './sigmet-parser.js';
 
 // ---------------------------------------------------------------------------
@@ -280,105 +279,97 @@ SCCZ PUNTA ARENAS FIR CNL SIGMET A6 162347/170347=`;
 describe('parseSigmet', () => {
   describe('format detection', () => {
     it('throws on empty input', () => {
-      assert.throws(() => parseSigmet(''), /Empty SIGMET string/);
+      expect(() => parseSigmet('')).toThrow(/Empty SIGMET string/);
     });
 
     it('throws on invalid input', () => {
-      assert.throws(() => parseSigmet('THIS IS NOT A SIGMET'));
+      expect(() => parseSigmet('THIS IS NOT A SIGMET')).toThrow();
     });
 
     it('throws on whitespace-only input', () => {
-      assert.throws(() => parseSigmet('   '), /Empty SIGMET string/);
+      expect(() => parseSigmet('   ')).toThrow(/Empty SIGMET string/);
     });
 
     it('throws on malformed convective SIGMET missing number and region', () => {
-      assert.throws(
-        () => parseSigmet('CONVECTIVE SIGMET VALID UNTIL 042055Z'),
+      expect(() => parseSigmet('CONVECTIVE SIGMET VALID UNTIL 042055Z')).toThrow(
         /Invalid convective SIGMET/,
       );
     });
 
     it('throws on malformed non-convective SIGMET missing series info', () => {
-      assert.throws(
-        () => parseSigmet('SIGMET VALID UNTIL 050200Z'),
+      expect(() => parseSigmet('SIGMET VALID UNTIL 050200Z')).toThrow(
         /Invalid non-convective SIGMET/,
       );
     });
 
     it('throws on malformed international SIGMET missing sequence number', () => {
-      assert.throws(() => parseSigmet('XXXX SIGMET MIKE VALID 291615/292015 PANC-'), /Invalid/);
+      expect(() => parseSigmet('XXXX SIGMET MIKE VALID 291615/292015 PANC-')).toThrow(/Invalid/);
     });
 
     it('throws on truncated non-convective SIGMET', () => {
-      assert.throws(() => parseSigmet('SIGMET'), /Invalid non-convective SIGMET/);
+      expect(() => parseSigmet('SIGMET')).toThrow(/Invalid non-convective SIGMET/);
     });
 
     it('detects convective format', () => {
       const result = parseSigmet(CONVECTIVE_SEVERE);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
     });
 
     it('detects non-convective format', () => {
       const result = parseSigmet(NONCONVECTIVE_TURBULENCE);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
     });
 
     it('detects international format', () => {
       const result = parseSigmet(INTERNATIONAL_ALASKA_TURB);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
     });
   });
 
   describe('convective SIGMET', () => {
     it('parses severe TS with tornadoes, hail, and wind', () => {
       const result = parseSigmet(CONVECTIVE_SEVERE);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.region, 'C');
-      assert.equal(result.number, 45);
-      assert.equal(result.isNone, false);
-      assert.equal(result.isOutlookOnly, false);
-      assert.equal(result.validUntil?.hour, 20);
-      assert.equal(result.validUntil?.minute, 55);
-      assert.deepEqual(result.states, ['KS', 'OK', 'TX']);
-      assert.deepEqual(result.areaPoints, [
-        '30NW ICT',
-        '40S MCI',
-        '20W ADM',
-        '50SW ABI',
-        '30NW ICT',
-      ]);
-      assert.equal(result.thunderstormType, 'AREA');
-      assert.equal(result.isSevere, true);
-      assert.equal(result.movement?.directionDeg, 260);
-      assert.equal(result.movement?.speedKt, 25);
-      assert.equal(result.tops?.altitudeFt, 45000);
-      assert.equal(result.tops?.isAbove, true);
-      assert.equal(result.hasTornadoes, true);
-      assert.equal(result.hailSizeIn, 2);
-      assert.equal(result.windGustsKt, 65);
+      expect(result.region).toBe('C');
+      expect(result.number).toBe(45);
+      expect(result.isNone).toBe(false);
+      expect(result.isOutlookOnly).toBe(false);
+      expect(result.validUntil?.hour).toBe(20);
+      expect(result.validUntil?.minute).toBe(55);
+      expect(result.states).toEqual(['KS', 'OK', 'TX']);
+      expect(result.areaPoints).toEqual(['30NW ICT', '40S MCI', '20W ADM', '50SW ABI', '30NW ICT']);
+      expect(result.thunderstormType).toBe('AREA');
+      expect(result.isSevere).toBe(true);
+      expect(result.movement?.directionDeg).toBe(260);
+      expect(result.movement?.speedKt).toBe(25);
+      expect(result.tops?.altitudeFt).toBe(45000);
+      expect(result.tops?.isAbove).toBe(true);
+      expect(result.hasTornadoes).toBe(true);
+      expect(result.hailSizeIn).toBe(2);
+      expect(result.windGustsKt).toBe(65);
     });
 
     it('parses standalone outlook', () => {
       const result = parseSigmet(CONVECTIVE_OUTLOOK_ONLY);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.isOutlookOnly, true);
-      assert.equal(result.number, 0);
-      assert.ok(result.outlook);
-      assert.equal(result.outlook.validFromDay, 4);
-      assert.equal(result.outlook.validFromHour, 20);
-      assert.equal(result.outlook.validFromMinute, 55);
-      assert.equal(result.outlook.validToDay, 5);
-      assert.equal(result.outlook.validToHour, 0);
-      assert.equal(result.outlook.validToMinute, 55);
-      assert.deepEqual(result.outlook.areaPoints, [
+      expect(result.isOutlookOnly).toBe(true);
+      expect(result.number).toBe(0);
+      assert(result.outlook);
+      expect(result.outlook.validFromDay).toBe(4);
+      expect(result.outlook.validFromHour).toBe(20);
+      expect(result.outlook.validFromMinute).toBe(55);
+      expect(result.outlook.validToDay).toBe(5);
+      expect(result.outlook.validToHour).toBe(0);
+      expect(result.outlook.validToMinute).toBe(55);
+      expect(result.outlook.areaPoints).toEqual([
         '40N MCI',
         '30SE STL',
         '50S MEM',
@@ -389,100 +380,100 @@ describe('parseSigmet', () => {
 
     it('parses isolated severe TS with hail and outlook (WMO wrapped)', () => {
       const result = parseSigmet(CONVECTIVE_ISOLATED);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.region, 'W');
-      assert.equal(result.number, 22);
-      assert.equal(result.thunderstormType, 'ISOLATED');
-      assert.equal(result.isSevere, true);
-      assert.deepEqual(result.states, ['MT', 'WY']);
-      assert.deepEqual(result.areaPoints, ['40NW BIL', '60SE BIL', '30NE SHR', '40NW BIL']);
-      assert.equal(result.movement?.directionDeg, 250);
-      assert.equal(result.movement?.speedKt, 15);
-      assert.equal(result.tops?.altitudeFt, 42000);
-      assert.equal(result.tops?.isAbove, false);
-      assert.equal(result.hailSizeIn, 1);
-      assert.ok(result.outlook);
-      assert.equal(result.outlook.validFromDay, 4);
+      expect(result.region).toBe('W');
+      expect(result.number).toBe(22);
+      expect(result.thunderstormType).toBe('ISOLATED');
+      expect(result.isSevere).toBe(true);
+      expect(result.states).toEqual(['MT', 'WY']);
+      expect(result.areaPoints).toEqual(['40NW BIL', '60SE BIL', '30NE SHR', '40NW BIL']);
+      expect(result.movement?.directionDeg).toBe(250);
+      expect(result.movement?.speedKt).toBe(15);
+      expect(result.tops?.altitudeFt).toBe(42000);
+      expect(result.tops?.isAbove).toBe(false);
+      expect(result.hailSizeIn).toBe(1);
+      assert(result.outlook);
+      expect(result.outlook.validFromDay).toBe(4);
     });
 
     it('parses severe TS with large hail and high wind gusts (WMO wrapped)', () => {
       const result = parseSigmet(CONVECTIVE_HAIL_WIND);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.region, 'C');
-      assert.equal(result.number, 52);
-      assert.deepEqual(result.states, ['NE', 'KS', 'OK']);
-      assert.deepEqual(result.areaPoints, [
+      expect(result.region).toBe('C');
+      expect(result.number).toBe(52);
+      expect(result.states).toEqual(['NE', 'KS', 'OK']);
+      expect(result.areaPoints).toEqual([
         '30NW OMA',
         '40SE OMA',
         '30NE ICT',
         '50W DDC',
         '30NW OMA',
       ]);
-      assert.equal(result.thunderstormType, 'AREA');
-      assert.equal(result.isSevere, true);
-      assert.equal(result.hasTornadoes, true);
-      assert.equal(result.hailSizeIn, 2.75);
-      assert.equal(result.windGustsKt, 70);
-      assert.equal(result.tops?.isAbove, true);
-      assert.equal(result.tops?.altitudeFt, 45000);
+      expect(result.thunderstormType).toBe('AREA');
+      expect(result.isSevere).toBe(true);
+      expect(result.hasTornadoes).toBe(true);
+      expect(result.hailSizeIn).toBe(2.75);
+      expect(result.windGustsKt).toBe(70);
+      expect(result.tops?.isAbove).toBe(true);
+      expect(result.tops?.altitudeFt).toBe(45000);
     });
 
     it('parses area TS without outlook (WMO wrapped)', () => {
       const result = parseSigmet(CONVECTIVE_NO_OUTLOOK);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.region, 'W');
-      assert.equal(result.number, 18);
-      assert.equal(result.thunderstormType, 'AREA');
-      assert.equal(result.isSevere, undefined);
-      assert.deepEqual(result.states, ['AZ', 'NM']);
-      assert.equal(result.movement?.directionDeg, 280);
-      assert.equal(result.movement?.speedKt, 10);
-      assert.equal(result.tops?.altitudeFt, 38000);
-      assert.equal(result.tops?.isAbove, false);
-      assert.equal(result.outlook, undefined);
+      expect(result.region).toBe('W');
+      expect(result.number).toBe(18);
+      expect(result.thunderstormType).toBe('AREA');
+      expect(result.isSevere).toBe(undefined);
+      expect(result.states).toEqual(['AZ', 'NM']);
+      expect(result.movement?.directionDeg).toBe(280);
+      expect(result.movement?.speedKt).toBe(10);
+      expect(result.tops?.altitudeFt).toBe(38000);
+      expect(result.tops?.isAbove).toBe(false);
+      expect(result.outlook).toBe(undefined);
     });
 
     it('parses embedded TS with coastal waters and outlook (WMO wrapped)', () => {
       const result = parseSigmet(CONVECTIVE_74C);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.region, 'C');
-      assert.equal(result.number, 74);
-      assert.equal(result.thunderstormType, 'AREA');
-      assert.equal(result.isEmbedded, true);
-      assert.equal(result.coastalWaters, true);
-      assert.ok(result.states);
-      assert.ok(result.states.includes('TN'));
-      assert.ok(result.states.includes('TX'));
-      assert.ok(result.outlook);
+      expect(result.region).toBe('C');
+      expect(result.number).toBe(74);
+      expect(result.thunderstormType).toBe('AREA');
+      expect(result.isEmbedded).toBe(true);
+      expect(result.coastalWaters).toBe(true);
+      assert(result.states);
+      assert(result.states.includes('TN'));
+      assert(result.states.includes('TX'));
+      assert(result.outlook);
     });
 
     it('parses severe TS with wind gusts only (WMO wrapped)', () => {
       const result = parseSigmet(CONVECTIVE_76C_SEVERE);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.region, 'C');
-      assert.equal(result.number, 76);
-      assert.deepEqual(result.states, ['OH', 'TN', 'KY', 'IN', 'AL', 'MS']);
-      assert.deepEqual(result.areaPoints, [
+      expect(result.region).toBe('C');
+      expect(result.number).toBe(76);
+      expect(result.states).toEqual(['OH', 'TN', 'KY', 'IN', 'AL', 'MS']);
+      expect(result.areaPoints).toEqual([
         '10W CVG',
         '40E CVG',
         '50NNW GQO',
@@ -490,221 +481,215 @@ describe('parseSigmet', () => {
         '40WNW MSL',
         '10W CVG',
       ]);
-      assert.equal(result.thunderstormType, 'AREA');
-      assert.equal(result.isSevere, true);
-      assert.equal(result.windGustsKt, 50);
-      assert.equal(result.movement?.directionDeg, 240);
-      assert.equal(result.movement?.speedKt, 45);
-      assert.ok(result.outlook);
+      expect(result.thunderstormType).toBe('AREA');
+      expect(result.isSevere).toBe(true);
+      expect(result.windGustsKt).toBe(50);
+      expect(result.movement?.directionDeg).toBe(240);
+      expect(result.movement?.speedKt).toBe(45);
+      assert(result.outlook);
     });
 
     it('parses line TS with width and outlook (WMO wrapped)', () => {
       const result = parseSigmet(CONVECTIVE_LINE_TS);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.region, 'E');
-      assert.equal(result.number, 42);
-      assert.equal(result.thunderstormType, 'LINE');
-      assert.equal(result.lineWidthNm, 30);
-      assert.equal(result.coastalWaters, true);
-      assert.deepEqual(result.states, ['FL']);
-      assert.equal(result.movement?.directionDeg, 100);
-      assert.equal(result.movement?.speedKt, 20);
-      assert.equal(result.tops?.altitudeFt, 40000);
-      assert.equal(result.tops?.isAbove, false);
-      assert.ok(result.outlook);
+      expect(result.region).toBe('E');
+      expect(result.number).toBe(42);
+      expect(result.thunderstormType).toBe('LINE');
+      expect(result.lineWidthNm).toBe(30);
+      expect(result.coastalWaters).toBe(true);
+      expect(result.states).toEqual(['FL']);
+      expect(result.movement?.directionDeg).toBe(100);
+      expect(result.movement?.speedKt).toBe(20);
+      expect(result.tops?.altitudeFt).toBe(40000);
+      expect(result.tops?.isAbove).toBe(false);
+      assert(result.outlook);
     });
 
     it('parses CONVECTIVE SIGMET NONE with outlook (real NWS data)', () => {
       const result = parseSigmet(CONVECTIVE_NONE);
-      assert.equal(result.format, 'CONVECTIVE');
+      expect(result.format).toBe('CONVECTIVE');
       if (result.format !== 'CONVECTIVE') {
         return;
       }
 
-      assert.equal(result.isNone, true);
-      assert.equal(result.region, 'W');
-      assert.equal(result.number, 0);
-      assert.ok(result.outlook);
-      assert.equal(result.outlook.validFromDay, 5);
-      assert.equal(result.outlook.validFromHour, 18);
-      assert.equal(result.outlook.validFromMinute, 55);
-      assert.equal(result.outlook.validToDay, 5);
-      assert.equal(result.outlook.validToHour, 22);
-      assert.equal(result.outlook.validToMinute, 55);
+      expect(result.isNone).toBe(true);
+      expect(result.region).toBe('W');
+      expect(result.number).toBe(0);
+      assert(result.outlook);
+      expect(result.outlook.validFromDay).toBe(5);
+      expect(result.outlook.validFromHour).toBe(18);
+      expect(result.outlook.validFromMinute).toBe(55);
+      expect(result.outlook.validToDay).toBe(5);
+      expect(result.outlook.validToHour).toBe(22);
+      expect(result.outlook.validToMinute).toBe(55);
     });
   });
 
   describe('non-convective SIGMET', () => {
     it('parses severe turbulence', () => {
       const result = parseSigmet(NONCONVECTIVE_TURBULENCE);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'NOVEMBER');
-      assert.equal(result.seriesNumber, 3);
-      assert.equal(result.isCancellation, false);
-      assert.equal(result.validUntil?.day, 5);
-      assert.equal(result.validUntil?.hour, 2);
-      assert.equal(result.validUntil?.minute, 0);
-      assert.equal(result.states, undefined);
-      assert.deepEqual(result.areaPoints, ['40NW SLC', '60SE BOI', '30SW BIL', '40NW SLC']);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
-      assert.equal(result.hazards[0]!.isOccasional, false);
-      assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 35000);
-      assert.equal(result.hazards[0]!.altitudeRange?.topFt, 41000);
-      assert.equal(result.hazards[0]!.cause, 'JTST');
-      assert.equal(result.conditionsContinuingBeyond?.hour, 2);
-      assert.equal(result.conditionsContinuingBeyond?.minute, 0);
+      expect(result.seriesName).toBe('NOVEMBER');
+      expect(result.seriesNumber).toBe(3);
+      expect(result.isCancellation).toBe(false);
+      expect(result.validUntil?.day).toBe(5);
+      expect(result.validUntil?.hour).toBe(2);
+      expect(result.validUntil?.minute).toBe(0);
+      expect(result.states).toBe(undefined);
+      expect(result.areaPoints).toEqual(['40NW SLC', '60SE BOI', '30SW BIL', '40NW SLC']);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('TURBULENCE');
+      expect(result.hazards[0]!.isOccasional).toBe(false);
+      expect(result.hazards[0]!.altitudeRange?.baseFt).toBe(35000);
+      expect(result.hazards[0]!.altitudeRange?.topFt).toBe(41000);
+      expect(result.hazards[0]!.cause).toBe('JTST');
+      expect(result.conditionsContinuingBeyond?.hour).toBe(2);
+      expect(result.conditionsContinuingBeyond?.minute).toBe(0);
     });
 
     it('parses severe icing', () => {
       const result = parseSigmet(NONCONVECTIVE_ICING);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'OSCAR');
-      assert.equal(result.seriesNumber, 1);
-      assert.equal(result.states, undefined);
-      assert.deepEqual(result.areaPoints, [
-        '30E BUF',
-        '40S ALB',
-        '20NW JFK',
-        '40NE ACK',
-        '30E BUF',
-      ]);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'ICING');
-      assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 18000);
-      assert.equal(result.hazards[0]!.altitudeRange?.topFt, 28000);
-      assert.equal(result.hazards[0]!.cause, 'FZRA');
-      assert.equal(result.conditionsContinuingBeyond?.hour, 4);
-      assert.equal(result.conditionsContinuingBeyond?.minute, 0);
+      expect(result.seriesName).toBe('OSCAR');
+      expect(result.seriesNumber).toBe(1);
+      expect(result.states).toBe(undefined);
+      expect(result.areaPoints).toEqual(['30E BUF', '40S ALB', '20NW JFK', '40NE ACK', '30E BUF']);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('ICING');
+      expect(result.hazards[0]!.altitudeRange?.baseFt).toBe(18000);
+      expect(result.hazards[0]!.altitudeRange?.topFt).toBe(28000);
+      expect(result.hazards[0]!.cause).toBe('FZRA');
+      expect(result.conditionsContinuingBeyond?.hour).toBe(4);
+      expect(result.conditionsContinuingBeyond?.minute).toBe(0);
     });
 
     it('parses volcanic ash with eruption details', () => {
       const result = parseSigmet(NONCONVECTIVE_VOLCANIC_ASH);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'PAPA');
-      assert.equal(result.seriesNumber, 2);
-      assert.equal(result.validUntil?.day, 4);
-      assert.equal(result.validUntil?.hour, 22);
-      assert.equal(result.validUntil?.minute, 0);
-      assert.deepEqual(result.areaPoints, [
+      expect(result.seriesName).toBe('PAPA');
+      expect(result.seriesNumber).toBe(2);
+      expect(result.validUntil?.day).toBe(4);
+      expect(result.validUntil?.hour).toBe(22);
+      expect(result.validUntil?.minute).toBe(0);
+      expect(result.areaPoints).toEqual([
         '60NW ANC',
         '40NE ANC',
         '80SE ANC',
         '60SW ANC',
         '60NW ANC',
       ]);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'VOLCANIC_ASH');
-      assert.equal(result.volcanoName, 'MT REDOUBT');
-      assert.ok(result.volcanoPosition);
-      assert.equal(result.volcanoPosition.lat, 60 + 42 / 60);
-      assert.equal(result.volcanoPosition.lon, -(156 + 10 / 60));
-      assert.ok(result.ashCloudAltitudeRange);
-      assert.equal(result.ashCloudAltitudeRange.baseFt, 25000);
-      assert.equal(result.ashCloudAltitudeRange.topFt, 35000);
-      assert.equal(result.forecastTime?.hour, 22);
-      assert.equal(result.forecastTime?.minute, 0);
-      assert.ok(result.forecastAltitudeRange);
-      assert.equal(result.forecastAltitudeRange.baseFt, 20000);
-      assert.equal(result.forecastAltitudeRange.topFt, 40000);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('VOLCANIC_ASH');
+      expect(result.volcanoName).toBe('MT REDOUBT');
+      assert(result.volcanoPosition);
+      expect(result.volcanoPosition.lat).toBe(60 + 42 / 60);
+      expect(result.volcanoPosition.lon).toBe(-(156 + 10 / 60));
+      assert(result.ashCloudAltitudeRange);
+      expect(result.ashCloudAltitudeRange.baseFt).toBe(25000);
+      expect(result.ashCloudAltitudeRange.topFt).toBe(35000);
+      expect(result.forecastTime?.hour).toBe(22);
+      expect(result.forecastTime?.minute).toBe(0);
+      assert(result.forecastAltitudeRange);
+      expect(result.forecastAltitudeRange.baseFt).toBe(20000);
+      expect(result.forecastAltitudeRange.topFt).toBe(40000);
     });
 
     it('parses dust/sandstorm with visibility and intensity change', () => {
       const result = parseSigmet(NONCONVECTIVE_DUST);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'QUEBEC');
-      assert.equal(result.seriesNumber, 1);
-      assert.equal(result.states, undefined);
-      assert.deepEqual(result.areaPoints, ['40W TUS', '60S PHX', '30NW ELP', '40W TUS']);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'DUST_SANDSTORM');
-      assert.equal(result.hazards[0]!.visibilityBelowSm, 3);
-      assert.equal(result.hazards[0]!.altitudeRange?.baseFt, undefined);
-      assert.equal(result.hazards[0]!.altitudeRange?.topFt, 10000);
-      assert.equal(result.movement?.directionDeg, 240);
-      assert.equal(result.movement?.speedKt, 30);
-      assert.equal(result.intensityChange, 'INTENSIFYING');
+      expect(result.seriesName).toBe('QUEBEC');
+      expect(result.seriesNumber).toBe(1);
+      expect(result.states).toBe(undefined);
+      expect(result.areaPoints).toEqual(['40W TUS', '60S PHX', '30NW ELP', '40W TUS']);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('DUST_SANDSTORM');
+      expect(result.hazards[0]!.visibilityBelowSm).toBe(3);
+      expect(result.hazards[0]!.altitudeRange?.baseFt).toBe(undefined);
+      expect(result.hazards[0]!.altitudeRange?.topFt).toBe(10000);
+      expect(result.movement?.directionDeg).toBe(240);
+      expect(result.movement?.speedKt).toBe(30);
+      expect(result.intensityChange).toBe('INTENSIFYING');
     });
 
     it('parses occasional severe turbulence with WMO headers', () => {
       const result = parseSigmet(NONCONVECTIVE_TURB_WMO);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'UNIFORM');
-      assert.equal(result.seriesNumber, 4);
-      assert.deepEqual(result.states, ['KS', 'OK', 'TX', 'UT', 'CO', 'AZ', 'NM']);
-      assert.deepEqual(result.areaPoints, ['30NW DVC', '50SE GCK', 'CDS', '60ENE INW', '30NW DVC']);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
-      assert.equal(result.hazards[0]!.isOccasional, true);
-      assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 28000);
-      assert.equal(result.hazards[0]!.altitudeRange?.topFt, 38000);
-      assert.ok(result.hazards[0]!.cause?.includes('WNDSHR'));
-      assert.equal(result.conditionsContinuingBeyond?.hour, 6);
-      assert.equal(result.conditionsContinuingBeyond?.minute, 50);
+      expect(result.seriesName).toBe('UNIFORM');
+      expect(result.seriesNumber).toBe(4);
+      expect(result.states).toEqual(['KS', 'OK', 'TX', 'UT', 'CO', 'AZ', 'NM']);
+      expect(result.areaPoints).toEqual(['30NW DVC', '50SE GCK', 'CDS', '60ENE INW', '30NW DVC']);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('TURBULENCE');
+      expect(result.hazards[0]!.isOccasional).toBe(true);
+      expect(result.hazards[0]!.altitudeRange?.baseFt).toBe(28000);
+      expect(result.hazards[0]!.altitudeRange?.topFt).toBe(38000);
+      assert(result.hazards[0]!.cause?.includes('WNDSHR'));
+      expect(result.conditionsContinuingBeyond?.hour).toBe(6);
+      expect(result.conditionsContinuingBeyond?.minute).toBe(50);
     });
 
     it('parses cancellation with conditions mostly moderate', () => {
       const result = parseSigmet(NONCONVECTIVE_CANCEL);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.isCancellation, true);
-      assert.equal(result.seriesName, 'NOVEMBER');
-      assert.equal(result.seriesNumber, 4);
-      assert.equal(result.cancellationReason, 'CONDS MSTLY MOD');
-      assert.equal(result.hazards.length, 0);
+      expect(result.isCancellation).toBe(true);
+      expect(result.seriesName).toBe('NOVEMBER');
+      expect(result.seriesNumber).toBe(4);
+      expect(result.cancellationReason).toBe('CONDS MSTLY MOD');
+      expect(result.hazards.length).toBe(0);
     });
 
     it('parses cancellation with conditions ended', () => {
       const result = parseSigmet(NONCONVECTIVE_CANCEL_ENDED);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.isCancellation, true);
-      assert.equal(result.seriesName, 'OSCAR');
-      assert.equal(result.seriesNumber, 1);
-      assert.equal(result.cancellationReason, 'CONDS HV ENDED');
+      expect(result.isCancellation).toBe(true);
+      expect(result.seriesName).toBe('OSCAR');
+      expect(result.seriesNumber).toBe(1);
+      expect(result.cancellationReason).toBe('CONDS HV ENDED');
     });
 
     it('parses occasional severe icing with low altitude base (WMO wrapped)', () => {
       const result = parseSigmet(NONCONVECTIVE_ICING_WMO);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'PAPA');
-      assert.equal(result.seriesNumber, 2);
-      assert.deepEqual(result.states, ['ME', 'NH', 'VT', 'NY', 'PA']);
-      assert.deepEqual(result.areaPoints, [
+      expect(result.seriesName).toBe('PAPA');
+      expect(result.seriesNumber).toBe(2);
+      expect(result.states).toEqual(['ME', 'NH', 'VT', 'NY', 'PA']);
+      expect(result.areaPoints).toEqual([
         '70NW PQI',
         '40NE MPV',
         '30NW ALB',
@@ -714,27 +699,27 @@ describe('parseSigmet', () => {
         '50NE YOW',
         '70NW PQI',
       ]);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'ICING');
-      assert.equal(result.hazards[0]!.isOccasional, true);
-      assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 4000);
-      assert.equal(result.hazards[0]!.altitudeRange?.topFt, 22000);
-      assert.equal(result.hazards[0]!.cause, 'FZRA');
-      assert.equal(result.conditionsContinuingBeyond?.hour, 19);
-      assert.equal(result.conditionsContinuingBeyond?.minute, 10);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('ICING');
+      expect(result.hazards[0]!.isOccasional).toBe(true);
+      expect(result.hazards[0]!.altitudeRange?.baseFt).toBe(4000);
+      expect(result.hazards[0]!.altitudeRange?.topFt).toBe(22000);
+      expect(result.hazards[0]!.cause).toBe('FZRA');
+      expect(result.conditionsContinuingBeyond?.hour).toBe(19);
+      expect(result.conditionsContinuingBeyond?.minute).toBe(10);
     });
 
     it('parses stationary turbulence (WMO wrapped)', () => {
       const result = parseSigmet(NONCONVECTIVE_STATIONARY);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'ROMEO');
-      assert.equal(result.seriesNumber, 3);
-      assert.deepEqual(result.states, ['WI', 'MI', 'IN', 'OH']);
-      assert.deepEqual(result.areaPoints, [
+      expect(result.seriesName).toBe('ROMEO');
+      expect(result.seriesNumber).toBe(3);
+      expect(result.states).toEqual(['WI', 'MI', 'IN', 'OH']);
+      expect(result.areaPoints).toEqual([
         '30NW GRB',
         '40E MKE',
         '30S FWA',
@@ -742,54 +727,54 @@ describe('parseSigmet', () => {
         '40NW DLH',
         '30NW GRB',
       ]);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
-      assert.equal(result.hazards[0]!.isOccasional, true);
-      assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 31000);
-      assert.equal(result.hazards[0]!.altitudeRange?.topFt, 41000);
-      assert.equal(result.hazards[0]!.cause, 'JTST');
-      assert.equal(result.movement, undefined);
-      assert.equal(result.conditionsContinuingBeyond?.hour, 20);
-      assert.equal(result.conditionsContinuingBeyond?.minute, 15);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('TURBULENCE');
+      expect(result.hazards[0]!.isOccasional).toBe(true);
+      expect(result.hazards[0]!.altitudeRange?.baseFt).toBe(31000);
+      expect(result.hazards[0]!.altitudeRange?.topFt).toBe(41000);
+      expect(result.hazards[0]!.cause).toBe('JTST');
+      expect(result.movement).toBe(undefined);
+      expect(result.conditionsContinuingBeyond?.hour).toBe(20);
+      expect(result.conditionsContinuingBeyond?.minute).toBe(15);
     });
 
     it('parses weakening turbulence with conditions ending by (WMO wrapped)', () => {
       const result = parseSigmet(NONCONVECTIVE_WEAKENING);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'QUEBEC');
-      assert.equal(result.seriesNumber, 2);
-      assert.deepEqual(result.states, ['FL', 'GA', 'SC']);
-      assert.deepEqual(result.areaPoints, [
+      expect(result.seriesName).toBe('QUEBEC');
+      expect(result.seriesNumber).toBe(2);
+      expect(result.states).toEqual(['FL', 'GA', 'SC']);
+      expect(result.areaPoints).toEqual([
         '30NW TLH',
         '40E SAV',
         '80SE CHS',
         '60SW PIE',
         '30NW TLH',
       ]);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
-      assert.equal(result.hazards[0]!.isOccasional, true);
-      assert.ok(result.hazards[0]!.cause?.includes('WNDSHR'));
-      assert.equal(result.intensityChange, 'WEAKENING');
-      assert.equal(result.conditionsEndingBy?.hour, 18);
-      assert.equal(result.conditionsEndingBy?.minute, 20);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('TURBULENCE');
+      expect(result.hazards[0]!.isOccasional).toBe(true);
+      assert(result.hazards[0]!.cause?.includes('WNDSHR'));
+      expect(result.intensityChange).toBe('WEAKENING');
+      expect(result.conditionsEndingBy?.hour).toBe(18);
+      expect(result.conditionsEndingBy?.minute).toBe(20);
     });
 
     it('parses multiple hazards (icing + turbulence) in a single SIGMET', () => {
       const result = parseSigmet(NONCONVECTIVE_MULTI_HAZARD);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'VICTOR');
-      assert.equal(result.seriesNumber, 1);
-      assert.deepEqual(result.states, ['NY', 'PA', 'NJ', 'CT', 'MA', 'VT', 'NH', 'ME']);
-      assert.deepEqual(result.areaPoints, [
+      expect(result.seriesName).toBe('VICTOR');
+      expect(result.seriesNumber).toBe(1);
+      expect(result.states).toEqual(['NY', 'PA', 'NJ', 'CT', 'MA', 'VT', 'NH', 'ME']);
+      expect(result.areaPoints).toEqual([
         '80NW PQI',
         '40S BGR',
         '30W BOS',
@@ -799,216 +784,210 @@ describe('parseSigmet', () => {
         '40E YOW',
         '80NW PQI',
       ]);
-      assert.equal(result.hazards.length, 2);
+      expect(result.hazards.length).toBe(2);
 
-      assert.equal(result.hazards[0]!.hazardType, 'ICING');
-      assert.equal(result.hazards[0]!.isOccasional, true);
-      assert.equal(result.hazards[0]!.altitudeRange?.baseFt, 3000);
-      assert.equal(result.hazards[0]!.altitudeRange?.topFt, 20000);
-      assert.equal(result.hazards[0]!.cause, 'FZRA/FZPN');
+      expect(result.hazards[0]!.hazardType).toBe('ICING');
+      expect(result.hazards[0]!.isOccasional).toBe(true);
+      expect(result.hazards[0]!.altitudeRange?.baseFt).toBe(3000);
+      expect(result.hazards[0]!.altitudeRange?.topFt).toBe(20000);
+      expect(result.hazards[0]!.cause).toBe('FZRA/FZPN');
 
-      assert.equal(result.hazards[1]!.hazardType, 'TURBULENCE');
-      assert.equal(result.hazards[1]!.isOccasional, true);
-      assert.equal(result.hazards[1]!.altitudeRange?.baseFt, 25000);
-      assert.equal(result.hazards[1]!.altitudeRange?.topFt, 39000);
-      assert.equal(result.hazards[1]!.cause, 'JTST');
+      expect(result.hazards[1]!.hazardType).toBe('TURBULENCE');
+      expect(result.hazards[1]!.isOccasional).toBe(true);
+      expect(result.hazards[1]!.altitudeRange?.baseFt).toBe(25000);
+      expect(result.hazards[1]!.altitudeRange?.topFt).toBe(39000);
+      expect(result.hazards[1]!.cause).toBe('JTST');
 
-      assert.equal(result.conditionsContinuingBeyond?.hour, 21);
-      assert.equal(result.conditionsContinuingBeyond?.minute, 30);
+      expect(result.conditionsContinuingBeyond?.hour).toBe(21);
+      expect(result.conditionsContinuingBeyond?.minute).toBe(30);
     });
 
     it('parses intensifying turbulence (WMO wrapped)', () => {
       const result = parseSigmet(NONCONVECTIVE_INTENSIFYING);
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'OSCAR');
-      assert.equal(result.seriesNumber, 2);
-      assert.deepEqual(result.states, ['MN', 'WI', 'IA', 'IL']);
-      assert.deepEqual(result.areaPoints, [
-        '50NW DLH',
-        '40E GRB',
-        '30SE RFD',
-        '40W DSM',
-        '50NW DLH',
-      ]);
-      assert.equal(result.hazards.length, 1);
-      assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
-      assert.equal(result.hazards[0]!.isOccasional, true);
-      assert.ok(result.hazards[0]!.cause?.includes('WNDSHR'));
-      assert.equal(result.intensityChange, 'INTENSIFYING');
-      assert.equal(result.conditionsContinuingBeyond?.hour, 22);
-      assert.equal(result.conditionsContinuingBeyond?.minute, 45);
+      expect(result.seriesName).toBe('OSCAR');
+      expect(result.seriesNumber).toBe(2);
+      expect(result.states).toEqual(['MN', 'WI', 'IA', 'IL']);
+      expect(result.areaPoints).toEqual(['50NW DLH', '40E GRB', '30SE RFD', '40W DSM', '50NW DLH']);
+      expect(result.hazards.length).toBe(1);
+      expect(result.hazards[0]!.hazardType).toBe('TURBULENCE');
+      expect(result.hazards[0]!.isOccasional).toBe(true);
+      assert(result.hazards[0]!.cause?.includes('WNDSHR'));
+      expect(result.intensityChange).toBe('INTENSIFYING');
+      expect(result.conditionsContinuingBeyond?.hour).toBe(22);
+      expect(result.conditionsContinuingBeyond?.minute).toBe(45);
     });
   });
 
   describe('international SIGMET', () => {
     it('parses Alaska turbulence SIGMET with area and LLWS', () => {
       const result = parseSigmet(INTERNATIONAL_ALASKA_TURB);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.equal(result.firCode, 'PAZA');
-      assert.equal(result.firName, 'ANCHORAGE FIR');
-      assert.equal(result.seriesName, 'MIKE');
-      assert.equal(result.seriesNumber, 1);
-      assert.equal(result.issuingStation, 'PANC');
-      assert.equal(result.validFrom.day, 29);
-      assert.equal(result.validFrom.hour, 16);
-      assert.equal(result.validFrom.minute, 15);
-      assert.equal(result.validTo.day, 29);
-      assert.equal(result.validTo.hour, 20);
-      assert.equal(result.validTo.minute, 15);
-      assert.equal(result.isCancellation, false);
-      assert.equal(result.phenomena, 'SEV TURB');
-      assert.equal(result.observationStatus, 'OBSERVED');
-      assert.equal(result.observedAt?.hour, 16);
-      assert.equal(result.observedAt?.minute, 15);
-      assert.ok(result.areaDescription);
-      assert.ok(result.altitudeRange);
-      assert.equal(result.altitudeRange.baseFt, undefined);
-      assert.equal(result.altitudeRange.topFt, 10000);
-      assert.equal(result.isStationary, true);
-      assert.equal(result.intensityChange, 'NO_CHANGE');
-      assert.ok(result.additionalInfo);
-      assert.ok(result.additionalInfo.includes('LLWS'));
+      expect(result.firCode).toBe('PAZA');
+      expect(result.firName).toBe('ANCHORAGE FIR');
+      expect(result.seriesName).toBe('MIKE');
+      expect(result.seriesNumber).toBe(1);
+      expect(result.issuingStation).toBe('PANC');
+      expect(result.validFrom.day).toBe(29);
+      expect(result.validFrom.hour).toBe(16);
+      expect(result.validFrom.minute).toBe(15);
+      expect(result.validTo.day).toBe(29);
+      expect(result.validTo.hour).toBe(20);
+      expect(result.validTo.minute).toBe(15);
+      expect(result.isCancellation).toBe(false);
+      expect(result.phenomena).toBe('SEV TURB');
+      expect(result.observationStatus).toBe('OBSERVED');
+      expect(result.observedAt?.hour).toBe(16);
+      expect(result.observedAt?.minute).toBe(15);
+      assert(result.areaDescription);
+      assert(result.altitudeRange);
+      expect(result.altitudeRange.baseFt).toBe(undefined);
+      expect(result.altitudeRange.topFt).toBe(10000);
+      expect(result.isStationary).toBe(true);
+      expect(result.intensityChange).toBe('NO_CHANGE');
+      assert(result.additionalInfo);
+      assert(result.additionalInfo.includes('LLWS'));
     });
 
     it('parses Alaska cancellation SIGMET', () => {
       const result = parseSigmet(INTERNATIONAL_ALASKA_CANCEL);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.equal(result.firCode, 'PAZA');
-      assert.equal(result.firName, 'ANCHORAGE FIR');
-      assert.equal(result.seriesName, 'INDIA');
-      assert.equal(result.seriesNumber, 3);
-      assert.equal(result.issuingStation, 'PANC');
-      assert.equal(result.isCancellation, true);
-      assert.equal(result.cancelledSeriesName, 'INDIA');
-      assert.equal(result.cancelledSeriesNumber, 2);
-      assert.equal(result.cancelledValidStart?.day, 26);
-      assert.equal(result.cancelledValidStart?.hour, 23);
-      assert.equal(result.cancelledValidStart?.minute, 10);
-      assert.equal(result.cancelledValidEnd?.day, 27);
-      assert.equal(result.cancelledValidEnd?.hour, 3);
-      assert.equal(result.cancelledValidEnd?.minute, 10);
+      expect(result.firCode).toBe('PAZA');
+      expect(result.firName).toBe('ANCHORAGE FIR');
+      expect(result.seriesName).toBe('INDIA');
+      expect(result.seriesNumber).toBe(3);
+      expect(result.issuingStation).toBe('PANC');
+      expect(result.isCancellation).toBe(true);
+      expect(result.cancelledSeriesName).toBe('INDIA');
+      expect(result.cancelledSeriesNumber).toBe(2);
+      expect(result.cancelledValidStart?.day).toBe(26);
+      expect(result.cancelledValidStart?.hour).toBe(23);
+      expect(result.cancelledValidStart?.minute).toBe(10);
+      expect(result.cancelledValidEnd?.day).toBe(27);
+      expect(result.cancelledValidEnd?.hour).toBe(3);
+      expect(result.cancelledValidEnd?.minute).toBe(10);
     });
 
     it('parses tropical cyclone SIGMET with position and forecast', () => {
       const result = parseSigmet(INTERNATIONAL_TROPICAL_CYCLONE);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.equal(result.firCode, 'KZMA');
-      assert.equal(result.firName, 'MIAMI OCEANIC FIR');
-      assert.equal(result.seriesName, 'TANGO');
-      assert.equal(result.seriesNumber, 3);
-      assert.equal(result.issuingStation, 'KNHC');
-      assert.equal(result.validFrom.day, 4);
-      assert.equal(result.validFrom.hour, 15);
-      assert.equal(result.validTo.day, 4);
-      assert.equal(result.validTo.hour, 21);
-      assert.equal(result.isCancellation, false);
-      assert.equal(result.cycloneName, 'FRANCINE');
-      assert.equal(result.phenomena, 'TC FRANCINE');
-      assert.equal(result.observationStatus, 'OBSERVED');
-      assert.equal(result.observedAt?.hour, 15);
-      assert.equal(result.observedAt?.minute, 0);
-      assert.ok(result.cyclonePosition);
-      assert.equal(result.cyclonePosition.lat, 25 + 40 / 60);
-      assert.equal(result.cyclonePosition.lon, -(88 + 30 / 60));
-      assert.equal(result.cbTopFl, 500);
-      assert.equal(result.withinNm, 180);
-      assert.equal(result.movement?.directionCompass, 'NW');
-      assert.equal(result.movement?.speedKt, 12);
-      assert.equal(result.intensityChange, 'INTENSIFYING');
-      assert.equal(result.forecastTime?.hour, 21);
-      assert.equal(result.forecastTime?.minute, 0);
-      assert.ok(result.forecastPosition);
-      assert.equal(result.forecastPosition.lat, 26 + 40 / 60);
-      assert.equal(result.forecastPosition.lon, -(89 + 30 / 60));
+      expect(result.firCode).toBe('KZMA');
+      expect(result.firName).toBe('MIAMI OCEANIC FIR');
+      expect(result.seriesName).toBe('TANGO');
+      expect(result.seriesNumber).toBe(3);
+      expect(result.issuingStation).toBe('KNHC');
+      expect(result.validFrom.day).toBe(4);
+      expect(result.validFrom.hour).toBe(15);
+      expect(result.validTo.day).toBe(4);
+      expect(result.validTo.hour).toBe(21);
+      expect(result.isCancellation).toBe(false);
+      expect(result.cycloneName).toBe('FRANCINE');
+      expect(result.phenomena).toBe('TC FRANCINE');
+      expect(result.observationStatus).toBe('OBSERVED');
+      expect(result.observedAt?.hour).toBe(15);
+      expect(result.observedAt?.minute).toBe(0);
+      assert(result.cyclonePosition);
+      expect(result.cyclonePosition.lat).toBe(25 + 40 / 60);
+      expect(result.cyclonePosition.lon).toBe(-(88 + 30 / 60));
+      expect(result.cbTopFl).toBe(500);
+      expect(result.withinNm).toBe(180);
+      expect(result.movement?.directionCompass).toBe('NW');
+      expect(result.movement?.speedKt).toBe(12);
+      expect(result.intensityChange).toBe('INTENSIFYING');
+      expect(result.forecastTime?.hour).toBe(21);
+      expect(result.forecastTime?.minute).toBe(0);
+      assert(result.forecastPosition);
+      expect(result.forecastPosition.lat).toBe(26 + 40 / 60);
+      expect(result.forecastPosition.lon).toBe(-(89 + 30 / 60));
     });
     it('parses EMBD TS from Oakland Oceanic FIR (real PHFO data)', () => {
       const result = parseSigmet(INTERNATIONAL_EMBD_TS);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.equal(result.firCode, 'KZAK');
-      assert.ok(result.firName.includes('OAKLAND OCEANIC FIR'));
-      assert.equal(result.seriesName, 'PAPA');
-      assert.equal(result.seriesNumber, 5);
-      assert.equal(result.issuingStation, 'PHFO');
-      assert.equal(result.validFrom.day, 5);
-      assert.equal(result.validFrom.hour, 13);
-      assert.equal(result.validTo.day, 5);
-      assert.equal(result.validTo.hour, 17);
-      assert.equal(result.isCancellation, false);
-      assert.equal(result.phenomena, 'EMBD TS');
-      assert.equal(result.observationStatus, 'OBSERVED');
-      assert.equal(result.observedAt?.hour, 13);
-      assert.equal(result.observedAt?.minute, 5);
-      assert.ok(result.areaDescription);
-      assert.ok(result.tops);
-      assert.equal(result.tops.altitudeFt, 56000);
-      assert.equal(result.tops.isAbove, false);
-      assert.equal(result.movement?.directionCompass, 'W');
-      assert.equal(result.movement?.speedKt, 5);
-      assert.equal(result.intensityChange, 'NO_CHANGE');
+      expect(result.firCode).toBe('KZAK');
+      assert(result.firName.includes('OAKLAND OCEANIC FIR'));
+      expect(result.seriesName).toBe('PAPA');
+      expect(result.seriesNumber).toBe(5);
+      expect(result.issuingStation).toBe('PHFO');
+      expect(result.validFrom.day).toBe(5);
+      expect(result.validFrom.hour).toBe(13);
+      expect(result.validTo.day).toBe(5);
+      expect(result.validTo.hour).toBe(17);
+      expect(result.isCancellation).toBe(false);
+      expect(result.phenomena).toBe('EMBD TS');
+      expect(result.observationStatus).toBe('OBSERVED');
+      expect(result.observedAt?.hour).toBe(13);
+      expect(result.observedAt?.minute).toBe(5);
+      assert(result.areaDescription);
+      assert(result.tops);
+      expect(result.tops.altitudeFt).toBe(56000);
+      expect(result.tops.isAbove).toBe(false);
+      expect(result.movement?.directionCompass).toBe('W');
+      expect(result.movement?.speedKt).toBe(5);
+      expect(result.intensityChange).toBe('NO_CHANGE');
     });
 
     it('parses VA ERUPTION from AAWU without ICAO prefix on FIR name (real data)', () => {
       const result = parseSigmet(INTERNATIONAL_VA_ERUPTION);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.equal(result.firCode, 'PAZA');
-      assert.ok(result.firName.includes('ANCHORAGE FIR'));
-      assert.equal(result.seriesName, 'INDIA');
-      assert.equal(result.seriesNumber, 5);
-      assert.equal(result.issuingStation, 'PANC');
-      assert.equal(result.validFrom.day, 19);
-      assert.equal(result.validTo.day, 19);
-      assert.equal(result.isCancellation, false);
-      assert.equal(result.phenomena, 'VA ERUPTION');
-      assert.ok(result.altitudeRange);
-      assert.equal(result.altitudeRange.baseFt, undefined);
-      assert.equal(result.altitudeRange.topFt, 6000);
-      assert.equal(result.isStationary, true);
-      assert.equal(result.intensityChange, 'WEAKENING');
+      expect(result.firCode).toBe('PAZA');
+      assert(result.firName.includes('ANCHORAGE FIR'));
+      expect(result.seriesName).toBe('INDIA');
+      expect(result.seriesNumber).toBe(5);
+      expect(result.issuingStation).toBe('PANC');
+      expect(result.validFrom.day).toBe(19);
+      expect(result.validTo.day).toBe(19);
+      expect(result.isCancellation).toBe(false);
+      expect(result.phenomena).toBe('VA ERUPTION');
+      assert(result.altitudeRange);
+      expect(result.altitudeRange.baseFt).toBe(undefined);
+      expect(result.altitudeRange.topFt).toBe(6000);
+      expect(result.isStationary).toBe(true);
+      expect(result.intensityChange).toBe('WEAKENING');
     });
 
     it('parses OBSC TS with FCST from Dashoguz FIR (real data)', () => {
       const result = parseSigmet(INTERNATIONAL_OBSC_TS);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.equal(result.firCode, 'UTAT');
-      assert.ok(result.firName.includes('DASHOGUZ FIR'));
-      assert.equal(result.seriesName, 'N');
-      assert.equal(result.seriesNumber, 5);
-      assert.equal(result.issuingStation, 'UTAT');
-      assert.equal(result.isCancellation, false);
-      assert.equal(result.phenomena, 'OBSC TS');
-      assert.ok(result.tops);
-      assert.equal(result.tops.altitudeFt, 37000);
-      assert.equal(result.movement?.directionCompass, 'NE');
-      assert.equal(result.movement?.speedKt, 20);
-      assert.equal(result.intensityChange, 'NO_CHANGE');
+      expect(result.firCode).toBe('UTAT');
+      assert(result.firName.includes('DASHOGUZ FIR'));
+      expect(result.seriesName).toBe('N');
+      expect(result.seriesNumber).toBe(5);
+      expect(result.issuingStation).toBe('UTAT');
+      expect(result.isCancellation).toBe(false);
+      expect(result.phenomena).toBe('OBSC TS');
+      assert(result.tops);
+      expect(result.tops.altitudeFt).toBe(37000);
+      expect(result.movement?.directionCompass).toBe('NE');
+      expect(result.movement?.speedKt).toBe(20);
+      expect(result.intensityChange).toBe('NO_CHANGE');
     });
   });
 
@@ -1019,23 +998,23 @@ describe('parseSigmet', () => {
           'OEJD JEDDAH FIR EMBD TS OBS S OF LINE N2130 E04012 - N2143 E04243\n' +
           'TOP ABV FL390 MOV S NC=',
       );
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.equal(result.firCode, 'OEJD');
-      assert.ok(result.firName.includes('JEDDAH FIR'));
-      assert.equal(result.seriesName, '02');
-      assert.equal(result.seriesNumber, 2);
-      assert.equal(result.issuingStation, 'OEJN');
-      assert.equal(result.phenomena, 'EMBD TS');
-      assert.ok(result.areaDescription);
-      assert.ok(result.areaDescription.includes('N2130'));
-      assert.ok(result.tops);
-      assert.equal(result.tops.altitudeFt, 39000);
-      assert.equal(result.tops.isAbove, true);
-      assert.equal(result.intensityChange, 'NO_CHANGE');
+      expect(result.firCode).toBe('OEJD');
+      assert(result.firName.includes('JEDDAH FIR'));
+      expect(result.seriesName).toBe('02');
+      expect(result.seriesNumber).toBe(2);
+      expect(result.issuingStation).toBe('OEJN');
+      expect(result.phenomena).toBe('EMBD TS');
+      assert(result.areaDescription);
+      assert(result.areaDescription.includes('N2130'));
+      assert(result.tops);
+      expect(result.tops.altitudeFt).toBe(39000);
+      expect(result.tops.isAbove).toBe(true);
+      expect(result.intensityChange).toBe('NO_CHANGE');
     });
 
     it('parses KMH speed in international SIGMET', () => {
@@ -1044,14 +1023,14 @@ describe('parseSigmet', () => {
           'LFFF PARIS FIR SEV TURB OBS AT 1200Z WI N4830 E00230 - N4700 E00400 - N4630 E00200\n' +
           'FL300/FL400 MOV NE 40KMH NC=',
       );
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.equal(result.movement?.directionCompass, 'NE');
-      assert.equal(result.movement?.speedKmPerHr, 40);
-      assert.equal(result.movement?.speedKt, undefined);
+      expect(result.movement?.directionCompass).toBe('NE');
+      expect(result.movement?.speedKmPerHr).toBe(40);
+      expect(result.movement?.speedKt).toBe(undefined);
     });
 
     it('handles carriage return line endings', () => {
@@ -1060,13 +1039,13 @@ describe('parseSigmet', () => {
           'FROM 40NW SLC-60SE BOI-30SW BIL-40NW SLC\r\n' +
           'SEV TURB BTN FL350 AND FL410. DUE TO JTST. CONDS CONTG BYD 0200Z.',
       );
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'NOVEMBER');
-      assert.equal(result.hazards[0]!.hazardType, 'TURBULENCE');
+      expect(result.seriesName).toBe('NOVEMBER');
+      expect(result.hazards[0]!.hazardType).toBe('TURBULENCE');
     });
 
     it('handles old Mac carriage returns without newlines', () => {
@@ -1075,13 +1054,13 @@ describe('parseSigmet', () => {
           'FROM 30E BUF-40S ALB-20NW JFK-40NE ACK-30E BUF\r' +
           'SEV ICE BTN FL180 AND FL280. DUE TO FZRA. CONDS CONTG BYD 0400Z.',
       );
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.seriesName, 'OSCAR');
-      assert.equal(result.hazards[0]!.hazardType, 'ICING');
+      expect(result.seriesName).toBe('OSCAR');
+      expect(result.hazards[0]!.hazardType).toBe('ICING');
     });
 
     it('parses S OF LINE area format in international SIGMET', () => {
@@ -1090,14 +1069,14 @@ describe('parseSigmet', () => {
           'OEJD JEDDAH FIR EMBD TS FCST S OF LINE N2130 E04012 - N2143 E04243\n' +
           'TOP FL370 MOV S 10KT NC=',
       );
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
 
-      assert.ok(result.areaDescription);
-      assert.ok(result.areaDescription.includes('N2130'));
-      assert.ok(result.areaDescription.includes('N2143'));
+      assert(result.areaDescription);
+      assert(result.areaDescription.includes('N2130'));
+      assert(result.areaDescription.includes('N2143'));
     });
 
     it('parses FCST without AT keyword in VA SIGMET', () => {
@@ -1108,90 +1087,90 @@ describe('parseSigmet', () => {
           'FROM 60NW ANC-40NE ANC-80SE ANC-60SW ANC-60NW ANC\n' +
           'MOV NE 30KT. FCST 2200Z FL200/FL400.',
       );
-      assert.equal(result.format, 'NONCONVECTIVE');
+      expect(result.format).toBe('NONCONVECTIVE');
       if (result.format !== 'NONCONVECTIVE') {
         return;
       }
 
-      assert.equal(result.forecastTime?.hour, 22);
-      assert.equal(result.forecastTime?.minute, 0);
-      assert.ok(result.forecastAltitudeRange);
-      assert.equal(result.forecastAltitudeRange.baseFt, 20000);
-      assert.equal(result.forecastAltitudeRange.topFt, 40000);
+      expect(result.forecastTime?.hour).toBe(22);
+      expect(result.forecastTime?.minute).toBe(0);
+      assert(result.forecastAltitudeRange);
+      expect(result.forecastAltitudeRange.baseFt).toBe(20000);
+      expect(result.forecastAltitudeRange.topFt).toBe(40000);
     });
   });
 
   describe('international SIGMET - header variants', () => {
     it('parses a fused single-letter + single-digit identifier', () => {
       const result = parseSigmet(INTERNATIONAL_FUSED_SINGLE);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
-      assert.equal(result.seriesName, 'A');
-      assert.equal(result.seriesNumber, 6);
-      assert.equal(result.firCode, 'SCCZ');
-      assert.equal(result.issuingStation, 'SCCI');
+      expect(result.seriesName).toBe('A');
+      expect(result.seriesNumber).toBe(6);
+      expect(result.firCode).toBe('SCCZ');
+      expect(result.issuingStation).toBe('SCCI');
     });
 
     it('parses a fused identifier with zero-padded digits', () => {
       const result = parseSigmet(INTERNATIONAL_FUSED_ZERO_PADDED);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
-      assert.equal(result.seriesName, 'B');
-      assert.equal(result.seriesNumber, 2);
-      assert.equal(result.firCode, 'SPIM');
-      assert.equal(result.issuingStation, 'SPJC');
+      expect(result.seriesName).toBe('B');
+      expect(result.seriesNumber).toBe(2);
+      expect(result.firCode).toBe('SPIM');
+      expect(result.issuingStation).toBe('SPJC');
     });
 
     it('parses a fused identifier with multi-digit number', () => {
       const result = parseSigmet(INTERNATIONAL_FUSED_MULTI_DIGIT);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
-      assert.equal(result.seriesName, 'D');
-      assert.equal(result.seriesNumber, 10);
-      assert.equal(result.firCode, 'SPIM');
+      expect(result.seriesName).toBe('D');
+      expect(result.seriesNumber).toBe(10);
+      expect(result.firCode).toBe('SPIM');
     });
 
     it('parses a fused identifier with multi-letter prefix', () => {
       const result = parseSigmet(INTERNATIONAL_FUSED_MULTI_LETTER);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
-      assert.equal(result.seriesName, 'AB');
-      assert.equal(result.seriesNumber, 9);
-      assert.equal(result.firCode, 'FXXX');
+      expect(result.seriesName).toBe('AB');
+      expect(result.seriesNumber).toBe(9);
+      expect(result.firCode).toBe('FXXX');
     });
 
     it('parses a header with whitespace before the issuing-station dash', () => {
       const result = parseSigmet(INTERNATIONAL_SPACE_BEFORE_DASH);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
-      assert.equal(result.seriesName, '140');
-      assert.equal(result.seriesNumber, 140);
-      assert.equal(result.firCode, 'SBAZ');
-      assert.equal(result.issuingStation, 'SBAZ');
+      expect(result.seriesName).toBe('140');
+      expect(result.seriesNumber).toBe(140);
+      expect(result.firCode).toBe('SBAZ');
+      expect(result.issuingStation).toBe('SBAZ');
     });
 
     it('parses a header with multiple FIR codes preceding SIGMET', () => {
       const result = parseSigmet(INTERNATIONAL_MULTI_FIR);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
-      assert.equal(result.seriesName, 'FOXTROT');
-      assert.equal(result.seriesNumber, 3);
-      assert.equal(result.issuingStation, 'KKCI');
+      expect(result.seriesName).toBe('FOXTROT');
+      expect(result.seriesNumber).toBe(3);
+      expect(result.issuingStation).toBe('KKCI');
       // The FIR code closest to SIGMET (TJZS) is captured from the header.
       // Earlier FIR codes (KZMA) are consumed by parseFirInfo from the body.
-      assert.ok(
+      assert(
         result.firCode === 'TJZS' || result.firCode === 'KZMA',
         `firCode should be one of the header FIRs, got ${result.firCode}`,
       );
@@ -1199,13 +1178,101 @@ describe('parseSigmet', () => {
 
     it('parses a cancellation referencing a fused identifier', () => {
       const result = parseSigmet(INTERNATIONAL_CANCEL_FUSED);
-      assert.equal(result.format, 'INTERNATIONAL');
+      expect(result.format).toBe('INTERNATIONAL');
       if (result.format !== 'INTERNATIONAL') {
         return;
       }
-      assert.equal(result.isCancellation, true);
-      assert.equal(result.cancelledSeriesName, 'A');
-      assert.equal(result.cancelledSeriesNumber, 6);
+      expect(result.isCancellation).toBe(true);
+      expect(result.cancelledSeriesName).toBe('A');
+      expect(result.cancelledSeriesNumber).toBe(6);
+    });
+
+    it('parses a cancellation referencing a numeric-only identifier', () => {
+      // Exercises the cnlNumMatch fallback in parseInternationalCancellation.
+      const numericCancel = `WSCH31 SCCI 170500
+SCCZ SIGMET 8 VALID 170500/170515 SCCI-
+SCCZ PUNTA ARENAS FIR CNL SIGMET 7 162347/170347=`;
+      const result = parseSigmet(numericCancel);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.isCancellation).toBe(true);
+      expect(result.cancelledSeriesNumber).toBe(7);
+    });
+
+    it('parses an international SIGMET that lacks an obvious phenomenon prefix', () => {
+      // No SEV/FRQ/OBSC/EMBD prefix - phenMatch should be null.
+      const noPhenom = `WSAU21 ADRM 040800
+SIGMET ALFA 1 VALID 040800/041200 ADRM-
+YBBB BRISBANE FIR=`;
+      const result = parseSigmet(noPhenom);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.phenomena).toBeUndefined();
+    });
+
+    it('parses a TC SIGMET without optional CB/WI/FCST fields', () => {
+      // Bare TC SIGMET - no CB TOP, no WI ... OF CENTER, no FCST AT.
+      // Exercises the false branches of cbMatch / wiMatch / fcstMatch.
+      const minimalTc = `WTNT35 KNHC 041500
+KZMA SIGMET TANGO 3 VALID 041500/042100 KNHC-
+KZMA MIAMI OCEANIC FIR TC FRANCINE OBS AT 1500Z N2540 W08830
+MOV NW 12KT INTSF=`;
+      const result = parseSigmet(minimalTc);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.cycloneName).toBe('FRANCINE');
+      expect(result.cbTopFl).toBeUndefined();
+      expect(result.withinNm).toBeUndefined();
+      expect(result.forecastTime).toBeUndefined();
+    });
+
+    it('parses a TC SIGMET where the body starts with OBS AT instead of TC', () => {
+      // Exercises the cycloneName-fallback branch in phenomena resolution
+      // (phenMatch is null because content doesn't start with TC, but TC
+      // appears later in the body).
+      const tcLater = `WTNT35 KNHC 041500
+KZMA SIGMET TANGO 3 VALID 041500/042100 KNHC-
+KZMA MIAMI OCEANIC FIR OBS AT 1500Z TC FRANCINE N2540 W08830
+MOV NW 12KT INTSF=`;
+      const result = parseSigmet(tcLater);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.cycloneName).toBe('FRANCINE');
+    });
+
+    it('parses an international SIGMET with bare OBS observation status (no AT time)', () => {
+      const obsBare = `WSAU21 ADRM 040800
+SIGMET ALFA 1 VALID 040800/041200 ADRM-
+YBBB BRISBANE FIR SEV TURB OBS WI N2500 E15000 - N2500 E16000 -
+N3000 E16000 - N3000 E15000 - N2500 E15000 FL280/360 STNR=`;
+      const result = parseSigmet(obsBare);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.observationStatus).toBe('OBSERVED');
+    });
+
+    it('parses an international SIGMET with FCST observation status (no OBS AT)', () => {
+      // No OBS AT, but contains FCST without AT/time - should set FORECAST status.
+      const fcstOnly = `WSAU21 ADRM 040800
+SIGMET ALFA 1 VALID 040800/041200 ADRM-
+YBBB BRISBANE FIR SEV TURB FCST WI N2500 E15000 - N2500 E16000 -
+N3000 E16000 - N3000 E15000 - N2500 E15000 FL280/360 STNR NC=`;
+      const result = parseSigmet(fcstOnly);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.observationStatus).toBe('FORECAST');
     });
   });
 
@@ -1233,45 +1300,235 @@ describe('parseSigmet', () => {
         'PREDICTION CENTER FOR SYNOPSIS AND METEOROLOGICAL DETAILS.';
 
       const results = parseSigmetBulletin(bulletin);
-      assert.equal(results.length, 2);
+      expect(results.length).toBe(2);
 
       const first = results[0]!;
-      assert.equal(first.format, 'CONVECTIVE');
+      expect(first.format).toBe('CONVECTIVE');
       if (first.format === 'CONVECTIVE') {
-        assert.equal(first.number, 50);
-        assert.equal(first.region, 'C');
-        assert.equal(first.thunderstormType, 'AREA');
-        assert.equal(first.isEmbedded, true);
-        assert.ok(first.outlook);
+        expect(first.number).toBe(50);
+        expect(first.region).toBe('C');
+        expect(first.thunderstormType).toBe('AREA');
+        expect(first.isEmbedded).toBe(true);
+        assert(first.outlook);
       }
 
       const second = results[1]!;
-      assert.equal(second.format, 'CONVECTIVE');
+      expect(second.format).toBe('CONVECTIVE');
       if (second.format === 'CONVECTIVE') {
-        assert.equal(second.number, 51);
-        assert.equal(second.region, 'C');
-        assert.equal(second.thunderstormType, 'AREA');
-        assert.ok(second.outlook);
+        expect(second.number).toBe(51);
+        expect(second.region).toBe('C');
+        expect(second.thunderstormType).toBe('AREA');
+        assert(second.outlook);
       }
     });
 
     it('handles NONE bulletin', () => {
       const results = parseSigmetBulletin(CONVECTIVE_NONE);
-      assert.equal(results.length, 1);
-      assert.equal(results[0]!.format, 'CONVECTIVE');
+      expect(results.length).toBe(1);
+      expect(results[0]!.format).toBe('CONVECTIVE');
       if (results[0]!.format === 'CONVECTIVE') {
-        assert.equal(results[0]!.isNone, true);
+        expect(results[0]!.isNone).toBe(true);
       }
     });
 
     it('handles single non-convective SIGMET as bulletin', () => {
       const results = parseSigmetBulletin(NONCONVECTIVE_TURBULENCE);
-      assert.equal(results.length, 1);
-      assert.equal(results[0]!.format, 'NONCONVECTIVE');
+      expect(results.length).toBe(1);
+      expect(results[0]!.format).toBe('NONCONVECTIVE');
     });
 
     it('throws on empty input', () => {
-      assert.throws(() => parseSigmetBulletin(''), /Empty SIGMET bulletin/);
+      expect(() => parseSigmetBulletin('')).toThrow(/Empty SIGMET bulletin/);
+    });
+  });
+
+  describe('coverage edge cases', () => {
+    it('parses a convective SIGMET with no VALID UNTIL line', () => {
+      // Exercises the "validUntil undefined" spread branch.
+      const noValidUntil = `WST SIGMET CONVECTIVE SIGMET 99C
+KS OK TX
+FROM 30NW ICT-40S MCI-20W ADM-50SW ABI-30NW ICT
+AREA TS MOV FROM 26025KT. TOPS ABV FL450.`;
+      const result = parseSigmet(noValidUntil);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.validUntil).toBeUndefined();
+    });
+
+    it('parses CONVECTIVE NONE without a trailing outlook', () => {
+      // Exercises the "outlook undefined" branch in parseConvectiveNone.
+      const noneOnly = `WSUS31 KKCI 041855
+SIGE
+CONVECTIVE SIGMET...NONE`;
+      const result = parseSigmet(noneOnly);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.isNone).toBe(true);
+      expect(result.outlook).toBeUndefined();
+    });
+
+    it('parses CONVECTIVE NONE without a recognized SIG header (region defaults to C)', () => {
+      // Exercises the "regionMatch null" branch in parseConvectiveNone.
+      const noHeader = `CONVECTIVE SIGMET...NONE`;
+      const result = parseSigmet(noHeader);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.region).toBe('C');
+    });
+
+    it('parses convective outlook-only without a SIG region header (region defaults to C)', () => {
+      // Exercises the "regionMatch null" branch in parseConvectiveOutlookOnly.
+      const noRegionOutlook = `CONVECTIVE SIGMET OUTLOOK
+VALID 042055-050055Z
+FROM 40N MCI-30SE STL-50S MEM-30W OKC-40N MCI
+AREA OF TSTMS MOVING FROM 25020KT. TOPS ABV FL400.`;
+      const result = parseSigmet(noRegionOutlook);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.region).toBe('C');
+      expect(result.isOutlookOnly).toBe(true);
+    });
+
+    it('parses non-convective SEV TURB without DUE TO clause and without altitude range', () => {
+      // Exercises the fallback turbulence parsing path with no altRange / no causeMatch.
+      const fallbackTurb = `WSUS01 KKCI 041855
+SIGE
+NEW YORK OCEANIC SIGMET ALFA 1 VALID 041855/042255 KKCI-
+KZWY OAKLAND OCEANIC FIR SEV TURB FCST.`;
+      const result = parseSigmet(fallbackTurb);
+      expect(result.format).toBe('INTERNATIONAL');
+    });
+
+    it('parses non-convective SEV ICE fallback without alt range or cause', () => {
+      // Falls into the simple SEV ICE fallback in parseNonConvectiveHazards.
+      const fallbackIce = `WSNT04 KKCI 041855
+SIGA
+NEW YORK SIGMET ALFA 4 VALID 041855/042255 KKCI- KZNY NEW YORK FIR SEV ICE FCST.`;
+      const result = parseSigmet(fallbackIce);
+      expect(result.format).toBe('INTERNATIONAL');
+    });
+
+    it('parses convective SIGMET without states match (defensive return)', () => {
+      // Body has VALID UNTIL but no FROM-prefixed area line, so
+      // parseConvectiveStates regex fails to match - exercising the
+      // `afterValid === null` branch.
+      const noStates = `WST SIGMET CONVECTIVE SIGMET 77C
+VALID UNTIL 2055Z
+AREA TS POSSIBLE.`;
+      const result = parseSigmet(noStates);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.states).toBeUndefined();
+    });
+
+    it('falls back to simple SEV TURB hazard parsing when structured pattern does not match', () => {
+      // Body has "SEV TURB" but lacks the "BTN ... AND ..." altitude structure
+      // that the structured hazardPattern regex requires, so the parser
+      // hits the simple fallback path in parseNonConvectiveHazards.
+      const fallbackTurb = `WSUS01 KKCI 011200
+SIGC
+SIGMET TANGO 1 VALID UNTIL 011600Z
+SEV TURB FCST. DUE TO JTSTR.`;
+      const result = parseSigmet(fallbackTurb);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.hazards.some((h) => h.hazardType === 'TURBULENCE')).toBe(true);
+    });
+
+    it('falls back to simple SEV ICE hazard parsing when structured pattern does not match', () => {
+      const fallbackIce = `WSUS06 KKCI 011200
+SIGC
+SIGMET ZULU 1 VALID UNTIL 011600Z
+SEV ICE FCST. DUE TO FRZRA.`;
+      const result = parseSigmet(fallbackIce);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.hazards.some((h) => h.hazardType === 'ICING')).toBe(true);
+    });
+
+    it('falls back to simple SEV DUST/SANDSTORM hazard parsing when structured pattern does not match', () => {
+      const fallbackDust = `WSUS06 KKCI 011200
+SIGC
+SIGMET ALFA 1 VALID UNTIL 011600Z
+SEV DUST/SANDSTORM FCST VIS BLW 2SM.`;
+      const result = parseSigmet(fallbackDust);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.hazards.some((h) => h.hazardType === 'DUST_SANDSTORM')).toBe(true);
+    });
+
+    it('parses non-convective cancellation without trailing reason text', () => {
+      // Exercises the "reason undefined" branch in parseNonConvectiveCancellation.
+      const cancel = `WSUS01 KKCI 011200
+SIGC
+CANCEL SIGMET TANGO 1. `;
+      const result = parseSigmet(cancel);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.isCancellation).toBe(true);
+      expect(result.cancellationReason).toBeUndefined();
+    });
+
+    it('parses convective SIGMET with whole-number hail size (2 IN)', () => {
+      // Exercises the whole-number fallback in parseHailSize.
+      const wholeHail = `WST SIGMET CONVECTIVE SIGMET 12C
+VALID UNTIL 011600Z
+KS OK
+FROM 30NW ICT-40S MCI-30NW ICT
+AREA SEV TS MOV FROM 26025KT. TOPS ABV FL450.
+HAIL TO 2 IN POSSIBLE.`;
+      const result = parseSigmet(wholeHail);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.hailSizeIn).toBe(2);
+    });
+
+    it('parses convective SIGMET with TOPS not ABV (standard form)', () => {
+      // Exercises the "isAbove false" branch in parseTops.
+      const standardTops = `WST SIGMET CONVECTIVE SIGMET 13C
+VALID UNTIL 011600Z
+KS OK
+FROM 30NW ICT-40S MCI-30NW ICT
+AREA TS MOV FROM 26025KT. TOPS TO FL420.`;
+      const result = parseSigmet(standardTops);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.tops?.isAbove).toBe(false);
+    });
+
+    it('parses a non-convective volcanic ash SIGMET that hits the VA fallback', () => {
+      const va = `WSUS01 KKCI 011200
+SIGE
+SIGMET INDIA 1 VALID 011200/011800Z
+VOLCANIC ASH OBS AT 1100Z FL250/FL400 MOV E.`;
+      const result = parseSigmet(va);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.hazards.some((h) => h.hazardType === 'VOLCANIC_ASH')).toBe(true);
     });
   });
 });

@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import type { AircraftRegistration } from '@squawk/types';
 import { createIcaoRegistry } from './registry.js';
 
@@ -29,31 +28,31 @@ describe('createIcaoRegistry', () => {
     const registry = createIcaoRegistry({ data: sampleRecords });
 
     const result = registry.lookup('A00001');
-    assert.equal(result?.registration, 'N1');
-    assert.equal(result?.make, 'CESSNA');
-    assert.equal(result?.model, '172S');
+    expect(result?.registration).toBe('N1');
+    expect(result?.make).toBe('CESSNA');
+    expect(result?.model).toBe('172S');
   });
 
   it('returns undefined for unknown ICAO hex', () => {
     const registry = createIcaoRegistry({ data: sampleRecords });
-    assert.equal(registry.lookup('FFFFFF'), undefined);
+    expect(registry.lookup('FFFFFF')).toBe(undefined);
   });
 
   it('normalizes ICAO hex to uppercase', () => {
     const registry = createIcaoRegistry({ data: sampleRecords });
     const result = registry.lookup('a00001');
-    assert.equal(result?.registration, 'N1');
+    expect(result?.registration).toBe('N1');
   });
 
   it('reports correct record count', () => {
     const registry = createIcaoRegistry({ data: sampleRecords });
-    assert.equal(registry.recordCount, 2);
+    expect(registry.recordCount).toBe(2);
   });
 
   it('handles empty dataset', () => {
     const registry = createIcaoRegistry({ data: [] });
-    assert.equal(registry.recordCount, 0);
-    assert.equal(registry.lookup('A00001'), undefined);
+    expect(registry.recordCount).toBe(0);
+    expect(registry.lookup('A00001')).toBe(undefined);
   });
 
   it('uses last record when duplicate ICAO hex values exist', () => {
@@ -69,7 +68,7 @@ describe('createIcaoRegistry', () => {
     ];
 
     const registry = createIcaoRegistry({ data: duplicates });
-    assert.equal(registry.lookup('A00001')?.registration, 'N1-NEW');
-    assert.equal(registry.recordCount, 1);
+    expect(registry.lookup('A00001')?.registration).toBe('N1-NEW');
+    expect(registry.recordCount).toBe(1);
   });
 });

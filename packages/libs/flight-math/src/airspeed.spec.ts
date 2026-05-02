@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, assert } from 'vitest';
 import { close } from './test-utils.js';
 import { isa } from '@squawk/units';
 import { airspeed } from './index.js';
@@ -8,13 +7,13 @@ describe('calibratedAirspeedFromTrueAirspeed', () => {
   it('returns the same value at sea level with ISA conditions', () => {
     // At sea level ISA, CAS = TAS.
     const cas = airspeed.calibratedAirspeedFromTrueAirspeed(150, 0);
-    assert.ok(close(cas, 150, 0.1), `expected ~150, got ${cas}`);
+    assert(close(cas, 150, 0.1), `expected ~150, got ${cas}`);
   });
 
   it('returns CAS lower than TAS at altitude', () => {
     // At altitude, CAS < TAS because air is thinner.
     const cas = airspeed.calibratedAirspeedFromTrueAirspeed(250, 20000);
-    assert.ok(cas < 250, `expected CAS < 250 at FL200, got ${cas}`);
+    assert(cas < 250, `expected CAS < 250 at FL200, got ${cas}`);
   });
 
   it('round-trips with isa.trueAirspeedFromCalibratedKt at ISA conditions', () => {
@@ -23,10 +22,7 @@ describe('calibratedAirspeedFromTrueAirspeed', () => {
     const alt = 10000;
     const tas = isa.trueAirspeedFromCalibratedKt(originalCas, alt);
     const roundTripped = airspeed.calibratedAirspeedFromTrueAirspeed(tas, alt);
-    assert.ok(
-      close(roundTripped, originalCas, 0.01),
-      `expected ~${originalCas}, got ${roundTripped}`,
-    );
+    assert(close(roundTripped, originalCas, 0.01), `expected ~${originalCas}, got ${roundTripped}`);
   });
 
   it('round-trips with isa.trueAirspeedFromCalibratedKt at non-ISA temperature', () => {
@@ -35,10 +31,7 @@ describe('calibratedAirspeedFromTrueAirspeed', () => {
     const oat = -5; // Warmer than ISA at FL150.
     const tas = isa.trueAirspeedFromCalibratedKt(originalCas, alt, oat);
     const roundTripped = airspeed.calibratedAirspeedFromTrueAirspeed(tas, alt, oat);
-    assert.ok(
-      close(roundTripped, originalCas, 0.01),
-      `expected ~${originalCas}, got ${roundTripped}`,
-    );
+    assert(close(roundTripped, originalCas, 0.01), `expected ~${originalCas}, got ${roundTripped}`);
   });
 
   it('round-trips at high altitude', () => {
@@ -46,10 +39,7 @@ describe('calibratedAirspeedFromTrueAirspeed', () => {
     const alt = 35000;
     const tas = isa.trueAirspeedFromCalibratedKt(originalCas, alt);
     const roundTripped = airspeed.calibratedAirspeedFromTrueAirspeed(tas, alt);
-    assert.ok(
-      close(roundTripped, originalCas, 0.05),
-      `expected ~${originalCas}, got ${roundTripped}`,
-    );
+    assert(close(roundTripped, originalCas, 0.05), `expected ~${originalCas}, got ${roundTripped}`);
   });
 
   it('round-trips at low altitude and low speed', () => {
@@ -57,10 +47,7 @@ describe('calibratedAirspeedFromTrueAirspeed', () => {
     const alt = 1000;
     const tas = isa.trueAirspeedFromCalibratedKt(originalCas, alt);
     const roundTripped = airspeed.calibratedAirspeedFromTrueAirspeed(tas, alt);
-    assert.ok(
-      close(roundTripped, originalCas, 0.01),
-      `expected ~${originalCas}, got ${roundTripped}`,
-    );
+    assert(close(roundTripped, originalCas, 0.01), `expected ~${originalCas}, got ${roundTripped}`);
   });
 
   it('uses ISA temperature when oatCelsius is omitted', () => {
@@ -75,7 +62,7 @@ describe('calibratedAirspeedFromTrueAirspeed', () => {
       alt,
       isa.isaTemperatureCelsius(alt),
     );
-    assert.ok(
+    assert(
       close(withDefault, withExplicitIsa, 0.01),
       `expected default (${withDefault}) to match explicit ISA (${withExplicitIsa})`,
     );

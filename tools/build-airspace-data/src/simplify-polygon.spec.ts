@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import type { Polygon } from 'geojson';
 import { simplifyPolygon } from './simplify-polygon.js';
 
@@ -16,7 +15,7 @@ describe('simplifyPolygon', () => {
       ],
     };
     const result = simplifyPolygon(polygon, 0.1);
-    assert.deepEqual(result.coordinates, polygon.coordinates);
+    expect(result.coordinates).toEqual(polygon.coordinates);
   });
 
   it('preserves first and last points (ring closure)', () => {
@@ -32,8 +31,8 @@ describe('simplifyPolygon', () => {
 
     const simplified = simplifyPolygon(polygon, 0.001);
     const simplifiedRing = simplified.coordinates[0]!;
-    assert.deepEqual(simplifiedRing[0], [0, 0]);
-    assert.deepEqual(simplifiedRing[simplifiedRing.length - 1], [0, 0]);
+    expect(simplifiedRing[0]).toEqual([0, 0]);
+    expect(simplifiedRing[simplifiedRing.length - 1]).toEqual([0, 0]);
   });
 
   it('removes colinear points within tolerance', () => {
@@ -51,8 +50,8 @@ describe('simplifyPolygon', () => {
 
     const simplified = simplifyPolygon(polygon, 0.001);
     const simplifiedRing = simplified.coordinates[0]!;
-    assert.ok(simplifiedRing.length < ring.length);
-    assert.ok(simplifiedRing.length >= 4);
+    assert(simplifiedRing.length < ring.length);
+    assert(simplifiedRing.length >= 4);
   });
 
   it('keeps points that deviate more than the tolerance', () => {
@@ -69,7 +68,7 @@ describe('simplifyPolygon', () => {
     const simplified = simplifyPolygon(polygon, 0.01);
     const simplifiedRing = simplified.coordinates[0]!;
     const hasMidBump = simplifiedRing.some((c) => c[0] === 0.5 && c[1] === 0.1);
-    assert.ok(hasMidBump, 'significant deviation should be preserved');
+    assert(hasMidBump, 'significant deviation should be preserved');
   });
 
   it('falls back to the original ring if simplification would drop below 4 points', () => {
@@ -84,7 +83,7 @@ describe('simplifyPolygon', () => {
     const polygon: Polygon = { type: 'Polygon', coordinates: [ring] };
 
     const simplified = simplifyPolygon(polygon, 0.5);
-    assert.deepEqual(simplified.coordinates[0], ring);
+    expect(simplified.coordinates[0]).toEqual(ring);
   });
 
   it('returns a new polygon object', () => {
@@ -101,8 +100,8 @@ describe('simplifyPolygon', () => {
       ],
     };
     const result = simplifyPolygon(polygon, 0.001);
-    assert.notEqual(result, polygon);
-    assert.equal(result.type, 'Polygon');
+    expect(result).not.toBe(polygon);
+    expect(result.type).toBe('Polygon');
   });
 
   it('handles multiple rings (exterior + holes)', () => {
@@ -126,6 +125,6 @@ describe('simplifyPolygon', () => {
       ],
     };
     const simplified = simplifyPolygon(polygon, 0.001);
-    assert.equal(simplified.coordinates.length, 2);
+    expect(simplified.coordinates.length).toBe(2);
   });
 });

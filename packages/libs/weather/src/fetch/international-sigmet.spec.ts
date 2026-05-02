@@ -1,10 +1,9 @@
-import { describe, it, mock, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, vi, afterEach, expect } from 'vitest';
 import { fetchInternationalSigmets } from './international-sigmet.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 // Real AWC /isigmet?format=raw wire format: each bulletin is preceded by a
@@ -26,46 +25,63 @@ W07600 FL160/360 STNR NC=`;
 describe('fetchInternationalSigmets', () => {
   it('builds the expected URL with format=raw', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
     await fetchInternationalSigmets();
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/isigmet?format=raw`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/isigmet?format=raw`);
   });
 
   it('splits AWC-wrapped multi-SIGMET responses and parses each bulletin', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response(AWC_ISIGMET_BODY, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(AWC_ISIGMET_BODY, { status: 200 }),
+    );
     const { sigmets, parseErrors, raw } = await fetchInternationalSigmets();
-    assert.equal(sigmets.length, 2);
-    assert.equal(sigmets[0]?.format, 'INTERNATIONAL');
-    assert.equal(sigmets[1]?.format, 'INTERNATIONAL');
-    assert.deepEqual(parseErrors, []);
-    assert.equal(raw, AWC_ISIGMET_BODY);
+    expect(sigmets.length).toBe(2);
+    expect(sigmets[0]?.format).toBe('INTERNATIONAL');
+    expect(sigmets[1]?.format).toBe('INTERNATIONAL');
+    expect(parseErrors).toEqual([]);
+    expect(raw).toBe(AWC_ISIGMET_BODY);
   });
 
   it('returns empty arrays for a whitespace-only body', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response('\n\n  \n', { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response('\n\n  \n', { status: 200 }),
+    );
     const { sigmets, parseErrors } = await fetchInternationalSigmets();
-    assert.deepEqual(sigmets, []);
-    assert.deepEqual(parseErrors, []);
+    expect(sigmets).toEqual([]);
+    expect(parseErrors).toEqual([]);
   });
 
   it('captures a malformed bulletin in parseErrors without losing good ones', async () => {
     const body = `${AWC_ISIGMET_BODY}\n----------------------\nHazard: TS\nnot a real sigmet body`;
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { sigmets, parseErrors } = await fetchInternationalSigmets();
-    assert.equal(sigmets.length, 2);
-    assert.equal(parseErrors.length, 1);
-    assert.equal(parseErrors[0]?.raw, 'not a real sigmet body');
+    expect(sigmets.length).toBe(2);
+    expect(parseErrors.length).toBe(1);
+    expect(parseErrors[0]?.raw).toBe('not a real sigmet body');
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
-    await assert.rejects(() => fetchInternationalSigmets(), AwcFetchError);
+    await expect(() => fetchInternationalSigmets()).rejects.toThrow(AwcFetchError);
+  });
+
+  it('forwards the abort signal to the underlying fetch', async () => {
+    let observedSignal: AbortSignal | null | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async (_url: string | URL | Request, init?: RequestInit) => {
+        observedSignal = init?.signal;
+        return new Response('', { status: 200 });
+      },
+    );
+    const controller = new AbortController();
+    await fetchInternationalSigmets({ signal: controller.signal });
+    expect(observedSignal).toBe(controller.signal);
   });
 });

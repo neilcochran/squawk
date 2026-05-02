@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -40,7 +40,20 @@ export function resolveInput(inputPath: string): ResolvedInput {
   const extractDir = join(tempBase, zipName);
 
   console.log(`[resolve-input] Extracting ${basename(inputPath)} to ${extractDir}...`);
-  execSync(`unzip -q -o "${inputPath}" -d "${extractDir}"`, { stdio: 'inherit' });
+  // Pass argv as an array so the shell is never involved: paths
+  // containing quotes, spaces, or other metacharacters are forwarded
+  // verbatim to `unzip` rather than being re-interpreted by sh.
+  const result = spawnSync('unzip', ['-q', '-o', inputPath, '-d', extractDir], {
+    stdio: 'inherit',
+  });
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      `unzip exited with code ${result.status ?? 'null'} extracting ${inputPath} to ${extractDir}`,
+    );
+  }
   console.log('[resolve-input] Extraction complete.');
 
   return {
