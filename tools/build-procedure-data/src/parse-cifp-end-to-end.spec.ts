@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { parseCifp } from './parse-cifp.js';
 
 /**
@@ -172,20 +171,20 @@ describe('parseCifp', () => {
       '\n',
     );
     const procs = parseCifp(cifpText);
-    assert.equal(procs.length, 1);
+    expect(procs.length).toBe(1);
     const proc = procs[0];
-    assert.ok(proc !== undefined);
-    assert.equal(proc.identifier, 'TEST1');
-    assert.equal(proc.type, 'SID');
-    assert.equal(proc.airports[0], 'KJFK');
-    assert.ok(proc.commonRoutes.length >= 1);
-    assert.equal(proc.commonRoutes[0]?.legs[0]?.fixIdentifier, 'AAAAA');
+    assert(proc !== undefined);
+    expect(proc.identifier).toBe('TEST1');
+    expect(proc.type).toBe('SID');
+    expect(proc.airports[0]).toBe('KJFK');
+    assert(proc.commonRoutes.length >= 1);
+    expect(proc.commonRoutes[0]?.legs[0]?.fixIdentifier).toBe('AAAAA');
     // Coordinates resolved via fix index
-    assert.ok(proc.commonRoutes[0]?.legs[0]?.lat !== undefined);
-    assert.ok(proc.commonRoutes[0]?.legs[0]?.lon !== undefined);
-    assert.equal(proc.transitions.length, 2);
+    assert(proc.commonRoutes[0]?.legs[0]?.lat !== undefined);
+    assert(proc.commonRoutes[0]?.legs[0]?.lon !== undefined);
+    expect(proc.transitions.length).toBe(2);
     const transitionNames = proc.transitions.map((t) => t.name).sort();
-    assert.deepEqual(transitionNames, ['EXIT1', 'RW04L']);
+    expect(transitionNames).toEqual(['EXIT1', 'RW04L']);
   });
 
   it('groups STAR legs and applies STAR-specific common-route classification', () => {
@@ -210,9 +209,9 @@ describe('parseCifp', () => {
       pathTerminator: 'TF',
     });
     const procs = parseCifp([fixA, commonLeg].join('\n'));
-    assert.equal(procs.length, 1);
-    assert.equal(procs[0]?.type, 'STAR');
-    assert.equal(procs[0]?.commonRoutes.length, 1);
+    expect(procs.length).toBe(1);
+    expect(procs[0]?.type).toBe('STAR');
+    expect(procs[0]?.commonRoutes.length).toBe(1);
   });
 
   it('classifies an IAP final-approach route, missed-approach, and approach transition', () => {
@@ -304,24 +303,24 @@ describe('parseCifp', () => {
       missedZLeg,
     ].join('\n');
     const procs = parseCifp(cifpText);
-    assert.equal(procs.length, 1);
+    expect(procs.length).toBe(1);
     const proc = procs[0];
-    assert.ok(proc !== undefined);
-    assert.equal(proc.type, 'IAP');
-    assert.equal(proc.identifier, 'I04L');
-    assert.equal(proc.runway, '04L');
-    assert.equal(proc.approachType, 'ILS');
-    assert.equal(proc.name, 'ILS RWY 04L');
-    assert.ok(proc.missedApproach !== undefined);
+    assert(proc !== undefined);
+    expect(proc.type).toBe('IAP');
+    expect(proc.identifier).toBe('I04L');
+    expect(proc.runway).toBe('04L');
+    expect(proc.approachType).toBe('ILS');
+    expect(proc.name).toBe('ILS RWY 04L');
+    assert(proc.missedApproach !== undefined);
     // Missed approach should include both the embedded leg and the route-type Z leg
-    assert.ok(proc.missedApproach.legs.length >= 2);
+    assert(proc.missedApproach.legs.length >= 2);
     // The approach transition record under route type A
-    assert.equal(proc.transitions.length, 1);
-    assert.equal(proc.transitions[0]?.name, 'BUZON');
+    expect(proc.transitions.length).toBe(1);
+    expect(proc.transitions[0]?.name).toBe('BUZON');
   });
 
   it('returns no procedures for empty input or non-procedure records', () => {
-    assert.deepEqual(parseCifp(''), []);
+    expect(parseCifp('')).toEqual([]);
     // EA waypoint records alone produce no procedures
     const fix = buildEaRecord({
       fixIdent: 'XXXXX',
@@ -329,7 +328,7 @@ describe('parseCifp', () => {
       lat: 'N40000000',
       lon: 'W074000000',
     });
-    assert.deepEqual(parseCifp(fix), []);
+    expect(parseCifp(fix)).toEqual([]);
   });
 
   it('skips legs whose fix cannot be resolved by the fix index', () => {
@@ -349,11 +348,11 @@ describe('parseCifp', () => {
       pathTerminator: 'IF',
     });
     const procs = parseCifp(orphanLeg);
-    assert.equal(procs.length, 1);
+    expect(procs.length).toBe(1);
     const leg = procs[0]?.commonRoutes[0]?.legs[0];
-    assert.ok(leg !== undefined);
-    assert.equal(leg.lat, undefined);
-    assert.equal(leg.lon, undefined);
+    assert(leg !== undefined);
+    expect(leg.lat).toBe(undefined);
+    expect(leg.lon).toBe(undefined);
   });
 
   it('skips legs without fix identifiers (legless terminators like VA)', () => {
@@ -372,10 +371,10 @@ describe('parseCifp', () => {
       pathTerminator: 'VA',
     });
     const procs = parseCifp(fixlessLeg);
-    assert.equal(procs.length, 1);
+    expect(procs.length).toBe(1);
     const leg = procs[0]?.commonRoutes[0]?.legs[0];
-    assert.ok(leg !== undefined);
-    assert.equal(leg.fixIdentifier, undefined);
+    assert(leg !== undefined);
+    expect(leg.fixIdentifier).toBe(undefined);
   });
 
   it('sorts procedures by airport, then type, then identifier', () => {
@@ -402,10 +401,12 @@ describe('parseCifp', () => {
       makeProc('KAAA', 'D', 'C1'),
     ];
     const procs = parseCifp(records.join('\n'));
-    assert.deepEqual(
-      procs.map((p) => `${p.airports[0] ?? ''}::${p.type}::${p.identifier}`),
-      ['KAAA::IAP::I04L', 'KAAA::SID::A1', 'KAAA::SID::C1', 'KZZZ::SID::B1'],
-    );
+    expect(procs.map((p) => `${p.airports[0] ?? ''}::${p.type}::${p.identifier}`)).toEqual([
+      'KAAA::IAP::I04L',
+      'KAAA::SID::A1',
+      'KAAA::SID::C1',
+      'KZZZ::SID::B1',
+    ]);
   });
 
   it('produces an IAP name fallback for procedures without a runway suffix', () => {
@@ -424,8 +425,8 @@ describe('parseCifp', () => {
       pathTerminator: 'VA',
     });
     const procs = parseCifp(leg);
-    assert.equal(procs.length, 1);
+    expect(procs.length).toBe(1);
     // Without runway suffix, the name falls back to the procedure identifier
-    assert.ok(typeof procs[0]?.name === 'string');
+    assert(typeof procs[0]?.name === 'string');
   });
 });

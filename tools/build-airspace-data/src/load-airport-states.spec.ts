@@ -1,5 +1,4 @@
-import { describe, it, beforeEach, afterEach } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -28,16 +27,16 @@ describe('loadAirportStates', () => {
     );
 
     const map = await loadAirportStates(csvPath);
-    assert.equal(map.size, 3);
-    assert.equal(map.get('JFK'), 'NY');
-    assert.equal(map.get('LAX'), 'CA');
-    assert.equal(map.get('ORD'), 'IL');
+    expect(map.size).toBe(3);
+    expect(map.get('JFK')).toBe('NY');
+    expect(map.get('LAX')).toBe('CA');
+    expect(map.get('ORD')).toBe('IL');
   });
 
   it('throws when required columns are missing', async () => {
     const csvPath = join(sandbox, 'APT_BASE.csv');
     writeFileSync(csvPath, '"FOO","BAR"\n"A","B"\n', 'utf-8');
-    await assert.rejects(loadAirportStates(csvPath), /missing expected columns/);
+    await expect(loadAirportStates(csvPath)).rejects.toThrow(/missing expected columns/);
   });
 
   it('skips rows with blank ARPT_ID or STATE_CODE', async () => {
@@ -49,8 +48,8 @@ describe('loadAirportStates', () => {
     );
 
     const map = await loadAirportStates(csvPath);
-    assert.equal(map.size, 1);
-    assert.equal(map.get('BOS'), 'MA');
+    expect(map.size).toBe(1);
+    expect(map.get('BOS')).toBe('MA');
   });
 
   it('tolerates extra columns and finds the right indices by header name', async () => {
@@ -62,13 +61,13 @@ describe('loadAirportStates', () => {
     );
 
     const map = await loadAirportStates(csvPath);
-    assert.equal(map.get('AUS'), 'TX');
+    expect(map.get('AUS')).toBe('TX');
   });
 
   it('returns an empty map for a header-only file', async () => {
     const csvPath = join(sandbox, 'APT_BASE.csv');
     writeFileSync(csvPath, '"ARPT_ID","STATE_CODE"\n', 'utf-8');
     const map = await loadAirportStates(csvPath);
-    assert.equal(map.size, 0);
+    expect(map.size).toBe(0);
   });
 });

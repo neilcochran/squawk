@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { createProcedureResolver } from './resolver.js';
 import type { Procedure } from '@squawk/types';
 
@@ -14,7 +13,7 @@ describe('expand - edge cases', () => {
       transitions: [],
     };
     const resolver = createProcedureResolver({ data: [proc] });
-    assert.equal(resolver.expand('KAAA', 'EMPTY1'), undefined);
+    expect(resolver.expand('KAAA', 'EMPTY1')).toBe(undefined);
   });
 
   it('returns transition legs when expanding with transition but no common route', () => {
@@ -28,9 +27,9 @@ describe('expand - edge cases', () => {
     };
     const resolver = createProcedureResolver({ data: [proc] });
     const result = resolver.expand('KAAA', 'TRONLY1', 'EXIT1');
-    assert.ok(result !== undefined);
-    assert.equal(result.legs.length, 1);
-    assert.equal(result.legs[0]?.fixIdentifier, 'EXIT');
+    assert(result !== undefined);
+    expect(result.legs.length).toBe(1);
+    expect(result.legs[0]?.fixIdentifier).toBe('EXIT');
   });
 
   it('returns common route legs unchanged when transition has zero legs', () => {
@@ -44,9 +43,9 @@ describe('expand - edge cases', () => {
     };
     const resolver = createProcedureResolver({ data: [proc] });
     const result = resolver.expand('KAAA', 'EMPTYTR1', 'EXIT1');
-    assert.ok(result !== undefined);
-    assert.equal(result.legs.length, 1);
-    assert.equal(result.legs[0]?.fixIdentifier, 'A');
+    assert(result !== undefined);
+    expect(result.legs.length).toBe(1);
+    expect(result.legs[0]?.fixIdentifier).toBe('A');
   });
 
   it('returns transition legs unchanged when common route has zero legs', () => {
@@ -60,9 +59,9 @@ describe('expand - edge cases', () => {
     };
     const resolver = createProcedureResolver({ data: [proc] });
     const result = resolver.expand('KAAA', 'EMPTYRT1', 'EXIT1');
-    assert.ok(result !== undefined);
-    assert.equal(result.legs.length, 1);
-    assert.equal(result.legs[0]?.fixIdentifier, 'X');
+    assert(result !== undefined);
+    expect(result.legs.length).toBe(1);
+    expect(result.legs[0]?.fixIdentifier).toBe('X');
   });
 
   it('does not deduplicate when connecting fix identifiers differ', () => {
@@ -92,12 +91,9 @@ describe('expand - edge cases', () => {
     };
     const resolver = createProcedureResolver({ data: [proc] });
     const result = resolver.expand('KAAA', 'NODEDUP1', 'EXIT1');
-    assert.ok(result !== undefined);
-    assert.equal(result.legs.length, 4);
-    assert.deepEqual(
-      result.legs.map((l) => l.fixIdentifier),
-      ['AAA', 'BBB', 'CCC', 'DDD'],
-    );
+    assert(result !== undefined);
+    expect(result.legs.length).toBe(4);
+    expect(result.legs.map((l) => l.fixIdentifier)).toEqual(['AAA', 'BBB', 'CCC', 'DDD']);
   });
 
   it('does not deduplicate when last leg of first segment has no fix identifier', () => {
@@ -121,8 +117,8 @@ describe('expand - edge cases', () => {
     };
     const resolver = createProcedureResolver({ data: [proc] });
     const result = resolver.expand('KAAA', 'NOFIX1', 'EXIT1');
-    assert.ok(result !== undefined);
-    assert.equal(result.legs.length, 2);
+    assert(result !== undefined);
+    expect(result.legs.length).toBe(2);
   });
 
   it('returns common route last for STAR enroute (non-runway) transitions', () => {
@@ -138,9 +134,9 @@ describe('expand - edge cases', () => {
     };
     const resolver = createProcedureResolver({ data: [proc] });
     const result = resolver.expand('KAAA', 'STARTR1', 'ENRT1');
-    assert.ok(result !== undefined);
+    assert(result !== undefined);
     // Enroute STAR transitions come first
-    assert.equal(result.legs[0]?.fixIdentifier, 'ENRT');
+    expect(result.legs[0]?.fixIdentifier).toBe('ENRT');
   });
 
   it('returns common route first for STAR runway (RW*) transitions', () => {
@@ -156,7 +152,7 @@ describe('expand - edge cases', () => {
     };
     const resolver = createProcedureResolver({ data: [proc] });
     const result = resolver.expand('KAAA', 'STARRWY1', 'RW04L');
-    assert.ok(result !== undefined);
-    assert.equal(result.legs[0]?.fixIdentifier, 'COMMON');
+    assert(result !== undefined);
+    expect(result.legs[0]?.fixIdentifier).toBe('COMMON');
   });
 });

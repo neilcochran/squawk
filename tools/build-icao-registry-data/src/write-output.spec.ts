@@ -1,5 +1,4 @@
-import { describe, it, beforeEach, afterEach } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,8 +39,8 @@ describe('writeOutput', () => {
     await writeOutput(records, outPath);
 
     const data = readOutput(outPath);
-    assert.equal(data.meta.recordCount, 2);
-    assert.deepEqual(data.records, records);
+    expect(data.meta.recordCount).toBe(2);
+    expect(data.records).toEqual(records);
   });
 
   it('preserves all populated fields verbatim', async () => {
@@ -60,7 +59,7 @@ describe('writeOutput', () => {
     await writeOutput([record], outPath);
 
     const data = readOutput(outPath);
-    assert.deepEqual(data.records[0], record);
+    expect(data.records[0]).toEqual(record);
   });
 
   it('omits missing optional fields from the serialized record', async () => {
@@ -70,7 +69,7 @@ describe('writeOutput', () => {
     await writeOutput(records, outPath);
 
     const data = readOutput(outPath);
-    assert.deepEqual(Object.keys(data.records[0]!).sort(), ['icaoHex', 'registration']);
+    expect(Object.keys(data.records[0]!).sort()).toEqual(['icaoHex', 'registration']);
   });
 
   it('creates the parent directory if it does not exist', async () => {
@@ -80,7 +79,7 @@ describe('writeOutput', () => {
     await writeOutput(records, outPath);
 
     const data = readOutput(outPath);
-    assert.equal(data.meta.recordCount, 1);
+    expect(data.meta.recordCount).toBe(1);
   });
 
   it('records meta.generatedAt in ISO 8601 format', async () => {
@@ -90,7 +89,7 @@ describe('writeOutput', () => {
     await writeOutput(records, outPath);
 
     const data = readOutput(outPath);
-    assert.match(data.meta.generatedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(data.meta.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 
   it('deduplicates records with duplicate icaoHex (last write wins)', async () => {
@@ -103,8 +102,8 @@ describe('writeOutput', () => {
     await writeOutput(records, outPath);
 
     const data = readOutput(outPath);
-    assert.equal(data.meta.recordCount, 1);
-    assert.equal(data.records[0]?.registration, 'SECOND');
+    expect(data.meta.recordCount).toBe(1);
+    expect(data.records[0]?.registration).toBe('SECOND');
   });
 
   it('handles an empty record set', async () => {
@@ -112,7 +111,7 @@ describe('writeOutput', () => {
     await writeOutput([], outPath);
 
     const data = readOutput(outPath);
-    assert.equal(data.meta.recordCount, 0);
-    assert.deepEqual(data.records, []);
+    expect(data.meta.recordCount).toBe(0);
+    expect(data.records).toEqual([]);
   });
 });

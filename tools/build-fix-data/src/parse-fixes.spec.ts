@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { buildFix, buildNavaidAssociation } from './parse-fixes.js';
 import type { CsvRecord } from '@squawk/build-shared';
 
@@ -20,44 +19,44 @@ describe('buildFix', () => {
   describe('required field validation', () => {
     it('builds a minimal fix', () => {
       const fix = buildFix(baseRec());
-      assert.ok(fix);
-      assert.equal(fix.identifier, 'OBAAK');
-      assert.equal(fix.icaoRegionCode, 'K6');
-      assert.equal(fix.state, 'NY');
-      assert.equal(fix.country, 'US');
-      assert.equal(fix.useCode, 'WP');
-      assert.equal(fix.lat, 40.123456);
-      assert.equal(fix.lon, -73.987654);
-      assert.deepEqual(fix.chartTypes, []);
-      assert.deepEqual(fix.navaidAssociations, []);
+      assert(fix);
+      expect(fix.identifier).toBe('OBAAK');
+      expect(fix.icaoRegionCode).toBe('K6');
+      expect(fix.state).toBe('NY');
+      expect(fix.country).toBe('US');
+      expect(fix.useCode).toBe('WP');
+      expect(fix.lat).toBe(40.123456);
+      expect(fix.lon).toBe(-73.987654);
+      expect(fix.chartTypes).toEqual([]);
+      expect(fix.navaidAssociations).toEqual([]);
     });
 
     it('returns undefined when FIX_ID is missing', () => {
-      assert.equal(buildFix(baseRec({ FIX_ID: '' })), undefined);
+      expect(buildFix(baseRec({ FIX_ID: '' }))).toBe(undefined);
     });
 
     it('returns undefined when ICAO_REGION_CODE is missing', () => {
-      assert.equal(buildFix(baseRec({ ICAO_REGION_CODE: '' })), undefined);
+      expect(buildFix(baseRec({ ICAO_REGION_CODE: '' }))).toBe(undefined);
     });
 
     it('returns undefined when coordinates are missing', () => {
-      assert.equal(buildFix(baseRec({ LAT_DECIMAL: '' })), undefined);
-      assert.equal(buildFix(baseRec({ LONG_DECIMAL: '' })), undefined);
+      expect(buildFix(baseRec({ LAT_DECIMAL: '' }))).toBe(undefined);
+      expect(buildFix(baseRec({ LONG_DECIMAL: '' }))).toBe(undefined);
     });
 
     it('returns undefined when FIX_USE_CODE is missing or unknown', () => {
-      assert.equal(buildFix(baseRec({ FIX_USE_CODE: '' })), undefined);
-      assert.equal(buildFix(baseRec({ FIX_USE_CODE: 'ZZ' })), undefined);
+      expect(buildFix(baseRec({ FIX_USE_CODE: '' }))).toBe(undefined);
+      expect(buildFix(baseRec({ FIX_USE_CODE: 'ZZ' }))).toBe(undefined);
     });
 
     it('trims the FIX_USE_CODE before lookup', () => {
       const fix = buildFix(baseRec({ FIX_USE_CODE: '  WP  ' }));
-      assert.equal(fix?.useCode, 'WP');
+      expect(fix?.useCode).toBe('WP');
     });
 
     it('accepts each valid FIX_USE_CODE', () => {
       for (const code of ['WP', 'RP', 'MW', 'MR', 'CN', 'VFR', 'NRS', 'RADAR']) {
-        assert.equal(buildFix(baseRec({ FIX_USE_CODE: code }))?.useCode, code);
+        expect(buildFix(baseRec({ FIX_USE_CODE: code }))?.useCode).toBe(code);
       }
     });
   });
@@ -66,52 +65,52 @@ describe('buildFix', () => {
     it('sets pitch, catch, and suaAtcaa to true only when the flag is "Y"', () => {
       const yes = buildFix(baseRec({ PITCH_FLAG: 'Y', CATCH_FLAG: 'Y', SUA_ATCAA_FLAG: 'Y' }));
       const no = buildFix(baseRec({ PITCH_FLAG: 'N', CATCH_FLAG: 'N', SUA_ATCAA_FLAG: 'N' }));
-      assert.equal(yes?.pitch, true);
-      assert.equal(yes?.catch, true);
-      assert.equal(yes?.suaAtcaa, true);
-      assert.equal(no?.pitch, false);
-      assert.equal(no?.catch, false);
-      assert.equal(no?.suaAtcaa, false);
+      expect(yes?.pitch).toBe(true);
+      expect(yes?.catch).toBe(true);
+      expect(yes?.suaAtcaa).toBe(true);
+      expect(no?.pitch).toBe(false);
+      expect(no?.catch).toBe(false);
+      expect(no?.suaAtcaa).toBe(false);
     });
   });
 
   describe('optional fields', () => {
     it('populates ARTCC identifiers', () => {
       const fix = buildFix(baseRec({ ARTCC_ID_HIGH: 'ZNY', ARTCC_ID_LOW: 'ZBW' }));
-      assert.equal(fix?.highArtccId, 'ZNY');
-      assert.equal(fix?.lowArtccId, 'ZBW');
+      expect(fix?.highArtccId).toBe('ZNY');
+      expect(fix?.lowArtccId).toBe('ZBW');
     });
 
     it('parses MIN_RECEP_ALT as integer feet', () => {
       const fix = buildFix(baseRec({ MIN_RECEP_ALT: '3000' }));
-      assert.equal(fix?.minimumReceptionAltitudeFt, 3000);
+      expect(fix?.minimumReceptionAltitudeFt).toBe(3000);
     });
 
     it('maps the COMPULSORY field', () => {
-      assert.equal(buildFix(baseRec({ COMPULSORY: 'HIGH' }))?.compulsory, 'HIGH');
-      assert.equal(buildFix(baseRec({ COMPULSORY: 'LOW' }))?.compulsory, 'LOW');
-      assert.equal(buildFix(baseRec({ COMPULSORY: 'LOW/HIGH' }))?.compulsory, 'LOW/HIGH');
+      expect(buildFix(baseRec({ COMPULSORY: 'HIGH' }))?.compulsory).toBe('HIGH');
+      expect(buildFix(baseRec({ COMPULSORY: 'LOW' }))?.compulsory).toBe('LOW');
+      expect(buildFix(baseRec({ COMPULSORY: 'LOW/HIGH' }))?.compulsory).toBe('LOW/HIGH');
     });
 
     it('ignores unknown COMPULSORY values silently', () => {
       const fix = buildFix(baseRec({ COMPULSORY: 'MAYBE' }));
-      assert.equal(fix?.compulsory, undefined);
+      expect(fix?.compulsory).toBe(undefined);
     });
 
     it('captures previousIdentifier and chartingRemark', () => {
       const fix = buildFix(baseRec({ FIX_ID_OLD: 'OLD01', CHARTING_REMARK: 'See remark.' }));
-      assert.equal(fix?.previousIdentifier, 'OLD01');
-      assert.equal(fix?.chartingRemark, 'See remark.');
+      expect(fix?.previousIdentifier).toBe('OLD01');
+      expect(fix?.chartingRemark).toBe('See remark.');
     });
 
     it('parses CHARTS field into trimmed, non-empty chart types', () => {
       const fix = buildFix(baseRec({ CHARTS: 'LOW,HIGH ,, DP' }));
-      assert.deepEqual(fix?.chartTypes, ['LOW', 'HIGH', 'DP']);
+      expect(fix?.chartTypes).toEqual(['LOW', 'HIGH', 'DP']);
     });
 
     it('omits state when blank', () => {
       const fix = buildFix(baseRec({ STATE_CODE: '' }));
-      assert.equal(fix?.state, undefined);
+      expect(fix?.state).toBe(undefined);
     });
   });
 });
@@ -124,7 +123,7 @@ describe('buildNavaidAssociation', () => {
       BEARING: '240.0',
       DISTANCE: '17.3',
     });
-    assert.deepEqual(assoc, {
+    expect(assoc).toEqual({
       navaidId: 'BOS',
       navaidType: 'VOR/DME',
       bearingDeg: 240,
@@ -133,37 +132,33 @@ describe('buildNavaidAssociation', () => {
   });
 
   it('returns undefined when NAV_ID is missing', () => {
-    assert.equal(
+    expect(
       buildNavaidAssociation({ NAV_ID: '', NAV_TYPE: 'VOR', BEARING: '1', DISTANCE: '2' }),
-      undefined,
-    );
+    ).toBe(undefined);
   });
 
   it('returns undefined when NAV_TYPE is missing', () => {
-    assert.equal(
+    expect(
       buildNavaidAssociation({ NAV_ID: 'BOS', NAV_TYPE: '', BEARING: '1', DISTANCE: '2' }),
-      undefined,
-    );
+    ).toBe(undefined);
   });
 
   it('returns undefined when bearing or distance is missing or non-numeric', () => {
-    assert.equal(
+    expect(
       buildNavaidAssociation({
         NAV_ID: 'BOS',
         NAV_TYPE: 'VOR',
         BEARING: '',
         DISTANCE: '5',
       }),
-      undefined,
-    );
-    assert.equal(
+    ).toBe(undefined);
+    expect(
       buildNavaidAssociation({
         NAV_ID: 'BOS',
         NAV_TYPE: 'VOR',
         BEARING: 'nope',
         DISTANCE: '5',
       }),
-      undefined,
-    );
+    ).toBe(undefined);
   });
 });

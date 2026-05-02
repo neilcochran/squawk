@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, it, expect, assert } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { z } from 'zod';
@@ -122,7 +121,7 @@ describe('createSquawkMcpServer', () => {
       const { tools } = await client.listTools();
       const names = new Set(tools.map((tool) => tool.name));
       for (const expected of EXPECTED_TOOLS) {
-        assert.ok(names.has(expected), `expected tool "${expected}" to be registered`);
+        assert(names.has(expected), `expected tool "${expected}" to be registered`);
       }
     } finally {
       await close();
@@ -137,7 +136,7 @@ describe('createSquawkMcpServer', () => {
         arguments: { lat1: 40.6413, lon1: -73.7781, lat2: 33.9425, lon2: -118.4081 },
       });
       const parsed = z.object({ distanceNm: z.number() }).parse(result.structuredContent);
-      assert.ok(
+      assert(
         parsed.distanceNm > 2100 && parsed.distanceNm < 2200,
         `expected JFK-LAX distance near 2145 nm, got ${parsed.distanceNm}`,
       );
@@ -165,10 +164,10 @@ describe('createSquawkMcpServer', () => {
             .nullable(),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.airport !== null, 'expected an airport for KJFK');
-      assert.equal(parsed.airport.faaId, 'JFK');
-      assert.equal(parsed.airport.icao, 'KJFK');
-      assert.equal(parsed.airport.timezone, 'America/New_York');
+      assert(parsed.airport !== null, 'expected an airport for KJFK');
+      expect(parsed.airport.faaId).toBe('JFK');
+      expect(parsed.airport.icao).toBe('KJFK');
+      expect(parsed.airport.timezone).toBe('America/New_York');
     } finally {
       await close();
     }
@@ -202,14 +201,14 @@ describe('createSquawkMcpServer', () => {
           ),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.airport !== null, 'expected an airport for KJFK');
-      assert.equal(parsed.airport.faaId, 'JFK');
-      assert.ok(parsed.features.length > 1, 'JFK Class B has multiple sectors');
+      assert(parsed.airport !== null, 'expected an airport for KJFK');
+      expect(parsed.airport.faaId).toBe('JFK');
+      assert(parsed.features.length > 1, 'JFK Class B has multiple sectors');
       for (const feature of parsed.features) {
-        assert.equal(feature.identifier, 'JFK');
-        assert.ok(feature.type === 'CLASS_B', 'default filter keeps only surface classes');
+        expect(feature.identifier).toBe('JFK');
+        assert(feature.type === 'CLASS_B', 'default filter keeps only surface classes');
         const ring = feature.boundary.coordinates[0];
-        assert.ok(ring && ring.length >= 4, 'boundary ring must be returned intact');
+        assert(ring && ring.length >= 4, 'boundary ring must be returned intact');
       }
     } finally {
       await close();
@@ -238,7 +237,7 @@ describe('createSquawkMcpServer', () => {
           ),
         })
         .parse(result.structuredContent);
-      assert.ok(
+      assert(
         parsed.features.some((f) => f.identifier === 'ZBW' && f.artccStratum === 'LOW'),
         'expected ZBW LOW for a position at FL050 over Burlington VT',
       );
@@ -271,13 +270,13 @@ describe('createSquawkMcpServer', () => {
           ),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.features.length >= 2, 'expected ZNY LOW and HIGH features');
+      assert(parsed.features.length >= 2, 'expected ZNY LOW and HIGH features');
       const strata = new Set(parsed.features.map((f) => f.artccStratum));
-      assert.ok(strata.has('LOW'), 'expected ZNY LOW');
-      assert.ok(strata.has('HIGH'), 'expected ZNY HIGH');
+      assert(strata.has('LOW'), 'expected ZNY LOW');
+      assert(strata.has('HIGH'), 'expected ZNY HIGH');
       for (const feature of parsed.features) {
         const ring = feature.boundary.coordinates[0];
-        assert.ok(ring && ring.length >= 4, 'boundary ring must be returned intact');
+        assert(ring && ring.length >= 4, 'boundary ring must be returned intact');
       }
     } finally {
       await close();
@@ -301,9 +300,9 @@ describe('createSquawkMcpServer', () => {
           ),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.navaids.length > 0, 'expected at least one BOS navaid');
+      assert(parsed.navaids.length > 0, 'expected at least one BOS navaid');
       for (const navaid of parsed.navaids) {
-        assert.equal(navaid.identifier, 'BOS');
+        expect(navaid.identifier).toBe('BOS');
       }
     } finally {
       await close();
@@ -328,7 +327,7 @@ describe('createSquawkMcpServer', () => {
             .passthrough(),
         })
         .parse(result.structuredContent);
-      assert.equal(parsed.metar.stationId, 'KJFK');
+      expect(parsed.metar.stationId).toBe('KJFK');
     } finally {
       await close();
     }
@@ -361,9 +360,9 @@ describe('createSquawkMcpServer', () => {
             .passthrough(),
         })
         .parse(result.structuredContent);
-      assert.equal(parsed.windsAloft.productCode, 'FD1US1');
-      assert.deepEqual(parsed.windsAloft.altitudesFt, [3000]);
-      assert.equal(parsed.windsAloft.stations[0]?.stationId, 'BDL');
+      expect(parsed.windsAloft.productCode).toBe('FD1US1');
+      expect(parsed.windsAloft.altitudesFt).toEqual([3000]);
+      expect(parsed.windsAloft.stations[0]?.stationId).toBe('BDL');
     } finally {
       await close();
     }
@@ -376,9 +375,9 @@ describe('createSquawkMcpServer', () => {
         name: 'parse_winds_aloft',
         arguments: { raw: 'not a bulletin' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
       const parsed = z.object({ windsAloft: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.windsAloft, null);
+      expect(parsed.windsAloft).toBe(null);
     } finally {
       await close();
     }
@@ -405,11 +404,11 @@ describe('createSquawkMcpServer', () => {
         .parse(result.structuredContent);
       // A south wind on an east course is a left crosswind, requiring a
       // positive (right) wind correction angle. Sanity-check the magnitudes.
-      assert.ok(
+      assert(
         parsed.windCorrectionAngleDeg > 0 && parsed.windCorrectionAngleDeg < 15,
         `expected positive WCA under 15 deg, got ${parsed.windCorrectionAngleDeg}`,
       );
-      assert.ok(
+      assert(
         parsed.groundSpeedKt > 110 && parsed.groundSpeedKt < 125,
         `expected GS roughly equal to TAS for pure crosswind, got ${parsed.groundSpeedKt}`,
       );
@@ -456,11 +455,10 @@ describe('createSquawkMcpServer', () => {
           }),
         })
         .parse(result.structuredContent);
-      assert.match(
+      expect(
         parsed.datasets.airports.nasrCycleDate,
-        /^\d{4}-\d{2}-\d{2}$/,
         'expected ISO-8601 date for the airports NASR cycle',
-      );
+      ).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     } finally {
       await close();
     }
@@ -491,13 +489,13 @@ describe('createSquawkMcpServer', () => {
           }),
         })
         .parse(result.structuredContent);
-      assert.ok(
+      assert(
         parsed.result.totalDistanceNm > 2100 && parsed.result.totalDistanceNm < 2200,
         `expected JFK-LAX total around 2145 nm, got ${parsed.result.totalDistanceNm}`,
       );
-      assert.equal(parsed.result.legs.length, 1);
-      assert.equal(parsed.result.legs[0]?.from, 'KJFK');
-      assert.equal(parsed.result.legs[0]?.to, 'KLAX');
+      expect(parsed.result.legs.length).toBe(1);
+      expect(parsed.result.legs[0]?.from).toBe('KJFK');
+      expect(parsed.result.legs[0]?.to).toBe('KLAX');
     } finally {
       await close();
     }
@@ -522,10 +520,10 @@ describe('createSquawkMcpServer', () => {
           ),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.procedures.length >= 1);
+      assert(parsed.procedures.length >= 1);
       for (const proc of parsed.procedures) {
-        assert.equal(proc.identifier, 'I04L');
-        assert.equal(proc.type, 'IAP');
+        expect(proc.identifier).toBe('I04L');
+        expect(proc.type).toBe('IAP');
       }
     } finally {
       await close();
@@ -552,11 +550,11 @@ describe('createSquawkMcpServer', () => {
             .nullable(),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.procedure !== null);
-      assert.equal(parsed.procedure.identifier, 'I04L');
-      assert.equal(parsed.procedure.approachType, 'ILS');
-      assert.equal(parsed.procedure.runway, '04L');
-      assert.ok(parsed.procedure.airports.includes('KJFK'));
+      assert(parsed.procedure !== null);
+      expect(parsed.procedure.identifier).toBe('I04L');
+      expect(parsed.procedure.approachType).toBe('ILS');
+      expect(parsed.procedure.runway).toBe('04L');
+      assert(parsed.procedure.airports.includes('KJFK'));
     } finally {
       await close();
     }
@@ -582,9 +580,9 @@ describe('createSquawkMcpServer', () => {
         .parse(result.structuredContent);
       // Every matched IAP must carry runway = 04L.
       const iaps = parsed.procedures.filter((p) => p.type === 'IAP');
-      assert.ok(iaps.length > 0);
+      assert(iaps.length > 0);
       for (const iap of iaps) {
-        assert.equal(iap.runway, '04L');
+        expect(iap.runway).toBe('04L');
       }
     } finally {
       await close();
@@ -608,10 +606,10 @@ describe('createSquawkMcpServer', () => {
           ),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.procedures.length > 100);
+      assert(parsed.procedures.length > 100);
       for (const proc of parsed.procedures) {
-        assert.equal(proc.type, 'IAP');
-        assert.equal(proc.approachType, 'ILS');
+        expect(proc.type).toBe('IAP');
+        expect(proc.approachType).toBe('ILS');
       }
     } finally {
       await close();
@@ -641,10 +639,10 @@ describe('createSquawkMcpServer', () => {
             .nullable(),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.expansion !== null);
-      assert.equal(parsed.expansion.procedure.identifier, 'I04L');
-      assert.ok(parsed.expansion.legs.length > 0);
-      assert.equal(parsed.expansion.legs[0]?.pathTerminator, 'IF');
+      assert(parsed.expansion !== null);
+      expect(parsed.expansion.procedure.identifier).toBe('I04L');
+      assert(parsed.expansion.legs.length > 0);
+      expect(parsed.expansion.legs[0]?.pathTerminator).toBe('IF');
     } finally {
       await close();
     }
@@ -667,12 +665,12 @@ describe('createSquawkMcpServer', () => {
           ),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.procedures.length > 0);
+      assert(parsed.procedures.length > 0);
       for (const proc of parsed.procedures) {
         const matches =
           proc.identifier.toUpperCase().includes('AALLE') ||
           proc.name.toUpperCase().includes('AALLE');
-        assert.ok(matches);
+        assert(matches);
       }
     } finally {
       await close();
@@ -707,11 +705,11 @@ describe('createSquawkMcpServer', () => {
             .nullable(),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.expansion !== null);
-      assert.equal(parsed.expansion.procedure.identifier, 'I13L');
-      assert.ok(parsed.expansion.legs.length > 0);
+      assert(parsed.expansion !== null);
+      expect(parsed.expansion.procedure.identifier).toBe('I13L');
+      assert(parsed.expansion.legs.length > 0);
       // First leg of the expansion should come from the BUZON transition.
-      assert.equal(parsed.expansion.legs[0]?.fixIdentifier, 'BUZON');
+      expect(parsed.expansion.legs[0]?.fixIdentifier).toBe('BUZON');
     } finally {
       await close();
     }
@@ -725,7 +723,7 @@ describe('createSquawkMcpServer', () => {
         arguments: { airportId: 'KDEN', identifier: 'I04L' },
       });
       const parsed = z.object({ expansion: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.expansion, null);
+      expect(parsed.expansion).toBe(null);
     } finally {
       await close();
     }
@@ -739,7 +737,7 @@ describe('createSquawkMcpServer', () => {
         arguments: { airportId: 'KJFK', identifier: 'ZZZ99' },
       });
       const parsed = z.object({ procedure: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.procedure, null);
+      expect(parsed.procedure).toBe(null);
     } finally {
       await close();
     }
@@ -753,7 +751,7 @@ describe('createSquawkMcpServer', () => {
         arguments: { identifier: 'ZZZZZ9' },
       });
       const parsed = z.object({ procedures: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.equal(parsed.procedures.length, 0);
+      expect(parsed.procedures.length).toBe(0);
     } finally {
       await close();
     }
@@ -767,7 +765,7 @@ describe('createSquawkMcpServer', () => {
         arguments: { airportId: 'KJFK', runway: '99Z' },
       });
       const parsed = z.object({ procedures: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.equal(parsed.procedures.length, 0);
+      expect(parsed.procedures.length).toBe(0);
     } finally {
       await close();
     }
@@ -790,10 +788,10 @@ describe('createSquawkMcpServer', () => {
           ),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.procedures.length > 0);
+      assert(parsed.procedures.length > 0);
       for (const proc of parsed.procedures) {
-        assert.equal(proc.type, 'IAP');
-        assert.equal(proc.approachType, 'ILS');
+        expect(proc.type).toBe('IAP');
+        expect(proc.approachType).toBe('ILS');
       }
     } finally {
       await close();
@@ -853,15 +851,12 @@ describe('live weather fetch tools (mocked)', () => {
           parseErrors: z.array(z.unknown()),
         })
         .parse(result.structuredContent);
-      assert.equal(parsed.metars.length, 1);
-      assert.equal(parsed.metars[0]?.stationId, 'KJFK');
-      assert.equal(parsed.parseErrors.length, 0);
-      assert.ok(
-        stub.lastUrl?.includes('/metar?'),
-        `expected /metar? in ${stub.lastUrl ?? '<none>'}`,
-      );
-      assert.ok(stub.lastUrl?.includes('ids=KJFK'));
-      assert.ok(stub.lastUrl?.includes('format=raw'));
+      expect(parsed.metars.length).toBe(1);
+      expect(parsed.metars[0]?.stationId).toBe('KJFK');
+      expect(parsed.parseErrors.length).toBe(0);
+      assert(stub.lastUrl?.includes('/metar?'), `expected /metar? in ${stub.lastUrl ?? '<none>'}`);
+      assert(stub.lastUrl?.includes('ids=KJFK'));
+      assert(stub.lastUrl?.includes('format=raw'));
     } finally {
       await close();
     }
@@ -884,14 +879,11 @@ describe('live weather fetch tools (mocked)', () => {
           parseErrors: z.array(z.object({ raw: z.string(), message: z.string() })),
         })
         .parse(result.structuredContent);
-      assert.equal(parsed.metars.length, 1);
-      assert.equal(parsed.metars[0]?.stationId, 'KJFK');
-      assert.equal(parsed.parseErrors.length, 1);
-      assert.equal(parsed.parseErrors[0]?.raw, 'NOT_A_METAR');
-      assert.ok(
-        parsed.parseErrors[0]?.message.length ?? 0 > 0,
-        'expected a non-empty parser message',
-      );
+      expect(parsed.metars.length).toBe(1);
+      expect(parsed.metars[0]?.stationId).toBe('KJFK');
+      expect(parsed.parseErrors.length).toBe(1);
+      expect(parsed.parseErrors[0]?.raw).toBe('NOT_A_METAR');
+      assert(parsed.parseErrors[0]?.message.length ?? 0 > 0, 'expected a non-empty parser message');
     } finally {
       await close();
     }
@@ -918,16 +910,11 @@ describe('live weather fetch tools (mocked)', () => {
           parseErrors: z.array(z.unknown()),
         })
         .parse(result.structuredContent);
-      assert.equal(parsed.tafs.length, 2);
-      assert.deepEqual(
-        parsed.tafs.map((t) => t.stationId),
-        ['KJFK', 'KLAX'],
-      );
-      assert.equal(parsed.parseErrors.length, 0);
-      assert.ok(stub.lastUrl?.includes('/taf?'));
-      assert.ok(
-        stub.lastUrl?.includes('ids=KJFK%2CKLAX') || stub.lastUrl?.includes('ids=KJFK,KLAX'),
-      );
+      expect(parsed.tafs.length).toBe(2);
+      expect(parsed.tafs.map((t) => t.stationId)).toEqual(['KJFK', 'KLAX']);
+      expect(parsed.parseErrors.length).toBe(0);
+      assert(stub.lastUrl?.includes('/taf?'));
+      assert(stub.lastUrl?.includes('ids=KJFK%2CKLAX') || stub.lastUrl?.includes('ids=KJFK,KLAX'));
     } finally {
       await close();
     }
@@ -950,11 +937,11 @@ describe('live weather fetch tools (mocked)', () => {
           parseErrors: z.array(z.unknown()),
         })
         .parse(result.structuredContent);
-      assert.equal(parsed.sigmets.length, 0);
-      assert.equal(parsed.parseErrors.length, 0);
-      assert.ok(stub.lastUrl?.includes('/airsigmet?'));
-      assert.ok(stub.lastUrl?.includes('hazard=turb'));
-      assert.ok(stub.lastUrl?.includes('format=raw'));
+      expect(parsed.sigmets.length).toBe(0);
+      expect(parsed.parseErrors.length).toBe(0);
+      assert(stub.lastUrl?.includes('/airsigmet?'));
+      assert(stub.lastUrl?.includes('hazard=turb'));
+      assert(stub.lastUrl?.includes('format=raw'));
     } finally {
       await close();
     }
@@ -991,13 +978,13 @@ describe('live weather fetch tools (mocked)', () => {
             .passthrough(),
         })
         .parse(result.structuredContent);
-      assert.equal(parsed.forecast.productCode, 'FD1US1');
-      assert.deepEqual(parsed.forecast.altitudesFt, [3000]);
-      assert.equal(parsed.forecast.stations[0]?.stationId, 'BDL');
-      assert.ok(stub.lastUrl?.includes('/windtemp?'));
-      assert.ok(stub.lastUrl?.includes('region=bos'));
-      assert.ok(stub.lastUrl?.includes('level=low'));
-      assert.ok(stub.lastUrl?.includes('fcst=06'));
+      expect(parsed.forecast.productCode).toBe('FD1US1');
+      expect(parsed.forecast.altitudesFt).toEqual([3000]);
+      expect(parsed.forecast.stations[0]?.stationId).toBe('BDL');
+      assert(stub.lastUrl?.includes('/windtemp?'));
+      assert(stub.lastUrl?.includes('region=bos'));
+      assert(stub.lastUrl?.includes('level=low'));
+      assert(stub.lastUrl?.includes('fcst=06'));
     } finally {
       await close();
     }

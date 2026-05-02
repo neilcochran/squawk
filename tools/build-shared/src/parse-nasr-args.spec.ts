@@ -1,5 +1,4 @@
-import { describe, it, beforeEach, afterEach } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -29,10 +28,10 @@ describe('parseNasrArgs', () => {
     process.argv = ['node', 'index.js', '--local', subDir];
     const result = parseNasrArgs({ defaultOutputPath: '/tmp/default.json.gz' });
 
-    assert.equal(result.subscriptionDir, subDir);
-    assert.equal(result.nasrCycleDate, '2026-04-16');
-    assert.equal(result.outputPath, '/tmp/default.json.gz');
-    assert.equal(typeof result.cleanup, 'function');
+    expect(result.subscriptionDir).toBe(subDir);
+    expect(result.nasrCycleDate).toBe('2026-04-16');
+    expect(result.outputPath).toBe('/tmp/default.json.gz');
+    expect(typeof result.cleanup).toBe('function');
   });
 
   it('honors the --output override', () => {
@@ -43,7 +42,7 @@ describe('parseNasrArgs', () => {
     process.argv = ['node', 'index.js', '--local', subDir, '--output', outPath];
     const result = parseNasrArgs({ defaultOutputPath: '/tmp/default.json.gz' });
 
-    assert.equal(result.outputPath, outPath);
+    expect(result.outputPath).toBe(outPath);
   });
 
   it('throws when the directory does not match the cycle date pattern', () => {
@@ -51,8 +50,7 @@ describe('parseNasrArgs', () => {
     mkdirSync(subDir);
 
     process.argv = ['node', 'index.js', '--local', subDir];
-    assert.throws(
-      () => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' }),
+    expect(() => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' })).toThrow(
       /Cannot determine NASR cycle date/,
     );
   });

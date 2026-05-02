@@ -12,7 +12,7 @@ import { defineConfig } from 'vitest/config';
  *   Vitest's `perFile: true` makes the `lines` / `functions` / `branches` /
  *   `statements` thresholds apply per-file rather than aggregate.
  * - Aggregate (`scripts/check-coverage.js`): per-package totals must hit 90%
- *   lines / 95% functions / 90% branches, read from each package's
+ *   lines / 90% functions / 90% branches, read from each package's
  *   `coverage/coverage-summary.json`. Vitest cannot express both a per-file
  *   and an aggregate gate in one threshold block, so the aggregate gate stays
  *   in a small post-coverage script (run as `npm run check-coverage` after

@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import {
   isWindToken,
   parseWind,
@@ -15,29 +14,29 @@ import {
 
 describe('isWindToken', () => {
   it('accepts basic wind token', () => {
-    assert.equal(isWindToken('21010KT'), true);
+    expect(isWindToken('21010KT')).toBe(true);
   });
 
   it('accepts calm wind', () => {
-    assert.equal(isWindToken('00000KT'), true);
+    expect(isWindToken('00000KT')).toBe(true);
   });
 
   it('accepts gusty wind', () => {
-    assert.equal(isWindToken('25015G30KT'), true);
+    expect(isWindToken('25015G30KT')).toBe(true);
   });
 
   it('accepts 3-digit speed', () => {
-    assert.equal(isWindToken('22055G105KT'), true);
+    expect(isWindToken('22055G105KT')).toBe(true);
   });
 
   it('accepts VRB wind', () => {
-    assert.equal(isWindToken('VRB04KT'), true);
+    expect(isWindToken('VRB04KT')).toBe(true);
   });
 
   it('rejects non-wind token', () => {
-    assert.equal(isWindToken('10SM'), false);
-    assert.equal(isWindToken('FEW250'), false);
-    assert.equal(isWindToken('CAVOK'), false);
+    expect(isWindToken('10SM')).toBe(false);
+    expect(isWindToken('FEW250')).toBe(false);
+    expect(isWindToken('CAVOK')).toBe(false);
   });
 });
 
@@ -48,44 +47,44 @@ describe('isWindToken', () => {
 describe('parseWind', () => {
   it('parses basic wind', () => {
     const wind = parseWind('21010KT');
-    assert.equal(wind.directionDeg, 210);
-    assert.equal(wind.speedKt, 10);
-    assert.equal(wind.isVariable, false);
-    assert.equal(wind.isCalm, false);
-    assert.equal(wind.gustKt, undefined);
+    expect(wind.directionDeg).toBe(210);
+    expect(wind.speedKt).toBe(10);
+    expect(wind.isVariable).toBe(false);
+    expect(wind.isCalm).toBe(false);
+    expect(wind.gustKt).toBe(undefined);
   });
 
   it('parses calm wind', () => {
     const wind = parseWind('00000KT');
-    assert.equal(wind.isCalm, true);
-    assert.equal(wind.speedKt, 0);
-    assert.equal(wind.directionDeg, undefined);
+    expect(wind.isCalm).toBe(true);
+    expect(wind.speedKt).toBe(0);
+    expect(wind.directionDeg).toBe(undefined);
   });
 
   it('parses gusty wind', () => {
     const wind = parseWind('25015G30KT');
-    assert.equal(wind.directionDeg, 250);
-    assert.equal(wind.speedKt, 15);
-    assert.equal(wind.gustKt, 30);
+    expect(wind.directionDeg).toBe(250);
+    expect(wind.speedKt).toBe(15);
+    expect(wind.gustKt).toBe(30);
   });
 
   it('parses extreme wind with 3-digit gusts', () => {
     const wind = parseWind('22055G105KT');
-    assert.equal(wind.directionDeg, 220);
-    assert.equal(wind.speedKt, 55);
-    assert.equal(wind.gustKt, 105);
+    expect(wind.directionDeg).toBe(220);
+    expect(wind.speedKt).toBe(55);
+    expect(wind.gustKt).toBe(105);
   });
 
   it('parses VRB wind', () => {
     const wind = parseWind('VRB04KT');
-    assert.equal(wind.isVariable, true);
-    assert.equal(wind.isCalm, false);
-    assert.equal(wind.speedKt, 4);
-    assert.equal(wind.directionDeg, undefined);
+    expect(wind.isVariable).toBe(true);
+    expect(wind.isCalm).toBe(false);
+    expect(wind.speedKt).toBe(4);
+    expect(wind.directionDeg).toBe(undefined);
   });
 
   it('throws on invalid token', () => {
-    assert.throws(() => parseWind('INVALID'), /Invalid wind token/);
+    expect(() => parseWind('INVALID')).toThrow(/Invalid wind token/);
   });
 });
 
@@ -96,82 +95,82 @@ describe('parseWind', () => {
 describe('parseVisibility', () => {
   it('parses whole statute miles (10SM)', () => {
     const result = parseVisibility(['10SM'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilitySm, 10);
-    assert.equal(result.visibility.isLessThan, false);
-    assert.equal(result.visibility.isMoreThan, false);
-    assert.equal(result.nextPos, 1);
+    assert(result);
+    expect(result.visibility.visibilitySm).toBe(10);
+    expect(result.visibility.isLessThan).toBe(false);
+    expect(result.visibility.isMoreThan).toBe(false);
+    expect(result.nextPos).toBe(1);
   });
 
   it('parses fractional visibility (1 1/2SM)', () => {
     const result = parseVisibility(['1', '1/2SM'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilitySm, 1.5);
-    assert.equal(result.visibility.isLessThan, false);
-    assert.equal(result.visibility.isMoreThan, false);
-    assert.equal(result.nextPos, 2);
+    assert(result);
+    expect(result.visibility.visibilitySm).toBe(1.5);
+    expect(result.visibility.isLessThan).toBe(false);
+    expect(result.visibility.isMoreThan).toBe(false);
+    expect(result.nextPos).toBe(2);
   });
 
   it('parses less-than visibility (M1/4SM)', () => {
     const result = parseVisibility(['M1/4SM'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilitySm, 0.25);
-    assert.equal(result.visibility.isLessThan, true);
-    assert.equal(result.visibility.isMoreThan, false);
+    assert(result);
+    expect(result.visibility.visibilitySm).toBe(0.25);
+    expect(result.visibility.isLessThan).toBe(true);
+    expect(result.visibility.isMoreThan).toBe(false);
   });
 
   it('parses fraction-only visibility (1/4SM)', () => {
     const result = parseVisibility(['1/4SM'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilitySm, 0.25);
-    assert.equal(result.visibility.isLessThan, false);
+    assert(result);
+    expect(result.visibility.visibilitySm).toBe(0.25);
+    expect(result.visibility.isLessThan).toBe(false);
   });
 
   it('parses half-mile visibility (1/2SM)', () => {
     const result = parseVisibility(['1/2SM'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilitySm, 0.5);
+    assert(result);
+    expect(result.visibility.visibilitySm).toBe(0.5);
   });
 
   it('parses three-quarter-mile visibility (3/4SM)', () => {
     const result = parseVisibility(['3/4SM'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilitySm, 0.75);
+    assert(result);
+    expect(result.visibility.visibilitySm).toBe(0.75);
   });
 
   it('parses plus visibility (P6SM)', () => {
     const result = parseVisibility(['P6SM'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilitySm, 6);
-    assert.equal(result.visibility.isMoreThan, true);
-    assert.equal(result.visibility.isLessThan, false);
+    assert(result);
+    expect(result.visibility.visibilitySm).toBe(6);
+    expect(result.visibility.isMoreThan).toBe(true);
+    expect(result.visibility.isLessThan).toBe(false);
   });
 
   it('parses ICAO meters visibility (9999)', () => {
     const result = parseVisibility(['9999'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilityM, 9999);
-    assert.equal(result.visibility.visibilitySm, undefined);
-    assert.equal(result.visibility.isLessThan, false);
-    assert.equal(result.visibility.isMoreThan, false);
+    assert(result);
+    expect(result.visibility.visibilityM).toBe(9999);
+    expect(result.visibility.visibilitySm).toBe(undefined);
+    expect(result.visibility.isLessThan).toBe(false);
+    expect(result.visibility.isMoreThan).toBe(false);
   });
 
   it('parses ICAO low visibility (0800)', () => {
     const result = parseVisibility(['0800'], 0);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilityM, 800);
+    assert(result);
+    expect(result.visibility.visibilityM).toBe(800);
   });
 
   it('parses from non-zero position', () => {
     const result = parseVisibility(['21010KT', '5SM', 'BR'], 1);
-    assert.ok(result);
-    assert.equal(result.visibility.visibilitySm, 5);
-    assert.equal(result.nextPos, 2);
+    assert(result);
+    expect(result.visibility.visibilitySm).toBe(5);
+    expect(result.nextPos).toBe(2);
   });
 
   it('returns undefined for non-visibility token', () => {
     const result = parseVisibility(['FEW250'], 0);
-    assert.equal(result, undefined);
+    expect(result).toBe(undefined);
   });
 });
 
@@ -181,67 +180,67 @@ describe('parseVisibility', () => {
 
 describe('isWeatherToken', () => {
   it('accepts basic precipitation codes', () => {
-    assert.equal(isWeatherToken('RA'), true);
-    assert.equal(isWeatherToken('SN'), true);
-    assert.equal(isWeatherToken('DZ'), true);
+    expect(isWeatherToken('RA')).toBe(true);
+    expect(isWeatherToken('SN')).toBe(true);
+    expect(isWeatherToken('DZ')).toBe(true);
   });
 
   it('accepts intensity prefixed weather', () => {
-    assert.equal(isWeatherToken('+TSRA'), true);
-    assert.equal(isWeatherToken('-DZ'), true);
+    expect(isWeatherToken('+TSRA')).toBe(true);
+    expect(isWeatherToken('-DZ')).toBe(true);
   });
 
   it('accepts vicinity weather', () => {
-    assert.equal(isWeatherToken('VCSH'), true);
-    assert.equal(isWeatherToken('VCTS'), true);
-    assert.equal(isWeatherToken('VCFG'), true);
+    expect(isWeatherToken('VCSH')).toBe(true);
+    expect(isWeatherToken('VCTS')).toBe(true);
+    expect(isWeatherToken('VCFG')).toBe(true);
   });
 
   it('accepts descriptor-only weather', () => {
-    assert.equal(isWeatherToken('TS'), true);
+    expect(isWeatherToken('TS')).toBe(true);
   });
 
   it('accepts mixed precipitation', () => {
-    assert.equal(isWeatherToken('RASN'), true);
-    assert.equal(isWeatherToken('FZRA'), true);
+    expect(isWeatherToken('RASN')).toBe(true);
+    expect(isWeatherToken('FZRA')).toBe(true);
   });
 
   it('accepts obscuration codes', () => {
-    assert.equal(isWeatherToken('BR'), true);
-    assert.equal(isWeatherToken('FG'), true);
-    assert.equal(isWeatherToken('HZ'), true);
-    assert.equal(isWeatherToken('FU'), true);
+    expect(isWeatherToken('BR')).toBe(true);
+    expect(isWeatherToken('FG')).toBe(true);
+    expect(isWeatherToken('HZ')).toBe(true);
+    expect(isWeatherToken('FU')).toBe(true);
   });
 
   it('rejects cloud layer tokens', () => {
-    assert.equal(isWeatherToken('FEW250'), false);
-    assert.equal(isWeatherToken('SCT040'), false);
-    assert.equal(isWeatherToken('BKN020CB'), false);
+    expect(isWeatherToken('FEW250')).toBe(false);
+    expect(isWeatherToken('SCT040')).toBe(false);
+    expect(isWeatherToken('BKN020CB')).toBe(false);
   });
 
   it('rejects clear sky indicators', () => {
-    assert.equal(isWeatherToken('CLR'), false);
-    assert.equal(isWeatherToken('SKC'), false);
-    assert.equal(isWeatherToken('CAVOK'), false);
-    assert.equal(isWeatherToken('NSW'), false);
+    expect(isWeatherToken('CLR')).toBe(false);
+    expect(isWeatherToken('SKC')).toBe(false);
+    expect(isWeatherToken('CAVOK')).toBe(false);
+    expect(isWeatherToken('NSW')).toBe(false);
   });
 
   it('rejects vertical visibility', () => {
-    assert.equal(isWeatherToken('VV005'), false);
+    expect(isWeatherToken('VV005')).toBe(false);
   });
 
   it('rejects temp/dewpoint tokens', () => {
-    assert.equal(isWeatherToken('18/06'), false);
-    assert.equal(isWeatherToken('M04/M18'), false);
+    expect(isWeatherToken('18/06')).toBe(false);
+    expect(isWeatherToken('M04/M18')).toBe(false);
   });
 
   it('rejects altimeter tokens', () => {
-    assert.equal(isWeatherToken('A3012'), false);
-    assert.equal(isWeatherToken('Q1013'), false);
+    expect(isWeatherToken('A3012')).toBe(false);
+    expect(isWeatherToken('Q1013')).toBe(false);
   });
 
   it('rejects NOSIG', () => {
-    assert.equal(isWeatherToken('NOSIG'), false);
+    expect(isWeatherToken('NOSIG')).toBe(false);
   });
 });
 
@@ -252,141 +251,141 @@ describe('isWeatherToken', () => {
 describe('parseWeatherPhenomenon', () => {
   it('parses heavy thunderstorm rain (+TSRA)', () => {
     const wx = parseWeatherPhenomenon('+TSRA');
-    assert.ok(wx);
-    assert.equal(wx.raw, '+TSRA');
-    assert.equal(wx.intensity, 'HEAVY');
-    assert.equal(wx.descriptor, 'TS');
-    assert.deepEqual(wx.phenomena, ['RA']);
-    assert.equal(wx.isVicinity, false);
+    assert(wx);
+    expect(wx.raw).toBe('+TSRA');
+    expect(wx.intensity).toBe('HEAVY');
+    expect(wx.descriptor).toBe('TS');
+    expect(wx.phenomena).toEqual(['RA']);
+    expect(wx.isVicinity).toBe(false);
   });
 
   it('parses moderate rain (RA) with no intensity prefix', () => {
     const wx = parseWeatherPhenomenon('RA');
-    assert.ok(wx);
-    assert.equal(wx.intensity, 'MODERATE');
-    assert.deepEqual(wx.phenomena, ['RA']);
+    assert(wx);
+    expect(wx.intensity).toBe('MODERATE');
+    expect(wx.phenomena).toEqual(['RA']);
   });
 
   it('parses light drizzle (-DZ)', () => {
     const wx = parseWeatherPhenomenon('-DZ');
-    assert.ok(wx);
-    assert.equal(wx.intensity, 'LIGHT');
-    assert.deepEqual(wx.phenomena, ['DZ']);
+    assert(wx);
+    expect(wx.intensity).toBe('LIGHT');
+    expect(wx.phenomena).toEqual(['DZ']);
   });
 
   it('parses freezing rain (FZRA)', () => {
     const wx = parseWeatherPhenomenon('FZRA');
-    assert.ok(wx);
-    assert.equal(wx.descriptor, 'FZ');
-    assert.deepEqual(wx.phenomena, ['RA']);
+    assert(wx);
+    expect(wx.descriptor).toBe('FZ');
+    expect(wx.phenomena).toEqual(['RA']);
   });
 
   it('parses vicinity showers (VCSH)', () => {
     const wx = parseWeatherPhenomenon('VCSH');
-    assert.ok(wx);
-    assert.equal(wx.isVicinity, true);
-    assert.equal(wx.descriptor, 'SH');
+    assert(wx);
+    expect(wx.isVicinity).toBe(true);
+    expect(wx.descriptor).toBe('SH');
   });
 
   it('parses vicinity thunderstorm (VCTS)', () => {
     const wx = parseWeatherPhenomenon('VCTS');
-    assert.ok(wx);
-    assert.equal(wx.isVicinity, true);
-    assert.equal(wx.descriptor, 'TS');
+    assert(wx);
+    expect(wx.isVicinity).toBe(true);
+    expect(wx.descriptor).toBe('TS');
   });
 
   it('parses mixed precipitation (RASN)', () => {
     const wx = parseWeatherPhenomenon('RASN');
-    assert.ok(wx);
-    assert.deepEqual(wx.phenomena, ['RA', 'SN']);
+    assert(wx);
+    expect(wx.phenomena).toEqual(['RA', 'SN']);
   });
 
   it('parses hail with thunderstorm (+TSRAGR)', () => {
     const wx = parseWeatherPhenomenon('+TSRAGR');
-    assert.ok(wx);
-    assert.equal(wx.intensity, 'HEAVY');
-    assert.equal(wx.descriptor, 'TS');
-    assert.deepEqual(wx.phenomena, ['RA', 'GR']);
+    assert(wx);
+    expect(wx.intensity).toBe('HEAVY');
+    expect(wx.descriptor).toBe('TS');
+    expect(wx.phenomena).toEqual(['RA', 'GR']);
   });
 
   it('parses all precipitation codes', () => {
     for (const code of ['DZ', 'RA', 'SN', 'SG', 'IC', 'PL', 'GR', 'GS', 'UP']) {
       const wx = parseWeatherPhenomenon(code);
-      assert.ok(wx, `failed to parse ${code}`);
-      assert.deepEqual(wx.phenomena, [code]);
+      assert(wx, `failed to parse ${code}`);
+      expect(wx.phenomena).toEqual([code]);
     }
   });
 
   it('parses all obscuration codes', () => {
     for (const code of ['BR', 'FG', 'FU', 'VA', 'DU', 'SA', 'HZ', 'PY']) {
       const wx = parseWeatherPhenomenon(code);
-      assert.ok(wx, `failed to parse ${code}`);
-      assert.deepEqual(wx.phenomena, [code]);
+      assert(wx, `failed to parse ${code}`);
+      expect(wx.phenomena).toEqual([code]);
     }
   });
 
   it('parses all other phenomenon codes', () => {
     for (const code of ['PO', 'SQ', 'FC', 'SS', 'DS']) {
       const wx = parseWeatherPhenomenon(code);
-      assert.ok(wx, `failed to parse ${code}`);
-      assert.deepEqual(wx.phenomena, [code]);
+      assert(wx, `failed to parse ${code}`);
+      expect(wx.phenomena).toEqual([code]);
     }
   });
 
   it('parses all descriptor codes', () => {
     for (const desc of ['MI', 'PR', 'BC', 'DR', 'BL', 'SH', 'TS', 'FZ']) {
       const wx = parseWeatherPhenomenon(`${desc}RA`);
-      assert.ok(wx, `failed to parse ${desc}RA`);
-      assert.equal(wx.descriptor, desc);
-      assert.deepEqual(wx.phenomena, ['RA']);
+      assert(wx, `failed to parse ${desc}RA`);
+      expect(wx.descriptor).toBe(desc);
+      expect(wx.phenomena).toEqual(['RA']);
     }
   });
 
   it('parses blowing snow (BLSN)', () => {
     const wx = parseWeatherPhenomenon('BLSN');
-    assert.ok(wx);
-    assert.equal(wx.descriptor, 'BL');
-    assert.deepEqual(wx.phenomena, ['SN']);
+    assert(wx);
+    expect(wx.descriptor).toBe('BL');
+    expect(wx.phenomena).toEqual(['SN']);
   });
 
   it('parses drifting snow (DRSN)', () => {
     const wx = parseWeatherPhenomenon('DRSN');
-    assert.ok(wx);
-    assert.equal(wx.descriptor, 'DR');
-    assert.deepEqual(wx.phenomena, ['SN']);
+    assert(wx);
+    expect(wx.descriptor).toBe('DR');
+    expect(wx.phenomena).toEqual(['SN']);
   });
 
   it('parses shallow fog (MIFG)', () => {
     const wx = parseWeatherPhenomenon('MIFG');
-    assert.ok(wx);
-    assert.equal(wx.descriptor, 'MI');
-    assert.deepEqual(wx.phenomena, ['FG']);
+    assert(wx);
+    expect(wx.descriptor).toBe('MI');
+    expect(wx.phenomena).toEqual(['FG']);
   });
 
   it('parses patches of fog (BCFG)', () => {
     const wx = parseWeatherPhenomenon('BCFG');
-    assert.ok(wx);
-    assert.equal(wx.descriptor, 'BC');
-    assert.deepEqual(wx.phenomena, ['FG']);
+    assert(wx);
+    expect(wx.descriptor).toBe('BC');
+    expect(wx.phenomena).toEqual(['FG']);
   });
 
   it('parses thunderstorm descriptor alone (TS)', () => {
     const wx = parseWeatherPhenomenon('TS');
-    assert.ok(wx);
-    assert.equal(wx.descriptor, 'TS');
-    assert.deepEqual(wx.phenomena, []);
+    assert(wx);
+    expect(wx.descriptor).toBe('TS');
+    expect(wx.phenomena).toEqual([]);
   });
 
   it('parses heavy funnel cloud (+FC)', () => {
     const wx = parseWeatherPhenomenon('+FC');
-    assert.ok(wx);
-    assert.equal(wx.intensity, 'HEAVY');
-    assert.deepEqual(wx.phenomena, ['FC']);
+    assert(wx);
+    expect(wx.intensity).toBe('HEAVY');
+    expect(wx.phenomena).toEqual(['FC']);
   });
 
   it('returns undefined for invalid input', () => {
-    assert.equal(parseWeatherPhenomenon('XX'), undefined);
-    assert.equal(parseWeatherPhenomenon('AB'), undefined);
+    expect(parseWeatherPhenomenon('XX')).toBe(undefined);
+    expect(parseWeatherPhenomenon('AB')).toBe(undefined);
   });
 });
 
@@ -397,58 +396,58 @@ describe('parseWeatherPhenomenon', () => {
 describe('parseCloudLayer', () => {
   it('parses FEW layer', () => {
     const layer = parseCloudLayer('FEW250');
-    assert.ok(layer);
-    assert.equal(layer.coverage, 'FEW');
-    assert.equal(layer.altitudeFtAgl, 25000);
-    assert.equal(layer.type, undefined);
+    assert(layer);
+    expect(layer.coverage).toBe('FEW');
+    expect(layer.altitudeFtAgl).toBe(25000);
+    expect(layer.type).toBe(undefined);
   });
 
   it('parses SCT layer', () => {
     const layer = parseCloudLayer('SCT040');
-    assert.ok(layer);
-    assert.equal(layer.coverage, 'SCT');
-    assert.equal(layer.altitudeFtAgl, 4000);
+    assert(layer);
+    expect(layer.coverage).toBe('SCT');
+    expect(layer.altitudeFtAgl).toBe(4000);
   });
 
   it('parses BKN layer', () => {
     const layer = parseCloudLayer('BKN020');
-    assert.ok(layer);
-    assert.equal(layer.coverage, 'BKN');
-    assert.equal(layer.altitudeFtAgl, 2000);
+    assert(layer);
+    expect(layer.coverage).toBe('BKN');
+    expect(layer.altitudeFtAgl).toBe(2000);
   });
 
   it('parses OVC layer', () => {
     const layer = parseCloudLayer('OVC120');
-    assert.ok(layer);
-    assert.equal(layer.coverage, 'OVC');
-    assert.equal(layer.altitudeFtAgl, 12000);
+    assert(layer);
+    expect(layer.coverage).toBe('OVC');
+    expect(layer.altitudeFtAgl).toBe(12000);
   });
 
   it('parses CB cloud type', () => {
     const layer = parseCloudLayer('BKN020CB');
-    assert.ok(layer);
-    assert.equal(layer.coverage, 'BKN');
-    assert.equal(layer.altitudeFtAgl, 2000);
-    assert.equal(layer.type, 'CB');
+    assert(layer);
+    expect(layer.coverage).toBe('BKN');
+    expect(layer.altitudeFtAgl).toBe(2000);
+    expect(layer.type).toBe('CB');
   });
 
   it('parses TCU cloud type', () => {
     const layer = parseCloudLayer('FEW025TCU');
-    assert.ok(layer);
-    assert.equal(layer.coverage, 'FEW');
-    assert.equal(layer.altitudeFtAgl, 2500);
-    assert.equal(layer.type, 'TCU');
+    assert(layer);
+    expect(layer.coverage).toBe('FEW');
+    expect(layer.altitudeFtAgl).toBe(2500);
+    expect(layer.type).toBe('TCU');
   });
 
   it('parses low altitude layer', () => {
     const layer = parseCloudLayer('OVC003');
-    assert.ok(layer);
-    assert.equal(layer.altitudeFtAgl, 300);
+    assert(layer);
+    expect(layer.altitudeFtAgl).toBe(300);
   });
 
   it('returns undefined for invalid token', () => {
-    assert.equal(parseCloudLayer('CLR'), undefined);
-    assert.equal(parseCloudLayer('VV005'), undefined);
-    assert.equal(parseCloudLayer('10SM'), undefined);
+    expect(parseCloudLayer('CLR')).toBe(undefined);
+    expect(parseCloudLayer('VV005')).toBe(undefined);
+    expect(parseCloudLayer('10SM')).toBe(undefined);
   });
 });

@@ -1,5 +1,4 @@
-import { describe, it, vi, afterEach } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, vi, afterEach, expect } from 'vitest';
 import { fetchMetar } from './metar.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
@@ -15,7 +14,7 @@ describe('fetchMetar', () => {
       return new Response('', { status: 200 });
     });
     await fetchMetar('KJFK');
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/metar?ids=KJFK&format=raw`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/metar?ids=KJFK&format=raw`);
   });
 
   it('comma-joins multiple station IDs into a single request', async () => {
@@ -25,7 +24,7 @@ describe('fetchMetar', () => {
       return new Response('', { status: 200 });
     });
     await fetchMetar(['KJFK', 'KLAX', 'KORD']);
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/metar?ids=KJFK%2CKLAX%2CKORD&format=raw`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/metar?ids=KJFK%2CKLAX%2CKORD&format=raw`);
   });
 
   it('parses one METAR per line and preserves response order', async () => {
@@ -37,11 +36,11 @@ describe('fetchMetar', () => {
       async () => new Response(body, { status: 200 }),
     );
     const { metars, parseErrors, raw } = await fetchMetar(['KJFK', 'KLAX']);
-    assert.equal(metars.length, 2);
-    assert.equal(metars[0]?.stationId, 'KJFK');
-    assert.equal(metars[1]?.stationId, 'KLAX');
-    assert.deepEqual(parseErrors, []);
-    assert.equal(raw, body);
+    expect(metars.length).toBe(2);
+    expect(metars[0]?.stationId).toBe('KJFK');
+    expect(metars[1]?.stationId).toBe('KLAX');
+    expect(parseErrors).toEqual([]);
+    expect(raw).toBe(body);
   });
 
   it('captures malformed records in parseErrors without throwing', async () => {
@@ -50,25 +49,25 @@ describe('fetchMetar', () => {
       async () => new Response(body, { status: 200 }),
     );
     const { metars, parseErrors } = await fetchMetar(['KJFK', 'NOPE']);
-    assert.equal(metars.length, 1);
-    assert.equal(metars[0]?.stationId, 'KJFK');
-    assert.equal(parseErrors.length, 1);
-    assert.equal(parseErrors[0]?.raw, 'not a metar at all');
+    expect(metars.length).toBe(1);
+    expect(metars[0]?.stationId).toBe('KJFK');
+    expect(parseErrors.length).toBe(1);
+    expect(parseErrors[0]?.raw).toBe('not a metar at all');
   });
 
   it('returns empty arrays for an empty body', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 200 }));
     const { metars, parseErrors, raw } = await fetchMetar('KZZZZ');
-    assert.deepEqual(metars, []);
-    assert.deepEqual(parseErrors, []);
-    assert.equal(raw, '');
+    expect(metars).toEqual([]);
+    expect(parseErrors).toEqual([]);
+    expect(raw).toBe('');
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
-    await assert.rejects(() => fetchMetar('KJFK'), AwcFetchError);
+    await expect(() => fetchMetar('KJFK')).rejects.toThrow(AwcFetchError);
   });
 
   it('honors a custom baseUrl', async () => {
@@ -78,7 +77,7 @@ describe('fetchMetar', () => {
       return new Response('', { status: 200 });
     });
     await fetchMetar('KJFK', { baseUrl: 'https://mirror.test/api' });
-    assert.equal(observedUrl, 'https://mirror.test/api/metar?ids=KJFK&format=raw');
+    expect(observedUrl).toBe('https://mirror.test/api/metar?ids=KJFK&format=raw');
   });
 
   it('surfaces AWC 400 for empty input (string) as AwcFetchError', async () => {
@@ -87,8 +86,8 @@ describe('fetchMetar', () => {
       observedUrl = url.toString();
       return new Response('Invalid station id', { status: 400, statusText: 'Bad Request' });
     });
-    await assert.rejects(() => fetchMetar(''), AwcFetchError);
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/metar?ids=&format=raw`);
+    await expect(() => fetchMetar('')).rejects.toThrow(AwcFetchError);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/metar?ids=&format=raw`);
   });
 
   it('surfaces AWC 400 for empty input (array) as AwcFetchError', async () => {
@@ -97,8 +96,8 @@ describe('fetchMetar', () => {
       observedUrl = url.toString();
       return new Response('Invalid station id', { status: 400, statusText: 'Bad Request' });
     });
-    await assert.rejects(() => fetchMetar([]), AwcFetchError);
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/metar?ids=&format=raw`);
+    await expect(() => fetchMetar([])).rejects.toThrow(AwcFetchError);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/metar?ids=&format=raw`);
   });
 
   it('forwards the AbortSignal to fetch', async () => {
@@ -109,6 +108,6 @@ describe('fetchMetar', () => {
       return new Response('', { status: 200 });
     });
     await fetchMetar('KJFK', { signal: controller.signal });
-    assert.equal(observedSignal, controller.signal);
+    expect(observedSignal).toBe(controller.signal);
   });
 });

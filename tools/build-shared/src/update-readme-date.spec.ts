@@ -1,5 +1,4 @@
-import { describe, it, beforeEach, afterEach } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, beforeEach, afterEach, expect, assert } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -30,8 +29,8 @@ describe('updateReadmeDate', () => {
     await updateReadmeDate(outputPath, '2026-04-16');
 
     const updated = readFileSync(readmePath, 'utf-8');
-    assert.ok(updated.includes('from the **2026-04-16** FAA NASR'));
-    assert.ok(!updated.includes('**2025-01-01**'));
+    assert(updated.includes('from the **2026-04-16** FAA NASR'));
+    assert(!updated.includes('**2025-01-01**'));
   });
 
   it('matches the CIFP variant', async () => {
@@ -43,7 +42,7 @@ describe('updateReadmeDate', () => {
     await updateReadmeDate(join(dataDir, 'f.json.gz'), '2026-04-16');
 
     const updated = readFileSync(readmePath, 'utf-8');
-    assert.ok(updated.includes('from the **2026-04-16** FAA CIFP'));
+    assert(updated.includes('from the **2026-04-16** FAA CIFP'));
   });
 
   it('matches the ReleasableAircraft variant', async () => {
@@ -59,7 +58,7 @@ describe('updateReadmeDate', () => {
     await updateReadmeDate(join(dataDir, 'f.json.gz'), '2026-04-16');
 
     const updated = readFileSync(readmePath, 'utf-8');
-    assert.ok(updated.includes('from the **2026-04-16** FAA ReleasableAircraft'));
+    assert(updated.includes('from the **2026-04-16** FAA ReleasableAircraft'));
   });
 
   it('leaves the README untouched when it does not contain the pattern', async () => {
@@ -71,13 +70,13 @@ describe('updateReadmeDate', () => {
 
     await updateReadmeDate(join(dataDir, 'f.json.gz'), '2026-04-16');
 
-    assert.equal(readFileSync(readmePath, 'utf-8'), original);
+    expect(readFileSync(readmePath, 'utf-8')).toBe(original);
   });
 
   it('is a no-op when the README is missing', async () => {
     const dataDir = join(tempDir, 'data');
     mkdirSync(dataDir);
-    await assert.doesNotReject(updateReadmeDate(join(dataDir, 'f.json.gz'), '2026-04-16'));
+    await updateReadmeDate(join(dataDir, 'f.json.gz'), '2026-04-16');
   });
 
   it('only replaces the first matching occurrence', async () => {
@@ -93,7 +92,7 @@ describe('updateReadmeDate', () => {
     await updateReadmeDate(join(dataDir, 'f.json.gz'), '2026-04-16');
 
     const updated = readFileSync(readmePath, 'utf-8');
-    assert.ok(updated.includes('A from the **2026-04-16** FAA NASR'));
-    assert.ok(updated.includes('B from the **2025-02-02** FAA NASR'));
+    assert(updated.includes('A from the **2026-04-16** FAA NASR'));
+    assert(updated.includes('B from the **2025-02-02** FAA NASR'));
   });
 });

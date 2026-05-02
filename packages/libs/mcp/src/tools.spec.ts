@@ -6,8 +6,7 @@
  * payload shape.
  */
 
-import { afterEach, beforeEach, describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, it, expect, assert } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { z } from 'zod';
@@ -42,7 +41,7 @@ describe('geo tools', () => {
         arguments: { lat1: 40.6413, lon1: -73.7781, lat2: 33.9425, lon2: -118.4081 },
       });
       const parsed = z.object({ bearingDeg: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.bearingDeg >= 0 && parsed.bearingDeg < 360);
+      assert(parsed.bearingDeg >= 0 && parsed.bearingDeg < 360);
     } finally {
       await close();
     }
@@ -58,8 +57,8 @@ describe('geo tools', () => {
       const parsed = z
         .object({ bearingDeg: z.number(), distanceNm: z.number() })
         .parse(result.structuredContent);
-      assert.ok(parsed.distanceNm > 2100 && parsed.distanceNm < 2200);
-      assert.ok(parsed.bearingDeg >= 0 && parsed.bearingDeg < 360);
+      assert(parsed.distanceNm > 2100 && parsed.distanceNm < 2200);
+      assert(parsed.bearingDeg >= 0 && parsed.bearingDeg < 360);
     } finally {
       await close();
     }
@@ -73,7 +72,7 @@ describe('geo tools', () => {
         arguments: { lat1: 40, lon1: -74, lat2: 34, lon2: -118 },
       });
       const parsed = z.object({ lat: z.number(), lon: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.lat > 33 && parsed.lat < 41);
+      assert(parsed.lat > 33 && parsed.lat < 41);
     } finally {
       await close();
     }
@@ -87,8 +86,8 @@ describe('geo tools', () => {
         arguments: { lat: 40, lon: -74, bearingDeg: 90, travelDistanceNm: 100 },
       });
       const parsed = z.object({ lat: z.number(), lon: z.number() }).parse(result.structuredContent);
-      assert.ok(Math.abs(parsed.lat - 40) < 1);
-      assert.ok(parsed.lon > -74);
+      assert(Math.abs(parsed.lat - 40) < 1);
+      assert(parsed.lon > -74);
     } finally {
       await close();
     }
@@ -104,7 +103,7 @@ describe('flight-math tools', () => {
         arguments: { fieldElevationFt: 1000, altimeterSettingInHg: 29.92, oatCelsius: 30 },
       });
       const parsed = z.object({ densityAltitudeFt: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.densityAltitudeFt > 1000);
+      assert(parsed.densityAltitudeFt > 1000);
     } finally {
       await close();
     }
@@ -123,7 +122,7 @@ describe('flight-math tools', () => {
         },
       });
       const parsed = z.object({ trueAltitudeFt: z.number() }).parse(result.structuredContent);
-      assert.ok(Number.isFinite(parsed.trueAltitudeFt));
+      assert(Number.isFinite(parsed.trueAltitudeFt));
     } finally {
       await close();
     }
@@ -137,7 +136,7 @@ describe('flight-math tools', () => {
         arguments: { trueAirspeedKt: 250, pressureAltitudeFt: 10000 },
       });
       const parsed = z.object({ calibratedAirspeedKt: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.calibratedAirspeedKt > 0);
+      assert(parsed.calibratedAirspeedKt > 0);
     } finally {
       await close();
     }
@@ -151,7 +150,7 @@ describe('flight-math tools', () => {
         arguments: { trueAirspeedKt: 250, pressureAltitudeFt: 10000, oatCelsius: -20 },
       });
       const parsed = z.object({ calibratedAirspeedKt: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.calibratedAirspeedKt > 0);
+      assert(parsed.calibratedAirspeedKt > 0);
     } finally {
       await close();
     }
@@ -167,7 +166,7 @@ describe('flight-math tools', () => {
       const parsed = z
         .object({ headwindKt: z.number(), crosswindKt: z.number() })
         .parse(result.structuredContent);
-      assert.ok(Math.abs(parsed.crosswindKt) > 0);
+      assert(Math.abs(parsed.crosswindKt) > 0);
     } finally {
       await close();
     }
@@ -188,7 +187,7 @@ describe('flight-math tools', () => {
       const parsed = z
         .object({ directionDeg: z.number(), speedKt: z.number() })
         .parse(result.structuredContent);
-      assert.ok(parsed.speedKt > 0);
+      assert(parsed.speedKt > 0);
     } finally {
       await close();
     }
@@ -202,7 +201,7 @@ describe('flight-math tools', () => {
         arguments: { windDirectionDeg: 270, windSpeedKt: 20, runwayHeadingDeg: 360 },
       });
       const parsed = z.object({ crosswindKt: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.crosswindKt > 0);
+      assert(parsed.crosswindKt > 0);
     } finally {
       await close();
     }
@@ -216,7 +215,7 @@ describe('flight-math tools', () => {
         arguments: { currentAltitudeFt: 10000, targetAltitudeFt: 2000, descentAngleDeg: 3 },
       });
       const parsed = z.object({ distanceNm: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.distanceNm > 0);
+      assert(parsed.distanceNm > 0);
     } finally {
       await close();
     }
@@ -235,7 +234,7 @@ describe('flight-math tools', () => {
         },
       });
       const parsed = z.object({ distanceNm: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.distanceNm > 0);
+      assert(parsed.distanceNm > 0);
     } finally {
       await close();
     }
@@ -254,7 +253,7 @@ describe('flight-math tools', () => {
         },
       });
       const parsed = z.object({ descentRateFtPerMin: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.descentRateFtPerMin > 0);
+      assert(parsed.descentRateFtPerMin > 0);
     } finally {
       await close();
     }
@@ -273,7 +272,7 @@ describe('flight-math tools', () => {
         },
       });
       const parsed = z.object({ climbRateFtPerMin: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.climbRateFtPerMin > 0);
+      assert(parsed.climbRateFtPerMin > 0);
     } finally {
       await close();
     }
@@ -287,7 +286,7 @@ describe('flight-math tools', () => {
         arguments: { glidepathAngleDeg: 3, thresholdCrossingHeightFt: 350 },
       });
       const parsed = z.object({ distanceNm: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.distanceNm > 0);
+      assert(parsed.distanceNm > 0);
     } finally {
       await close();
     }
@@ -301,7 +300,7 @@ describe('flight-math tools', () => {
         arguments: { inboundCourseDeg: 90, headingToFixDeg: 270 },
       });
       const parsed = z.object({ entryType: z.string() }).parse(result.structuredContent);
-      assert.ok(['direct', 'teardrop', 'parallel'].includes(parsed.entryType));
+      assert(['direct', 'teardrop', 'parallel'].includes(parsed.entryType));
     } finally {
       await close();
     }
@@ -315,7 +314,7 @@ describe('flight-math tools', () => {
         arguments: { inboundCourseDeg: 90, headingToFixDeg: 270, rightTurns: false },
       });
       const parsed = z.object({ entryType: z.string() }).parse(result.structuredContent);
-      assert.ok(['direct', 'teardrop', 'parallel'].includes(parsed.entryType));
+      assert(['direct', 'teardrop', 'parallel'].includes(parsed.entryType));
     } finally {
       await close();
     }
@@ -329,7 +328,7 @@ describe('flight-math tools', () => {
         arguments: { trueAirspeedKt: 120 },
       });
       const parsed = z.object({ bankAngleDeg: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.bankAngleDeg > 0 && parsed.bankAngleDeg < 45);
+      assert(parsed.bankAngleDeg > 0 && parsed.bankAngleDeg < 45);
     } finally {
       await close();
     }
@@ -343,7 +342,7 @@ describe('flight-math tools', () => {
         arguments: { trueAirspeedKt: 120, bankAngleDeg: 25 },
       });
       const parsed = z.object({ turnRadiusNm: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.turnRadiusNm > 0);
+      assert(parsed.turnRadiusNm > 0);
     } finally {
       await close();
     }
@@ -362,7 +361,7 @@ describe('flight-math tools', () => {
         },
       });
       const parsed = z.object({ glideDistanceNm: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.glideDistanceNm > 0);
+      assert(parsed.glideDistanceNm > 0);
     } finally {
       await close();
     }
@@ -385,8 +384,8 @@ describe('flight-math tools', () => {
           }),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.times.sunrise !== null);
-      assert.ok(parsed.times.sunset !== null);
+      assert(parsed.times.sunrise !== null);
+      assert(parsed.times.sunset !== null);
     } finally {
       await close();
     }
@@ -399,9 +398,9 @@ describe('flight-math tools', () => {
         name: 'compute_solar_times',
         arguments: { lat: 40, lon: -74, dateUtc: 'not-a-date' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
       const parsed = z.object({ times: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.times, null);
+      expect(parsed.times).toBe(null);
     } finally {
       await close();
     }
@@ -415,7 +414,7 @@ describe('flight-math tools', () => {
         arguments: { lat: 40, lon: -74, dateTimeUtc: '2026-06-21T16:00:00Z' },
       });
       const parsed = z.object({ isDaytime: z.boolean() }).parse(result.structuredContent);
-      assert.equal(typeof parsed.isDaytime, 'boolean');
+      expect(typeof parsed.isDaytime).toBe('boolean');
     } finally {
       await close();
     }
@@ -428,9 +427,9 @@ describe('flight-math tools', () => {
         name: 'is_daytime',
         arguments: { lat: 40, lon: -74, dateTimeUtc: 'not-a-date' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
       const parsed = z.object({ isDaytime: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.isDaytime, null);
+      expect(parsed.isDaytime).toBe(null);
     } finally {
       await close();
     }
@@ -444,7 +443,7 @@ describe('flight-math tools', () => {
         arguments: { lat: 40, lon: -74 },
       });
       const parsed = z.object({ declinationDeg: z.number() }).parse(result.structuredContent);
-      assert.ok(Number.isFinite(parsed.declinationDeg));
+      assert(Number.isFinite(parsed.declinationDeg));
     } finally {
       await close();
     }
@@ -458,7 +457,7 @@ describe('flight-math tools', () => {
         arguments: { lat: 40, lon: -74, altitudeFt: 30000, dateUtc: '2026-01-01T00:00:00Z' },
       });
       const parsed = z.object({ declinationDeg: z.number() }).parse(result.structuredContent);
-      assert.ok(Number.isFinite(parsed.declinationDeg));
+      assert(Number.isFinite(parsed.declinationDeg));
     } finally {
       await close();
     }
@@ -471,9 +470,9 @@ describe('flight-math tools', () => {
         name: 'compute_magnetic_declination',
         arguments: { lat: 40, lon: -74, dateUtc: 'bogus' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
       const parsed = z.object({ declinationDeg: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.declinationDeg, null);
+      expect(parsed.declinationDeg).toBe(null);
     } finally {
       await close();
     }
@@ -487,7 +486,7 @@ describe('flight-math tools', () => {
         arguments: { trueBearingDeg: 90, lat: 40, lon: -74 },
       });
       const parsed = z.object({ magneticBearingDeg: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.magneticBearingDeg >= 0 && parsed.magneticBearingDeg < 360);
+      assert(parsed.magneticBearingDeg >= 0 && parsed.magneticBearingDeg < 360);
     } finally {
       await close();
     }
@@ -500,7 +499,7 @@ describe('flight-math tools', () => {
         name: 'convert_true_to_magnetic_bearing',
         arguments: { trueBearingDeg: 90, lat: 40, lon: -74, dateUtc: 'bogus' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
     } finally {
       await close();
     }
@@ -514,7 +513,7 @@ describe('flight-math tools', () => {
         arguments: { magneticBearingDeg: 90, lat: 40, lon: -74 },
       });
       const parsed = z.object({ trueBearingDeg: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.trueBearingDeg >= 0 && parsed.trueBearingDeg < 360);
+      assert(parsed.trueBearingDeg >= 0 && parsed.trueBearingDeg < 360);
     } finally {
       await close();
     }
@@ -527,7 +526,7 @@ describe('flight-math tools', () => {
         name: 'convert_magnetic_to_true_bearing',
         arguments: { magneticBearingDeg: 90, lat: 40, lon: -74, dateUtc: 'bogus' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
     } finally {
       await close();
     }
@@ -541,7 +540,7 @@ describe('flight-math tools', () => {
         arguments: { distanceNm: 300, groundSpeedKt: 120, fuelBurnPerHr: 10 },
       });
       const parsed = z.object({ fuelRequired: z.number() }).parse(result.structuredContent);
-      assert.ok(parsed.fuelRequired > 0);
+      assert(parsed.fuelRequired > 0);
     } finally {
       await close();
     }
@@ -562,8 +561,8 @@ describe('flight-math tools', () => {
       const parsed = z
         .object({ distanceNm: z.number(), timeHrs: z.number() })
         .parse(result.structuredContent);
-      assert.ok(parsed.distanceNm > 0);
-      assert.ok(parsed.timeHrs > 0);
+      assert(parsed.distanceNm > 0);
+      assert(parsed.timeHrs > 0);
     } finally {
       await close();
     }
@@ -579,7 +578,7 @@ describe('flight-math tools', () => {
       const parsed = z
         .object({ distanceNm: z.number(), timeHrs: z.number() })
         .parse(result.structuredContent);
-      assert.ok(parsed.distanceNm > 0 && parsed.distanceNm < 500);
+      assert(parsed.distanceNm > 0 && parsed.distanceNm < 500);
     } finally {
       await close();
     }
@@ -597,7 +596,7 @@ describe('airport tools', () => {
       const parsed = z
         .object({ airport: z.object({ faaId: z.string() }).nullable() })
         .parse(result.structuredContent);
-      assert.equal(parsed.airport?.faaId, 'JFK');
+      expect(parsed.airport?.faaId).toBe('JFK');
     } finally {
       await close();
     }
@@ -611,7 +610,7 @@ describe('airport tools', () => {
         arguments: { faaId: 'ZZZZZ' },
       });
       const parsed = z.object({ airport: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.airport, null);
+      expect(parsed.airport).toBe(null);
     } finally {
       await close();
     }
@@ -625,7 +624,7 @@ describe('airport tools', () => {
         arguments: { icao: 'ZZZZ' },
       });
       const parsed = z.object({ airport: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.airport, null);
+      expect(parsed.airport).toBe(null);
     } finally {
       await close();
     }
@@ -639,7 +638,7 @@ describe('airport tools', () => {
         arguments: { lat: 40.6413, lon: -73.7781, maxDistanceNm: 50, limit: 5 },
       });
       const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(parsed.results.length > 0);
+      assert(parsed.results.length > 0);
     } finally {
       await close();
     }
@@ -658,7 +657,7 @@ describe('airport tools', () => {
         },
       });
       const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.results));
+      assert(Array.isArray(parsed.results));
     } finally {
       await close();
     }
@@ -672,7 +671,7 @@ describe('airport tools', () => {
         arguments: { text: 'BOSTON', limit: 5, facilityTypes: ['AIRPORT'] },
       });
       const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(parsed.results.length > 0);
+      assert(parsed.results.length > 0);
     } finally {
       await close();
     }
@@ -690,7 +689,7 @@ describe('airspace tools', () => {
       const parsed = z
         .object({ features: z.array(z.object({ type: z.string() }).passthrough()) })
         .parse(result.structuredContent);
-      assert.ok(parsed.features.length > 0);
+      assert(parsed.features.length > 0);
     } finally {
       await close();
     }
@@ -712,7 +711,7 @@ describe('airspace tools', () => {
         .object({ features: z.array(z.object({ type: z.string() }).passthrough()) })
         .parse(result.structuredContent);
       for (const feat of parsed.features) {
-        assert.equal(feat.type, 'CLASS_B');
+        expect(feat.type).toBe('CLASS_B');
       }
     } finally {
       await close();
@@ -732,8 +731,8 @@ describe('airspace tools', () => {
           features: z.array(z.unknown()),
         })
         .parse(result.structuredContent);
-      assert.equal(parsed.airport, null);
-      assert.equal(parsed.features.length, 0);
+      expect(parsed.airport).toBe(null);
+      expect(parsed.features.length).toBe(0);
     } finally {
       await close();
     }
@@ -752,8 +751,8 @@ describe('airspace tools', () => {
           features: z.array(z.unknown()),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.airport);
-      assert.equal(parsed.airport.faaId, 'JFK');
+      assert(parsed.airport);
+      expect(parsed.airport.faaId).toBe('JFK');
     } finally {
       await close();
     }
@@ -769,7 +768,7 @@ describe('airspace tools', () => {
       const parsed = z
         .object({ features: z.array(z.object({ identifier: z.string() }).passthrough()) })
         .parse(result.structuredContent);
-      assert.ok(parsed.features.length > 0);
+      assert(parsed.features.length > 0);
     } finally {
       await close();
     }
@@ -787,9 +786,9 @@ describe('airspace tools', () => {
           features: z.array(z.object({ artccStratum: z.string() }).passthrough()),
         })
         .parse(result.structuredContent);
-      assert.ok(parsed.features.length > 0);
+      assert(parsed.features.length > 0);
       for (const feat of parsed.features) {
-        assert.equal(feat.artccStratum, 'LOW');
+        expect(feat.artccStratum).toBe('LOW');
       }
     } finally {
       await close();
@@ -806,7 +805,7 @@ describe('navaid tools', () => {
         arguments: { frequency: 113.5, limit: 5 },
       });
       const parsed = z.object({ navaids: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.navaids));
+      assert(Array.isArray(parsed.navaids));
     } finally {
       await close();
     }
@@ -820,7 +819,7 @@ describe('navaid tools', () => {
         arguments: { frequency: 113.5, navaidTypes: ['VOR', 'VORTAC'], limit: 5 },
       });
       const parsed = z.object({ navaids: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.navaids));
+      assert(Array.isArray(parsed.navaids));
     } finally {
       await close();
     }
@@ -834,7 +833,7 @@ describe('navaid tools', () => {
         arguments: { lat: 40.6413, lon: -73.7781, maxDistanceNm: 50, limit: 5 },
       });
       const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(parsed.results.length > 0);
+      assert(parsed.results.length > 0);
     } finally {
       await close();
     }
@@ -854,7 +853,7 @@ describe('navaid tools', () => {
         },
       });
       const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.results));
+      assert(Array.isArray(parsed.results));
     } finally {
       await close();
     }
@@ -868,7 +867,7 @@ describe('navaid tools', () => {
         arguments: { text: 'BOSTON', limit: 5, navaidTypes: ['VOR', 'VORTAC'] },
       });
       const parsed = z.object({ navaids: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.navaids));
+      assert(Array.isArray(parsed.navaids));
     } finally {
       await close();
     }
@@ -886,7 +885,7 @@ describe('fix tools', () => {
       const parsed = z
         .object({ fixes: z.array(z.object({ identifier: z.string() }).passthrough()) })
         .parse(result.structuredContent);
-      assert.ok(parsed.fixes.length > 0);
+      assert(parsed.fixes.length > 0);
     } finally {
       await close();
     }
@@ -900,7 +899,7 @@ describe('fix tools', () => {
         arguments: { lat: 40.6413, lon: -73.7781, maxDistanceNm: 100, limit: 5 },
       });
       const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(parsed.results.length > 0);
+      assert(parsed.results.length > 0);
     } finally {
       await close();
     }
@@ -920,7 +919,7 @@ describe('fix tools', () => {
         },
       });
       const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.results));
+      assert(Array.isArray(parsed.results));
     } finally {
       await close();
     }
@@ -934,7 +933,7 @@ describe('fix tools', () => {
         arguments: { text: 'MERIT', limit: 5, useCodes: ['WP'] },
       });
       const parsed = z.object({ fixes: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.fixes));
+      assert(Array.isArray(parsed.fixes));
     } finally {
       await close();
     }
@@ -950,7 +949,7 @@ describe('airway tools', () => {
         arguments: { designation: 'V16' },
       });
       const parsed = z.object({ airways: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(parsed.airways.length > 0);
+      assert(parsed.airways.length > 0);
     } finally {
       await close();
     }
@@ -964,7 +963,7 @@ describe('airway tools', () => {
         arguments: { designation: 'V16', entryFix: 'ZZZZZ', exitFix: 'YYYYY' },
       });
       const parsed = z.object({ expansion: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.expansion, null);
+      expect(parsed.expansion).toBe(null);
     } finally {
       await close();
     }
@@ -978,7 +977,7 @@ describe('airway tools', () => {
         arguments: { ident: 'BOS' },
       });
       const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.results));
+      assert(Array.isArray(parsed.results));
     } finally {
       await close();
     }
@@ -992,7 +991,7 @@ describe('airway tools', () => {
         arguments: { text: 'V', airwayTypes: ['VICTOR'], limit: 5 },
       });
       const parsed = z.object({ airways: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(Array.isArray(parsed.airways));
+      assert(Array.isArray(parsed.airways));
     } finally {
       await close();
     }
@@ -1008,7 +1007,7 @@ describe('procedure tools', () => {
         arguments: { airportId: 'KJFK' },
       });
       const parsed = z.object({ procedures: z.array(z.unknown()) }).parse(result.structuredContent);
-      assert.ok(parsed.procedures.length > 0);
+      assert(parsed.procedures.length > 0);
     } finally {
       await close();
     }
@@ -1027,7 +1026,7 @@ describe('procedure tools', () => {
         })
         .parse(result.structuredContent);
       for (const proc of parsed.procedures) {
-        assert.equal(proc.type, 'IAP');
+        expect(proc.type).toBe('IAP');
       }
     } finally {
       await close();
@@ -1046,7 +1045,7 @@ describe('icao registry tools', () => {
       const parsed = z
         .object({ aircraft: z.union([z.null(), z.object({}).passthrough()]) })
         .parse(result.structuredContent);
-      assert.ok(parsed.aircraft === null || typeof parsed.aircraft === 'object');
+      assert(parsed.aircraft === null || typeof parsed.aircraft === 'object');
     } finally {
       await close();
     }
@@ -1062,7 +1061,7 @@ describe('flightplan tools', () => {
         arguments: { routeString: 'KJFK DCT KLAX' },
       });
       const parsed = z.object({ route: z.unknown() }).parse(result.structuredContent);
-      assert.ok(parsed.route !== undefined);
+      assert(parsed.route !== undefined);
     } finally {
       await close();
     }
@@ -1085,7 +1084,7 @@ describe('flightplan tools', () => {
             .passthrough(),
         })
         .parse(result.structuredContent);
-      assert.ok(
+      assert(
         parsed.result.estimatedTimeEnrouteHrs === undefined ||
           parsed.result.estimatedTimeEnrouteHrs === null,
       );
@@ -1110,7 +1109,7 @@ describe('weather parsing tools', () => {
       const parsed = z
         .object({ taf: z.object({ stationId: z.string() }).passthrough() })
         .parse(result.structuredContent);
-      assert.equal(parsed.taf.stationId, 'KJFK');
+      expect(parsed.taf.stationId).toBe('KJFK');
     } finally {
       await close();
     }
@@ -1123,9 +1122,9 @@ describe('weather parsing tools', () => {
         name: 'parse_taf',
         arguments: { raw: 'not a taf' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
       const parsed = z.object({ taf: z.null() }).parse(result.structuredContent);
-      assert.equal(parsed.taf, null);
+      expect(parsed.taf).toBe(null);
     } finally {
       await close();
     }
@@ -1146,7 +1145,7 @@ describe('weather parsing tools', () => {
         arguments: { raw },
       });
       const parsed = z.object({ sigmet: z.unknown() }).parse(result.structuredContent);
-      assert.ok(parsed.sigmet !== null);
+      assert(parsed.sigmet !== null);
     } finally {
       await close();
     }
@@ -1170,7 +1169,7 @@ describe('weather parsing tools', () => {
         arguments: { raw },
       });
       const parsed = z.object({ airmet: z.unknown() }).parse(result.structuredContent);
-      assert.ok(parsed.airmet !== undefined);
+      assert(parsed.airmet !== undefined);
     } finally {
       await close();
     }
@@ -1183,7 +1182,7 @@ describe('weather parsing tools', () => {
         name: 'parse_airmet',
         arguments: { raw: 'definitely not an airmet' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
     } finally {
       await close();
     }
@@ -1199,7 +1198,7 @@ describe('weather parsing tools', () => {
       const parsed = z
         .object({ pirep: z.object({ type: z.string() }).passthrough() })
         .parse(result.structuredContent);
-      assert.equal(parsed.pirep.type, 'UA');
+      expect(parsed.pirep.type).toBe('UA');
     } finally {
       await close();
     }
@@ -1227,7 +1226,7 @@ describe('notam parsing tools', () => {
       const parsed = z
         .object({ notam: z.object({ id: z.string() }).passthrough() })
         .parse(result.structuredContent);
-      assert.equal(parsed.notam.id, 'A0030/26');
+      expect(parsed.notam.id).toBe('A0030/26');
     } finally {
       await close();
     }
@@ -1240,7 +1239,7 @@ describe('notam parsing tools', () => {
         name: 'parse_icao_notam',
         arguments: { raw: 'definitely-not-a-notam' },
       });
-      assert.equal(result.isError, true);
+      expect(result.isError).toBe(true);
     } finally {
       await close();
     }
@@ -1255,7 +1254,7 @@ describe('notam parsing tools', () => {
         arguments: { raw },
       });
       const parsed = z.object({ notam: z.unknown() }).parse(result.structuredContent);
-      assert.ok(parsed.notam !== null);
+      assert(parsed.notam !== null);
     } finally {
       await close();
     }
@@ -1308,11 +1307,11 @@ describe('weather fetch tools (mocked) - extra paths', () => {
           minimumIntensity: 'mod',
         },
       });
-      assert.ok(stub.lastUrl?.includes('id=KDEN'));
-      assert.ok(stub.lastUrl?.includes('distance=100'));
-      assert.ok(stub.lastUrl?.includes('age=2'));
-      assert.ok(stub.lastUrl?.includes('level=100'));
-      assert.ok(stub.lastUrl?.includes('inten=mod'));
+      assert(stub.lastUrl?.includes('id=KDEN'));
+      assert(stub.lastUrl?.includes('distance=100'));
+      assert(stub.lastUrl?.includes('age=2'));
+      assert(stub.lastUrl?.includes('level=100'));
+      assert(stub.lastUrl?.includes('inten=mod'));
     } finally {
       await close();
     }
@@ -1329,7 +1328,7 @@ describe('weather fetch tools (mocked) - extra paths', () => {
       const parsed = z
         .object({ pireps: z.array(z.unknown()), parseErrors: z.array(z.unknown()) })
         .parse(result.structuredContent);
-      assert.equal(parsed.pireps.length, 0);
+      expect(parsed.pireps.length).toBe(0);
     } finally {
       await close();
     }
@@ -1346,8 +1345,8 @@ describe('weather fetch tools (mocked) - extra paths', () => {
       const parsed = z
         .object({ sigmets: z.array(z.unknown()), parseErrors: z.array(z.unknown()) })
         .parse(result.structuredContent);
-      assert.equal(parsed.sigmets.length, 0);
-      assert.ok(stub.lastUrl?.includes('/airsigmet?'));
+      expect(parsed.sigmets.length).toBe(0);
+      assert(stub.lastUrl?.includes('/airsigmet?'));
     } finally {
       await close();
     }
@@ -1364,8 +1363,8 @@ describe('weather fetch tools (mocked) - extra paths', () => {
       const parsed = z
         .object({ sigmets: z.array(z.unknown()), parseErrors: z.array(z.unknown()) })
         .parse(result.structuredContent);
-      assert.equal(parsed.sigmets.length, 0);
-      assert.ok(stub.lastUrl?.includes('/isigmet?'));
+      expect(parsed.sigmets.length).toBe(0);
+      assert(stub.lastUrl?.includes('/isigmet?'));
     } finally {
       await close();
     }
@@ -1390,7 +1389,7 @@ describe('weather fetch tools (mocked) - extra paths', () => {
       const parsed = z
         .object({ forecast: z.object({ productCode: z.string() }).passthrough() })
         .parse(result.structuredContent);
-      assert.equal(parsed.forecast.productCode, 'FD1US1');
+      expect(parsed.forecast.productCode).toBe('FD1US1');
     } finally {
       await close();
     }
