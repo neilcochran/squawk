@@ -636,3 +636,39 @@ describe('parseTaf - NSW and SKC in FM group', () => {
     expect(tempo.sky.layers[0]!.altitudeFtAgl).toBe(1200);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Coverage edge cases
+// ---------------------------------------------------------------------------
+
+describe('parseTaf - coverage edge cases', () => {
+  it('parses a TAF base forecast with vertical visibility (VV)', () => {
+    const raw = `TAF KSFO 041730Z 0418/0524 21012KT 1/4SM FG VV002`;
+    const result = parseTaf(raw);
+    expect(result.forecast[0]!.sky.verticalVisibilityFtAgl).toBe(200);
+  });
+
+  it('parses a TAF base forecast with SKC (sky clear)', () => {
+    const raw = `TAF KAUS 041730Z 0418/0524 18012KT P6SM SKC`;
+    const result = parseTaf(raw);
+    expect(result.forecast[0]!.sky.clear).toBe('SKC');
+  });
+
+  it('parses a TAF with a wind shear group (WS###/dddssKT)', () => {
+    const raw = `TAF KJFK 041730Z 0418/0524 21012KT P6SM SCT250 WS020/22045KT`;
+    const result = parseTaf(raw);
+    expect(result.forecast[0]!.windShear).toBeDefined();
+  });
+
+  it('parses a TAF with a turbulence layer 5-group', () => {
+    const raw = `TAF KORD 041730Z 0418/0524 24012KT P6SM SCT250 520304`;
+    const result = parseTaf(raw);
+    expect(result.forecast[0]!.turbulence?.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('parses a TAF with an icing layer 6-group', () => {
+    const raw = `TAF KBOS 041730Z 0418/0524 24012KT P6SM SCT250 620304`;
+    const result = parseTaf(raw);
+    expect(result.forecast[0]!.icing?.length).toBeGreaterThanOrEqual(1);
+  });
+});

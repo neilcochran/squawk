@@ -1006,6 +1006,123 @@ describe('parseMetar - remarks', () => {
     expect(result.remarks.hailSizeIn).toBe(0.75);
   });
 
+  it('parses hail size (GR LESS THAN fraction)', () => {
+    const result = parseMetar(
+      'METAR KMSP 041853Z 24015KT 5SM TSRAGR BKN030CB 18/16 A2992 RMK AO2 GR LESS THAN 1/4 SLP132 T01830161',
+    );
+    assert(result.remarks);
+    expect(result.remarks.hailSizeIn).toBe(0.25);
+  });
+
+  it('parses hail size (GR whole inches without fraction)', () => {
+    const result = parseMetar(
+      'METAR KOMA 041853Z 24022G35KT 2SM SHGR FEW015CB BKN030 OVC050 16/12 A2978 RMK AO2 GR 2 SLP078 T01610122',
+    );
+    assert(result.remarks);
+    expect(result.remarks.hailSizeIn).toBe(2);
+  });
+
+  it('parses VIRGA without a direction qualifier', () => {
+    const result = parseMetar(
+      'METAR KSFO 041853Z 24015KT 10SM SCT060 BKN200 22/14 A3015 RMK AO2 VIRGA',
+    );
+    assert(result.remarks);
+    assert(result.remarks.virga);
+    expect(result.remarks.virga[0]!.direction).toBeUndefined();
+  });
+
+  it('parses pressure falling rapidly (PRESFR) and rising rapidly (PRESRR)', () => {
+    const fallResult = parseMetar('METAR KSFO 041853Z 24015KT 10SM CLR 22/14 A3015 RMK AO2 PRESFR');
+    assert(fallResult.remarks);
+    expect(fallResult.remarks.pressureFallingRapidly).toBe(true);
+
+    const riseResult = parseMetar('METAR KSFO 041853Z 24015KT 10SM CLR 22/14 A3015 RMK AO2 PRESRR');
+    assert(riseResult.remarks);
+    expect(riseResult.remarks.pressureRisingRapidly).toBe(true);
+  });
+
+  it('parses maintenance indicator ($) in remarks', () => {
+    const result = parseMetar('METAR KSFO 041853Z 24015KT 10SM CLR 22/14 A3015 RMK AO2 $');
+    assert(result.remarks);
+    expect(result.remarks.maintenanceIndicator).toBe(true);
+  });
+
+  it('parses snow increasing rapidly (SNINCR last/total)', () => {
+    const result = parseMetar(
+      'METAR KMSP 041853Z 36018KT 1SM SN BKN015 OVC025 M02/M04 A2998 RMK AO2 SNINCR 2/8',
+    );
+    assert(result.remarks);
+    expect(result.remarks.snowIncreasing).toEqual({ lastHourIn: 2, totalDepthIn: 8 });
+  });
+
+  it('parses tower visibility (TWR VIS) in remarks', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1/2SM FG OVC003 12/11 A2998 RMK AO2 TWR VIS 1/4',
+    );
+    assert(result.remarks);
+    assert(result.remarks.towerSurfaceVisibility);
+    expect(result.remarks.towerSurfaceVisibility[0]!.source).toBe('TWR');
+    expect(result.remarks.towerSurfaceVisibility[0]!.visibilitySm).toBe(0.25);
+  });
+
+  it('parses surface visibility (SFC VIS) in remarks', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1/2SM FG OVC003 12/11 A2998 RMK AO2 SFC VIS 1/2',
+    );
+    assert(result.remarks);
+    assert(result.remarks.towerSurfaceVisibility);
+    expect(result.remarks.towerSurfaceVisibility[0]!.source).toBe('SFC');
+  });
+
+  it('parses variable visibility (VIS minVmax) in remarks', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1SM BR OVC008 12/11 A2998 RMK AO2 VIS 1/2V2',
+    );
+    assert(result.remarks);
+    assert(result.remarks.variableVisibility);
+    expect(result.remarks.variableVisibility.minVisibilitySm).toBe(0.5);
+    expect(result.remarks.variableVisibility.maxVisibilitySm).toBe(2);
+  });
+
+  it('parses sector visibility (VIS dir value) in remarks', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1SM BR OVC008 12/11 A2998 RMK AO2 VIS NE2',
+    );
+    assert(result.remarks);
+    assert(result.remarks.sectorVisibility);
+    expect(result.remarks.sectorVisibility[0]!.direction).toBe('NE');
+    expect(result.remarks.sectorVisibility[0]!.visibilitySm).toBe(2);
+  });
+
+  it('parses CIG variable ceiling in remarks', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 5SM BKN005 12/11 A2998 RMK AO2 CIG 003V008',
+    );
+    assert(result.remarks);
+    assert(result.remarks.variableCeiling);
+    expect(result.remarks.variableCeiling.minFtAgl).toBe(300);
+    expect(result.remarks.variableCeiling.maxFtAgl).toBe(800);
+  });
+
+  it('parses CIG at second location (CIG hhh RWY##)', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 5SM BKN005 12/11 A2998 RMK AO2 CIG 017 RWY11',
+    );
+    assert(result.remarks);
+    assert(result.remarks.secondLocationObservations);
+    expect(result.remarks.secondLocationObservations[0]!.type).toBe('CIG');
+  });
+
+  it('parses obscuration phenomenon (FG SCT000)', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1/2SM FG OVC005 12/11 A2998 RMK AO2 FG SCT000',
+    );
+    assert(result.remarks);
+    assert(result.remarks.obscurations);
+    expect(result.remarks.obscurations[0]!.phenomenon).toBe('FG');
+    expect(result.remarks.obscurations[0]!.coverage).toBe('SCT');
+  });
+
   it('parses precipitation begin/end events', () => {
     const result = parseMetar(
       'METAR KCLE 041856Z 24012KT 6SM -RA BR BKN018 OVC030 14/12 A2992 RMK AO2 RAB15E32B48 SNE10 SLP134 P0008 60012 70028 T01390117',
@@ -1174,5 +1291,46 @@ describe('parseMetar - flight category', () => {
   it('derives VFR for CAVOK', () => {
     const result = parseMetar('METAR EGLL 041850Z 24012KT CAVOK 19/08 Q1023 NOSIG');
     expect(result.flightCategory).toBe('VFR');
+  });
+});
+
+describe('parseMetar - coverage edge cases', () => {
+  it('parses a METAR with variable wind direction (200V270)', () => {
+    // Exercises the variable-wind 200V270 token branch.
+    const result = parseMetar('METAR KORD 041851Z 24015KT 200V270 10SM SCT250 22/14 A3015 RMK AO2');
+    expect(result.wind?.variableFromDeg).toBe(200);
+    expect(result.wind?.variableToDeg).toBe(270);
+  });
+
+  it('parses a METAR with NOSIG indicator after the body', () => {
+    const result = parseMetar('METAR EGLL 041850Z 24012KT 9999 BKN030 19/08 Q1023 NOSIG');
+    expect(result.isNoSignificantChange).toBe(true);
+  });
+
+  it('parses a METAR with vertical visibility (VV) when the sky is obscured', () => {
+    const result = parseMetar(
+      'METAR KPHL 041856Z 00000KT M1/4SM FG VV002 08/08 A3005 RMK AO2 SLP178 T00830078',
+    );
+    expect(result.sky.verticalVisibilityFtAgl).toBe(200);
+  });
+
+  it('parses a METAR with an SKC (sky clear) token', () => {
+    const result = parseMetar('METAR KAUS 041856Z 18012KT 10SM SKC 28/12 A3005 RMK AO2');
+    expect(result.sky.clear).toBe('SKC');
+  });
+
+  it('parses a METAR without temperature or altimeter (only mandatory fields)', () => {
+    // Exercises the falsy branches of temperatureC, dewpointC, altimeter spreads.
+    const result = parseMetar('METAR KSFO 041856Z 24012KT 10SM CLR');
+    expect(result.temperatureC).toBeUndefined();
+    expect(result.dewpointC).toBeUndefined();
+    expect(result.altimeter).toBeUndefined();
+  });
+
+  it('parses an RVR group with rising trend indicator', () => {
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 1/2SM R10L/2400FTU FG OVC004 12/11 A2998 RMK AO2',
+    );
+    expect(result.rvr[0]?.trend).toBe('RISING');
   });
 });

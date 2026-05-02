@@ -1253,4 +1253,194 @@ describe('parseSigmet', () => {
       expect(() => parseSigmetBulletin('')).toThrow(/Empty SIGMET bulletin/);
     });
   });
+
+  describe('coverage edge cases', () => {
+    it('parses a convective SIGMET with no VALID UNTIL line', () => {
+      // Exercises the "validUntil undefined" spread branch.
+      const noValidUntil = `WST SIGMET CONVECTIVE SIGMET 99C
+KS OK TX
+FROM 30NW ICT-40S MCI-20W ADM-50SW ABI-30NW ICT
+AREA TS MOV FROM 26025KT. TOPS ABV FL450.`;
+      const result = parseSigmet(noValidUntil);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.validUntil).toBeUndefined();
+    });
+
+    it('parses CONVECTIVE NONE without a trailing outlook', () => {
+      // Exercises the "outlook undefined" branch in parseConvectiveNone.
+      const noneOnly = `WSUS31 KKCI 041855
+SIGE
+CONVECTIVE SIGMET...NONE`;
+      const result = parseSigmet(noneOnly);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.isNone).toBe(true);
+      expect(result.outlook).toBeUndefined();
+    });
+
+    it('parses CONVECTIVE NONE without a recognized SIG header (region defaults to C)', () => {
+      // Exercises the "regionMatch null" branch in parseConvectiveNone.
+      const noHeader = `CONVECTIVE SIGMET...NONE`;
+      const result = parseSigmet(noHeader);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.region).toBe('C');
+    });
+
+    it('parses convective outlook-only without a SIG region header (region defaults to C)', () => {
+      // Exercises the "regionMatch null" branch in parseConvectiveOutlookOnly.
+      const noRegionOutlook = `CONVECTIVE SIGMET OUTLOOK
+VALID 042055-050055Z
+FROM 40N MCI-30SE STL-50S MEM-30W OKC-40N MCI
+AREA OF TSTMS MOVING FROM 25020KT. TOPS ABV FL400.`;
+      const result = parseSigmet(noRegionOutlook);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.region).toBe('C');
+      expect(result.isOutlookOnly).toBe(true);
+    });
+
+    it('parses non-convective SEV TURB without DUE TO clause and without altitude range', () => {
+      // Exercises the fallback turbulence parsing path with no altRange / no causeMatch.
+      const fallbackTurb = `WSUS01 KKCI 041855
+SIGE
+NEW YORK OCEANIC SIGMET ALFA 1 VALID 041855/042255 KKCI-
+KZWY OAKLAND OCEANIC FIR SEV TURB FCST.`;
+      const result = parseSigmet(fallbackTurb);
+      expect(result.format).toBe('INTERNATIONAL');
+    });
+
+    it('parses non-convective SEV ICE fallback without alt range or cause', () => {
+      // Falls into the simple SEV ICE fallback in parseNonConvectiveHazards.
+      const fallbackIce = `WSNT04 KKCI 041855
+SIGA
+NEW YORK SIGMET ALFA 4 VALID 041855/042255 KKCI- KZNY NEW YORK FIR SEV ICE FCST.`;
+      const result = parseSigmet(fallbackIce);
+      expect(result.format).toBe('INTERNATIONAL');
+    });
+
+    it('parses convective SIGMET without states match (defensive return)', () => {
+      // Body has VALID UNTIL but no FROM-prefixed area line, so
+      // parseConvectiveStates regex fails to match - exercising the
+      // `afterValid === null` branch.
+      const noStates = `WST SIGMET CONVECTIVE SIGMET 77C
+VALID UNTIL 2055Z
+AREA TS POSSIBLE.`;
+      const result = parseSigmet(noStates);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.states).toBeUndefined();
+    });
+
+    it('falls back to simple SEV TURB hazard parsing when structured pattern does not match', () => {
+      // Body has "SEV TURB" but lacks the "BTN ... AND ..." altitude structure
+      // that the structured hazardPattern regex requires, so the parser
+      // hits the simple fallback path in parseNonConvectiveHazards.
+      const fallbackTurb = `WSUS01 KKCI 011200
+SIGC
+SIGMET TANGO 1 VALID UNTIL 011600Z
+SEV TURB FCST. DUE TO JTSTR.`;
+      const result = parseSigmet(fallbackTurb);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.hazards.some((h) => h.hazardType === 'TURBULENCE')).toBe(true);
+    });
+
+    it('falls back to simple SEV ICE hazard parsing when structured pattern does not match', () => {
+      const fallbackIce = `WSUS06 KKCI 011200
+SIGC
+SIGMET ZULU 1 VALID UNTIL 011600Z
+SEV ICE FCST. DUE TO FRZRA.`;
+      const result = parseSigmet(fallbackIce);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.hazards.some((h) => h.hazardType === 'ICING')).toBe(true);
+    });
+
+    it('falls back to simple SEV DUST/SANDSTORM hazard parsing when structured pattern does not match', () => {
+      const fallbackDust = `WSUS06 KKCI 011200
+SIGC
+SIGMET ALFA 1 VALID UNTIL 011600Z
+SEV DUST/SANDSTORM FCST VIS BLW 2SM.`;
+      const result = parseSigmet(fallbackDust);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.hazards.some((h) => h.hazardType === 'DUST_SANDSTORM')).toBe(true);
+    });
+
+    it('parses non-convective cancellation without trailing reason text', () => {
+      // Exercises the "reason undefined" branch in parseNonConvectiveCancellation.
+      const cancel = `WSUS01 KKCI 011200
+SIGC
+CANCEL SIGMET TANGO 1. `;
+      const result = parseSigmet(cancel);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.isCancellation).toBe(true);
+      expect(result.cancellationReason).toBeUndefined();
+    });
+
+    it('parses convective SIGMET with whole-number hail size (2 IN)', () => {
+      // Exercises the whole-number fallback in parseHailSize.
+      const wholeHail = `WST SIGMET CONVECTIVE SIGMET 12C
+VALID UNTIL 011600Z
+KS OK
+FROM 30NW ICT-40S MCI-30NW ICT
+AREA SEV TS MOV FROM 26025KT. TOPS ABV FL450.
+HAIL TO 2 IN POSSIBLE.`;
+      const result = parseSigmet(wholeHail);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.hailSizeIn).toBe(2);
+    });
+
+    it('parses convective SIGMET with TOPS not ABV (standard form)', () => {
+      // Exercises the "isAbove false" branch in parseTops.
+      const standardTops = `WST SIGMET CONVECTIVE SIGMET 13C
+VALID UNTIL 011600Z
+KS OK
+FROM 30NW ICT-40S MCI-30NW ICT
+AREA TS MOV FROM 26025KT. TOPS TO FL420.`;
+      const result = parseSigmet(standardTops);
+      expect(result.format).toBe('CONVECTIVE');
+      if (result.format !== 'CONVECTIVE') {
+        return;
+      }
+      expect(result.tops?.isAbove).toBe(false);
+    });
+
+    it('parses a non-convective volcanic ash SIGMET that hits the VA fallback', () => {
+      const va = `WSUS01 KKCI 011200
+SIGE
+SIGMET INDIA 1 VALID 011200/011800Z
+VOLCANIC ASH OBS AT 1100Z FL250/FL400 MOV E.`;
+      const result = parseSigmet(va);
+      expect(result.format).toBe('NONCONVECTIVE');
+      if (result.format !== 'NONCONVECTIVE') {
+        return;
+      }
+      expect(result.hazards.some((h) => h.hazardType === 'VOLCANIC_ASH')).toBe(true);
+    });
+  });
 });

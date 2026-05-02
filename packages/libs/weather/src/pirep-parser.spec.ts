@@ -650,4 +650,56 @@ describe('parsePirep', () => {
       expect(pirep.remarks).toBe('SEVERE TURBULENCE AND ICING');
     });
   });
+
+  describe('coverage edge cases', () => {
+    it('treats reports without a UA/UUA prefix as routine', () => {
+      // Exercises the no-prefix fallback branch (pirepType defaults to UA).
+      const pirep = parsePirep('/OV BOS/TM 1530/FL080/TP C172');
+      expect(pirep.type).toBe('UA');
+    });
+
+    it('returns no time when /TM is missing the 4-digit format', () => {
+      const pirep = parsePirep('UA /OV BOS/TM ABC/FL080/TP C172');
+      expect(pirep.time).toBeUndefined();
+    });
+
+    it('parses turbulence with only base altitude (single value, no range)', () => {
+      // Hits the "if baseFtMsl undefined, set base" branch.
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/TB MOD 080');
+      assert(pirep.turbulence);
+      expect(pirep.turbulence[0]!.intensity).toBe('MOD');
+      expect(pirep.turbulence[0]!.baseFtMsl).toBe(8000);
+    });
+
+    it('parses turbulence with both base and top via two single altitudes', () => {
+      // Hits the "else assign top" branch in turbulence single-altitude parsing.
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/TB MOD 080 120');
+      assert(pirep.turbulence);
+      expect(pirep.turbulence[0]!.baseFtMsl).toBe(8000);
+      expect(pirep.turbulence[0]!.topFtMsl).toBe(12000);
+    });
+
+    it('parses icing with single base altitude (no range)', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/IC MOD 080');
+      assert(pirep.icing);
+      expect(pirep.icing[0]!.baseFtMsl).toBe(8000);
+    });
+
+    it('parses icing with two single altitudes (sets base then top)', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/IC MOD 080 120');
+      assert(pirep.icing);
+      expect(pirep.icing[0]!.baseFtMsl).toBe(8000);
+      expect(pirep.icing[0]!.topFtMsl).toBe(12000);
+    });
+
+    it('returns no temperature when /TA value is unparseable', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/TA XYZ');
+      expect(pirep.temperatureC).toBeUndefined();
+    });
+
+    it('returns no wind when /WV value does not match dddss format', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/WV INVALID');
+      expect(pirep.wind).toBeUndefined();
+    });
+  });
 });
