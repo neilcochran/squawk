@@ -37,7 +37,7 @@ npm install @squawk/procedure-data
 import { usBundledProcedures } from '@squawk/procedure-data';
 
 // Inspect metadata
-console.log(usBundledProcedures.properties.cifpCycleDate); // "2026-03-25"
+console.log(usBundledProcedures.properties.cifpCycleDate); // "2026-05-14"
 console.log(usBundledProcedures.properties.recordCount);
 console.log(usBundledProcedures.properties.sidCount);
 console.log(usBundledProcedures.properties.starCount);
