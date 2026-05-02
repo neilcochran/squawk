@@ -41,7 +41,7 @@
     "@squawk/fixes": "*",
     "@squawk/navaid-data": "*",
     "@squawk/navaids": "*",
-    "@tanstack/react-router": "^1.168.24",
+    "@tanstack/react-router": "^1.169.1",
     "@vis.gl/react-maplibre": "^8.1.1",
     "maplibre-gl": "^5.24.0",
     "pmtiles": "^4.4.1",
