@@ -50,7 +50,7 @@
     "zod": "^4.4.2"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^10.0.1",
     "@maplibre/maplibre-gl-style-spec": "^24.8.1",
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/router-cli": "^1.166.40",
