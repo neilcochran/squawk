@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { resolve, dirname } from 'node:path';
@@ -17,7 +16,7 @@ describe('loadUsBundledFixes', () => {
       fetch: async () => new Response(gzBytes),
     });
 
-    assert.deepEqual(dataset, usBundledFixes);
+    expect(dataset).toEqual(usBundledFixes);
   });
 
   it('produces the same dataset when the server advertises Content-Encoding: gzip', async () => {
@@ -28,16 +27,15 @@ describe('loadUsBundledFixes', () => {
         }),
     });
 
-    assert.deepEqual(dataset, usBundledFixes);
+    expect(dataset).toEqual(usBundledFixes);
   });
 
   it('throws when the response is not ok', async () => {
-    await assert.rejects(
+    await expect(
       loadUsBundledFixes({
         fetch: async () => new Response('', { status: 404, statusText: 'Not Found' }),
       }),
-      /404/,
-    );
+    ).rejects.toThrow(/404/);
   });
 
   it('passes the resolved URL to the custom fetch', async () => {
@@ -51,6 +49,6 @@ describe('loadUsBundledFixes', () => {
       },
     });
 
-    assert.equal(received, 'https://cdn.example/fixes.json.gz');
+    expect(received).toBe('https://cdn.example/fixes.json.gz');
   });
 });

@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { parseFaaNotam } from './faa-notam-parser.js';
 
 // ---------------------------------------------------------------------------
@@ -264,30 +263,27 @@ const FDC_BOS_IAP = [
 describe('parseFaaNotam', () => {
   describe('error handling', () => {
     it('throws on empty string', () => {
-      assert.throws(() => parseFaaNotam(''), /Empty NOTAM string/);
+      expect(() => parseFaaNotam('')).toThrow(/Empty NOTAM string/);
     });
 
     it('throws on string without ! prefix', () => {
-      assert.throws(() => parseFaaNotam('ATL 03/296 ATL NAV ILS U/S'), /must start with "!"/);
+      expect(() => parseFaaNotam('ATL 03/296 ATL NAV ILS U/S')).toThrow(/must start with "!"/);
     });
 
     it('throws on missing NOTAM number', () => {
-      assert.throws(
-        () => parseFaaNotam('!ATL ATL NAV ILS U/S 2603181657-2711082111EST'),
+      expect(() => parseFaaNotam('!ATL ATL NAV ILS U/S 2603181657-2711082111EST')).toThrow(
         /NOTAM number/,
       );
     });
 
     it('throws on missing keyword', () => {
-      assert.throws(
-        () => parseFaaNotam('!ATL 03/296 ATL UNKNOWN_KEYWORD body 2603181657-2711082111EST'),
-        /keyword/,
-      );
+      expect(() =>
+        parseFaaNotam('!ATL 03/296 ATL UNKNOWN_KEYWORD body 2603181657-2711082111EST'),
+      ).toThrow(/keyword/);
     });
 
     it('throws on missing effective period', () => {
-      assert.throws(
-        () => parseFaaNotam('!ATL 03/296 ATL NAV ILS RWY 08L IM U/S'),
+      expect(() => parseFaaNotam('!ATL 03/296 ATL NAV ILS RWY 08L IM U/S')).toThrow(
         /effective period/,
       );
     });
@@ -297,289 +293,289 @@ describe('parseFaaNotam', () => {
     describe('header parsing', () => {
       it('parses accountability', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.accountability, 'ATL');
+        expect(result.accountability).toBe('ATL');
       });
 
       it('parses classification as NOTAM_D', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.classification, 'NOTAM_D');
+        expect(result.classification).toBe('NOTAM_D');
       });
 
       it('parses NOTAM number', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.notamNumber, '03/296');
+        expect(result.notamNumber).toBe('03/296');
       });
 
       it('parses location code', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.locationCode, 'ATL');
+        expect(result.locationCode).toBe('ATL');
       });
 
       it('preserves the raw string', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.raw, ATL_NAV_ILS);
+        expect(result.raw).toBe(ATL_NAV_ILS);
       });
     });
 
     describe('keyword parsing', () => {
       it('parses NAV keyword', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.keyword, 'NAV');
+        expect(result.keyword).toBe('NAV');
       });
 
       it('parses RWY keyword', () => {
         const result = parseFaaNotam(ANC_RWY_CLOSURE);
-        assert.equal(result.keyword, 'RWY');
+        expect(result.keyword).toBe('RWY');
       });
 
       it('parses TWY keyword', () => {
         const result = parseFaaNotam(ANC_TWY_CLOSURE);
-        assert.equal(result.keyword, 'TWY');
+        expect(result.keyword).toBe('TWY');
       });
 
       it('parses OBST keyword', () => {
         const result = parseFaaNotam(ATL_OBST_CRANE);
-        assert.equal(result.keyword, 'OBST');
+        expect(result.keyword).toBe('OBST');
       });
 
       it('parses AIRSPACE keyword', () => {
         const result = parseFaaNotam(ATL_AIRSPACE_UAS);
-        assert.equal(result.keyword, 'AIRSPACE');
+        expect(result.keyword).toBe('AIRSPACE');
       });
 
       it('parses APRON keyword', () => {
         const result = parseFaaNotam(BOS_APRON);
-        assert.equal(result.keyword, 'APRON');
+        expect(result.keyword).toBe('APRON');
       });
 
       it('parses AD keyword', () => {
         const result = parseFaaNotam(BOS_AD);
-        assert.equal(result.keyword, 'AD');
+        expect(result.keyword).toBe('AD');
       });
 
       it('parses SVC keyword', () => {
         const result = parseFaaNotam(BOS_SVC);
-        assert.equal(result.keyword, 'SVC');
+        expect(result.keyword).toBe('SVC');
       });
     });
 
     describe('body text parsing', () => {
       it('extracts NAV body text', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.text, 'ILS RWY 08L IM U/S');
+        expect(result.text).toBe('ILS RWY 08L IM U/S');
       });
 
       it('extracts RWY closure body text', () => {
         const result = parseFaaNotam(ANC_RWY_CLOSURE);
-        assert.equal(result.text, '07R/25L CLSD EXC XNG');
+        expect(result.text).toBe('07R/25L CLSD EXC XNG');
       });
 
       it('extracts OBST body text with coordinates', () => {
         const result = parseFaaNotam(ATL_OBST_CRANE);
-        assert.ok(result.text.includes('(ASN 2025-ASO-10025-NRA)'));
-        assert.ok(result.text.includes('FLAGGED AND LGTD'));
+        assert(result.text.includes('(ASN 2025-ASO-10025-NRA)'));
+        assert(result.text.includes('FLAGGED AND LGTD'));
       });
 
       it('extracts multi-line body text', () => {
         const result = parseFaaNotam(ATL_AIRSPACE_UAS);
-        assert.ok(result.text.includes('NUMEROUS UAS WI AN AREA'));
-        assert.ok(result.text.includes('SFC-300FT AGL'));
+        assert(result.text.includes('NUMEROUS UAS WI AN AREA'));
+        assert(result.text.includes('SFC-300FT AGL'));
       });
 
       it('extracts TWY closure body text', () => {
         const result = parseFaaNotam(ANC_TWY_CLOSURE);
-        assert.ok(result.text.includes('TWY R BTN ALASKA CARGO PORT RAMP'));
+        assert(result.text.includes('TWY R BTN ALASKA CARGO PORT RAMP'));
       });
 
       it('extracts APRON body text', () => {
         const result = parseFaaNotam(BOS_APRON);
-        assert.ok(result.text.includes('J PAD PRKG RAMP CLSD'));
+        assert(result.text.includes('J PAD PRKG RAMP CLSD'));
       });
 
       it('extracts RWY with PPR body text', () => {
         const result = parseFaaNotam(BOS_RWY_CLSD_TAX);
-        assert.ok(result.text.includes('15L/33R CLSD EXC TAX'));
-        assert.ok(result.text.includes('PPR 131.1'));
+        assert(result.text.includes('15L/33R CLSD EXC TAX'));
+        assert(result.text.includes('PPR 131.1'));
       });
     });
 
     describe('effective period parsing', () => {
       it('parses standard effective period', () => {
         const result = parseFaaNotam(ANC_RWY_CLOSURE);
-        assert.deepEqual(result.effectiveFrom, {
+        expect(result.effectiveFrom).toEqual({
           year: 26,
           month: 4,
           day: 12,
           hour: 7,
           minute: 30,
         });
-        assert.deepEqual(result.effectiveUntil, {
+        expect(result.effectiveUntil).toEqual({
           year: 26,
           month: 4,
           day: 12,
           hour: 14,
           minute: 30,
         });
-        assert.equal(result.isEstimatedEnd, false);
-        assert.equal(result.isPermanent, false);
+        expect(result.isEstimatedEnd).toBe(false);
+        expect(result.isPermanent).toBe(false);
       });
 
       it('parses EST end time', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.deepEqual(result.effectiveFrom, {
+        expect(result.effectiveFrom).toEqual({
           year: 26,
           month: 3,
           day: 18,
           hour: 16,
           minute: 57,
         });
-        assert.deepEqual(result.effectiveUntil, {
+        expect(result.effectiveUntil).toEqual({
           year: 27,
           month: 11,
           day: 8,
           hour: 21,
           minute: 11,
         });
-        assert.equal(result.isEstimatedEnd, true);
-        assert.equal(result.isPermanent, false);
+        expect(result.isEstimatedEnd).toBe(true);
+        expect(result.isPermanent).toBe(false);
       });
 
       it('parses PERM end time', () => {
         const result = parseFaaNotam(HNL_RWY_PERM);
-        assert.deepEqual(result.effectiveFrom, {
+        expect(result.effectiveFrom).toEqual({
           year: 25,
           month: 5,
           day: 24,
           hour: 19,
           minute: 47,
         });
-        assert.equal(result.effectiveUntil, undefined);
-        assert.equal(result.isEstimatedEnd, false);
-        assert.equal(result.isPermanent, true);
+        expect(result.effectiveUntil).toBe(undefined);
+        expect(result.isEstimatedEnd).toBe(false);
+        expect(result.isPermanent).toBe(true);
       });
     });
 
     describe('does not include FDC-only fields', () => {
       it('does not include airportName on NOTAM D', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.airportName, undefined);
+        expect(result.airportName).toBe(undefined);
       });
 
       it('does not include airportLocation on NOTAM D', () => {
         const result = parseFaaNotam(ATL_NAV_ILS);
-        assert.equal(result.airportLocation, undefined);
+        expect(result.airportLocation).toBe(undefined);
       });
     });
 
     describe('various airports', () => {
       it('parses Anchorage PAPI NOTAM', () => {
         const result = parseFaaNotam(ANC_RWY_PAPI);
-        assert.equal(result.accountability, 'ANC');
-        assert.equal(result.keyword, 'RWY');
-        assert.ok(result.text.includes('25R PAPI U/S'));
-        assert.equal(result.isEstimatedEnd, true);
+        expect(result.accountability).toBe('ANC');
+        expect(result.keyword).toBe('RWY');
+        assert(result.text.includes('25R PAPI U/S'));
+        expect(result.isEstimatedEnd).toBe(true);
       });
 
       it('parses Boston tower light NOTAM', () => {
         const result = parseFaaNotam(BOS_OBST_TOWER);
-        assert.equal(result.accountability, 'BOS');
-        assert.equal(result.keyword, 'OBST');
-        assert.ok(result.text.includes('TOWER LGT'));
+        expect(result.accountability).toBe('BOS');
+        expect(result.keyword).toBe('OBST');
+        assert(result.text.includes('TOWER LGT'));
       });
 
       it('parses Honolulu AD closure', () => {
         const result = parseFaaNotam(HNL_AD_CLSD);
-        assert.equal(result.accountability, 'HNL');
-        assert.equal(result.keyword, 'AD');
-        assert.ok(result.text.includes('CLSD TO V-22 VTOL'));
+        expect(result.accountability).toBe('HNL');
+        expect(result.keyword).toBe('AD');
+        assert(result.text.includes('CLSD TO V-22 VTOL'));
       });
 
       it('parses Honolulu NAV ILS', () => {
         const result = parseFaaNotam(HNL_NAV_ILS);
-        assert.equal(result.accountability, 'HNL');
-        assert.equal(result.keyword, 'NAV');
-        assert.ok(result.text.includes('ILS RWY 08L OM U/S'));
-        assert.equal(result.isEstimatedEnd, true);
+        expect(result.accountability).toBe('HNL');
+        expect(result.keyword).toBe('NAV');
+        assert(result.text.includes('ILS RWY 08L OM U/S'));
+        expect(result.isEstimatedEnd).toBe(true);
       });
 
       it('parses Boston AIRSPACE UAS', () => {
         const result = parseFaaNotam(BOS_AIRSPACE_UAS);
-        assert.equal(result.keyword, 'AIRSPACE');
-        assert.ok(result.text.includes('UAS WI AN AREA'));
-        assert.ok(result.text.includes('SFC-400FT AGL'));
+        expect(result.keyword).toBe('AIRSPACE');
+        assert(result.text.includes('UAS WI AN AREA'));
+        assert(result.text.includes('SFC-400FT AGL'));
       });
 
       it('parses Boston SVC NOTAM', () => {
         const result = parseFaaNotam(BOS_SVC);
-        assert.equal(result.keyword, 'SVC');
-        assert.ok(result.text.includes('MBST/WS DETECTION SYSTEM NOT AVBL'));
+        expect(result.keyword).toBe('SVC');
+        assert(result.text.includes('MBST/WS DETECTION SYSTEM NOT AVBL'));
       });
 
       it('parses Anchorage APRON FICON', () => {
         const result = parseFaaNotam(ANC_APRON_FICON);
-        assert.equal(result.keyword, 'APRON');
-        assert.ok(result.text.includes('FICON'));
-        assert.ok(result.text.includes('PATCHY ICE'));
+        expect(result.keyword).toBe('APRON');
+        assert(result.text.includes('FICON'));
+        assert(result.text.includes('PATCHY ICE'));
       });
 
       it('parses Anchorage APRON remote spots', () => {
         const result = parseFaaNotam(ANC_APRON_REMOTE);
-        assert.equal(result.keyword, 'APRON');
-        assert.ok(result.text.includes('REMOTE APN SPOT R7'));
+        expect(result.keyword).toBe('APRON');
+        assert(result.text.includes('REMOTE APN SPOT R7'));
       });
 
       it('parses Boston RWY closure with PPR and phone', () => {
         const result = parseFaaNotam(BOS_RWY_CLSD_PPR);
-        assert.equal(result.keyword, 'RWY');
-        assert.ok(result.text.includes('04L/22R CLSD EXC TAX'));
-        assert.ok(result.text.includes('617-561-1919'));
+        expect(result.keyword).toBe('RWY');
+        assert(result.text.includes('04L/22R CLSD EXC TAX'));
+        assert(result.text.includes('617-561-1919'));
       });
 
       it('parses Atlanta AIRSPACE controlled burn', () => {
         const result = parseFaaNotam(ATL_AIRSPACE_BURN);
-        assert.equal(result.keyword, 'AIRSPACE');
-        assert.ok(result.text.includes('CONTROLLED BURN'));
-        assert.ok(result.text.includes('.5NM RADIUS'));
+        expect(result.keyword).toBe('AIRSPACE');
+        assert(result.text.includes('CONTROLLED BURN'));
+        assert(result.text.includes('.5NM RADIUS'));
       });
 
       it('parses Anchorage TWY sign NOTAM', () => {
         const result = parseFaaNotam(ANC_TWY_SIGN);
-        assert.equal(result.keyword, 'TWY');
-        assert.ok(result.text.includes('LOCATION SIGN'));
-        assert.equal(result.isEstimatedEnd, true);
+        expect(result.keyword).toBe('TWY');
+        assert(result.text.includes('LOCATION SIGN'));
+        expect(result.isEstimatedEnd).toBe(true);
       });
 
       it('parses Boston RWY sequenced flashing lights', () => {
         const result = parseFaaNotam(BOS_RWY_FLG_LGT);
-        assert.equal(result.keyword, 'RWY');
-        assert.ok(result.text.includes('22L SEQUENCED FLG LGT U/S'));
+        expect(result.keyword).toBe('RWY');
+        assert(result.text.includes('22L SEQUENCED FLG LGT U/S'));
       });
 
       it('parses Boston TWY sign NOTAM', () => {
         const result = parseFaaNotam(BOS_TWY_SIGN);
-        assert.equal(result.keyword, 'TWY');
-        assert.ok(result.text.includes('C APN SIGN LGT U/S'));
+        expect(result.keyword).toBe('TWY');
+        assert(result.text.includes('C APN SIGN LGT U/S'));
       });
 
       it('parses Boston OBST crane', () => {
         const result = parseFaaNotam(BOS_OBST_CRANE);
-        assert.equal(result.keyword, 'OBST');
-        assert.ok(result.text.includes('(ASN 2025-ANE-1558-NRA)'));
-        assert.ok(result.text.includes('FLAGGED AND LGTD'));
+        expect(result.keyword).toBe('OBST');
+        assert(result.text.includes('(ASN 2025-ANE-1558-NRA)'));
+        assert(result.text.includes('FLAGGED AND LGTD'));
       });
 
       it('parses Boston OBST stack', () => {
         const result = parseFaaNotam(BOS_OBST_STACK);
-        assert.equal(result.keyword, 'OBST');
-        assert.ok(result.text.includes('(ASN UNKNOWN)'));
-        assert.ok(result.text.includes('550FT (500FT AGL)'));
+        expect(result.keyword).toBe('OBST');
+        assert(result.text.includes('(ASN UNKNOWN)'));
+        assert(result.text.includes('550FT (500FT AGL)'));
       });
 
       it('parses Anchorage RWY closure with exception', () => {
         const result = parseFaaNotam(ANC_RWY_CLSD_XNG);
-        assert.equal(result.keyword, 'RWY');
-        assert.equal(result.notamNumber, '04/027');
-        assert.ok(result.text.includes('07R/25L CLSD EXC XNG'));
+        expect(result.keyword).toBe('RWY');
+        expect(result.notamNumber).toBe('04/027');
+        assert(result.text.includes('07R/25L CLSD EXC XNG'));
       });
     });
   });
@@ -588,210 +584,210 @@ describe('parseFaaNotam', () => {
     describe('header parsing', () => {
       it('parses FDC accountability', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.equal(result.accountability, 'FDC');
+        expect(result.accountability).toBe('FDC');
       });
 
       it('parses classification as FDC', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.equal(result.classification, 'FDC');
+        expect(result.classification).toBe('FDC');
       });
 
       it('parses FDC NOTAM number', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.equal(result.notamNumber, '5/3374');
+        expect(result.notamNumber).toBe('5/3374');
       });
 
       it('parses location code', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.equal(result.locationCode, 'ATL');
+        expect(result.locationCode).toBe('ATL');
       });
     });
 
     describe('keyword parsing', () => {
       it('parses IAP keyword', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.equal(result.keyword, 'IAP');
+        expect(result.keyword).toBe('IAP');
       });
 
       it('parses STAR keyword', () => {
         const result = parseFaaNotam(FDC_BOS_STAR);
-        assert.equal(result.keyword, 'STAR');
+        expect(result.keyword).toBe('STAR');
       });
 
       it('parses ODP keyword', () => {
         const result = parseFaaNotam(FDC_BOS_ODP);
-        assert.equal(result.keyword, 'ODP');
+        expect(result.keyword).toBe('ODP');
       });
 
       it('parses SID keyword', () => {
         const result = parseFaaNotam(FDC_ANC_SID);
-        assert.equal(result.keyword, 'SID');
+        expect(result.keyword).toBe('SID');
       });
     });
 
     describe('airport info extraction', () => {
       it('extracts airport name for Atlanta', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.equal(result.airportName, 'HARTSFIELD/JACKSON ATLANTA INTL');
+        expect(result.airportName).toBe('HARTSFIELD/JACKSON ATLANTA INTL');
       });
 
       it('extracts airport location for Atlanta', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.equal(result.airportLocation, 'ATLANTA, GA');
+        expect(result.airportLocation).toBe('ATLANTA, GA');
       });
 
       it('extracts airport name for Boston', () => {
         const result = parseFaaNotam(FDC_BOS_STAR);
-        assert.equal(result.airportName, 'GENERAL EDWARD LAWRENCE LOGAN INTL');
+        expect(result.airportName).toBe('GENERAL EDWARD LAWRENCE LOGAN INTL');
       });
 
       it('extracts airport location for Boston', () => {
         const result = parseFaaNotam(FDC_BOS_STAR);
-        assert.equal(result.airportLocation, 'BOSTON, MA');
+        expect(result.airportLocation).toBe('BOSTON, MA');
       });
 
       it('extracts airport name for Anchorage', () => {
         const result = parseFaaNotam(FDC_ANC_IAP);
-        assert.equal(result.airportName, 'TED STEVENS ANCHORAGE INTL');
+        expect(result.airportName).toBe('TED STEVENS ANCHORAGE INTL');
       });
 
       it('extracts airport location for Anchorage', () => {
         const result = parseFaaNotam(FDC_ANC_IAP);
-        assert.equal(result.airportLocation, 'ANCHORAGE, AK');
+        expect(result.airportLocation).toBe('ANCHORAGE, AK');
       });
 
       it('extracts airport name for Honolulu', () => {
         const result = parseFaaNotam(FDC_HNL_STAR);
-        assert.equal(result.airportName, 'DANIEL K INOUYE INTL AIRPORT');
+        expect(result.airportName).toBe('DANIEL K INOUYE INTL AIRPORT');
       });
 
       it('extracts airport location for Honolulu', () => {
         const result = parseFaaNotam(FDC_HNL_STAR);
-        assert.equal(result.airportLocation, 'HONOLULU HI');
+        expect(result.airportLocation).toBe('HONOLULU HI');
       });
     });
 
     describe('body text parsing', () => {
       it('extracts IAP body text without airport info', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.ok(result.text.startsWith('ILS PRM RWY 10'));
-        assert.ok(result.text.includes('LOCALIZER NOT SUITABLE FOR ELECTRONIC ROLLOUT GUIDANCE'));
+        assert(result.text.startsWith('ILS PRM RWY 10'));
+        assert(result.text.includes('LOCALIZER NOT SUITABLE FOR ELECTRONIC ROLLOUT GUIDANCE'));
         // Should not contain airport name
-        assert.ok(!result.text.includes('HARTSFIELD'));
+        assert(!result.text.includes('HARTSFIELD'));
       });
 
       it('extracts STAR body text', () => {
         const result = parseFaaNotam(FDC_BOS_STAR);
-        assert.ok(result.text.includes('OOSHN FIVE ARRIVAL'));
-        assert.ok(result.text.includes('RIFLE ROUTE INCREASE MOCA'));
+        assert(result.text.includes('OOSHN FIVE ARRIVAL'));
+        assert(result.text.includes('RIFLE ROUTE INCREASE MOCA'));
       });
 
       it('extracts ODP body text', () => {
         const result = parseFaaNotam(FDC_BOS_ODP);
-        assert.ok(result.text.includes('TAKEOFF MINIMUMS'));
-        assert.ok(result.text.includes('TREE 3930 FT FROM DER'));
+        assert(result.text.includes('TAKEOFF MINIMUMS'));
+        assert(result.text.includes('TREE 3930 FT FROM DER'));
       });
 
       it('extracts SID body text', () => {
         const result = parseFaaNotam(FDC_ANC_SID);
-        assert.ok(result.text.includes('TURNAGAIN EIGHT DEPARTURE'));
-        assert.ok(result.text.includes('ENA VOR 348-015'));
+        assert(result.text.includes('TURNAGAIN EIGHT DEPARTURE'));
+        assert(result.text.includes('ENA VOR 348-015'));
       });
 
       it('extracts Honolulu STAR body text', () => {
         const result = parseFaaNotam(FDC_HNL_STAR);
-        assert.ok(result.text.includes('SHLAE ONE ARRIVAL NOT AUTHORIZED'));
+        assert(result.text.includes('SHLAE ONE ARRIVAL NOT AUTHORIZED'));
       });
     });
 
     describe('effective period parsing', () => {
       it('parses EST end time on FDC NOTAM', () => {
         const result = parseFaaNotam(FDC_ATL_IAP);
-        assert.deepEqual(result.effectiveFrom, {
+        expect(result.effectiveFrom).toEqual({
           year: 25,
           month: 12,
           day: 2,
           hour: 18,
           minute: 12,
         });
-        assert.deepEqual(result.effectiveUntil, {
+        expect(result.effectiveUntil).toEqual({
           year: 27,
           month: 12,
           day: 2,
           hour: 18,
           minute: 9,
         });
-        assert.equal(result.isEstimatedEnd, true);
+        expect(result.isEstimatedEnd).toBe(true);
       });
 
       it('parses PERM end time on FDC NOTAM', () => {
         const result = parseFaaNotam(FDC_BOS_STAR);
-        assert.deepEqual(result.effectiveFrom, {
+        expect(result.effectiveFrom).toEqual({
           year: 25,
           month: 10,
           day: 30,
           hour: 15,
           minute: 0,
         });
-        assert.equal(result.effectiveUntil, undefined);
-        assert.equal(result.isPermanent, true);
+        expect(result.effectiveUntil).toBe(undefined);
+        expect(result.isPermanent).toBe(true);
       });
 
       it('parses standard end time on FDC NOTAM', () => {
         const result = parseFaaNotam(FDC_HNL_STAR);
-        assert.deepEqual(result.effectiveFrom, {
+        expect(result.effectiveFrom).toEqual({
           year: 25,
           month: 12,
           day: 31,
           hour: 22,
           minute: 51,
         });
-        assert.deepEqual(result.effectiveUntil, {
+        expect(result.effectiveUntil).toEqual({
           year: 26,
           month: 12,
           day: 31,
           hour: 23,
           minute: 59,
         });
-        assert.equal(result.isEstimatedEnd, false);
-        assert.equal(result.isPermanent, false);
+        expect(result.isEstimatedEnd).toBe(false);
+        expect(result.isPermanent).toBe(false);
       });
     });
 
     describe('various FDC NOTAMs', () => {
       it('parses FDC RNAV IAP at Atlanta', () => {
         const result = parseFaaNotam(FDC_ATL_IAP_RNAV);
-        assert.equal(result.keyword, 'IAP');
-        assert.equal(result.airportName, 'HARTSFIELD/JACKSON ATLANTA INTL');
-        assert.ok(result.text.includes('RNAV (RNP) Z RWY 28'));
-        assert.ok(result.text.includes('RNP 0.11 DA 1315/HAT 317'));
+        expect(result.keyword).toBe('IAP');
+        expect(result.airportName).toBe('HARTSFIELD/JACKSON ATLANTA INTL');
+        assert(result.text.includes('RNAV (RNP) Z RWY 28'));
+        assert(result.text.includes('RNP 0.11 DA 1315/HAT 317'));
       });
 
       it('parses FDC ODP/DVA at Boston', () => {
         const result = parseFaaNotam(FDC_BOS_DVA);
-        assert.equal(result.keyword, 'ODP');
-        assert.ok(result.text.includes('DIVERSE VECTOR AREA'));
+        expect(result.keyword).toBe('ODP');
+        assert(result.text.includes('DIVERSE VECTOR AREA'));
       });
 
       it('parses FDC IAP at Boston', () => {
         const result = parseFaaNotam(FDC_BOS_IAP);
-        assert.equal(result.keyword, 'IAP');
-        assert.equal(result.airportName, 'GENERAL EDWARD LAWRENCE LOGAN INTL');
-        assert.ok(result.text.includes('ILS OR LOC RWY 15R'));
+        expect(result.keyword).toBe('IAP');
+        expect(result.airportName).toBe('GENERAL EDWARD LAWRENCE LOGAN INTL');
+        assert(result.text.includes('ILS OR LOC RWY 15R'));
       });
 
       it('parses FDC IAP at Honolulu with crane info', () => {
         const result = parseFaaNotam(FDC_HNL_IAP);
-        assert.equal(result.keyword, 'IAP');
-        assert.ok(result.text.includes('TEMPORARY CRANE 235 MSL'));
-        assert.ok(result.text.includes('2024-AWP-5290-NRA'));
+        expect(result.keyword).toBe('IAP');
+        assert(result.text.includes('TEMPORARY CRANE 235 MSL'));
+        assert(result.text.includes('2024-AWP-5290-NRA'));
       });
 
       it('parses FDC SID at Anchorage', () => {
         const result = parseFaaNotam(FDC_ANC_SID);
-        assert.equal(result.keyword, 'SID');
-        assert.equal(result.airportName, 'TED STEVENS ANCHORAGE INTL');
-        assert.equal(result.airportLocation, 'ANCHORAGE, AK');
+        expect(result.keyword).toBe('SID');
+        expect(result.airportName).toBe('TED STEVENS ANCHORAGE INTL');
+        expect(result.airportLocation).toBe('ANCHORAGE, AK');
       });
     });
   });
@@ -799,161 +795,161 @@ describe('parseFaaNotam', () => {
   describe('untested keywords (constructed data)', () => {
     it('parses COM keyword', () => {
       const result = parseFaaNotam(CONSTRUCTED_COM);
-      assert.equal(result.keyword, 'COM');
-      assert.equal(result.accountability, 'DCA');
-      assert.equal(result.locationCode, 'DCA');
-      assert.ok(result.text.includes('CTAF 122.725 CHANGED TO 123.075'));
+      expect(result.keyword).toBe('COM');
+      expect(result.accountability).toBe('DCA');
+      expect(result.locationCode).toBe('DCA');
+      assert(result.text.includes('CTAF 122.725 CHANGED TO 123.075'));
     });
 
     it('parses VFP keyword', () => {
       const result = parseFaaNotam(CONSTRUCTED_VFP);
-      assert.equal(result.keyword, 'VFP');
-      assert.ok(result.text.includes('RIVER VISUAL RWY 13 NA'));
-      assert.equal(result.isEstimatedEnd, true);
+      expect(result.keyword).toBe('VFP');
+      assert(result.text.includes('RIVER VISUAL RWY 13 NA'));
+      expect(result.isEstimatedEnd).toBe(true);
     });
 
     it('parses DVA keyword', () => {
       const result = parseFaaNotam(CONSTRUCTED_DVA);
-      assert.equal(result.keyword, 'DVA');
-      assert.ok(result.text.includes('DIVERSE VECTOR AREA NOT AUTHORIZED'));
+      expect(result.keyword).toBe('DVA');
+      assert(result.text.includes('DIVERSE VECTOR AREA NOT AUTHORIZED'));
     });
 
     it('parses ROUTE keyword', () => {
       const result = parseFaaNotam(CONSTRUCTED_ROUTE);
-      assert.equal(result.keyword, 'ROUTE');
-      assert.equal(result.locationCode, 'ZNY');
-      assert.ok(result.text.includes('V16 BTN ALB AND GDC NA'));
-      assert.equal(result.isEstimatedEnd, true);
+      expect(result.keyword).toBe('ROUTE');
+      expect(result.locationCode).toBe('ZNY');
+      assert(result.text.includes('V16 BTN ALB AND GDC NA'));
+      expect(result.isEstimatedEnd).toBe(true);
     });
 
     it('parses CHART keyword on FDC NOTAM', () => {
       const result = parseFaaNotam(CONSTRUCTED_CHART);
-      assert.equal(result.keyword, 'CHART');
-      assert.equal(result.classification, 'FDC');
-      assert.equal(result.isPermanent, true);
+      expect(result.keyword).toBe('CHART');
+      expect(result.classification).toBe('FDC');
+      expect(result.isPermanent).toBe(true);
     });
 
     it('parses DATA keyword', () => {
       const result = parseFaaNotam(CONSTRUCTED_DATA);
-      assert.equal(result.keyword, 'DATA');
-      assert.ok(result.text.includes('ARPT ELEVATION CHANGED TO 14FT'));
-      assert.equal(result.isPermanent, true);
+      expect(result.keyword).toBe('DATA');
+      assert(result.text.includes('ARPT ELEVATION CHANGED TO 14FT'));
+      expect(result.isPermanent).toBe(true);
     });
 
     it('parses SPECIAL keyword', () => {
       const result = parseFaaNotam(CONSTRUCTED_SPECIAL);
-      assert.equal(result.keyword, 'SPECIAL');
-      assert.ok(result.text.includes('SEE FDC NOTAM 6/1234'));
+      expect(result.keyword).toBe('SPECIAL');
+      assert(result.text.includes('SEE FDC NOTAM 6/1234'));
     });
 
     it('parses SECURITY keyword', () => {
       const result = parseFaaNotam(CONSTRUCTED_SECURITY);
-      assert.equal(result.keyword, 'SECURITY');
-      assert.ok(result.text.includes('FRZ IN EFFECT'));
-      assert.ok(result.text.includes('P-56'));
+      expect(result.keyword).toBe('SECURITY');
+      assert(result.text.includes('FRZ IN EFFECT'));
+      assert(result.text.includes('P-56'));
     });
   });
 
   describe('accountability and location variations (constructed data)', () => {
     it('parses 4-character CARF accountability', () => {
       const result = parseFaaNotam(CONSTRUCTED_CARF);
-      assert.equal(result.accountability, 'CARF');
-      assert.equal(result.classification, 'NOTAM_D');
-      assert.equal(result.locationCode, 'ZAB');
-      assert.equal(result.keyword, 'AIRSPACE');
-      assert.ok(result.text.includes('STNR ALT RESERVATION'));
+      expect(result.accountability).toBe('CARF');
+      expect(result.classification).toBe('NOTAM_D');
+      expect(result.locationCode).toBe('ZAB');
+      expect(result.keyword).toBe('AIRSPACE');
+      assert(result.text.includes('STNR ALT RESERVATION'));
     });
 
     it('parses 4-character SUAE accountability', () => {
       const result = parseFaaNotam(CONSTRUCTED_SUAE);
-      assert.equal(result.accountability, 'SUAE');
-      assert.equal(result.locationCode, 'ZNY');
-      assert.equal(result.keyword, 'AIRSPACE');
-      assert.ok(result.text.includes('R5206 ACT'));
+      expect(result.accountability).toBe('SUAE');
+      expect(result.locationCode).toBe('ZNY');
+      expect(result.keyword).toBe('AIRSPACE');
+      assert(result.text.includes('R5206 ACT'));
     });
 
     it('parses GPS accountability', () => {
       const result = parseFaaNotam(CONSTRUCTED_GPS);
-      assert.equal(result.accountability, 'GPS');
-      assert.equal(result.classification, 'NOTAM_D');
-      assert.equal(result.locationCode, 'ZAB');
-      assert.equal(result.keyword, 'NAV');
-      assert.ok(result.text.includes('GPS (NAFC GPS 15-01 E1)'));
+      expect(result.accountability).toBe('GPS');
+      expect(result.classification).toBe('NOTAM_D');
+      expect(result.locationCode).toBe('ZAB');
+      expect(result.keyword).toBe('NAV');
+      assert(result.text.includes('GPS (NAFC GPS 15-01 E1)'));
     });
 
     it('parses pointer NOTAM where accountability equals location', () => {
       const result = parseFaaNotam(CONSTRUCTED_POINTER);
-      assert.equal(result.accountability, 'VUJ');
-      assert.equal(result.locationCode, 'VUJ');
-      assert.equal(result.keyword, 'SVC');
-      assert.ok(result.text.includes('SEE ZTL 05/754 STANLY APP CLSD'));
+      expect(result.accountability).toBe('VUJ');
+      expect(result.locationCode).toBe('VUJ');
+      expect(result.keyword).toBe('SVC');
+      assert(result.text.includes('SEE ZTL 05/754 STANLY APP CLSD'));
     });
 
     it('parses digit-first alphanumeric location code', () => {
       const result = parseFaaNotam(CONSTRUCTED_ALPHANUM_LOC);
-      assert.equal(result.accountability, '8I1');
-      assert.equal(result.locationCode, '8I1');
-      assert.equal(result.keyword, 'AD');
-      assert.ok(result.text.includes('CLSD DUE TO CONSTRUCTION'));
+      expect(result.accountability).toBe('8I1');
+      expect(result.locationCode).toBe('8I1');
+      expect(result.keyword).toBe('AD');
+      assert(result.text.includes('CLSD DUE TO CONSTRUCTION'));
     });
   });
 
   describe('edge cases', () => {
     it('handles multi-line NOTAM D', () => {
       const result = parseFaaNotam(HNL_RWY_PERM);
-      assert.equal(result.keyword, 'RWY');
-      assert.ok(result.text.includes('04R/22L CHANGED TO 9002FT X 150FT'));
-      assert.ok(result.text.includes('LDA 8937FT'));
+      expect(result.keyword).toBe('RWY');
+      assert(result.text.includes('04R/22L CHANGED TO 9002FT X 150FT'));
+      assert(result.text.includes('LDA 8937FT'));
     });
 
     it('handles multi-line FDC NOTAM', () => {
       const result = parseFaaNotam(FDC_BOS_ODP);
-      assert.equal(result.keyword, 'ODP');
-      assert.ok(result.text.includes('172 FT MSL'));
+      expect(result.keyword).toBe('ODP');
+      assert(result.text.includes('172 FT MSL'));
     });
 
     it('handles NOTAM with double spaces', () => {
       const result = parseFaaNotam(ANC_APRON_FICON);
-      assert.equal(result.keyword, 'APRON');
-      assert.ok(result.text.includes('FICON'));
+      expect(result.keyword).toBe('APRON');
+      assert(result.text.includes('FICON'));
     });
 
     it('handles \\r\\n line endings', () => {
       const result = parseFaaNotam(FDC_CRLF);
-      assert.equal(result.classification, 'FDC');
-      assert.equal(result.keyword, 'IAP');
-      assert.equal(result.airportName, 'HARTSFIELD/JACKSON ATLANTA INTL');
-      assert.ok(result.text.includes('ILS RWY 27L AMDT 20'));
-      assert.equal(result.isEstimatedEnd, true);
+      expect(result.classification).toBe('FDC');
+      expect(result.keyword).toBe('IAP');
+      expect(result.airportName).toBe('HARTSFIELD/JACKSON ATLANTA INTL');
+      assert(result.text.includes('ILS RWY 27L AMDT 20'));
+      expect(result.isEstimatedEnd).toBe(true);
     });
 
     it('handles leading and trailing whitespace', () => {
       const result = parseFaaNotam(NOTAM_WITH_WHITESPACE);
-      assert.equal(result.accountability, 'ATL');
-      assert.equal(result.keyword, 'NAV');
-      assert.equal(result.text, 'ILS RWY 08L IM U/S');
-      assert.equal(result.raw, NOTAM_WITH_WHITESPACE.trim());
+      expect(result.accountability).toBe('ATL');
+      expect(result.keyword).toBe('NAV');
+      expect(result.text).toBe('ILS RWY 08L IM U/S');
+      expect(result.raw).toBe(NOTAM_WITH_WHITESPACE.trim());
     });
 
     it('handles body text containing 10-digit numbers', () => {
       const result = parseFaaNotam(CONSTRUCTED_BODY_WITH_DIGITS);
-      assert.equal(result.keyword, 'OBST');
-      assert.ok(result.text.includes('(ASR 1044148)'));
-      assert.ok(result.text.includes('333557.80N0842853.79W'));
+      expect(result.keyword).toBe('OBST');
+      assert(result.text.includes('(ASR 1044148)'));
+      assert(result.text.includes('333557.80N0842853.79W'));
       // Effective period should be correctly extracted from the end
-      assert.deepEqual(result.effectiveFrom, { year: 26, month: 3, day: 12, hour: 14, minute: 6 });
-      assert.deepEqual(result.effectiveUntil, { year: 26, month: 4, day: 26, hour: 14, minute: 6 });
+      expect(result.effectiveFrom).toEqual({ year: 26, month: 3, day: 12, hour: 14, minute: 6 });
+      expect(result.effectiveUntil).toEqual({ year: 26, month: 4, day: 26, hour: 14, minute: 6 });
     });
 
     it('handles FDC NOTAM with no airport info match', () => {
       const result = parseFaaNotam(FDC_NO_AIRPORT_MATCH);
-      assert.equal(result.classification, 'FDC');
-      assert.equal(result.keyword, 'STAR');
+      expect(result.classification).toBe('FDC');
+      expect(result.keyword).toBe('STAR');
       // Airport info parsing should fail gracefully - body contains everything
-      assert.equal(result.airportName, undefined);
-      assert.equal(result.airportLocation, undefined);
-      assert.ok(result.text.includes('DANIEL K'));
-      assert.ok(result.text.includes('KLANI FOUR ARRIVAL NOT AUTHORIZED'));
+      expect(result.airportName).toBe(undefined);
+      expect(result.airportLocation).toBe(undefined);
+      assert(result.text.includes('DANIEL K'));
+      assert(result.text.includes('KLANI FOUR ARRIVAL NOT AUTHORIZED'));
     });
   });
 });

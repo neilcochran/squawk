@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
 import type { Ats1Record, Ats2Record } from './parse-ats.js';
 import { parseAwy1, parseAwy2, buildWaypoint } from './parse-awy.js';
@@ -62,29 +61,29 @@ describe('parseAts1 - comprehensive field coverage', () => {
       { col: 343, len: 1, value: 'Y' },
     ]);
     const rec = parseAts1(line);
-    assert.equal(rec.rnavIndicator, 'R');
-    assert.equal(rec.airwayTypeChar, 'H');
-    assert.equal(rec.distanceToNextNm, 120.5);
-    assert.equal(rec.magneticCourseDeg, 45);
-    assert.equal(rec.magneticCourseOppositeDeg, 225);
-    assert.equal(rec.segmentDistanceNm, 80);
-    assert.equal(rec.minimumEnrouteAltitudeFt, 18000);
-    assert.equal(rec.minimumEnrouteAltitudeDirection, 'NE-SW');
-    assert.equal(rec.minimumEnrouteAltitudeOppositeFt, 17000);
-    assert.equal(rec.minimumEnrouteAltitudeOppositeDirection, 'SW-NE');
-    assert.equal(rec.maximumAuthorizedAltitudeFt, 45000);
-    assert.equal(rec.minimumObstructionClearanceAltitudeFt, 13500);
-    assert.equal(rec.discontinued, true);
-    assert.equal(rec.changeoverDistanceNm, 25);
-    assert.equal(rec.minimumCrossingAltitudeFt, 12000);
-    assert.equal(rec.minimumCrossingAltitudeDirection, 'NE');
-    assert.equal(rec.minimumCrossingAltitudeOppositeFt, 11500);
-    assert.equal(rec.minimumCrossingAltitudeOppositeDirection, 'SW');
-    assert.equal(rec.artccId, 'ZNY');
-    assert.equal(rec.gnssMinimumEnrouteAltitudeFt, 14000);
-    assert.equal(rec.gnssMinimumEnrouteAltitudeDirection, 'GNSS-NE');
-    assert.equal(rec.gnssMinimumEnrouteAltitudeOppositeFt, 13000);
-    assert.equal(rec.gnssMinimumEnrouteAltitudeOppositeDirection, 'GNSS-SW');
+    expect(rec.rnavIndicator).toBe('R');
+    expect(rec.airwayTypeChar).toBe('H');
+    expect(rec.distanceToNextNm).toBe(120.5);
+    expect(rec.magneticCourseDeg).toBe(45);
+    expect(rec.magneticCourseOppositeDeg).toBe(225);
+    expect(rec.segmentDistanceNm).toBe(80);
+    expect(rec.minimumEnrouteAltitudeFt).toBe(18000);
+    expect(rec.minimumEnrouteAltitudeDirection).toBe('NE-SW');
+    expect(rec.minimumEnrouteAltitudeOppositeFt).toBe(17000);
+    expect(rec.minimumEnrouteAltitudeOppositeDirection).toBe('SW-NE');
+    expect(rec.maximumAuthorizedAltitudeFt).toBe(45000);
+    expect(rec.minimumObstructionClearanceAltitudeFt).toBe(13500);
+    expect(rec.discontinued).toBe(true);
+    expect(rec.changeoverDistanceNm).toBe(25);
+    expect(rec.minimumCrossingAltitudeFt).toBe(12000);
+    expect(rec.minimumCrossingAltitudeDirection).toBe('NE');
+    expect(rec.minimumCrossingAltitudeOppositeFt).toBe(11500);
+    expect(rec.minimumCrossingAltitudeOppositeDirection).toBe('SW');
+    expect(rec.artccId).toBe('ZNY');
+    expect(rec.gnssMinimumEnrouteAltitudeFt).toBe(14000);
+    expect(rec.gnssMinimumEnrouteAltitudeDirection).toBe('GNSS-NE');
+    expect(rec.gnssMinimumEnrouteAltitudeOppositeFt).toBe(13000);
+    expect(rec.gnssMinimumEnrouteAltitudeOppositeDirection).toBe('GNSS-SW');
   });
 
   it('returns undefined for numeric fields that parse to NaN', () => {
@@ -97,8 +96,8 @@ describe('parseAts1 - comprehensive field coverage', () => {
       { col: 85, len: 5, value: 'XXXXX' },
     ]);
     const rec = parseAts1(line);
-    assert.equal(rec.distanceToNextNm, undefined);
-    assert.equal(rec.minimumEnrouteAltitudeFt, undefined);
+    expect(rec.distanceToNextNm).toBe(undefined);
+    expect(rec.minimumEnrouteAltitudeFt).toBe(undefined);
   });
 });
 
@@ -120,11 +119,11 @@ describe('parseAts2 - comprehensive field coverage', () => {
       { col: 143, len: 4, value: 'BDA' },
     ]);
     const rec = parseAts2(line);
-    assert.equal(rec.fixCategory, 'NAVAID');
-    assert.equal(rec.state, 'BM');
-    assert.equal(rec.icaoRegionCode, 'TJ');
-    assert.equal(rec.minimumReceptionAltitudeFt, 11500);
-    assert.equal(rec.navaidIdentifier, 'BDA');
+    expect(rec.fixCategory).toBe('NAVAID');
+    expect(rec.state).toBe('BM');
+    expect(rec.icaoRegionCode).toBe('TJ');
+    expect(rec.minimumReceptionAltitudeFt).toBe(11500);
+    expect(rec.navaidIdentifier).toBe('BDA');
   });
 });
 
@@ -161,30 +160,30 @@ describe('parseAwy1 - comprehensive field coverage', () => {
       { col: 302, len: 1, value: 'Y' },
     ]);
     const rec = parseAwy1(line);
-    assert.equal(rec.distanceToNextNm, 100.5);
-    assert.equal(rec.magneticCourseDeg, 60);
-    assert.equal(rec.magneticCourseOppositeDeg, 240);
-    assert.equal(rec.segmentDistanceNm, 50);
-    assert.equal(rec.minimumEnrouteAltitudeFt, 4000);
-    assert.equal(rec.minimumEnrouteAltitudeDirection, 'NE-SW');
-    assert.equal(rec.minimumEnrouteAltitudeOppositeFt, 4500);
-    assert.equal(rec.minimumEnrouteAltitudeOppositeDirection, 'SW-NE');
-    assert.equal(rec.maximumAuthorizedAltitudeFt, 18000);
-    assert.equal(rec.minimumObstructionClearanceAltitudeFt, 3500);
-    assert.equal(rec.discontinued, true);
-    assert.equal(rec.changeoverDistanceNm, 12);
-    assert.equal(rec.minimumCrossingAltitudeFt, 5000);
-    assert.equal(rec.minimumCrossingAltitudeDirection, 'NE');
-    assert.equal(rec.minimumCrossingAltitudeOppositeFt, 4500);
-    assert.equal(rec.minimumCrossingAltitudeOppositeDirection, 'SW');
-    assert.equal(rec.signalGap, true);
-    assert.equal(rec.usAirspaceOnly, true);
-    assert.equal(rec.artccId, 'ZNY');
-    assert.equal(rec.gnssMinimumEnrouteAltitudeFt, 4000);
-    assert.equal(rec.gnssMinimumEnrouteAltitudeDirection, 'GNS-NE');
-    assert.equal(rec.gnssMinimumEnrouteAltitudeOppositeFt, 4000);
-    assert.equal(rec.gnssMinimumEnrouteAltitudeOppositeDirection, 'GNS-SW');
-    assert.equal(rec.dogleg, true);
+    expect(rec.distanceToNextNm).toBe(100.5);
+    expect(rec.magneticCourseDeg).toBe(60);
+    expect(rec.magneticCourseOppositeDeg).toBe(240);
+    expect(rec.segmentDistanceNm).toBe(50);
+    expect(rec.minimumEnrouteAltitudeFt).toBe(4000);
+    expect(rec.minimumEnrouteAltitudeDirection).toBe('NE-SW');
+    expect(rec.minimumEnrouteAltitudeOppositeFt).toBe(4500);
+    expect(rec.minimumEnrouteAltitudeOppositeDirection).toBe('SW-NE');
+    expect(rec.maximumAuthorizedAltitudeFt).toBe(18000);
+    expect(rec.minimumObstructionClearanceAltitudeFt).toBe(3500);
+    expect(rec.discontinued).toBe(true);
+    expect(rec.changeoverDistanceNm).toBe(12);
+    expect(rec.minimumCrossingAltitudeFt).toBe(5000);
+    expect(rec.minimumCrossingAltitudeDirection).toBe('NE');
+    expect(rec.minimumCrossingAltitudeOppositeFt).toBe(4500);
+    expect(rec.minimumCrossingAltitudeOppositeDirection).toBe('SW');
+    expect(rec.signalGap).toBe(true);
+    expect(rec.usAirspaceOnly).toBe(true);
+    expect(rec.artccId).toBe('ZNY');
+    expect(rec.gnssMinimumEnrouteAltitudeFt).toBe(4000);
+    expect(rec.gnssMinimumEnrouteAltitudeDirection).toBe('GNS-NE');
+    expect(rec.gnssMinimumEnrouteAltitudeOppositeFt).toBe(4000);
+    expect(rec.gnssMinimumEnrouteAltitudeOppositeDirection).toBe('GNS-SW');
+    expect(rec.dogleg).toBe(true);
   });
 
   it('returns undefined for numeric fields that parse to NaN', () => {
@@ -196,8 +195,8 @@ describe('parseAwy1 - comprehensive field coverage', () => {
       { col: 75, len: 5, value: 'XXXXX' },
     ]);
     const rec = parseAwy1(line);
-    assert.equal(rec.distanceToNextNm, undefined);
-    assert.equal(rec.minimumEnrouteAltitudeFt, undefined);
+    expect(rec.distanceToNextNm).toBe(undefined);
+    expect(rec.minimumEnrouteAltitudeFt).toBe(undefined);
   });
 });
 
@@ -256,38 +255,38 @@ describe('buildAtsWaypoint - all optional fields', () => {
 
   it('propagates every optional field from ats1 and ats2', () => {
     const wp = buildAtsWaypoint(fullAts1(), fullAts2());
-    assert.ok(wp);
-    assert.equal(wp.minimumEnrouteAltitudeFt, 18000);
-    assert.equal(wp.minimumEnrouteAltitudeDirection, 'NE-SW');
-    assert.equal(wp.minimumEnrouteAltitudeOppositeFt, 17000);
-    assert.equal(wp.minimumEnrouteAltitudeOppositeDirection, 'SW-NE');
-    assert.equal(wp.maximumAuthorizedAltitudeFt, 45000);
-    assert.equal(wp.minimumObstructionClearanceAltitudeFt, 13500);
-    assert.equal(wp.gnssMinimumEnrouteAltitudeFt, 14000);
-    assert.equal(wp.gnssMinimumEnrouteAltitudeDirection, 'GNSS-NE');
-    assert.equal(wp.gnssMinimumEnrouteAltitudeOppositeFt, 13000);
-    assert.equal(wp.gnssMinimumEnrouteAltitudeOppositeDirection, 'GNSS-SW');
-    assert.equal(wp.minimumCrossingAltitudeFt, 12000);
-    assert.equal(wp.minimumCrossingAltitudeDirection, 'NE');
-    assert.equal(wp.minimumCrossingAltitudeOppositeFt, 11500);
-    assert.equal(wp.minimumCrossingAltitudeOppositeDirection, 'SW');
-    assert.equal(wp.distanceToNextNm, 100);
-    assert.equal(wp.magneticCourseDeg, 45);
-    assert.equal(wp.magneticCourseOppositeDeg, 225);
-    assert.equal(wp.changeoverDistanceNm, 25);
-    assert.equal(wp.signalGap, true);
-    assert.equal(wp.usAirspaceOnly, true);
-    assert.equal(wp.dogleg, true);
-    assert.equal(wp.discontinued, true);
-    assert.equal(wp.minimumReceptionAltitudeFt, 11500);
-    assert.equal(wp.icaoRegionCode, 'TJ');
+    assert(wp);
+    expect(wp.minimumEnrouteAltitudeFt).toBe(18000);
+    expect(wp.minimumEnrouteAltitudeDirection).toBe('NE-SW');
+    expect(wp.minimumEnrouteAltitudeOppositeFt).toBe(17000);
+    expect(wp.minimumEnrouteAltitudeOppositeDirection).toBe('SW-NE');
+    expect(wp.maximumAuthorizedAltitudeFt).toBe(45000);
+    expect(wp.minimumObstructionClearanceAltitudeFt).toBe(13500);
+    expect(wp.gnssMinimumEnrouteAltitudeFt).toBe(14000);
+    expect(wp.gnssMinimumEnrouteAltitudeDirection).toBe('GNSS-NE');
+    expect(wp.gnssMinimumEnrouteAltitudeOppositeFt).toBe(13000);
+    expect(wp.gnssMinimumEnrouteAltitudeOppositeDirection).toBe('GNSS-SW');
+    expect(wp.minimumCrossingAltitudeFt).toBe(12000);
+    expect(wp.minimumCrossingAltitudeDirection).toBe('NE');
+    expect(wp.minimumCrossingAltitudeOppositeFt).toBe(11500);
+    expect(wp.minimumCrossingAltitudeOppositeDirection).toBe('SW');
+    expect(wp.distanceToNextNm).toBe(100);
+    expect(wp.magneticCourseDeg).toBe(45);
+    expect(wp.magneticCourseOppositeDeg).toBe(225);
+    expect(wp.changeoverDistanceNm).toBe(25);
+    expect(wp.signalGap).toBe(true);
+    expect(wp.usAirspaceOnly).toBe(true);
+    expect(wp.dogleg).toBe(true);
+    expect(wp.discontinued).toBe(true);
+    expect(wp.minimumReceptionAltitudeFt).toBe(11500);
+    expect(wp.icaoRegionCode).toBe('TJ');
   });
 
   it('falls back to segmentDistanceNm when distanceToNextNm is undefined', () => {
     const a1 = fullAts1();
     a1.distanceToNextNm = undefined;
     const wp = buildAtsWaypoint(a1, fullAts2());
-    assert.equal(wp?.distanceToNextNm, 80);
+    expect(wp?.distanceToNextNm).toBe(80);
   });
 });
 
@@ -308,11 +307,11 @@ describe('parseAwy2 - comprehensive field coverage', () => {
       { col: 117, len: 4, value: 'BOS' },
     ]);
     const rec = parseAwy2(line);
-    assert.equal(rec.fixCategory, 'NAVAID');
-    assert.equal(rec.state, 'MA');
-    assert.equal(rec.icaoRegionCode, 'K6');
-    assert.equal(rec.minimumReceptionAltitudeFt, 4000);
-    assert.equal(rec.navaidIdentifier, 'BOS');
+    expect(rec.fixCategory).toBe('NAVAID');
+    expect(rec.state).toBe('MA');
+    expect(rec.icaoRegionCode).toBe('K6');
+    expect(rec.minimumReceptionAltitudeFt).toBe(4000);
+    expect(rec.navaidIdentifier).toBe('BOS');
   });
 });
 
@@ -368,37 +367,37 @@ describe('buildWaypoint - all optional fields', () => {
 
   it('propagates every optional field from awy1 and awy2', () => {
     const wp = buildWaypoint(fullAwy1(), fullAwy2());
-    assert.ok(wp);
-    assert.equal(wp.minimumEnrouteAltitudeFt, 4000);
-    assert.equal(wp.minimumEnrouteAltitudeDirection, 'NE-SW');
-    assert.equal(wp.minimumEnrouteAltitudeOppositeFt, 4500);
-    assert.equal(wp.minimumEnrouteAltitudeOppositeDirection, 'SW-NE');
-    assert.equal(wp.maximumAuthorizedAltitudeFt, 18000);
-    assert.equal(wp.minimumObstructionClearanceAltitudeFt, 3500);
-    assert.equal(wp.gnssMinimumEnrouteAltitudeFt, 4000);
-    assert.equal(wp.gnssMinimumEnrouteAltitudeDirection, 'GNS-NE');
-    assert.equal(wp.gnssMinimumEnrouteAltitudeOppositeFt, 4000);
-    assert.equal(wp.gnssMinimumEnrouteAltitudeOppositeDirection, 'GNS-SW');
-    assert.equal(wp.minimumCrossingAltitudeFt, 5000);
-    assert.equal(wp.minimumCrossingAltitudeDirection, 'NE');
-    assert.equal(wp.minimumCrossingAltitudeOppositeFt, 4500);
-    assert.equal(wp.minimumCrossingAltitudeOppositeDirection, 'SW');
-    assert.equal(wp.distanceToNextNm, 100);
-    assert.equal(wp.magneticCourseDeg, 60);
-    assert.equal(wp.magneticCourseOppositeDeg, 240);
-    assert.equal(wp.changeoverDistanceNm, 12);
-    assert.equal(wp.signalGap, true);
-    assert.equal(wp.usAirspaceOnly, true);
-    assert.equal(wp.dogleg, true);
-    assert.equal(wp.discontinued, true);
-    assert.equal(wp.artccId, 'ZNY');
-    assert.equal(wp.minimumReceptionAltitudeFt, 4000);
+    assert(wp);
+    expect(wp.minimumEnrouteAltitudeFt).toBe(4000);
+    expect(wp.minimumEnrouteAltitudeDirection).toBe('NE-SW');
+    expect(wp.minimumEnrouteAltitudeOppositeFt).toBe(4500);
+    expect(wp.minimumEnrouteAltitudeOppositeDirection).toBe('SW-NE');
+    expect(wp.maximumAuthorizedAltitudeFt).toBe(18000);
+    expect(wp.minimumObstructionClearanceAltitudeFt).toBe(3500);
+    expect(wp.gnssMinimumEnrouteAltitudeFt).toBe(4000);
+    expect(wp.gnssMinimumEnrouteAltitudeDirection).toBe('GNS-NE');
+    expect(wp.gnssMinimumEnrouteAltitudeOppositeFt).toBe(4000);
+    expect(wp.gnssMinimumEnrouteAltitudeOppositeDirection).toBe('GNS-SW');
+    expect(wp.minimumCrossingAltitudeFt).toBe(5000);
+    expect(wp.minimumCrossingAltitudeDirection).toBe('NE');
+    expect(wp.minimumCrossingAltitudeOppositeFt).toBe(4500);
+    expect(wp.minimumCrossingAltitudeOppositeDirection).toBe('SW');
+    expect(wp.distanceToNextNm).toBe(100);
+    expect(wp.magneticCourseDeg).toBe(60);
+    expect(wp.magneticCourseOppositeDeg).toBe(240);
+    expect(wp.changeoverDistanceNm).toBe(12);
+    expect(wp.signalGap).toBe(true);
+    expect(wp.usAirspaceOnly).toBe(true);
+    expect(wp.dogleg).toBe(true);
+    expect(wp.discontinued).toBe(true);
+    expect(wp.artccId).toBe('ZNY');
+    expect(wp.minimumReceptionAltitudeFt).toBe(4000);
   });
 
   it('falls back to segmentDistanceNm when distanceToNextNm is undefined', () => {
     const a1 = fullAwy1();
     a1.distanceToNextNm = undefined;
     const wp = buildWaypoint(a1, fullAwy2());
-    assert.equal(wp?.distanceToNextNm, 50);
+    expect(wp?.distanceToNextNm).toBe(50);
   });
 });

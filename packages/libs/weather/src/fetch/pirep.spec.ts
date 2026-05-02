@@ -1,5 +1,4 @@
-import { describe, it, vi, afterEach } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, vi, afterEach, expect } from 'vitest';
 import { fetchPirep } from './pirep.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
@@ -15,7 +14,7 @@ describe('fetchPirep', () => {
       return new Response('', { status: 200 });
     });
     await fetchPirep('KDEN');
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/pirep?id=KDEN&format=raw`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/pirep?id=KDEN&format=raw`);
   });
 
   it('parses one PIREP per line and preserves order', async () => {
@@ -27,25 +26,25 @@ describe('fetchPirep', () => {
       async () => new Response(body, { status: 200 }),
     );
     const { pireps, parseErrors, raw } = await fetchPirep('KDEN');
-    assert.equal(pireps.length, 2);
-    assert.equal(pireps[0]?.aircraftType, 'C172');
-    assert.equal(pireps[1]?.aircraftType, 'B737');
-    assert.deepEqual(parseErrors, []);
-    assert.equal(raw, body);
+    expect(pireps.length).toBe(2);
+    expect(pireps[0]?.aircraftType).toBe('C172');
+    expect(pireps[1]?.aircraftType).toBe('B737');
+    expect(parseErrors).toEqual([]);
+    expect(raw).toBe(body);
   });
 
   it('returns empty arrays for an empty body', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 200 }));
     const { pireps, parseErrors } = await fetchPirep('KZZZZ');
-    assert.deepEqual(pireps, []);
-    assert.deepEqual(parseErrors, []);
+    expect(pireps).toEqual([]);
+    expect(parseErrors).toEqual([]);
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
-    await assert.rejects(() => fetchPirep('KDEN'), AwcFetchError);
+    await expect(() => fetchPirep('KDEN')).rejects.toThrow(AwcFetchError);
   });
 
   it('includes optional filter params when provided', async () => {
@@ -56,12 +55,12 @@ describe('fetchPirep', () => {
     });
     await fetchPirep('KDEN', { distance: 100, age: 6, level: 200, inten: 'mod' });
     const parsed = new URL(observedUrl ?? '');
-    assert.equal(parsed.searchParams.get('id'), 'KDEN');
-    assert.equal(parsed.searchParams.get('format'), 'raw');
-    assert.equal(parsed.searchParams.get('distance'), '100');
-    assert.equal(parsed.searchParams.get('age'), '6');
-    assert.equal(parsed.searchParams.get('level'), '200');
-    assert.equal(parsed.searchParams.get('inten'), 'mod');
+    expect(parsed.searchParams.get('id')).toBe('KDEN');
+    expect(parsed.searchParams.get('format')).toBe('raw');
+    expect(parsed.searchParams.get('distance')).toBe('100');
+    expect(parsed.searchParams.get('age')).toBe('6');
+    expect(parsed.searchParams.get('level')).toBe('200');
+    expect(parsed.searchParams.get('inten')).toBe('mod');
   });
 
   it('omits optional filter params when not provided', async () => {
@@ -72,10 +71,10 @@ describe('fetchPirep', () => {
     });
     await fetchPirep('KDEN');
     const parsed = new URL(observedUrl ?? '');
-    assert.equal(parsed.searchParams.has('distance'), false);
-    assert.equal(parsed.searchParams.has('age'), false);
-    assert.equal(parsed.searchParams.has('level'), false);
-    assert.equal(parsed.searchParams.has('inten'), false);
+    expect(parsed.searchParams.has('distance')).toBe(false);
+    expect(parsed.searchParams.has('age')).toBe(false);
+    expect(parsed.searchParams.has('level')).toBe(false);
+    expect(parsed.searchParams.has('inten')).toBe(false);
   });
 
   it('surfaces AWC 400 for an empty id as AwcFetchError', async () => {
@@ -87,7 +86,7 @@ describe('fetchPirep', () => {
         statusText: 'Bad Request',
       });
     });
-    await assert.rejects(() => fetchPirep(''), AwcFetchError);
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/pirep?id=&format=raw`);
+    await expect(() => fetchPirep('')).rejects.toThrow(AwcFetchError);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/pirep?id=&format=raw`);
   });
 });

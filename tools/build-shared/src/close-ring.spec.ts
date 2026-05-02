@@ -1,10 +1,9 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { closeRing, stripClosingDuplicate, type LonLat } from './close-ring.js';
 
 describe('closeRing', () => {
   it('returns an empty array for an empty input', () => {
-    assert.deepEqual(closeRing([]), []);
+    expect(closeRing([])).toEqual([]);
   });
 
   it('appends a copy of the first vertex when the ring is open', () => {
@@ -15,10 +14,10 @@ describe('closeRing', () => {
       [0, 10],
     ];
     const closed = closeRing(ring);
-    assert.equal(closed.length, 5);
-    assert.deepEqual(closed[closed.length - 1], [0, 0]);
+    expect(closed.length).toBe(5);
+    expect(closed[closed.length - 1]).toEqual([0, 0]);
     // Original input is not mutated.
-    assert.equal(ring.length, 4);
+    expect(ring.length).toBe(4);
   });
 
   it('returns a copy unchanged when first and last vertices match', () => {
@@ -29,9 +28,9 @@ describe('closeRing', () => {
       [0, 0],
     ];
     const closed = closeRing(ring);
-    assert.equal(closed.length, 4);
-    assert.deepEqual(closed, ring);
-    assert.notEqual(closed, ring, 'returns a fresh array, not the same reference');
+    expect(closed.length).toBe(4);
+    expect(closed).toEqual(ring);
+    expect(closed, 'returns a fresh array, not the same reference').not.toBe(ring);
   });
 
   it('treats lat differing as needing a close even when lon matches', () => {
@@ -41,20 +40,20 @@ describe('closeRing', () => {
       [0, 5],
     ];
     const closed = closeRing(ring);
-    assert.equal(closed.length, 4);
-    assert.deepEqual(closed[closed.length - 1], [0, 0]);
+    expect(closed.length).toBe(4);
+    expect(closed[closed.length - 1]).toEqual([0, 0]);
   });
 });
 
 describe('stripClosingDuplicate', () => {
   it('returns an empty array for an empty input', () => {
-    assert.deepEqual(stripClosingDuplicate([]), []);
+    expect(stripClosingDuplicate([])).toEqual([]);
   });
 
   it('returns a copy of a single-vertex input unchanged', () => {
     const ring: LonLat[] = [[1, 2]];
     const result = stripClosingDuplicate(ring);
-    assert.deepEqual(result, ring);
+    expect(result).toEqual(ring);
   });
 
   it('drops the trailing vertex when first and last match', () => {
@@ -65,8 +64,8 @@ describe('stripClosingDuplicate', () => {
       [0, 0],
     ];
     const open = stripClosingDuplicate(ring);
-    assert.equal(open.length, 3);
-    assert.deepEqual(open, [
+    expect(open.length).toBe(3);
+    expect(open).toEqual([
       [0, 0],
       [10, 0],
       [10, 10],
@@ -80,7 +79,7 @@ describe('stripClosingDuplicate', () => {
       [10, 10],
     ];
     const open = stripClosingDuplicate(ring);
-    assert.deepEqual(open, ring);
-    assert.notEqual(open, ring, 'returns a fresh array, not the same reference');
+    expect(open).toEqual(ring);
+    expect(open, 'returns a fresh array, not the same reference').not.toBe(ring);
   });
 });

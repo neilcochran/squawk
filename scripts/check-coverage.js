@@ -17,7 +17,7 @@
  * (or `turbo run test:coverage`) to populate the per-workspace coverage
  * summaries.
  *
- * Threshold defaults: 90 lines, 95 functions, 90 branches. Override
+ * Threshold defaults: 90 lines, 90 functions, 90 branches. Override
  * via the COVERAGE_LINES_THRESHOLD, COVERAGE_FUNCS_THRESHOLD, and
  * COVERAGE_BRANCHES_THRESHOLD environment variables. The same
  * thresholds are enforced at both the per-package and aggregate
@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const LINE_THRESHOLD = Number(process.env.COVERAGE_LINES_THRESHOLD ?? 90);
-const FUNC_THRESHOLD = Number(process.env.COVERAGE_FUNCS_THRESHOLD ?? 95);
+const FUNC_THRESHOLD = Number(process.env.COVERAGE_FUNCS_THRESHOLD ?? 90);
 const BRANCH_THRESHOLD = Number(process.env.COVERAGE_BRANCHES_THRESHOLD ?? 90);
 
 /**

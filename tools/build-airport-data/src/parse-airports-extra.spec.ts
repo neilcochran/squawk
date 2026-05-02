@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { buildAirport } from './parse-airports.js';
 import type { CsvRecord } from '@squawk/build-shared';
 
@@ -60,86 +59,82 @@ describe('buildAirport - optional base fields', () => {
       [],
       [],
     );
-    assert.ok(airport);
-    assert.equal(airport.icao, 'KJFK');
-    assert.equal(airport.elevationFt, 13);
-    assert.equal(airport.magneticVariationDeg, 13.5);
-    assert.equal(airport.magneticVariationDirection, 'W');
-    assert.equal(airport.magneticVariationYear, 2020);
-    assert.equal(airport.trafficPatternAltitudeFt, 1000);
-    assert.equal(airport.sectionChart, 'NEW YORK');
-    assert.equal(airport.artccId, 'ZNY');
-    assert.equal(airport.towerType, 'T');
-    assert.equal(airport.fuelTypes, '100LL,JETA');
-    assert.equal(airport.airframeRepair, 'MAJOR');
-    assert.equal(airport.powerplantRepair, 'MAJOR');
-    assert.equal(airport.bottledOxygen, 'HIGH/LOW');
-    assert.equal(airport.bulkOxygen, 'HIGH/LOW');
-    assert.equal(airport.lightingSchedule, 'SS-SR');
-    assert.equal(airport.beaconColor, 'CG');
-    assert.equal(airport.hasLandingFee, true);
-    assert.equal(airport.activationDate, '07/1948');
-    assert.equal(airport.otherServices, 'CARGO');
-    assert.equal(airport.notamId, 'JFK');
-    assert.equal(airport.county, 'QUEENS');
+    assert(airport);
+    expect(airport.icao).toBe('KJFK');
+    expect(airport.elevationFt).toBe(13);
+    expect(airport.magneticVariationDeg).toBe(13.5);
+    expect(airport.magneticVariationDirection).toBe('W');
+    expect(airport.magneticVariationYear).toBe(2020);
+    expect(airport.trafficPatternAltitudeFt).toBe(1000);
+    expect(airport.sectionChart).toBe('NEW YORK');
+    expect(airport.artccId).toBe('ZNY');
+    expect(airport.towerType).toBe('T');
+    expect(airport.fuelTypes).toBe('100LL,JETA');
+    expect(airport.airframeRepair).toBe('MAJOR');
+    expect(airport.powerplantRepair).toBe('MAJOR');
+    expect(airport.bottledOxygen).toBe('HIGH/LOW');
+    expect(airport.bulkOxygen).toBe('HIGH/LOW');
+    expect(airport.lightingSchedule).toBe('SS-SR');
+    expect(airport.beaconColor).toBe('CG');
+    expect(airport.hasLandingFee).toBe(true);
+    expect(airport.activationDate).toBe('07/1948');
+    expect(airport.otherServices).toBe('CARGO');
+    expect(airport.notamId).toBe('JFK');
+    expect(airport.county).toBe('QUEENS');
   });
 
   it('omits state when STATE_CODE is empty', () => {
     const airport = buildAirport(baseRec({ STATE_CODE: '' }), [], [], [], [], [], []);
-    assert.ok(airport);
-    assert.equal(airport.state, undefined);
+    assert(airport);
+    expect(airport.state).toBe(undefined);
   });
 
   it('returns undefined when status code is unknown', () => {
-    assert.equal(buildAirport(baseRec({ ARPT_STATUS: 'XX' }), [], [], [], [], [], []), undefined);
+    expect(buildAirport(baseRec({ ARPT_STATUS: 'XX' }), [], [], [], [], [], [])).toBe(undefined);
   });
 
   it('returns undefined when ownership code is unknown', () => {
-    assert.equal(
-      buildAirport(baseRec({ OWNERSHIP_TYPE_CODE: 'ZZ' }), [], [], [], [], [], []),
+    expect(buildAirport(baseRec({ OWNERSHIP_TYPE_CODE: 'ZZ' }), [], [], [], [], [], [])).toBe(
       undefined,
     );
   });
 
   it('returns undefined when use code is unknown', () => {
-    assert.equal(
-      buildAirport(baseRec({ FACILITY_USE_CODE: 'ZZ' }), [], [], [], [], [], []),
+    expect(buildAirport(baseRec({ FACILITY_USE_CODE: 'ZZ' }), [], [], [], [], [], [])).toBe(
       undefined,
     );
   });
 
   it('returns undefined when COUNTRY_CODE is missing', () => {
-    assert.equal(buildAirport(baseRec({ COUNTRY_CODE: '' }), [], [], [], [], [], []), undefined);
+    expect(buildAirport(baseRec({ COUNTRY_CODE: '' }), [], [], [], [], [], [])).toBe(undefined);
   });
 
   it('returns undefined when CITY is missing', () => {
-    assert.equal(buildAirport(baseRec({ CITY: '' }), [], [], [], [], [], []), undefined);
+    expect(buildAirport(baseRec({ CITY: '' }), [], [], [], [], [], [])).toBe(undefined);
   });
 
   it('returns undefined when LONG_DECIMAL is missing', () => {
-    assert.equal(buildAirport(baseRec({ LONG_DECIMAL: '' }), [], [], [], [], [], []), undefined);
+    expect(buildAirport(baseRec({ LONG_DECIMAL: '' }), [], [], [], [], [], [])).toBe(undefined);
   });
 
   it('returns undefined when SITE_TYPE_CODE is missing entirely', () => {
-    assert.equal(buildAirport(baseRec({ SITE_TYPE_CODE: '' }), [], [], [], [], [], []), undefined);
+    expect(buildAirport(baseRec({ SITE_TYPE_CODE: '' }), [], [], [], [], [], [])).toBe(undefined);
   });
 
   it('returns undefined when OWNERSHIP_TYPE_CODE is missing entirely', () => {
-    assert.equal(
-      buildAirport(baseRec({ OWNERSHIP_TYPE_CODE: '' }), [], [], [], [], [], []),
+    expect(buildAirport(baseRec({ OWNERSHIP_TYPE_CODE: '' }), [], [], [], [], [], [])).toBe(
       undefined,
     );
   });
 
   it('returns undefined when FACILITY_USE_CODE is missing entirely', () => {
-    assert.equal(
-      buildAirport(baseRec({ FACILITY_USE_CODE: '' }), [], [], [], [], [], []),
+    expect(buildAirport(baseRec({ FACILITY_USE_CODE: '' }), [], [], [], [], [], [])).toBe(
       undefined,
     );
   });
 
   it('returns undefined when ARPT_STATUS is missing entirely', () => {
-    assert.equal(buildAirport(baseRec({ ARPT_STATUS: '' }), [], [], [], [], [], []), undefined);
+    expect(buildAirport(baseRec({ ARPT_STATUS: '' }), [], [], [], [], [], [])).toBe(undefined);
   });
 });
 
@@ -161,29 +156,29 @@ describe('buildAirport - runways with full optional fields', () => {
       GROSS_WT_DDTW: '900.0',
     };
     const airport = buildAirport(baseRec(), [runway], [], [], [], [], []);
-    assert.ok(airport);
-    assert.equal(airport.runways.length, 1);
+    assert(airport);
+    expect(airport.runways.length).toBe(1);
     const r = airport.runways[0];
-    assert.ok(r);
-    assert.equal(r.lengthFt, 12079);
-    assert.equal(r.widthFt, 200);
-    assert.equal(r.surfaceType, 'ASPH-CONC');
-    assert.equal(r.condition, 'EXCELLENT');
-    assert.equal(r.treatment, 'GROOVED');
-    assert.equal(r.pcn, '99/F/A/W/T');
-    assert.equal(r.lighting, 'HIGH');
-    assert.equal(r.weightLimitSingleWheelKlb, 100);
-    assert.equal(r.weightLimitDualWheelKlb, 210);
-    assert.equal(r.weightLimitDualTandemKlb, 358);
-    assert.equal(r.weightLimitDdtKlb, 900);
+    assert(r);
+    expect(r.lengthFt).toBe(12079);
+    expect(r.widthFt).toBe(200);
+    expect(r.surfaceType).toBe('ASPH-CONC');
+    expect(r.condition).toBe('EXCELLENT');
+    expect(r.treatment).toBe('GROOVED');
+    expect(r.pcn).toBe('99/F/A/W/T');
+    expect(r.lighting).toBe('HIGH');
+    expect(r.weightLimitSingleWheelKlb).toBe(100);
+    expect(r.weightLimitDualWheelKlb).toBe(210);
+    expect(r.weightLimitDualTandemKlb).toBe(358);
+    expect(r.weightLimitDdtKlb).toBe(900);
   });
 
   it('skips runway records with mismatched SITE_NO or empty RWY_ID', () => {
     const wrongSite = { SITE_NO: 'OTHER', RWY_ID: '04L/22R' };
     const noId = { SITE_NO: '15793.*A', RWY_ID: '' };
     const airport = buildAirport(baseRec(), [wrongSite, noId], [], [], [], [], []);
-    assert.ok(airport);
-    assert.equal(airport.runways.length, 0);
+    assert(airport);
+    expect(airport.runways.length).toBe(0);
   });
 
   it('builds a runway end with full optional metadata and includes only matched ends', () => {
@@ -220,37 +215,37 @@ describe('buildAirport - runways with full optional fields', () => {
     // End with empty SITE_NO is skipped during indexing
     const orphanEnd = { SITE_NO: '', RWY_ID: '04L/22R', RWY_END_ID: 'ORPHAN' };
     const airport = buildAirport(baseRec(), [runway], [end, orphanEnd], [], [], [], []);
-    assert.ok(airport);
+    assert(airport);
     const r = airport.runways[0];
-    assert.ok(r);
-    assert.equal(r.ends.length, 1);
+    assert(r);
+    expect(r.ends.length).toBe(1);
     const e = r.ends[0];
-    assert.ok(e);
-    assert.equal(e.id, '04L');
-    assert.equal(e.trueHeadingDeg, 40);
-    assert.equal(e.rightTraffic, true);
-    assert.equal(e.markingType, 'PIR');
-    assert.equal(e.markingCondition, 'GOOD');
-    assert.equal(e.lat, 40.65);
-    assert.equal(e.lon, -73.8);
-    assert.equal(e.elevationFt, 13);
-    assert.equal(e.thresholdCrossingHeightFt, 60);
-    assert.equal(e.glidepathAngleDeg, 3.0);
-    assert.equal(e.displacedThresholdFt, 500);
-    assert.equal(e.displacedThresholdElevationFt, 13);
-    assert.equal(e.tdzElevationFt, 13);
-    assert.equal(e.vgsiType, 'PAPI-4L');
-    assert.equal(e.hasRvr, true);
-    assert.equal(e.approachLights, 'ALSF2');
-    assert.equal(e.hasReil, true);
-    assert.equal(e.hasCenterlineLights, true);
-    assert.equal(e.hasTdzLights, true);
-    assert.equal(e.toraFt, 12079);
-    assert.equal(e.todaFt, 12079);
-    assert.equal(e.asdaFt, 12079);
-    assert.equal(e.ldaFt, 11579);
-    assert.equal(e.lahsoDistanceFt, 8500);
-    assert.equal(e.lahsoEntity, '13L/31R');
+    assert(e);
+    expect(e.id).toBe('04L');
+    expect(e.trueHeadingDeg).toBe(40);
+    expect(e.rightTraffic).toBe(true);
+    expect(e.markingType).toBe('PIR');
+    expect(e.markingCondition).toBe('GOOD');
+    expect(e.lat).toBe(40.65);
+    expect(e.lon).toBe(-73.8);
+    expect(e.elevationFt).toBe(13);
+    expect(e.thresholdCrossingHeightFt).toBe(60);
+    expect(e.glidepathAngleDeg).toBe(3.0);
+    expect(e.displacedThresholdFt).toBe(500);
+    expect(e.displacedThresholdElevationFt).toBe(13);
+    expect(e.tdzElevationFt).toBe(13);
+    expect(e.vgsiType).toBe('PAPI-4L');
+    expect(e.hasRvr).toBe(true);
+    expect(e.approachLights).toBe('ALSF2');
+    expect(e.hasReil).toBe(true);
+    expect(e.hasCenterlineLights).toBe(true);
+    expect(e.hasTdzLights).toBe(true);
+    expect(e.toraFt).toBe(12079);
+    expect(e.todaFt).toBe(12079);
+    expect(e.asdaFt).toBe(12079);
+    expect(e.ldaFt).toBe(11579);
+    expect(e.lahsoDistanceFt).toBe(8500);
+    expect(e.lahsoEntity).toBe('13L/31R');
   });
 
   it('ignores unknown marking type, marking condition, and VGSI codes', () => {
@@ -264,12 +259,12 @@ describe('buildAirport - runways with full optional fields', () => {
       VGSI_CODE: 'ZZ',
     };
     const airport = buildAirport(baseRec(), [runway], [end], [], [], [], []);
-    assert.ok(airport);
+    assert(airport);
     const e = airport.runways[0]?.ends[0];
-    assert.ok(e);
-    assert.equal(e.markingType, undefined);
-    assert.equal(e.markingCondition, undefined);
-    assert.equal(e.vgsiType, undefined);
+    assert(e);
+    expect(e.markingType).toBe(undefined);
+    expect(e.markingCondition).toBe(undefined);
+    expect(e.vgsiType).toBe(undefined);
   });
 
   it('ignores unknown surface condition, treatment, and lighting codes on a runway', () => {
@@ -282,10 +277,10 @@ describe('buildAirport - runways with full optional fields', () => {
     };
     const airport = buildAirport(baseRec(), [runway], [], [], [], [], []);
     const r = airport?.runways[0];
-    assert.ok(r);
-    assert.equal(r.condition, undefined);
-    assert.equal(r.treatment, undefined);
-    assert.equal(r.lighting, undefined);
+    assert(r);
+    expect(r.condition).toBe(undefined);
+    expect(r.treatment).toBe(undefined);
+    expect(r.lighting).toBe(undefined);
   });
 });
 
@@ -297,19 +292,19 @@ describe('buildAirport - frequencies', () => {
       SECTORIZATION: 'ARRIVAL',
     };
     const airport = buildAirport(baseRec(), [], [], [freq], [], [], []);
-    assert.ok(airport);
-    assert.equal(airport.frequencies.length, 1);
-    assert.equal(airport.frequencies[0]?.frequencyMhz, 128.725);
-    assert.equal(airport.frequencies[0]?.use, 'ATIS');
-    assert.equal(airport.frequencies[0]?.sectorization, 'ARRIVAL');
+    assert(airport);
+    expect(airport.frequencies.length).toBe(1);
+    expect(airport.frequencies[0]?.frequencyMhz).toBe(128.725);
+    expect(airport.frequencies[0]?.use).toBe('ATIS');
+    expect(airport.frequencies[0]?.sectorization).toBe('ARRIVAL');
   });
 
   it('skips frequency records missing FREQ or FREQ_USE', () => {
     const noFreq = { FREQ_USE: 'ATIS' };
     const noUse = { FREQ: '128.725' };
     const airport = buildAirport(baseRec(), [], [], [noFreq, noUse], [], [], []);
-    assert.ok(airport);
-    assert.equal(airport.frequencies.length, 0);
+    assert(airport);
+    expect(airport.frequencies.length).toBe(0);
   });
 });
 
@@ -340,14 +335,14 @@ describe('buildAirport - ILS systems', () => {
     };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [ilsGs], [ilsDme]);
     const e = airport?.runways[0]?.ends[0];
-    assert.ok(e);
-    assert.ok(e.ils);
-    assert.equal(e.ils.identifier, 'I-IJFK');
-    assert.equal(e.ils.localizerFrequencyMhz, 109.5);
-    assert.equal(e.ils.localizerMagneticCourseDeg, 40);
-    assert.equal(e.ils.glideSlopeAngleDeg, 3);
-    assert.equal(e.ils.glideSlopeType, 'GLIDE SLOPE');
-    assert.equal(e.ils.dmeChannel, '32X');
+    assert(e);
+    assert(e.ils);
+    expect(e.ils.identifier).toBe('I-IJFK');
+    expect(e.ils.localizerFrequencyMhz).toBe(109.5);
+    expect(e.ils.localizerMagneticCourseDeg).toBe(40);
+    expect(e.ils.glideSlopeAngleDeg).toBe(3);
+    expect(e.ils.glideSlopeType).toBe('GLIDE SLOPE');
+    expect(e.ils.dmeChannel).toBe('32X');
   });
 
   it('omits the GS type when the code is unknown', () => {
@@ -365,8 +360,8 @@ describe('buildAirport - ILS systems', () => {
     };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [ilsGs], []);
     const e = airport?.runways[0]?.ends[0];
-    assert.ok(e?.ils);
-    assert.equal(e.ils.glideSlopeType, undefined);
+    assert(e?.ils);
+    expect(e.ils.glideSlopeType).toBe(undefined);
   });
 
   it('drops ILS systems whose component status is SHUTDOWN', () => {
@@ -380,8 +375,8 @@ describe('buildAirport - ILS systems', () => {
     };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [], []);
     const e = airport?.runways[0]?.ends[0];
-    assert.ok(e);
-    assert.equal(e.ils, undefined);
+    assert(e);
+    expect(e.ils).toBe(undefined);
   });
 
   it('drops ILS systems with an unknown SYSTEM_TYPE_CODE', () => {
@@ -394,8 +389,8 @@ describe('buildAirport - ILS systems', () => {
     };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [], []);
     const e = airport?.runways[0]?.ends[0];
-    assert.ok(e);
-    assert.equal(e.ils, undefined);
+    assert(e);
+    expect(e.ils).toBe(undefined);
   });
 
   it('drops ILS systems with a missing SYSTEM_TYPE_CODE', () => {
@@ -404,8 +399,8 @@ describe('buildAirport - ILS systems', () => {
     const ilsBase = { SITE_NO: '15793.*A', RWY_END_ID: '04L', SYSTEM_TYPE_CODE: '' };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [], []);
     const e = airport?.runways[0]?.ends[0];
-    assert.ok(e);
-    assert.equal(e.ils, undefined);
+    assert(e);
+    expect(e.ils).toBe(undefined);
   });
 
   it('skips ILS records with no RWY_END_ID', () => {
@@ -416,8 +411,8 @@ describe('buildAirport - ILS systems', () => {
     const ilsDme = { SITE_NO: '15793.*A', RWY_END_ID: '', CHANNEL: '32X' };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [ilsGs], [ilsDme]);
     const e = airport?.runways[0]?.ends[0];
-    assert.ok(e);
-    assert.equal(e.ils, undefined);
+    assert(e);
+    expect(e.ils).toBe(undefined);
   });
 
   it('omits localizer course and frequency when the values are missing', () => {
@@ -426,11 +421,11 @@ describe('buildAirport - ILS systems', () => {
     const ilsBase = { SITE_NO: '15793.*A', RWY_END_ID: '04L', SYSTEM_TYPE_CODE: 'LS' };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [], []);
     const ils = airport?.runways[0]?.ends[0]?.ils;
-    assert.ok(ils);
-    assert.equal(ils.identifier, undefined);
-    assert.equal(ils.category, undefined);
-    assert.equal(ils.localizerFrequencyMhz, undefined);
-    assert.equal(ils.localizerMagneticCourseDeg, undefined);
+    assert(ils);
+    expect(ils.identifier).toBe(undefined);
+    expect(ils.category).toBe(undefined);
+    expect(ils.localizerFrequencyMhz).toBe(undefined);
+    expect(ils.localizerMagneticCourseDeg).toBe(undefined);
   });
 
   it('omits ILS category when the code is unknown', () => {
@@ -444,7 +439,7 @@ describe('buildAirport - ILS systems', () => {
     };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [], []);
     const ils = airport?.runways[0]?.ends[0]?.ils;
-    assert.ok(ils);
-    assert.equal(ils.category, undefined);
+    assert(ils);
+    expect(ils.category).toBe(undefined);
   });
 });

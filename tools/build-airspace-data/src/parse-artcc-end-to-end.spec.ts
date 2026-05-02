@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -57,21 +56,18 @@ describe('parseArtcc end-to-end', () => {
         .filter((f) => f.identifier === 'ZNY')
         .map((f) => f.artccStratum)
         .sort();
-      assert.deepEqual(strata, ['HIGH', 'LOW']);
+      expect(strata).toEqual(['HIGH', 'LOW']);
       const low = features.find((f) => f.identifier === 'ZNY' && f.artccStratum === 'LOW');
-      assert.ok(low !== undefined);
-      assert.equal(low.type, 'ARTCC');
-      assert.equal(low.name, 'NEW YORK');
-      assert.equal(low.state, 'NY');
-      assert.equal(low.controllingFacility, null);
-      assert.equal(low.scheduleDescription, null);
-      assert.equal(low.boundary.type, 'Polygon');
-      assert.ok(low.boundary.coordinates[0]?.length ?? 0 >= 4);
+      assert(low !== undefined);
+      expect(low.type).toBe('ARTCC');
+      expect(low.name).toBe('NEW YORK');
+      expect(low.state).toBe('NY');
+      expect(low.controllingFacility).toBe(null);
+      expect(low.scheduleDescription).toBe(null);
+      expect(low.boundary.type).toBe('Polygon');
+      assert(low.boundary.coordinates[0]?.length ?? 0 >= 4);
       // No foreign center features
-      assert.equal(
-        features.find((f) => f.identifier === 'CZQM'),
-        undefined,
-      );
+      expect(features.find((f) => f.identifier === 'CZQM')).toBe(undefined);
     } finally {
       cleanup();
     }
@@ -99,8 +95,8 @@ describe('parseArtcc end-to-end', () => {
       );
       const features = await parseArtcc(arbBasePath, arbSegPath);
       const uta = features.find((f) => f.identifier === 'ZOA' && f.artccStratum === 'UTA');
-      assert.ok(uta !== undefined);
-      assert.equal(uta.state, null);
+      assert(uta !== undefined);
+      expect(uta.state).toBe(null);
     } finally {
       cleanup();
     }
@@ -131,7 +127,7 @@ describe('parseArtcc end-to-end', () => {
         ].join('\n'),
       );
       const features = await parseArtcc(arbBasePath, arbSegPath);
-      assert.ok(features.find((f) => f.identifier === 'ZAB'));
+      assert(features.find((f) => f.identifier === 'ZAB'));
     } finally {
       cleanup();
     }
@@ -147,8 +143,7 @@ describe('parseArtcc end-to-end', () => {
         arbSegPath,
         'LOCATION_ID,ALTITUDE,TYPE,POINT_SEQ,LAT_DECIMAL,LONG_DECIMAL,BNDRY_PT_DESCRIP\n',
       );
-      await assert.rejects(
-        () => parseArtcc(arbBasePath, arbSegPath),
+      await expect(() => parseArtcc(arbBasePath, arbSegPath)).rejects.toThrow(
         /ARB_BASE.csv is missing expected columns/,
       );
     } finally {
@@ -166,8 +161,7 @@ describe('parseArtcc end-to-end', () => {
         'LOCATION_ID,LOCATION_NAME,COUNTRY_CODE,STATE\nZNY,NEW YORK,US,NY\n',
       );
       writeFileSync(arbSegPath, 'LOCATION_ID,ALTITUDE,TYPE\nZNY,LOW,ARTCC\n');
-      await assert.rejects(
-        () => parseArtcc(arbBasePath, arbSegPath),
+      await expect(() => parseArtcc(arbBasePath, arbSegPath)).rejects.toThrow(
         /ARB_SEG.csv is missing expected columns/,
       );
     } finally {
@@ -201,7 +195,7 @@ describe('parseArtcc end-to-end', () => {
         ].join('\n'),
       );
       const features = await parseArtcc(arbBasePath, arbSegPath);
-      assert.ok(features.find((f) => f.identifier === 'ZBW'));
+      assert(features.find((f) => f.identifier === 'ZBW'));
     } finally {
       cleanup();
     }
@@ -231,8 +225,8 @@ describe('parseArtcc end-to-end', () => {
         ].join('\n'),
       );
       const features = await parseArtcc(arbBasePath, arbSegPath);
-      assert.equal(features.length, 0);
-      assert.equal(warnCalled, true);
+      expect(features.length).toBe(0);
+      expect(warnCalled).toBe(true);
     } finally {
       console.warn = originalWarn;
       cleanup();

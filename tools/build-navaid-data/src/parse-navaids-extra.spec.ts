@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { buildNavaid } from './parse-navaids.js';
 import type { CsvRecord } from '@squawk/build-shared';
 
@@ -48,25 +47,25 @@ describe('buildNavaid - all optional fields', () => {
         TACAN_DME_LONG_DECIMAL: '-70.990000',
       }),
     );
-    assert.ok(nav);
-    assert.equal(nav.magneticVariationDeg, 13.5);
-    assert.equal(nav.magneticVariationDirection, 'W');
-    assert.equal(nav.magneticVariationYear, 2020);
-    assert.equal(nav.lowArtccId, 'ZBW');
-    assert.equal(nav.highArtccId, 'ZNY');
-    assert.equal(nav.navaidClass, 'TERMINAL');
-    assert.equal(nav.dmeServiceVolume, 'TERMINAL');
-    assert.equal(nav.powerOutputWatts, 200);
-    assert.equal(nav.simultaneousVoice, true);
-    assert.equal(nav.ndbClass, 'HW');
-    assert.equal(nav.publicUse, true);
-    assert.equal(nav.operatingHours, 'CONT');
-    assert.equal(nav.notamId, 'BOS');
-    assert.equal(nav.markerIdentifier, 'BO');
-    assert.equal(nav.markerShape, 'BONE');
-    assert.equal(nav.markerBearingDeg, 40);
-    assert.equal(nav.dmeLat, 42.358);
-    assert.equal(nav.dmeLon, -70.99);
+    assert(nav);
+    expect(nav.magneticVariationDeg).toBe(13.5);
+    expect(nav.magneticVariationDirection).toBe('W');
+    expect(nav.magneticVariationYear).toBe(2020);
+    expect(nav.lowArtccId).toBe('ZBW');
+    expect(nav.highArtccId).toBe('ZNY');
+    expect(nav.navaidClass).toBe('TERMINAL');
+    expect(nav.dmeServiceVolume).toBe('TERMINAL');
+    expect(nav.powerOutputWatts).toBe(200);
+    expect(nav.simultaneousVoice).toBe(true);
+    expect(nav.ndbClass).toBe('HW');
+    expect(nav.publicUse).toBe(true);
+    expect(nav.operatingHours).toBe('CONT');
+    expect(nav.notamId).toBe('BOS');
+    expect(nav.markerIdentifier).toBe('BO');
+    expect(nav.markerShape).toBe('BONE');
+    expect(nav.markerBearingDeg).toBe(40);
+    expect(nav.dmeLat).toBe(42.358);
+    expect(nav.dmeLon).toBe(-70.99);
   });
 
   it('omits dmeLat/dmeLon when they match the navaid coordinates', () => {
@@ -76,41 +75,41 @@ describe('buildNavaid - all optional fields', () => {
         TACAN_DME_LONG_DECIMAL: '-70.989167',
       }),
     );
-    assert.ok(nav);
-    assert.equal(nav.dmeLat, undefined);
-    assert.equal(nav.dmeLon, undefined);
+    assert(nav);
+    expect(nav.dmeLat).toBe(undefined);
+    expect(nav.dmeLon).toBe(undefined);
   });
 
   it('returns undefined when COUNTRY_CODE is missing', () => {
-    assert.equal(buildNavaid(baseRec({ COUNTRY_CODE: '' })), undefined);
+    expect(buildNavaid(baseRec({ COUNTRY_CODE: '' }))).toBe(undefined);
   });
 
   it('returns undefined when NAV_TYPE is missing entirely', () => {
-    assert.equal(buildNavaid(baseRec({ NAV_TYPE: '' })), undefined);
+    expect(buildNavaid(baseRec({ NAV_TYPE: '' }))).toBe(undefined);
   });
 
   it('returns undefined when NAV_STATUS is missing entirely', () => {
-    assert.equal(buildNavaid(baseRec({ NAV_STATUS: '' })), undefined);
+    expect(buildNavaid(baseRec({ NAV_STATUS: '' }))).toBe(undefined);
   });
 
   it('classifies an NDB frequency in kHz rather than MHz', () => {
     const nav = buildNavaid(
       baseRec({ NAV_TYPE: 'NDB', NAV_STATUS: 'OPERATIONAL IFR', FREQ: '380' }),
     );
-    assert.ok(nav);
-    assert.equal(nav.frequencyKhz, 380);
-    assert.equal(nav.frequencyMhz, undefined);
+    assert(nav);
+    expect(nav.frequencyKhz).toBe(380);
+    expect(nav.frequencyMhz).toBe(undefined);
   });
 
   it('captures TACAN channel and city', () => {
     const nav = buildNavaid(baseRec({ CHAN: '76X', CITY: 'BOSTON' }));
-    assert.ok(nav);
-    assert.equal(nav.tacanChannel, '76X');
-    assert.equal(nav.city, 'BOSTON');
+    assert(nav);
+    expect(nav.tacanChannel).toBe('76X');
+    expect(nav.city).toBe('BOSTON');
   });
 
   it('captures elevation when present', () => {
     const nav = buildNavaid(baseRec({ ELEV: '15' }));
-    assert.equal(nav?.elevationFt, 15);
+    expect(nav?.elevationFt).toBe(15);
   });
 });

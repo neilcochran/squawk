@@ -1,5 +1,4 @@
-import { describe, it, vi, afterEach } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, vi, afterEach, expect, assert } from 'vitest';
 import { fetchTaf } from './taf.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
@@ -15,7 +14,7 @@ describe('fetchTaf', () => {
       return new Response('', { status: 200 });
     });
     await fetchTaf('KJFK');
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/taf?ids=KJFK&format=raw`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/taf?ids=KJFK&format=raw`);
   });
 
   it('comma-joins multiple station IDs', async () => {
@@ -25,7 +24,7 @@ describe('fetchTaf', () => {
       return new Response('', { status: 200 });
     });
     await fetchTaf(['KJFK', 'KLAX']);
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/taf?ids=KJFK%2CKLAX&format=raw`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/taf?ids=KJFK%2CKLAX&format=raw`);
   });
 
   it('splits multi-line TAFs on blank lines and parses each block', async () => {
@@ -39,11 +38,11 @@ describe('fetchTaf', () => {
       async () => new Response(body, { status: 200 }),
     );
     const { tafs, parseErrors, raw } = await fetchTaf(['KJFK', 'KLAX']);
-    assert.equal(tafs.length, 2);
-    assert.equal(tafs[0]?.stationId, 'KJFK');
-    assert.equal(tafs[1]?.stationId, 'KLAX');
-    assert.deepEqual(parseErrors, []);
-    assert.equal(raw, body);
+    expect(tafs.length).toBe(2);
+    expect(tafs[0]?.stationId).toBe('KJFK');
+    expect(tafs[1]?.stationId).toBe('KLAX');
+    expect(parseErrors).toEqual([]);
+    expect(raw).toBe(body);
   });
 
   it('splits multi-station TAFs separated by a single newline (AWC default format)', async () => {
@@ -61,19 +60,19 @@ describe('fetchTaf', () => {
       async () => new Response(body, { status: 200 }),
     );
     const { tafs, parseErrors } = await fetchTaf(['KBOS', 'KPWM']);
-    assert.equal(tafs.length, 2);
-    assert.deepEqual(parseErrors, []);
+    expect(tafs.length).toBe(2);
+    expect(parseErrors).toEqual([]);
 
     const bos = tafs.find((t) => t.stationId === 'KBOS');
     const pwm = tafs.find((t) => t.stationId === 'KPWM');
-    assert.ok(bos, 'expected a parsed TAF for KBOS');
-    assert.ok(pwm, 'expected a parsed TAF for KPWM');
+    assert(bos, 'expected a parsed TAF for KBOS');
+    assert(pwm, 'expected a parsed TAF for KPWM');
 
     const bosFmStarts = bos.forecast.filter((g) => g.changeType === 'FM').map((g) => g.start?.hour);
-    assert.deepEqual(bosFmStarts, [15, 4]);
+    expect(bosFmStarts).toEqual([15, 4]);
 
     const pwmFmStarts = pwm.forecast.filter((g) => g.changeType === 'FM').map((g) => g.start?.hour);
-    assert.deepEqual(pwmFmStarts, [8, 21, 0]);
+    expect(pwmFmStarts).toEqual([8, 21, 0]);
   });
 
   it('captures malformed TAFs in parseErrors without throwing', async () => {
@@ -84,16 +83,16 @@ describe('fetchTaf', () => {
       async () => new Response(body, { status: 200 }),
     );
     const { tafs, parseErrors } = await fetchTaf(['KJFK', 'NOPE']);
-    assert.equal(tafs.length, 1);
-    assert.equal(tafs[0]?.stationId, 'KJFK');
-    assert.equal(parseErrors.length, 1);
-    assert.equal(parseErrors[0]?.raw, 'not a taf at all');
+    expect(tafs.length).toBe(1);
+    expect(tafs[0]?.stationId).toBe('KJFK');
+    expect(parseErrors.length).toBe(1);
+    expect(parseErrors[0]?.raw).toBe('not a taf at all');
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
-    await assert.rejects(() => fetchTaf('KJFK'), AwcFetchError);
+    await expect(() => fetchTaf('KJFK')).rejects.toThrow(AwcFetchError);
   });
 });

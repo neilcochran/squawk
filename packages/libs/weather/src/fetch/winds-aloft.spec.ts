@@ -1,5 +1,4 @@
-import { describe, it, vi, afterEach } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, vi, afterEach, expect } from 'vitest';
 import { fetchWindsAloft } from './winds-aloft.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
@@ -25,7 +24,7 @@ describe('fetchWindsAloft', () => {
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
     await fetchWindsAloft();
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/windtemp`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/windtemp`);
   });
 
   it('maps region names to AWC wire values', async () => {
@@ -35,7 +34,7 @@ describe('fetchWindsAloft', () => {
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
     await fetchWindsAloft({ region: 'northeast' });
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/windtemp?region=bos`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/windtemp?region=bos`);
   });
 
   it('maps westernPacific to the AWC other_pac value', async () => {
@@ -45,7 +44,7 @@ describe('fetchWindsAloft', () => {
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
     await fetchWindsAloft({ region: 'westernPacific' });
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/windtemp?region=other_pac`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/windtemp?region=other_pac`);
   });
 
   it('passes altitudeBand through as the AWC level parameter', async () => {
@@ -55,7 +54,7 @@ describe('fetchWindsAloft', () => {
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
     await fetchWindsAloft({ altitudeBand: 'high' });
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/windtemp?level=high`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/windtemp?level=high`);
   });
 
   it('pads numeric forecastHours into a zero-prefixed AWC fcst value', async () => {
@@ -65,7 +64,7 @@ describe('fetchWindsAloft', () => {
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
     await fetchWindsAloft({ forecastHours: 6 });
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/windtemp?fcst=06`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/windtemp?fcst=06`);
   });
 
   it('does not pad forecastHours that are already two digits', async () => {
@@ -75,7 +74,7 @@ describe('fetchWindsAloft', () => {
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
     await fetchWindsAloft({ forecastHours: 12 });
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/windtemp?fcst=12`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/windtemp?fcst=12`);
   });
 
   it('combines all options into a single URL', async () => {
@@ -89,7 +88,7 @@ describe('fetchWindsAloft', () => {
       altitudeBand: 'low',
       forecastHours: 24,
     });
-    assert.equal(observedUrl, `${DEFAULT_AWC_BASE_URL}/windtemp?region=alaska&level=low&fcst=24`);
+    expect(observedUrl).toBe(`${DEFAULT_AWC_BASE_URL}/windtemp?region=alaska&level=low&fcst=24`);
   });
 
   it('parses the response body into a structured forecast', async () => {
@@ -97,18 +96,18 @@ describe('fetchWindsAloft', () => {
       async () => new Response(MINIMAL_BULLETIN, { status: 200 }),
     );
     const { forecast, raw } = await fetchWindsAloft();
-    assert.equal(forecast.wmoHeader, 'FBUS31 KWNO 241359');
-    assert.equal(forecast.productCode, 'FD1US1');
-    assert.deepEqual(forecast.altitudesFt, [3000]);
-    assert.equal(forecast.stations[0]?.stationId, 'BDL');
-    assert.equal(raw, MINIMAL_BULLETIN);
+    expect(forecast.wmoHeader).toBe('FBUS31 KWNO 241359');
+    expect(forecast.productCode).toBe('FD1US1');
+    expect(forecast.altitudesFt).toEqual([3000]);
+    expect(forecast.stations[0]?.stationId).toBe('BDL');
+    expect(raw).toBe(MINIMAL_BULLETIN);
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
-    await assert.rejects(() => fetchWindsAloft(), AwcFetchError);
+    await expect(() => fetchWindsAloft()).rejects.toThrow(AwcFetchError);
   });
 
   it('honors a custom baseUrl', async () => {
@@ -118,7 +117,7 @@ describe('fetchWindsAloft', () => {
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
     await fetchWindsAloft({ baseUrl: 'https://mirror.test/api' });
-    assert.equal(observedUrl, 'https://mirror.test/api/windtemp');
+    expect(observedUrl).toBe('https://mirror.test/api/windtemp');
   });
 
   it('forwards the AbortSignal to fetch', async () => {
@@ -129,13 +128,13 @@ describe('fetchWindsAloft', () => {
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
     await fetchWindsAloft({ signal: controller.signal });
-    assert.equal(observedSignal, controller.signal);
+    expect(observedSignal).toBe(controller.signal);
   });
 
   it('propagates parser errors thrown on a malformed body', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('not a bulletin', { status: 200 }),
     );
-    await assert.rejects(() => fetchWindsAloft(), /DATA BASED ON/);
+    await expect(() => fetchWindsAloft()).rejects.toThrow(/DATA BASED ON/);
   });
 });

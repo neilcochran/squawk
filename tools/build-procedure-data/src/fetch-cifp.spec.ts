@@ -1,11 +1,10 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { extractCycleDate } from './fetch-cifp.js';
 
 describe('extractCycleDate', () => {
   it('extracts the date from a canonical FAACIFP18 header line', () => {
     const header = 'HDR01FAACIFP18      001P013203974102604  25-MAR-202612:51:00  U.S.A. DOT FAA';
-    assert.equal(extractCycleDate(header), '2026-03-25');
+    expect(extractCycleDate(header)).toBe('2026-03-25');
   });
 
   it('parses all twelve month abbreviations', () => {
@@ -24,21 +23,21 @@ describe('extractCycleDate', () => {
       ['25-DEC-2026', '2026-12-25'],
     ];
     for (const [input, expected] of cases) {
-      assert.equal(extractCycleDate(`HDR01 ${input} junk`), expected);
+      expect(extractCycleDate(`HDR01 ${input} junk`)).toBe(expected);
     }
   });
 
   it('only inspects the first 200 bytes of the contents', () => {
     // A valid-looking date past the 200-byte mark must not be matched.
     const body = ' '.repeat(500) + '01-FEB-2030';
-    assert.throws(() => extractCycleDate(body), /Could not extract/);
+    expect(() => extractCycleDate(body)).toThrow(/Could not extract/);
   });
 
   it('throws when the contents contain no recognized date pattern', () => {
-    assert.throws(() => extractCycleDate('HDR01 no date here'), /Could not extract/);
+    expect(() => extractCycleDate('HDR01 no date here')).toThrow(/Could not extract/);
   });
 
   it('throws when the month abbreviation is unrecognized', () => {
-    assert.throws(() => extractCycleDate('HDR01 25-FOO-2026'), /Unrecognized month abbreviation/);
+    expect(() => extractCycleDate('HDR01 25-FOO-2026')).toThrow(/Unrecognized month abbreviation/);
   });
 });

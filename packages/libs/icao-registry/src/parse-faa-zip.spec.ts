@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import AdmZip from 'adm-zip';
 import { parseFaaRegistryZip } from './parse-faa-zip.js';
 
@@ -29,15 +28,15 @@ describe('parseFaaRegistryZip', () => {
 
     const records = parseFaaRegistryZip(createTestZip(master, acftRef));
 
-    assert.equal(records.length, 1);
-    assert.equal(records[0]?.icaoHex, 'A004B3');
-    assert.equal(records[0]?.registration, 'N12345');
-    assert.equal(records[0]?.make, 'CESSNA');
-    assert.equal(records[0]?.model, '172S');
-    assert.equal(records[0]?.operator, 'ACME LLC');
-    assert.equal(records[0]?.aircraftType, 'fixedWingSingleEngine');
-    assert.equal(records[0]?.engineType, 'reciprocating');
-    assert.equal(records[0]?.yearManufactured, 2005);
+    expect(records.length).toBe(1);
+    expect(records[0]?.icaoHex).toBe('A004B3');
+    expect(records[0]?.registration).toBe('N12345');
+    expect(records[0]?.make).toBe('CESSNA');
+    expect(records[0]?.model).toBe('172S');
+    expect(records[0]?.operator).toBe('ACME LLC');
+    expect(records[0]?.aircraftType).toBe('fixedWingSingleEngine');
+    expect(records[0]?.engineType).toBe('reciprocating');
+    expect(records[0]?.yearManufactured).toBe(2005);
   });
 
   it('handles multiple records', () => {
@@ -52,32 +51,28 @@ describe('parseFaaRegistryZip', () => {
 
     const records = parseFaaRegistryZip(createTestZip(master, acftRef));
 
-    assert.equal(records.length, 2);
-    assert.equal(records[0]?.registration, 'N12345');
-    assert.equal(records[0]?.make, 'CESSNA');
-    assert.equal(records[1]?.registration, 'N67890');
-    assert.equal(records[1]?.make, 'BOEING');
-    assert.equal(records[1]?.model, '737-800');
-    assert.equal(records[1]?.aircraftType, 'fixedWingMultiEngine');
-    assert.equal(records[1]?.engineType, 'turboFan');
+    expect(records.length).toBe(2);
+    expect(records[0]?.registration).toBe('N12345');
+    expect(records[0]?.make).toBe('CESSNA');
+    expect(records[1]?.registration).toBe('N67890');
+    expect(records[1]?.make).toBe('BOEING');
+    expect(records[1]?.model).toBe('737-800');
+    expect(records[1]?.aircraftType).toBe('fixedWingMultiEngine');
+    expect(records[1]?.engineType).toBe('turboFan');
   });
 
   it('throws if MASTER.txt is missing from the ZIP', () => {
     const zip = new AdmZip();
     zip.addFile('ACFTREF.txt', Buffer.from(ACFTREF_HEADER, 'utf-8'));
 
-    assert.throws(() => parseFaaRegistryZip(zip.toBuffer()), {
-      message: 'MASTER.txt not found in ZIP',
-    });
+    expect(() => parseFaaRegistryZip(zip.toBuffer())).toThrow('MASTER.txt not found in ZIP');
   });
 
   it('throws if ACFTREF.txt is missing from the ZIP', () => {
     const zip = new AdmZip();
     zip.addFile('MASTER.txt', Buffer.from(MASTER_HEADER, 'utf-8'));
 
-    assert.throws(() => parseFaaRegistryZip(zip.toBuffer()), {
-      message: 'ACFTREF.txt not found in ZIP',
-    });
+    expect(() => parseFaaRegistryZip(zip.toBuffer())).toThrow('ACFTREF.txt not found in ZIP');
   });
 
   it('handles case-insensitive file name matching', () => {
@@ -93,7 +88,7 @@ describe('parseFaaRegistryZip', () => {
     zip.addFile('acftref.txt', Buffer.from(ACFTREF_HEADER, 'utf-8'));
 
     const records = parseFaaRegistryZip(zip.toBuffer());
-    assert.equal(records.length, 1);
-    assert.equal(records[0]?.icaoHex, 'A004B3');
+    expect(records.length).toBe(1);
+    expect(records[0]?.icaoHex).toBe('A004B3');
   });
 });

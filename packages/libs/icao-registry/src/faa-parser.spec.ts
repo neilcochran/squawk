@@ -1,5 +1,4 @@
-import { describe, it } from 'vitest';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { parseMasterCsv, parseAcftRefCsv, joinRegistryRecords } from './faa-parser.js';
 
 const MASTER_HEADER =
@@ -15,14 +14,14 @@ describe('parseMasterCsv', () => {
       '\n12345,28246,7100510,00000,2005,4,ACME AVIATION LLC,123 MAIN ST,,ANYTOWN,VA,20001,2,001,US,20230101,20050601,1N,4,1,A,50012345,,,,,,,,20260601,12345678,,,A004B3';
 
     const records = parseMasterCsv(content);
-    assert.equal(records.length, 1);
-    assert.equal(records[0]?.registration, 'N12345');
-    assert.equal(records[0]?.icaoHex, 'A004B3');
-    assert.equal(records[0]?.name, 'ACME AVIATION LLC');
-    assert.equal(records[0]?.yearMfr, 2005);
-    assert.equal(records[0]?.mfrMdlCode, '7100510');
-    assert.equal(records[0]?.typeAircraft, '4');
-    assert.equal(records[0]?.typeEngine, '1');
+    expect(records.length).toBe(1);
+    expect(records[0]?.registration).toBe('N12345');
+    expect(records[0]?.icaoHex).toBe('A004B3');
+    expect(records[0]?.name).toBe('ACME AVIATION LLC');
+    expect(records[0]?.yearMfr).toBe(2005);
+    expect(records[0]?.mfrMdlCode).toBe('7100510');
+    expect(records[0]?.typeAircraft).toBe('4');
+    expect(records[0]?.typeEngine).toBe('1');
   });
 
   it('skips records with empty MODE S CODE HEX', () => {
@@ -31,7 +30,7 @@ describe('parseMasterCsv', () => {
       '\n99999,12345,7100510,00000,2005,4,NO HEX LLC,,,ANYTOWN,VA,20001,2,001,US,,,1N,4,1,A,50012345,,,,,,,,,12345678,,,';
 
     const records = parseMasterCsv(content);
-    assert.equal(records.length, 0);
+    expect(records.length).toBe(0);
   });
 
   it('skips records with empty N-NUMBER', () => {
@@ -40,7 +39,7 @@ describe('parseMasterCsv', () => {
       '\n,12345,7100510,00000,2005,4,NO NNUM LLC,,,ANYTOWN,VA,20001,2,001,US,,,1N,4,1,A,50012345,,,,,,,,,12345678,,,A004B3';
 
     const records = parseMasterCsv(content);
-    assert.equal(records.length, 0);
+    expect(records.length).toBe(0);
   });
 
   it('handles missing year as undefined', () => {
@@ -49,7 +48,7 @@ describe('parseMasterCsv', () => {
       '\n12345,28246,7100510,00000,,4,ACME LLC,,,ANYTOWN,VA,20001,2,001,US,,,1N,4,1,A,50012345,,,,,,,,,12345678,,,A004B3';
 
     const records = parseMasterCsv(content);
-    assert.equal(records[0]?.yearMfr, undefined);
+    expect(records[0]?.yearMfr).toBe(undefined);
   });
 
   it('trims whitespace from fields', () => {
@@ -58,14 +57,14 @@ describe('parseMasterCsv', () => {
       '\n 12345 ,28246, 7100510 ,00000, 2005 ,4, ACME LLC ,,,ANYTOWN,VA,20001,2,001,US,,,1N, 4 , 1 ,A,50012345,,,,,,,,,12345678,,, A004B3 ';
 
     const records = parseMasterCsv(content);
-    assert.equal(records[0]?.registration, 'N12345');
-    assert.equal(records[0]?.icaoHex, 'A004B3');
-    assert.equal(records[0]?.name, 'ACME LLC');
-    assert.equal(records[0]?.typeAircraft, '4');
+    expect(records[0]?.registration).toBe('N12345');
+    expect(records[0]?.icaoHex).toBe('A004B3');
+    expect(records[0]?.name).toBe('ACME LLC');
+    expect(records[0]?.typeAircraft).toBe('4');
   });
 
   it('returns empty array for empty content', () => {
-    assert.equal(parseMasterCsv('').length, 0);
+    expect(parseMasterCsv('').length).toBe(0);
   });
 });
 
@@ -74,21 +73,21 @@ describe('parseAcftRefCsv', () => {
     const content = ACFTREF_HEADER + '\n7100510,CESSNA,172S,4,1,1,0,1,4,CLASS 1,126,,';
 
     const ref = parseAcftRefCsv(content);
-    assert.equal(ref.size, 1);
+    expect(ref.size).toBe(1);
     const record = ref.get('7100510');
-    assert.equal(record?.mfr, 'CESSNA');
-    assert.equal(record?.model, '172S');
+    expect(record?.mfr).toBe('CESSNA');
+    expect(record?.model).toBe('172S');
   });
 
   it('skips records with empty CODE', () => {
     const content = ACFTREF_HEADER + '\n,UNKNOWN,MYSTERY,4,1,1,0,1,4,CLASS 1,0,,';
 
     const ref = parseAcftRefCsv(content);
-    assert.equal(ref.size, 0);
+    expect(ref.size).toBe(0);
   });
 
   it('returns empty map for empty content', () => {
-    assert.equal(parseAcftRefCsv('').size, 0);
+    expect(parseAcftRefCsv('').size).toBe(0);
   });
 });
 
@@ -103,15 +102,15 @@ describe('joinRegistryRecords', () => {
     );
 
     const joined = joinRegistryRecords(master, acftRef);
-    assert.equal(joined.length, 1);
-    assert.equal(joined[0]?.icaoHex, 'A004B3');
-    assert.equal(joined[0]?.registration, 'N12345');
-    assert.equal(joined[0]?.make, 'CESSNA');
-    assert.equal(joined[0]?.model, '172S');
-    assert.equal(joined[0]?.operator, 'ACME LLC');
-    assert.equal(joined[0]?.aircraftType, 'fixedWingSingleEngine');
-    assert.equal(joined[0]?.engineType, 'reciprocating');
-    assert.equal(joined[0]?.yearManufactured, 2005);
+    expect(joined.length).toBe(1);
+    expect(joined[0]?.icaoHex).toBe('A004B3');
+    expect(joined[0]?.registration).toBe('N12345');
+    expect(joined[0]?.make).toBe('CESSNA');
+    expect(joined[0]?.model).toBe('172S');
+    expect(joined[0]?.operator).toBe('ACME LLC');
+    expect(joined[0]?.aircraftType).toBe('fixedWingSingleEngine');
+    expect(joined[0]?.engineType).toBe('reciprocating');
+    expect(joined[0]?.yearManufactured).toBe(2005);
   });
 
   it('handles missing ACFTREF match', () => {
@@ -122,9 +121,9 @@ describe('joinRegistryRecords', () => {
     const acftRef = parseAcftRefCsv(ACFTREF_HEADER);
 
     const joined = joinRegistryRecords(master, acftRef);
-    assert.equal(joined[0]?.make, undefined);
-    assert.equal(joined[0]?.model, undefined);
-    assert.equal(joined[0]?.registration, 'N12345');
+    expect(joined[0]?.make).toBe(undefined);
+    expect(joined[0]?.model).toBe(undefined);
+    expect(joined[0]?.registration).toBe('N12345');
   });
 
   it('omits optional fields when empty', () => {
@@ -135,9 +134,9 @@ describe('joinRegistryRecords', () => {
     const acftRef = parseAcftRefCsv(ACFTREF_HEADER);
 
     const joined = joinRegistryRecords(master, acftRef);
-    assert.equal(joined[0]?.operator, undefined);
-    assert.equal(joined[0]?.yearManufactured, undefined);
-    assert.equal(joined[0]?.aircraftType, undefined);
-    assert.equal(joined[0]?.engineType, undefined);
+    expect(joined[0]?.operator).toBe(undefined);
+    expect(joined[0]?.yearManufactured).toBe(undefined);
+    expect(joined[0]?.aircraftType).toBe(undefined);
+    expect(joined[0]?.engineType).toBe(undefined);
   });
 });
