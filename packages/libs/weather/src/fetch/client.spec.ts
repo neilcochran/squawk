@@ -1,4 +1,4 @@
-import { describe, it, mock, afterEach } from 'node:test';
+import { describe, it, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   AwcFetchError,
@@ -12,7 +12,7 @@ import {
 } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 describe('buildAwcUrl', () => {
@@ -44,15 +44,15 @@ describe('buildAwcUrl', () => {
 
 describe('requestAwcText', () => {
   it('returns the response body on 200 OK', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response('raw body', { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response('raw body', { status: 200 }),
+    );
     const body = await requestAwcText('https://example.test/metar');
     assert.equal(body, 'raw body');
   });
 
   it('throws AwcFetchError on non-2xx responses with status and body', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () =>
         new Response('service unavailable', { status: 503, statusText: 'Service Unavailable' }),
     );
@@ -72,7 +72,7 @@ describe('requestAwcText', () => {
   it('forwards the AbortSignal to fetch', async () => {
     const controller = new AbortController();
     let observedSignal: AbortSignal | undefined;
-    mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url: unknown, init?: RequestInit) => {
       observedSignal = init?.signal ?? undefined;
       return new Response('ok', { status: 200 });
     });
@@ -82,7 +82,7 @@ describe('requestAwcText', () => {
 
   it('rethrows network errors from fetch', async () => {
     const boom = new Error('network down');
-    mock.method(globalThis, 'fetch', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
       throw boom;
     });
     await assert.rejects(() => requestAwcText('https://example.test/metar'), boom);

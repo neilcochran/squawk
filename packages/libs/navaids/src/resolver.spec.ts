@@ -1,4 +1,4 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
 import type { Navaid, NavaidType } from '@squawk/types';
 import { createNavaidResolver } from './resolver.js';
@@ -15,7 +15,7 @@ async function loadRealData(): Promise<Navaid[]> {
 
 let resolver: NavaidResolver;
 
-before(async () => {
+beforeAll(async () => {
   const data = await loadRealData();
   resolver = createNavaidResolver({ data });
 });

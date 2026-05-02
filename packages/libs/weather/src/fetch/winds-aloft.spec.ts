@@ -1,10 +1,10 @@
-import { describe, it, mock, afterEach } from 'node:test';
+import { describe, it, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import { fetchWindsAloft } from './winds-aloft.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 const MINIMAL_BULLETIN = [
@@ -20,7 +20,7 @@ const MINIMAL_BULLETIN = [
 describe('fetchWindsAloft', () => {
   it('builds the bare endpoint URL when no options are provided', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -30,7 +30,7 @@ describe('fetchWindsAloft', () => {
 
   it('maps region names to AWC wire values', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -40,7 +40,7 @@ describe('fetchWindsAloft', () => {
 
   it('maps westernPacific to the AWC other_pac value', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -50,7 +50,7 @@ describe('fetchWindsAloft', () => {
 
   it('passes altitudeBand through as the AWC level parameter', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -60,7 +60,7 @@ describe('fetchWindsAloft', () => {
 
   it('pads numeric forecastHours into a zero-prefixed AWC fcst value', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -70,7 +70,7 @@ describe('fetchWindsAloft', () => {
 
   it('does not pad forecastHours that are already two digits', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -80,7 +80,7 @@ describe('fetchWindsAloft', () => {
 
   it('combines all options into a single URL', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -93,7 +93,9 @@ describe('fetchWindsAloft', () => {
   });
 
   it('parses the response body into a structured forecast', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response(MINIMAL_BULLETIN, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(MINIMAL_BULLETIN, { status: 200 }),
+    );
     const { forecast, raw } = await fetchWindsAloft();
     assert.equal(forecast.wmoHeader, 'FBUS31 KWNO 241359');
     assert.equal(forecast.productCode, 'FD1US1');
@@ -103,9 +105,7 @@ describe('fetchWindsAloft', () => {
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
     await assert.rejects(() => fetchWindsAloft(), AwcFetchError);
@@ -113,7 +113,7 @@ describe('fetchWindsAloft', () => {
 
   it('honors a custom baseUrl', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -124,7 +124,7 @@ describe('fetchWindsAloft', () => {
   it('forwards the AbortSignal to fetch', async () => {
     const controller = new AbortController();
     let observedSignal: AbortSignal | undefined;
-    mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url: unknown, init?: RequestInit) => {
       observedSignal = init?.signal ?? undefined;
       return new Response(MINIMAL_BULLETIN, { status: 200 });
     });
@@ -133,7 +133,9 @@ describe('fetchWindsAloft', () => {
   });
 
   it('propagates parser errors thrown on a malformed body', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response('not a bulletin', { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response('not a bulletin', { status: 200 }),
+    );
     await assert.rejects(() => fetchWindsAloft(), /DATA BASED ON/);
   });
 });

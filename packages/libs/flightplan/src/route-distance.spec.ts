@@ -1,4 +1,4 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
 import { greatCircle } from '@squawk/geo';
 import type { Airport, AirwayWaypoint } from '@squawk/types';
@@ -608,7 +608,7 @@ describe('computeRouteDistance', () => {
 describe('computeRouteDistance integration', () => {
   let resolver: FlightplanResolver;
 
-  before(async () => {
+  beforeAll(async () => {
     const [
       { usBundledAirports },
       { createAirportResolver },

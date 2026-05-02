@@ -1,10 +1,10 @@
-import { describe, it, mock, afterEach } from 'node:test';
+import { describe, it, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import { fetchSigmets } from './sigmet.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 // Real AWC /airsigmet?format=raw wire format: each bulletin is preceded by a
@@ -55,7 +55,7 @@ JTST. RPTD BY ACFT. CONDS CONTG BYD 0650Z.`;
 describe('fetchSigmets', () => {
   it('builds the expected URL with format=raw and no deprecated type filter', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -64,7 +64,9 @@ describe('fetchSigmets', () => {
   });
 
   it('splits AWC-wrapped multi-SIGMET responses and parses each bulletin', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response(AWC_WIRE_BODY, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(AWC_WIRE_BODY, { status: 200 }),
+    );
     const { sigmets, parseErrors, raw } = await fetchSigmets();
     assert.equal(sigmets.length, 2);
     assert.equal(sigmets[0]?.format, 'CONVECTIVE');
@@ -82,7 +84,9 @@ describe('fetchSigmets', () => {
   });
 
   it('handles a mixed convective + non-convective bulletin response', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response(AWC_MIXED_BODY, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(AWC_MIXED_BODY, { status: 200 }),
+    );
     const { sigmets, parseErrors } = await fetchSigmets();
     assert.equal(sigmets.length, 2);
     assert.equal(sigmets[0]?.format, 'CONVECTIVE');
@@ -95,7 +99,9 @@ describe('fetchSigmets', () => {
   });
 
   it('returns empty arrays for a whitespace-only body', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response('\n\n  \n', { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response('\n\n  \n', { status: 200 }),
+    );
     const { sigmets, parseErrors } = await fetchSigmets();
     assert.deepEqual(sigmets, []);
     assert.deepEqual(parseErrors, []);
@@ -103,7 +109,9 @@ describe('fetchSigmets', () => {
 
   it('captures a malformed bulletin in parseErrors without losing good ones', async () => {
     const body = `${AWC_WIRE_BODY}\n----------------------\nType: SIGMET Hazard: CONVECTIVE\nnot a real sigmet body`;
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { sigmets, parseErrors } = await fetchSigmets();
     assert.equal(sigmets.length, 2);
     assert.equal(parseErrors.length, 1);
@@ -112,7 +120,7 @@ describe('fetchSigmets', () => {
 
   it('includes the hazard filter when provided', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -124,7 +132,7 @@ describe('fetchSigmets', () => {
 
   it('omits the hazard filter when not provided', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -134,9 +142,7 @@ describe('fetchSigmets', () => {
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
     await assert.rejects(() => fetchSigmets(), AwcFetchError);
@@ -146,11 +152,13 @@ describe('fetchSigmets', () => {
     const controller = new AbortController();
     let observedUrl: string | undefined;
     let observedSignal: AbortSignal | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL, init?: RequestInit) => {
-      observedUrl = url.toString();
-      observedSignal = init?.signal ?? undefined;
-      return new Response(AWC_WIRE_BODY, { status: 200 });
-    });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        observedUrl = url.toString();
+        observedSignal = init?.signal ?? undefined;
+        return new Response(AWC_WIRE_BODY, { status: 200 });
+      },
+    );
     await fetchSigmets({ baseUrl: 'https://mirror.test/api', signal: controller.signal });
     assert.equal(observedUrl, 'https://mirror.test/api/airsigmet?format=raw');
     assert.equal(observedSignal, controller.signal);

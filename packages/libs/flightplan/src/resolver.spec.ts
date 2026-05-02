@@ -1,4 +1,4 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
 import type { FlightplanResolver } from './resolver.js';
 import { createFlightplanResolver } from './resolver.js';
@@ -15,7 +15,7 @@ let airways: FlightplanAirwayLookup;
 let procedures: FlightplanProcedureLookup;
 let resolver: FlightplanResolver;
 
-before(async () => {
+beforeAll(async () => {
   const [
     { usBundledAirports },
     { createAirportResolver },

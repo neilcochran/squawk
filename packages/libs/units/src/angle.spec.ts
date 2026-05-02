@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { close } from './test-utils.js';
 import { degreesToRadians, radiansToDegrees } from './angle.js';

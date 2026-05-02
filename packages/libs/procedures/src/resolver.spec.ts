@@ -1,11 +1,11 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
 import { createProcedureResolver } from './resolver.js';
 import type { ProcedureResolver } from './resolver.js';
 
 let resolver: ProcedureResolver;
 
-before(async () => {
+beforeAll(async () => {
   const { usBundledProcedures } = await import('@squawk/procedure-data');
   resolver = createProcedureResolver({ data: usBundledProcedures.records });
 });

@@ -1,16 +1,16 @@
-import { describe, it, mock, afterEach } from 'node:test';
+import { describe, it, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import { fetchMetar } from './metar.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 describe('fetchMetar', () => {
   it('builds the expected URL for a single station', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -20,7 +20,7 @@ describe('fetchMetar', () => {
 
   it('comma-joins multiple station IDs into a single request', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -33,7 +33,9 @@ describe('fetchMetar', () => {
       'KJFK 041853Z 21010KT 10SM FEW250 18/06 A3012',
       'KLAX 041853Z 25015KT 10SM CLR 22/12 A2998',
     ].join('\n');
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { metars, parseErrors, raw } = await fetchMetar(['KJFK', 'KLAX']);
     assert.equal(metars.length, 2);
     assert.equal(metars[0]?.stationId, 'KJFK');
@@ -44,7 +46,9 @@ describe('fetchMetar', () => {
 
   it('captures malformed records in parseErrors without throwing', async () => {
     const body = ['KJFK 041853Z 21010KT 10SM FEW250 18/06 A3012', 'not a metar at all'].join('\n');
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { metars, parseErrors } = await fetchMetar(['KJFK', 'NOPE']);
     assert.equal(metars.length, 1);
     assert.equal(metars[0]?.stationId, 'KJFK');
@@ -53,7 +57,7 @@ describe('fetchMetar', () => {
   });
 
   it('returns empty arrays for an empty body', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response('', { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('', { status: 200 }));
     const { metars, parseErrors, raw } = await fetchMetar('KZZZZ');
     assert.deepEqual(metars, []);
     assert.deepEqual(parseErrors, []);
@@ -61,9 +65,7 @@ describe('fetchMetar', () => {
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
     await assert.rejects(() => fetchMetar('KJFK'), AwcFetchError);
@@ -71,7 +73,7 @@ describe('fetchMetar', () => {
 
   it('honors a custom baseUrl', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -81,7 +83,7 @@ describe('fetchMetar', () => {
 
   it('surfaces AWC 400 for empty input (string) as AwcFetchError', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('Invalid station id', { status: 400, statusText: 'Bad Request' });
     });
@@ -91,7 +93,7 @@ describe('fetchMetar', () => {
 
   it('surfaces AWC 400 for empty input (array) as AwcFetchError', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('Invalid station id', { status: 400, statusText: 'Bad Request' });
     });
@@ -102,7 +104,7 @@ describe('fetchMetar', () => {
   it('forwards the AbortSignal to fetch', async () => {
     const controller = new AbortController();
     let observedSignal: AbortSignal | undefined;
-    mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url: unknown, init?: RequestInit) => {
       observedSignal = init?.signal ?? undefined;
       return new Response('', { status: 200 });
     });

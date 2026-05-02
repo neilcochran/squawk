@@ -1,10 +1,10 @@
-import { describe, it, mock, afterEach } from 'node:test';
+import { describe, it, vi, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import { fetchInternationalSigmets } from './international-sigmet.js';
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
 
 afterEach(() => {
-  mock.restoreAll();
+  vi.restoreAllMocks();
 });
 
 // Real AWC /isigmet?format=raw wire format: each bulletin is preceded by a
@@ -26,7 +26,7 @@ W07600 FL160/360 STNR NC=`;
 describe('fetchInternationalSigmets', () => {
   it('builds the expected URL with format=raw', async () => {
     let observedUrl: string | undefined;
-    mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       observedUrl = url.toString();
       return new Response('', { status: 200 });
     });
@@ -35,7 +35,9 @@ describe('fetchInternationalSigmets', () => {
   });
 
   it('splits AWC-wrapped multi-SIGMET responses and parses each bulletin', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response(AWC_ISIGMET_BODY, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(AWC_ISIGMET_BODY, { status: 200 }),
+    );
     const { sigmets, parseErrors, raw } = await fetchInternationalSigmets();
     assert.equal(sigmets.length, 2);
     assert.equal(sigmets[0]?.format, 'INTERNATIONAL');
@@ -45,7 +47,9 @@ describe('fetchInternationalSigmets', () => {
   });
 
   it('returns empty arrays for a whitespace-only body', async () => {
-    mock.method(globalThis, 'fetch', async () => new Response('\n\n  \n', { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response('\n\n  \n', { status: 200 }),
+    );
     const { sigmets, parseErrors } = await fetchInternationalSigmets();
     assert.deepEqual(sigmets, []);
     assert.deepEqual(parseErrors, []);
@@ -53,7 +57,9 @@ describe('fetchInternationalSigmets', () => {
 
   it('captures a malformed bulletin in parseErrors without losing good ones', async () => {
     const body = `${AWC_ISIGMET_BODY}\n----------------------\nHazard: TS\nnot a real sigmet body`;
-    mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () => new Response(body, { status: 200 }),
+    );
     const { sigmets, parseErrors } = await fetchInternationalSigmets();
     assert.equal(sigmets.length, 2);
     assert.equal(parseErrors.length, 1);
@@ -61,9 +67,7 @@ describe('fetchInternationalSigmets', () => {
   });
 
   it('throws AwcFetchError on non-2xx responses', async () => {
-    mock.method(
-      globalThis,
-      'fetch',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
       async () => new Response('boom', { status: 500, statusText: 'Internal Server Error' }),
     );
     await assert.rejects(() => fetchInternationalSigmets(), AwcFetchError);

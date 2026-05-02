@@ -36,8 +36,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "node --test 'dist/**/*.spec.js'",
-    "test:coverage": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='dist/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info 'dist/**/*.spec.js'",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "tsc --noEmit && eslint src",
     "lint:pack": "publint && attw --pack . --profile esm-only --exclude-entrypoints \"./data/procedures.json.gz\""
   },

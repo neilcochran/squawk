@@ -1,4 +1,4 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
 import type { Airport, FacilityType } from '@squawk/types';
 import { createAirportResolver } from './resolver.js';
@@ -15,7 +15,7 @@ async function loadRealData(): Promise<Airport[]> {
 
 let resolver: AirportResolver;
 
-before(async () => {
+beforeAll(async () => {
   const data = await loadRealData();
   resolver = createAirportResolver({ data });
 });

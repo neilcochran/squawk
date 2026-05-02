@@ -1,4 +1,4 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
 import type { FeatureCollection, Feature } from 'geojson';
 import type { AirspaceType } from '@squawk/types';
@@ -8,7 +8,7 @@ import type { AirspaceResolver } from './resolver.js';
 
 let resolve_: AirspaceResolver;
 
-before(() => {
+beforeAll(() => {
   resolve_ = createAirspaceResolver({ data: usBundledAirspace });
 });
 

@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import type { IlsSystem } from '@squawk/types';
 import { usBundledAirports } from './index.js';
