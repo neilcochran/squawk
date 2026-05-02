@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { close } from './test-utils.js';
 import {
   magneticDeclination,
@@ -1345,31 +1344,31 @@ describe('magneticField against WMM2025 official test values', () => {
         altitudeFt: tc.altitudeKm * KM_TO_FT,
       });
 
-      assert.ok(
+      assert(
         close(result.declinationDeg, tc.declDeg, 0.01),
         `declination: expected ${tc.declDeg}, got ${result.declinationDeg}`,
       );
-      assert.ok(
+      assert(
         close(result.inclinationDeg, tc.inclDeg, 0.01),
         `inclination: expected ${tc.inclDeg}, got ${result.inclinationDeg}`,
       );
-      assert.ok(
+      assert(
         close(result.horizontalIntensityNt, tc.h, 100.0),
         `H: expected ${tc.h}, got ${result.horizontalIntensityNt}`,
       );
-      assert.ok(
+      assert(
         close(result.northIntensityNt, tc.x, 100.0),
         `X: expected ${tc.x}, got ${result.northIntensityNt}`,
       );
-      assert.ok(
+      assert(
         close(result.eastIntensityNt, tc.y, 100.0),
         `Y: expected ${tc.y}, got ${result.eastIntensityNt}`,
       );
-      assert.ok(
+      assert(
         close(result.downIntensityNt, tc.z, 100.0),
         `Z: expected ${tc.z}, got ${result.downIntensityNt}`,
       );
-      assert.ok(
+      assert(
         close(result.totalIntensityNt, tc.f, 100.0),
         `F: expected ${tc.f}, got ${result.totalIntensityNt}`,
       );
@@ -1385,7 +1384,7 @@ describe('magneticDeclination', () => {
   it('returns the same value as magneticField().declinationDeg', () => {
     const dec = magneticDeclination(40.0, -105.0, { decimalYear: 2025.0 });
     const field = magneticField(40.0, -105.0, { decimalYear: 2025.0 });
-    assert.equal(dec, field.declinationDeg);
+    expect(dec).toBe(field.declinationDeg);
   });
 });
 
@@ -1397,7 +1396,7 @@ describe('trueToMagnetic', () => {
   it('subtracts east declination from true bearing', () => {
     const result = trueToMagnetic(360, 14, 143, { decimalYear: 2025.0 });
     // Declination at (14, 143) is about -0.19 (west), so magnetic ~ 360.19 -> 0.19
-    assert.ok(result >= 0 && result < 360, `expected [0, 360), got ${result}`);
+    assert(result >= 0 && result < 360, `expected [0, 360), got ${result}`);
   });
 
   it('normalizes result to [0, 360)', () => {
@@ -1405,8 +1404,8 @@ describe('trueToMagnetic', () => {
     // At (62, 53) in 2027.5, declination is about 19.39 east
     const result = trueToMagnetic(5, 62, 53, { decimalYear: 2027.5 });
     // 5 - 19.39 = -14.39, normalized to ~345.61
-    assert.ok(result >= 0 && result < 360, `expected [0, 360), got ${result}`);
-    assert.ok(close(result, 360 + 5 - 19.39, 0.5), `expected ~345.6, got ${result}`);
+    assert(result >= 0 && result < 360, `expected [0, 360), got ${result}`);
+    assert(close(result, 360 + 5 - 19.39, 0.5), `expected ~345.6, got ${result}`);
   });
 });
 
@@ -1414,18 +1413,15 @@ describe('magneticToTrue', () => {
   it('adds east declination to magnetic bearing', () => {
     const result = magneticToTrue(345, 62, 53, { decimalYear: 2027.5 });
     // 345 + 19.39 = 364.39, normalized to ~4.39
-    assert.ok(result >= 0 && result < 360, `expected [0, 360), got ${result}`);
-    assert.ok(close(result, 345 + 19.39 - 360, 0.5), `expected ~4.4, got ${result}`);
+    assert(result >= 0 && result < 360, `expected [0, 360), got ${result}`);
+    assert(close(result, 345 + 19.39 - 360, 0.5), `expected ~4.4, got ${result}`);
   });
 
   it('round-trips with trueToMagnetic', () => {
     const trueBearing = 127.0;
     const mag = trueToMagnetic(trueBearing, 40, -105, { decimalYear: 2026.0 });
     const roundTripped = magneticToTrue(mag, 40, -105, { decimalYear: 2026.0 });
-    assert.ok(
-      close(roundTripped, trueBearing, 0.001),
-      `expected ${trueBearing}, got ${roundTripped}`,
-    );
+    assert(close(roundTripped, trueBearing, 0.001), `expected ${trueBearing}, got ${roundTripped}`);
   });
 });
 
@@ -1435,17 +1431,17 @@ describe('magneticToTrue', () => {
 
 describe('dateToDecimalYear', () => {
   it('converts Jan 1 to integer year', () => {
-    assert.equal(dateToDecimalYear(new Date(Date.UTC(2025, 0, 1))), 2025.0);
+    expect(dateToDecimalYear(new Date(Date.UTC(2025, 0, 1)))).toBe(2025.0);
   });
 
   it('converts Jul 2 to approximately year + 0.5', () => {
     const result = dateToDecimalYear(new Date(Date.UTC(2025, 6, 2)));
-    assert.ok(close(result, 2025.5, 0.01), `expected ~2025.5, got ${result}`);
+    assert(close(result, 2025.5, 0.01), `expected ~2025.5, got ${result}`);
   });
 
   it('handles leap year', () => {
     const result = dateToDecimalYear(new Date(Date.UTC(2028, 6, 1)));
-    assert.ok(close(result, 2028.5, 0.01), `expected ~2028.5, got ${result}`);
+    assert(close(result, 2028.5, 0.01), `expected ~2028.5, got ${result}`);
   });
 });
 
@@ -1456,32 +1452,32 @@ describe('dateToDecimalYear', () => {
 describe('edge cases', () => {
   it('handles near-north-pole latitude (89)', () => {
     const result = magneticField(89, 0, { decimalYear: 2025.0 });
-    assert.ok(Number.isFinite(result.declinationDeg), 'declination should be finite');
-    assert.ok(Number.isFinite(result.totalIntensityNt), 'F should be finite');
+    assert(Number.isFinite(result.declinationDeg), 'declination should be finite');
+    assert(Number.isFinite(result.totalIntensityNt), 'F should be finite');
   });
 
   it('handles near-south-pole latitude (-89)', () => {
     const result = magneticField(-89, 0, { decimalYear: 2025.0 });
-    assert.ok(Number.isFinite(result.declinationDeg), 'declination should be finite');
-    assert.ok(Number.isFinite(result.totalIntensityNt), 'F should be finite');
+    assert(Number.isFinite(result.declinationDeg), 'declination should be finite');
+    assert(Number.isFinite(result.totalIntensityNt), 'F should be finite');
   });
 
   it('handles exact north pole (90)', () => {
     const result = magneticField(90, 0, { decimalYear: 2025.0 });
-    assert.ok(Number.isFinite(result.declinationDeg), 'declination should be finite');
-    assert.ok(Number.isFinite(result.totalIntensityNt), 'F should be finite');
+    assert(Number.isFinite(result.declinationDeg), 'declination should be finite');
+    assert(Number.isFinite(result.totalIntensityNt), 'F should be finite');
   });
 
   it('handles exact south pole (-90)', () => {
     const result = magneticField(-90, 0, { decimalYear: 2025.0 });
-    assert.ok(Number.isFinite(result.declinationDeg), 'declination should be finite');
-    assert.ok(Number.isFinite(result.totalIntensityNt), 'F should be finite');
+    assert(Number.isFinite(result.declinationDeg), 'declination should be finite');
+    assert(Number.isFinite(result.totalIntensityNt), 'F should be finite');
   });
 
   it('handles date line (lon=180 and lon=-180 produce same result)', () => {
     const a = magneticField(0, 180, { decimalYear: 2025.0 });
     const b = magneticField(0, -180, { decimalYear: 2025.0 });
-    assert.ok(
+    assert(
       close(a.declinationDeg, b.declinationDeg, 0.001),
       `180 and -180 should match: ${a.declinationDeg} vs ${b.declinationDeg}`,
     );
@@ -1490,6 +1486,26 @@ describe('edge cases', () => {
   it('defaults to sea level when no altitude provided', () => {
     const withAlt = magneticField(40, -105, { decimalYear: 2025.0, altitudeFt: 0 });
     const withoutAlt = magneticField(40, -105, { decimalYear: 2025.0 });
-    assert.equal(withAlt.declinationDeg, withoutAlt.declinationDeg);
+    expect(withAlt.declinationDeg).toBe(withoutAlt.declinationDeg);
+  });
+
+  it('derives decimal year from a Date when decimalYear is not provided', () => {
+    const fromDate = magneticField(40, -105, { date: new Date(Date.UTC(2025, 0, 1)) });
+    const fromDecimalYear = magneticField(40, -105, { decimalYear: 2025.0 });
+    assert(
+      close(fromDate.declinationDeg, fromDecimalYear.declinationDeg, 0.001),
+      `Date should match equivalent decimalYear: ${fromDate.declinationDeg} vs ${fromDecimalYear.declinationDeg}`,
+    );
+  });
+
+  it('falls back to current date when neither decimalYear nor date is provided', () => {
+    const result = magneticField(40, -105);
+    assert(Number.isFinite(result.declinationDeg), 'declination should be finite');
+    assert(Number.isFinite(result.totalIntensityNt), 'F should be finite');
+  });
+
+  it('magneticDeclination accepts no options', () => {
+    const result = magneticDeclination(40, -105);
+    assert(Number.isFinite(result), 'declination should be finite');
   });
 });

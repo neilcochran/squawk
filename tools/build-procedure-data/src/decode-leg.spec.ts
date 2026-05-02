@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { decodePrimaryLegRecord, isFirstMissedApproachLeg } from './decode-leg.js';
 
 /**
@@ -57,64 +56,64 @@ describe('decodePrimaryLegRecord', () => {
   it('decodes a minimal valid IAP leg record', () => {
     const raw = buildLegRecord();
     const decoded = decodePrimaryLegRecord(raw);
-    assert.ok(decoded !== undefined);
-    assert.equal(decoded.airport, 'KJFK');
-    assert.equal(decoded.airportIcaoRegionCode, 'K6');
-    assert.equal(decoded.procedureIdentifier, 'I04L');
-    assert.equal(decoded.procedureType, 'IAP');
-    assert.equal(decoded.routeType, 'I');
-    assert.equal(decoded.sequenceNumber, 10);
-    assert.equal(decoded.fixSectionCode, 'PC');
-    assert.equal(decoded.leg.pathTerminator, 'IF');
-    assert.equal(decoded.leg.fixIdentifier, 'AROKE');
-    assert.equal(decoded.leg.icaoRegionCode, 'K6');
-    assert.equal(decoded.leg.category, 'FIX');
+    assert(decoded !== undefined);
+    expect(decoded.airport).toBe('KJFK');
+    expect(decoded.airportIcaoRegionCode).toBe('K6');
+    expect(decoded.procedureIdentifier).toBe('I04L');
+    expect(decoded.procedureType).toBe('IAP');
+    expect(decoded.routeType).toBe('I');
+    expect(decoded.sequenceNumber).toBe(10);
+    expect(decoded.fixSectionCode).toBe('PC');
+    expect(decoded.leg.pathTerminator).toBe('IF');
+    expect(decoded.leg.fixIdentifier).toBe('AROKE');
+    expect(decoded.leg.icaoRegionCode).toBe('K6');
+    expect(decoded.leg.category).toBe('FIX');
   });
 
   it('returns undefined for records shorter than 132 characters', () => {
     const truncated = buildLegRecord().substring(0, 100);
-    assert.equal(decodePrimaryLegRecord(truncated), undefined);
+    expect(decodePrimaryLegRecord(truncated)).toBe(undefined);
   });
 
   it('returns undefined for non-Standard (T prefix) records', () => {
     const raw = buildLegRecord({ 0: 'T' });
-    assert.equal(decodePrimaryLegRecord(raw), undefined);
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
   });
 
   it('accepts non-USA customer codes', () => {
     // CIFP publishes Canadian / Pacific / Latin American procedures too
     const raw = buildLegRecord({ 1: 'CAN' });
-    assert.ok(decodePrimaryLegRecord(raw) !== undefined);
+    assert(decodePrimaryLegRecord(raw) !== undefined);
   });
 
   it('returns undefined for heliport (H) section records', () => {
     const raw = buildLegRecord({ 4: 'H' });
-    assert.equal(decodePrimaryLegRecord(raw), undefined);
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
   });
 
   it('returns undefined for unknown subsection codes', () => {
     const raw = buildLegRecord({ 12: 'X' });
-    assert.equal(decodePrimaryLegRecord(raw), undefined);
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
   });
 
   it('recognizes SID, STAR, and IAP subsections', () => {
     const sid = decodePrimaryLegRecord(buildLegRecord({ 12: 'D' }));
     const star = decodePrimaryLegRecord(buildLegRecord({ 12: 'E' }));
     const iap = decodePrimaryLegRecord(buildLegRecord({ 12: 'F' }));
-    assert.equal(sid?.procedureType, 'SID');
-    assert.equal(star?.procedureType, 'STAR');
-    assert.equal(iap?.procedureType, 'IAP');
+    expect(sid?.procedureType).toBe('SID');
+    expect(star?.procedureType).toBe('STAR');
+    expect(iap?.procedureType).toBe('IAP');
   });
 
   it('returns undefined for continuation records', () => {
     // Continuation number 2 = first continuation record
     const raw = buildLegRecord({ 38: '2' });
-    assert.equal(decodePrimaryLegRecord(raw), undefined);
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
   });
 
   it('returns undefined for unknown path terminators', () => {
     const raw = buildLegRecord({ 47: 'XX' });
-    assert.equal(decodePrimaryLegRecord(raw), undefined);
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
   });
 
   it('decodes an altitude constraint with single altitude', () => {
@@ -123,8 +122,8 @@ describe('decodePrimaryLegRecord', () => {
       84: '03000', // 3000 ft
     });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.ok(decoded !== undefined);
-    assert.deepEqual(decoded.leg.altitudeConstraint, {
+    assert(decoded !== undefined);
+    expect(decoded.leg.altitudeConstraint).toEqual({
       descriptor: '+',
       primaryFt: 3000,
     });
@@ -137,8 +136,8 @@ describe('decodePrimaryLegRecord', () => {
       89: '03000',
     });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.ok(decoded !== undefined);
-    assert.deepEqual(decoded.leg.altitudeConstraint, {
+    assert(decoded !== undefined);
+    expect(decoded.leg.altitudeConstraint).toEqual({
       descriptor: 'B',
       primaryFt: 5000,
       secondaryFt: 3000,
@@ -151,13 +150,71 @@ describe('decodePrimaryLegRecord', () => {
       84: 'FL180',
     });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.altitudeConstraint?.primaryFt, 18000);
+    expect(decoded?.leg.altitudeConstraint?.primaryFt).toBe(18000);
   });
 
   it('omits the altitude constraint when the descriptor is blank', () => {
     const raw = buildLegRecord({ 84: '03000' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.altitudeConstraint, undefined);
+    expect(decoded?.leg.altitudeConstraint).toBe(undefined);
+  });
+
+  it('omits the altitude constraint when the descriptor is invalid', () => {
+    // Exercises the "invalid descriptor" branch in parseAltitudeConstraint.
+    const raw = buildLegRecord({ 82: 'Z', 84: '03000' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.altitudeConstraint).toBe(undefined);
+  });
+
+  it('omits the altitude constraint when the primary altitude is unparseable', () => {
+    // Exercises the "primaryFt undefined" branch.
+    const raw = buildLegRecord({ 82: '+', 84: 'XXXXX' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.altitudeConstraint).toBe(undefined);
+  });
+
+  it('omits the speed constraint when the speed value is zero', () => {
+    // Exercises the "speedKt === 0" branch in parseSpeedConstraint.
+    const raw = buildLegRecord({ 99: '000' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.speedConstraint).toBe(undefined);
+  });
+
+  it('omits the speed constraint when the speed descriptor is invalid', () => {
+    // Exercises the "invalid speed descriptor" branch.
+    const raw = buildLegRecord({ 99: '250', 117: 'X' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.speedConstraint).toBe(undefined);
+  });
+
+  it('returns undefined when the airport identifier is blank', () => {
+    const raw = buildLegRecord({ 6: '    ' });
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
+  });
+
+  it('returns undefined when the procedure identifier is blank', () => {
+    const raw = buildLegRecord({ 13: '      ' });
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
+  });
+
+  it('returns undefined when the sequence number is unparseable', () => {
+    const raw = buildLegRecord({ 26: 'XXX' });
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
+  });
+
+  it('omits icaoRegionCode on the leg when the fix region field is blank', () => {
+    // Fix identifier is present but its 2-character ICAO region slot is blank.
+    const raw = buildLegRecord({ 34: '  ' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.icaoRegionCode).toBe(undefined);
+  });
+
+  it('omits the recommended navaid region when blank', () => {
+    // Recommended navaid present but its 2-character region slot is blank.
+    const raw = buildLegRecord({ 50: 'BOS ', 54: '  ' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.recommendedNavaid).toBe('BOS');
+    expect(decoded?.leg.recommendedNavaidIcaoRegionCode).toBe(undefined);
   });
 
   it('decodes a speed constraint with an explicit descriptor', () => {
@@ -166,7 +223,7 @@ describe('decodePrimaryLegRecord', () => {
       117: '-',
     });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.deepEqual(decoded?.leg.speedConstraint, {
+    expect(decoded?.leg.speedConstraint).toEqual({
       descriptor: '-',
       speedKt: 250,
     });
@@ -175,111 +232,111 @@ describe('decodePrimaryLegRecord', () => {
   it('defaults a blank speed descriptor to at-or-below', () => {
     const raw = buildLegRecord({ 99: '180' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.speedConstraint?.descriptor, '-');
+    expect(decoded?.leg.speedConstraint?.descriptor).toBe('-');
   });
 
   it('decodes magnetic course from the 4-character field', () => {
     const raw = buildLegRecord({ 70: '2238', 47: 'CF' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.courseDeg, 223.8);
-    assert.equal(decoded?.leg.courseIsTrue, undefined);
+    expect(decoded?.leg.courseDeg).toBe(223.8);
+    expect(decoded?.leg.courseIsTrue).toBe(undefined);
   });
 
   it('decodes true bearing courses (T suffix)', () => {
     const raw = buildLegRecord({ 70: '090T', 47: 'CF' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.courseDeg, 9);
-    assert.equal(decoded?.leg.courseIsTrue, true);
+    expect(decoded?.leg.courseDeg).toBe(9);
+    expect(decoded?.leg.courseIsTrue).toBe(true);
   });
 
   it('decodes a distance in nautical miles', () => {
     const raw = buildLegRecord({ 74: '0060', 47: 'CF' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.distanceNm, 6);
-    assert.equal(decoded?.leg.holdTimeMin, undefined);
+    expect(decoded?.leg.distanceNm).toBe(6);
+    expect(decoded?.leg.holdTimeMin).toBe(undefined);
   });
 
   it('decodes a holding-pattern time (T prefix)', () => {
     const raw = buildLegRecord({ 74: 'T010', 47: 'HM' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.holdTimeMin, 1);
-    assert.equal(decoded?.leg.distanceNm, undefined);
+    expect(decoded?.leg.holdTimeMin).toBe(1);
+    expect(decoded?.leg.distanceNm).toBe(undefined);
   });
 
   it('sets the FAF flag from the waypoint description code (index 3 = F)', () => {
     const raw = buildLegRecord({ 39: 'E  F' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.isFinalApproachFix, true);
+    expect(decoded?.leg.isFinalApproachFix).toBe(true);
   });
 
   it('sets the MAP flag from the waypoint description code (index 3 = M)', () => {
     const raw = buildLegRecord({ 39: 'GY M' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.isMissedApproachPoint, true);
-    assert.equal(decoded?.leg.isFlyover, true); // index 1 = Y
+    expect(decoded?.leg.isMissedApproachPoint).toBe(true);
+    expect(decoded?.leg.isFlyover).toBe(true); // index 1 = Y
   });
 
   it('sets the IAF flag from the waypoint description code (index 3 = A)', () => {
     const raw = buildLegRecord({ 39: 'E  A' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.isInitialApproachFix, true);
+    expect(decoded?.leg.isInitialApproachFix).toBe(true);
   });
 
   it('sets the FACF flag from the waypoint description code (index 3 = I)', () => {
     const raw = buildLegRecord({ 39: 'E  I' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.isFinalApproachCourseFix, true);
+    expect(decoded?.leg.isFinalApproachCourseFix).toBe(true);
   });
 
   it('sets the flyover flag from index 1 = B', () => {
     const raw = buildLegRecord({ 39: 'EB  ' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.isFlyover, true);
+    expect(decoded?.leg.isFlyover).toBe(true);
   });
 
   it('decodes the turn direction', () => {
     const left = decodePrimaryLegRecord(buildLegRecord({ 43: 'L' }));
     const right = decodePrimaryLegRecord(buildLegRecord({ 43: 'R' }));
-    assert.equal(left?.leg.turnDirection, 'L');
-    assert.equal(right?.leg.turnDirection, 'R');
+    expect(left?.leg.turnDirection).toBe('L');
+    expect(right?.leg.turnDirection).toBe('R');
   });
 
   it('ignores unknown turn direction characters', () => {
     const raw = buildLegRecord({ 43: 'E' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.turnDirection, undefined);
+    expect(decoded?.leg.turnDirection).toBe(undefined);
   });
 
   it('decodes RNP values with the mantissa / negated-exponent encoding', () => {
     // 101 = 10 * 10^-1 = 1.0 NM
     const rnp1 = decodePrimaryLegRecord(buildLegRecord({ 44: '101' }));
-    assert.equal(rnp1?.leg.rnpNm, 1);
+    expect(rnp1?.leg.rnpNm).toBe(1);
     // 303 = 30 * 10^-3 = 0.03 NM
     const rnp003 = decodePrimaryLegRecord(buildLegRecord({ 44: '303' }));
-    assert.equal(rnp003?.leg.rnpNm, 0.03);
+    expect(rnp003?.leg.rnpNm).toBe(0.03);
   });
 
   it('decodes the recommended navaid with its region', () => {
     const raw = buildLegRecord({ 50: 'IHIQ', 54: 'K6' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.recommendedNavaid, 'IHIQ');
-    assert.equal(decoded?.leg.recommendedNavaidIcaoRegionCode, 'K6');
+    expect(decoded?.leg.recommendedNavaid).toBe('IHIQ');
+    expect(decoded?.leg.recommendedNavaidIcaoRegionCode).toBe('K6');
   });
 
   it('decodes theta (bearing) and rho (distance) to the recommended navaid', () => {
     const raw = buildLegRecord({ 62: '2238', 66: '0125' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.thetaDeg, 223.8);
-    assert.equal(decoded?.leg.rhoNm, 12.5);
+    expect(decoded?.leg.thetaDeg).toBe(223.8);
+    expect(decoded?.leg.rhoNm).toBe(12.5);
   });
 
   it('populates centerFix only for RF (constant radius arc) legs', () => {
     const cfLeg = decodePrimaryLegRecord(buildLegRecord({ 47: 'CF', 106: 'JFK  ', 112: 'K6' }));
-    assert.equal(cfLeg?.leg.centerFix, undefined);
+    expect(cfLeg?.leg.centerFix).toBe(undefined);
 
     const rfLeg = decodePrimaryLegRecord(buildLegRecord({ 47: 'RF', 106: 'JFK  ', 112: 'K6' }));
-    assert.equal(rfLeg?.leg.centerFix, 'JFK');
-    assert.equal(rfLeg?.leg.centerFixIcaoRegionCode, 'K6');
+    expect(rfLeg?.leg.centerFix).toBe('JFK');
+    expect(rfLeg?.leg.centerFixIcaoRegionCode).toBe('K6');
   });
 
   it('omits fix fields on a legless leg (e.g. VA heading-to-altitude)', () => {
@@ -290,16 +347,16 @@ describe('decodePrimaryLegRecord', () => {
       47: 'VA',
     });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.leg.fixIdentifier, undefined);
-    assert.equal(decoded?.leg.lat, undefined);
-    assert.equal(decoded?.leg.lon, undefined);
-    assert.equal(decoded?.leg.category, undefined);
+    expect(decoded?.leg.fixIdentifier).toBe(undefined);
+    expect(decoded?.leg.lat).toBe(undefined);
+    expect(decoded?.leg.lon).toBe(undefined);
+    expect(decoded?.leg.category).toBe(undefined);
   });
 
   it('flags startsEmbeddedMissedApproach when description code index 2 = M', () => {
     const raw = buildLegRecord({ 39: '  M ' });
     const decoded = decodePrimaryLegRecord(raw);
-    assert.equal(decoded?.startsEmbeddedMissedApproach, true);
+    expect(decoded?.startsEmbeddedMissedApproach).toBe(true);
   });
 
   it('maps fix section codes to the expected categories', () => {
@@ -315,25 +372,25 @@ describe('decodePrimaryLegRecord', () => {
     ];
     for (const [section, expected] of cases) {
       const decoded = decodePrimaryLegRecord(buildLegRecord({ 36: section }));
-      assert.equal(decoded?.leg.category, expected, `section ${section}`);
+      expect(decoded?.leg.category, `section ${section}`).toBe(expected);
     }
   });
 });
 
 describe('isFirstMissedApproachLeg', () => {
   it('returns true when description code index 2 is M', () => {
-    assert.equal(isFirstMissedApproachLeg('  M '), true);
-    assert.equal(isFirstMissedApproachLeg('E M '), true);
+    expect(isFirstMissedApproachLeg('  M ')).toBe(true);
+    expect(isFirstMissedApproachLeg('E M ')).toBe(true);
   });
 
   it('returns false when index 2 is not M', () => {
-    assert.equal(isFirstMissedApproachLeg('E  F'), false);
-    assert.equal(isFirstMissedApproachLeg('E   '), false);
+    expect(isFirstMissedApproachLeg('E  F')).toBe(false);
+    expect(isFirstMissedApproachLeg('E   ')).toBe(false);
   });
 
   it('returns false for a description code shorter than 3 characters', () => {
-    assert.equal(isFirstMissedApproachLeg(''), false);
-    assert.equal(isFirstMissedApproachLeg('E'), false);
-    assert.equal(isFirstMissedApproachLeg('EB'), false);
+    expect(isFirstMissedApproachLeg('')).toBe(false);
+    expect(isFirstMissedApproachLeg('E')).toBe(false);
+    expect(isFirstMissedApproachLeg('EB')).toBe(false);
   });
 });

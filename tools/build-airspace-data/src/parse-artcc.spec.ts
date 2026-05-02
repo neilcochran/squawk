@@ -1,46 +1,45 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { resolveStratum, splitClosedShapes, type ArtccSegPoint } from './parse-artcc.js';
 
 describe('resolveStratum', () => {
   it('returns LOW for ALTITUDE=LOW + TYPE=ARTCC', () => {
-    assert.equal(resolveStratum('LOW', 'ARTCC'), 'LOW');
+    expect(resolveStratum('LOW', 'ARTCC')).toBe('LOW');
   });
 
   it('returns HIGH for ALTITUDE=HIGH + TYPE=ARTCC', () => {
-    assert.equal(resolveStratum('HIGH', 'ARTCC'), 'HIGH');
+    expect(resolveStratum('HIGH', 'ARTCC')).toBe('HIGH');
   });
 
   it('returns UTA for ALTITUDE=UNLIMITED + TYPE=UTA', () => {
-    assert.equal(resolveStratum('UNLIMITED', 'UTA'), 'UTA');
+    expect(resolveStratum('UNLIMITED', 'UTA')).toBe('UTA');
   });
 
   it('returns CTA for ALTITUDE=UNLIMITED + TYPE=CTA', () => {
-    assert.equal(resolveStratum('UNLIMITED', 'CTA'), 'CTA');
+    expect(resolveStratum('UNLIMITED', 'CTA')).toBe('CTA');
   });
 
   it('returns FIR for ALTITUDE=UNLIMITED + TYPE=FIR', () => {
-    assert.equal(resolveStratum('UNLIMITED', 'FIR'), 'FIR');
+    expect(resolveStratum('UNLIMITED', 'FIR')).toBe('FIR');
   });
 
   it('returns CTA/FIR for ALTITUDE=UNLIMITED + TYPE=CTA/FIR', () => {
-    assert.equal(resolveStratum('UNLIMITED', 'CTA/FIR'), 'CTA/FIR');
+    expect(resolveStratum('UNLIMITED', 'CTA/FIR')).toBe('CTA/FIR');
   });
 
   it('returns undefined for unknown ALTITUDE values', () => {
-    assert.equal(resolveStratum('SUPER_HIGH', 'ARTCC'), undefined);
+    expect(resolveStratum('SUPER_HIGH', 'ARTCC')).toBe(undefined);
   });
 
   it('returns undefined for unknown TYPE values within UNLIMITED', () => {
-    assert.equal(resolveStratum('UNLIMITED', 'CTR'), undefined);
+    expect(resolveStratum('UNLIMITED', 'CTR')).toBe(undefined);
   });
 
   it('returns undefined for HIGH paired with a non-ARTCC type', () => {
-    assert.equal(resolveStratum('HIGH', 'UTA'), undefined);
+    expect(resolveStratum('HIGH', 'UTA')).toBe(undefined);
   });
 
   it('returns undefined for empty inputs', () => {
-    assert.equal(resolveStratum('', ''), undefined);
+    expect(resolveStratum('', '')).toBe(undefined);
   });
 });
 
@@ -56,12 +55,12 @@ describe('splitClosedShapes', () => {
       point(30, 10, 10, 'TO'),
       point(40, 0, 10, 'TO POINT OF BEGINNING'),
     ]);
-    assert.equal(shapes.length, 1);
+    expect(shapes.length).toBe(1);
     const ring = shapes[0]!;
     // The 4 input points + 1 closing duplicate = 5 vertices
-    assert.equal(ring.length, 5);
-    assert.deepEqual(ring[0], ring[ring.length - 1]);
-    assert.deepEqual(ring[0], [0, 0]);
+    expect(ring.length).toBe(5);
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+    expect(ring[0]).toEqual([0, 0]);
   });
 
   it('emits multiple closed rings when a stratum has multiple shapes', () => {
@@ -73,9 +72,9 @@ describe('splitClosedShapes', () => {
       point(50, 105, 0, 'TO'),
       point(60, 105, 5, 'TO POINT OF BEGINNING.'),
     ]);
-    assert.equal(shapes.length, 2);
-    assert.deepEqual(shapes[0]![0], [0, 0]);
-    assert.deepEqual(shapes[1]![0], [100, 0]);
+    expect(shapes.length).toBe(2);
+    expect(shapes[0]![0]).toEqual([0, 0]);
+    expect(shapes[1]![0]).toEqual([100, 0]);
   });
 
   it('matches the marker case-insensitively and tolerates trailing punctuation', () => {
@@ -84,7 +83,7 @@ describe('splitClosedShapes', () => {
       point(20, 1, 0, 'TO'),
       point(30, 1, 1, 'to point of beginning.'),
     ]);
-    assert.equal(shapes.length, 1);
+    expect(shapes.length).toBe(1);
   });
 
   it('matches the marker when embedded in a longer description', () => {
@@ -93,7 +92,7 @@ describe('splitClosedShapes', () => {
       point(20, 1, 0, 'TO'),
       point(30, 1, 1, '/COMMON ZAB-ZDV/ TO POINT OF BEGINNING'),
     ]);
-    assert.equal(shapes.length, 1);
+    expect(shapes.length).toBe(1);
   });
 
   it('implicitly closes a trailing shape that lacks the marker', () => {
@@ -102,13 +101,13 @@ describe('splitClosedShapes', () => {
       point(20, 1, 0, 'TO'),
       point(30, 1, 1, 'TO'),
     ]);
-    assert.equal(shapes.length, 1);
+    expect(shapes.length).toBe(1);
     const ring = shapes[0]!;
-    assert.deepEqual(ring[0], ring[ring.length - 1]);
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
   });
 
   it('returns no shapes when the input is empty', () => {
-    assert.deepEqual(splitClosedShapes([]), []);
+    expect(splitClosedShapes([])).toEqual([]);
   });
 
   it('does not append a closing duplicate when first equals last', () => {
@@ -118,8 +117,8 @@ describe('splitClosedShapes', () => {
       point(30, 1, 1, 'TO'),
       point(40, 0, 0, 'TO POINT OF BEGINNING'),
     ]);
-    assert.equal(shapes.length, 1);
+    expect(shapes.length).toBe(1);
     // 4 points + no extra duplicate since the last is already (0,0)
-    assert.equal(shapes[0]!.length, 4);
+    expect(shapes[0]!.length).toBe(4);
   });
 });

@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import {
   parseDms,
   parseAwy1,
@@ -51,86 +50,86 @@ function awy2Defaults(overrides: { col: number; len: number; value: string }[] =
 describe('parseDms', () => {
   it('parses a northern latitude as positive decimal degrees', () => {
     const result = parseDms('32-32-25.59N');
-    assert.ok(result !== undefined);
-    assert.ok(Math.abs(result - 32.54044) < 1e-4);
+    assert(result !== undefined);
+    assert(Math.abs(result - 32.54044) < 1e-4);
   });
 
   it('parses a western longitude as negative decimal degrees', () => {
     const result = parseDms('116-57-09.72W');
-    assert.ok(result !== undefined);
-    assert.ok(result < 0);
-    assert.ok(Math.abs(Math.abs(result) - 116.9527) < 1e-3);
+    assert(result !== undefined);
+    assert(result < 0);
+    assert(Math.abs(Math.abs(result) - 116.9527) < 1e-3);
   });
 
   it('parses a southern latitude as negative', () => {
     const result = parseDms('14-19-47.00S');
-    assert.ok(result !== undefined);
-    assert.ok(result < 0);
+    assert(result !== undefined);
+    assert(result < 0);
   });
 
   it('parses an eastern longitude as positive', () => {
     const result = parseDms('144-47-59.00E');
-    assert.ok(result !== undefined);
-    assert.ok(result > 144 && result < 145);
+    assert(result !== undefined);
+    assert(result > 144 && result < 145);
   });
 
   it('returns undefined for empty input', () => {
-    assert.equal(parseDms(''), undefined);
+    expect(parseDms('')).toBe(undefined);
   });
 
   it('returns undefined for a malformed string', () => {
-    assert.equal(parseDms('nope'), undefined);
-    assert.equal(parseDms('32-32N'), undefined);
+    expect(parseDms('nope')).toBe(undefined);
+    expect(parseDms('32-32N')).toBe(undefined);
   });
 
   it('rounds to 6 decimal places', () => {
     const result = parseDms('32-32-25.59N');
-    assert.ok(result !== undefined);
+    assert(result !== undefined);
     const str = String(result);
     const decimals = str.includes('.') ? str.split('.')[1]!.length : 0;
-    assert.ok(decimals <= 6);
+    assert(decimals <= 6);
   });
 });
 
 describe('classifyWaypointType', () => {
   it('classifies VOR/VORTAC/NDB/TACAN/DME facility types as NAVAID', () => {
-    assert.equal(classifyWaypointType('VOR/DME', 'JFK'), 'NAVAID');
-    assert.equal(classifyWaypointType('VORTAC', 'BOS'), 'NAVAID');
-    assert.equal(classifyWaypointType('NDB', 'XYZ'), 'NAVAID');
-    assert.equal(classifyWaypointType('TACAN', 'XYZ'), 'NAVAID');
-    assert.equal(classifyWaypointType('VOR/DME/TACAN', 'XYZ'), 'NAVAID');
+    expect(classifyWaypointType('VOR/DME', 'JFK')).toBe('NAVAID');
+    expect(classifyWaypointType('VORTAC', 'BOS')).toBe('NAVAID');
+    expect(classifyWaypointType('NDB', 'XYZ')).toBe('NAVAID');
+    expect(classifyWaypointType('TACAN', 'XYZ')).toBe('NAVAID');
+    expect(classifyWaypointType('VOR/DME/TACAN', 'XYZ')).toBe('NAVAID');
   });
 
   it('classifies WAY-PT as WAYPOINT', () => {
-    assert.equal(classifyWaypointType('WAY-PT', 'OBAAK'), 'WAYPOINT');
+    expect(classifyWaypointType('WAY-PT', 'OBAAK')).toBe('WAYPOINT');
   });
 
   it('classifies REP-PT, AWY-INTXN, COORDN-FIX, MIL-REP-PT, FIX, TURN-PT as FIX', () => {
-    assert.equal(classifyWaypointType('REP-PT', 'ABC'), 'FIX');
-    assert.equal(classifyWaypointType('AWY-INTXN', 'ABC'), 'FIX');
-    assert.equal(classifyWaypointType('COORDN-FIX', 'ABC'), 'FIX');
-    assert.equal(classifyWaypointType('MIL-REP-PT', 'ABC'), 'FIX');
-    assert.equal(classifyWaypointType('FIX', 'ABC'), 'FIX');
-    assert.equal(classifyWaypointType('TURN-PT', 'ABC'), 'FIX');
+    expect(classifyWaypointType('REP-PT', 'ABC')).toBe('FIX');
+    expect(classifyWaypointType('AWY-INTXN', 'ABC')).toBe('FIX');
+    expect(classifyWaypointType('COORDN-FIX', 'ABC')).toBe('FIX');
+    expect(classifyWaypointType('MIL-REP-PT', 'ABC')).toBe('FIX');
+    expect(classifyWaypointType('FIX', 'ABC')).toBe('FIX');
+    expect(classifyWaypointType('TURN-PT', 'ABC')).toBe('FIX');
   });
 
   it('classifies ARTCC-BDRY as OTHER', () => {
-    assert.equal(classifyWaypointType('ARTCC-BDRY', 'ABC'), 'OTHER');
+    expect(classifyWaypointType('ARTCC-BDRY', 'ABC')).toBe('OTHER');
   });
 
   it('classifies border names when facilityType is empty', () => {
-    assert.equal(classifyWaypointType('', 'US/CANADIAN BORDER'), 'BORDER');
-    assert.equal(classifyWaypointType('', 'MEXICAN BORDER'), 'BORDER');
-    assert.equal(classifyWaypointType('', 'RANDOM'), 'OTHER');
+    expect(classifyWaypointType('', 'US/CANADIAN BORDER')).toBe('BORDER');
+    expect(classifyWaypointType('', 'MEXICAN BORDER')).toBe('BORDER');
+    expect(classifyWaypointType('', 'RANDOM')).toBe('OTHER');
   });
 
   it('falls back to OTHER for unknown facility types', () => {
-    assert.equal(classifyWaypointType('UNKNOWN', 'ABC'), 'OTHER');
+    expect(classifyWaypointType('UNKNOWN', 'ABC')).toBe('OTHER');
   });
 
   it('matches NAVAID facility types case-insensitively via toUpperCase', () => {
-    assert.equal(classifyWaypointType('vor/dme', 'ABC'), 'NAVAID');
-    assert.equal(classifyWaypointType('way-pt', 'ABC'), 'WAYPOINT');
+    expect(classifyWaypointType('vor/dme', 'ABC')).toBe('NAVAID');
+    expect(classifyWaypointType('way-pt', 'ABC')).toBe('WAYPOINT');
   });
 });
 
@@ -141,20 +140,20 @@ describe('parseAwy1', () => {
       { col: 11, len: 5, value: '    3' },
     ]);
     const rec = parseAwy1(line);
-    assert.equal(rec.designation, 'V16');
-    assert.equal(rec.sequenceNumber, 3);
+    expect(rec.designation).toBe('V16');
+    expect(rec.sequenceNumber).toBe(3);
   });
 
   it('trims whitespace from the designation', () => {
     const line = awy1Defaults([{ col: 5, len: 5, value: 'J60  ' }]);
     const rec = parseAwy1(line);
-    assert.equal(rec.designation, 'J60');
+    expect(rec.designation).toBe('J60');
   });
 
   it('returns airwayTypeChar as A for Alaska airways', () => {
     const line = awy1Defaults([{ col: 10, len: 1, value: 'A' }]);
     const rec = parseAwy1(line);
-    assert.equal(rec.airwayTypeChar, 'A');
+    expect(rec.airwayTypeChar).toBe('A');
   });
 
   it('parses numeric and integer altitude fields', () => {
@@ -164,9 +163,9 @@ describe('parseAwy1', () => {
       { col: 97, len: 5, value: '18000' },
     ]);
     const rec = parseAwy1(line);
-    assert.equal(rec.distanceToNextNm, 45.5);
-    assert.equal(rec.minimumEnrouteAltitudeFt, 4000);
-    assert.equal(rec.maximumAuthorizedAltitudeFt, 18000);
+    expect(rec.distanceToNextNm).toBe(45.5);
+    expect(rec.minimumEnrouteAltitudeFt).toBe(4000);
+    expect(rec.maximumAuthorizedAltitudeFt).toBe(18000);
   });
 
   it('sets boolean flags from single character markers', () => {
@@ -177,24 +176,24 @@ describe('parseAwy1', () => {
       { col: 302, len: 1, value: 'Y' },
     ]);
     const rec = parseAwy1(discontinuedLine);
-    assert.equal(rec.discontinued, true);
-    assert.equal(rec.signalGap, true);
-    assert.equal(rec.usAirspaceOnly, true);
-    assert.equal(rec.dogleg, true);
+    expect(rec.discontinued).toBe(true);
+    expect(rec.signalGap).toBe(true);
+    expect(rec.usAirspaceOnly).toBe(true);
+    expect(rec.dogleg).toBe(true);
   });
 
   it('returns undefined for blank numeric fields', () => {
     const line = awy1Defaults();
     const rec = parseAwy1(line);
-    assert.equal(rec.distanceToNextNm, undefined);
-    assert.equal(rec.minimumEnrouteAltitudeFt, undefined);
-    assert.equal(rec.artccId, undefined);
+    expect(rec.distanceToNextNm).toBe(undefined);
+    expect(rec.minimumEnrouteAltitudeFt).toBe(undefined);
+    expect(rec.artccId).toBe(undefined);
   });
 
   it('captures the ARTCC id', () => {
     const line = awy1Defaults([{ col: 142, len: 3, value: 'ZNY' }]);
     const rec = parseAwy1(line);
-    assert.equal(rec.artccId, 'ZNY');
+    expect(rec.artccId).toBe('ZNY');
   });
 });
 
@@ -202,7 +201,7 @@ describe('parseAwy2', () => {
   it('extracts the waypoint name', () => {
     const line = awy2Defaults([{ col: 16, len: 30, value: 'KENNEDY                    ' }]);
     const rec = parseAwy2(line);
-    assert.equal(rec.name, 'KENNEDY');
+    expect(rec.name).toBe('KENNEDY');
   });
 
   it('extracts the facility type and lat/lon strings', () => {
@@ -212,9 +211,9 @@ describe('parseAwy2', () => {
       { col: 98, len: 14, value: '116-57-09.72W ' },
     ]);
     const rec = parseAwy2(line);
-    assert.equal(rec.facilityType, 'VOR/DME');
-    assert.equal(rec.latStr, '32-32-25.59N');
-    assert.equal(rec.lonStr, '116-57-09.72W');
+    expect(rec.facilityType).toBe('VOR/DME');
+    expect(rec.latStr).toBe('32-32-25.59N');
+    expect(rec.lonStr).toBe('116-57-09.72W');
   });
 
   it('extracts state, icaoRegionCode, and navaidIdentifier', () => {
@@ -224,9 +223,9 @@ describe('parseAwy2', () => {
       { col: 117, len: 4, value: 'JFK ' },
     ]);
     const rec = parseAwy2(line);
-    assert.equal(rec.state, 'NY');
-    assert.equal(rec.icaoRegionCode, 'K6');
-    assert.equal(rec.navaidIdentifier, 'JFK');
+    expect(rec.state).toBe('NY');
+    expect(rec.icaoRegionCode).toBe('K6');
+    expect(rec.navaidIdentifier).toBe('JFK');
   });
 });
 
@@ -283,21 +282,21 @@ describe('buildWaypoint', () => {
   }
 
   it('returns undefined when coordinates cannot be parsed', () => {
-    assert.equal(buildWaypoint(awy1(), awy2({ latStr: '' })), undefined);
-    assert.equal(buildWaypoint(awy1(), awy2({ lonStr: 'nope' })), undefined);
+    expect(buildWaypoint(awy1(), awy2({ latStr: '' }))).toBe(undefined);
+    expect(buildWaypoint(awy1(), awy2({ lonStr: 'nope' }))).toBe(undefined);
   });
 
   it('builds a NAVAID waypoint with navaid identifier and facility type', () => {
     const wp = buildWaypoint(awy1(), awy2());
-    assert.ok(wp);
-    assert.equal(wp.name, 'KENNEDY');
-    assert.equal(wp.waypointType, 'NAVAID');
-    assert.equal(wp.identifier, 'JFK');
-    assert.equal(wp.navaidFacilityType, 'VOR/DME');
-    assert.ok(Math.abs(wp.lat - 40.639722) < 1e-4);
-    assert.ok(wp.lon < 0 && Math.abs(Math.abs(wp.lon) - 73.778611) < 1e-4);
-    assert.equal(wp.state, 'NY');
-    assert.equal(wp.icaoRegionCode, 'K6');
+    assert(wp);
+    expect(wp.name).toBe('KENNEDY');
+    expect(wp.waypointType).toBe('NAVAID');
+    expect(wp.identifier).toBe('JFK');
+    expect(wp.navaidFacilityType).toBe('VOR/DME');
+    assert(Math.abs(wp.lat - 40.639722) < 1e-4);
+    assert(wp.lon < 0 && Math.abs(Math.abs(wp.lon) - 73.778611) < 1e-4);
+    expect(wp.state).toBe('NY');
+    expect(wp.icaoRegionCode).toBe('K6');
   });
 
   it('uses the name as identifier for FIX waypoints lacking a navaid identifier', () => {
@@ -305,9 +304,9 @@ describe('buildWaypoint', () => {
       awy1(),
       awy2({ facilityType: 'REP-PT', navaidIdentifier: '', name: 'OBAAK' }),
     );
-    assert.ok(wp);
-    assert.equal(wp.waypointType, 'FIX');
-    assert.equal(wp.identifier, 'OBAAK');
+    assert(wp);
+    expect(wp.waypointType).toBe('FIX');
+    expect(wp.identifier).toBe('OBAAK');
   });
 
   it('falls back to segmentDistanceNm when distanceToNextNm is undefined', () => {
@@ -315,12 +314,12 @@ describe('buildWaypoint', () => {
       awy1({ distanceToNextNm: undefined, segmentDistanceNm: 42.5 }),
       awy2(),
     );
-    assert.equal(wp?.distanceToNextNm, 42.5);
+    expect(wp?.distanceToNextNm).toBe(42.5);
   });
 
   it('prefers distanceToNextNm over segmentDistanceNm', () => {
     const wp = buildWaypoint(awy1({ distanceToNextNm: 10, segmentDistanceNm: 99 }), awy2());
-    assert.equal(wp?.distanceToNextNm, 10);
+    expect(wp?.distanceToNextNm).toBe(10);
   });
 
   it('propagates boolean flags when set', () => {
@@ -328,10 +327,10 @@ describe('buildWaypoint', () => {
       awy1({ signalGap: true, usAirspaceOnly: true, dogleg: true, discontinued: true }),
       awy2(),
     );
-    assert.equal(wp?.signalGap, true);
-    assert.equal(wp?.usAirspaceOnly, true);
-    assert.equal(wp?.dogleg, true);
-    assert.equal(wp?.discontinued, true);
+    expect(wp?.signalGap).toBe(true);
+    expect(wp?.usAirspaceOnly).toBe(true);
+    expect(wp?.dogleg).toBe(true);
+    expect(wp?.discontinued).toBe(true);
   });
 
   it('propagates altitude fields when present', () => {
@@ -344,10 +343,10 @@ describe('buildWaypoint', () => {
       }),
       awy2({ minimumReceptionAltitudeFt: 2500 }),
     );
-    assert.equal(wp?.minimumEnrouteAltitudeFt, 4000);
-    assert.equal(wp?.minimumEnrouteAltitudeDirection, 'SE');
-    assert.equal(wp?.maximumAuthorizedAltitudeFt, 18000);
-    assert.equal(wp?.minimumObstructionClearanceAltitudeFt, 3200);
-    assert.equal(wp?.minimumReceptionAltitudeFt, 2500);
+    expect(wp?.minimumEnrouteAltitudeFt).toBe(4000);
+    expect(wp?.minimumEnrouteAltitudeDirection).toBe('SE');
+    expect(wp?.maximumAuthorizedAltitudeFt).toBe(18000);
+    expect(wp?.minimumObstructionClearanceAltitudeFt).toBe(3200);
+    expect(wp?.minimumReceptionAltitudeFt).toBe(2500);
   });
 });

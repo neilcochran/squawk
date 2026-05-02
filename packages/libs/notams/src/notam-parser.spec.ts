@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { parseNotam } from './notam-parser.js';
 
 // ---------------------------------------------------------------------------
@@ -369,291 +368,288 @@ const CRLF_FORMAT = [
 
 describe('parseNotam - basic parsing', () => {
   it('throws on empty input', () => {
-    assert.throws(() => parseNotam(''), /Empty NOTAM string/);
+    expect(() => parseNotam('')).toThrow(/Empty NOTAM string/);
   });
 
   it('throws on whitespace-only input', () => {
-    assert.throws(() => parseNotam('   \n  \t  '), /Empty NOTAM string/);
+    expect(() => parseNotam('   \n  \t  ')).toThrow(/Empty NOTAM string/);
   });
 
   it('throws on invalid header', () => {
-    assert.throws(() => parseNotam('not a notam at all'), /Unable to parse NOTAM header/);
+    expect(() => parseNotam('not a notam at all')).toThrow(/Unable to parse NOTAM header/);
   });
 
   it('preserves the raw string', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.equal(result.raw, ANC_RUNWAY_CLOSURE);
+    expect(result.raw).toBe(ANC_RUNWAY_CLOSURE);
   });
 
   it('handles \\r\\n line endings', () => {
     const result = parseNotam(CRLF_FORMAT);
-    assert.equal(result.id, 'A0900/26');
-    assert.deepEqual(result.locationCodes, ['KJFK']);
-    assert.equal(result.text, 'RWY 13R/31L CLSD');
+    expect(result.id).toBe('A0900/26');
+    expect(result.locationCodes).toEqual(['KJFK']);
+    expect(result.text).toBe('RWY 13R/31L CLSD');
   });
 });
 
 describe('parseNotam - header and action', () => {
   it('parses a new NOTAM (NOTAMN)', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.equal(result.id, 'A0030/26');
-    assert.equal(result.action, 'NEW');
-    assert.equal(result.referencedId, undefined);
+    expect(result.id).toBe('A0030/26');
+    expect(result.action).toBe('NEW');
+    expect(result.referencedId).toBe(undefined);
   });
 
   it('parses a replacement NOTAM (NOTAMR)', () => {
     const result = parseNotam(ATL_REPLACEMENT);
-    assert.equal(result.id, 'A1924/26');
-    assert.equal(result.action, 'REPLACE');
-    assert.equal(result.referencedId, 'A1900/26');
+    expect(result.id).toBe('A1924/26');
+    expect(result.action).toBe('REPLACE');
+    expect(result.referencedId).toBe('A1900/26');
   });
 
   it('parses a cancellation NOTAM (NOTAMC)', () => {
     const result = parseNotam(CANCELLATION);
-    assert.equal(result.id, 'A1485/24');
-    assert.equal(result.action, 'CANCEL');
-    assert.equal(result.referencedId, 'A1484/24');
+    expect(result.id).toBe('A1485/24');
+    expect(result.action).toBe('CANCEL');
+    expect(result.referencedId).toBe('A1484/24');
   });
 
   it('parses a 1-digit serial number', () => {
     const result = parseNotam(SHORT_ID);
-    assert.equal(result.id, 'A1/26');
+    expect(result.id).toBe('A1/26');
   });
 
   it('parses a 5-digit serial number', () => {
     const result = parseNotam(LONG_ID);
-    assert.equal(result.id, 'A12345/26');
+    expect(result.id).toBe('A12345/26');
   });
 
   it('parses B-series NOTAM ID', () => {
     const result = parseNotam(NO_FG_ITEMS);
-    assert.equal(result.id, 'B0987/24');
+    expect(result.id).toBe('B0987/24');
   });
 
   it('parses C-series NOTAM ID', () => {
     const result = parseNotam(C_SERIES);
-    assert.equal(result.id, 'C0156/26');
-    assert.deepEqual(result.locationCodes, ['CYUL']);
+    expect(result.id).toBe('C0156/26');
+    expect(result.locationCodes).toEqual(['CYUL']);
   });
 });
 
 describe('parseNotam - Q-line qualifier', () => {
   it('parses FIR identifier', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.fir, 'PAZA');
+    assert(result.qualifier);
+    expect(result.qualifier.fir).toBe('PAZA');
   });
 
   it('parses the full NOTAM code', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.notamCode, 'QMRLC');
+    assert(result.qualifier);
+    expect(result.qualifier.notamCode).toBe('QMRLC');
   });
 
   it('parses subject and condition codes from a 5-letter Q-code', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.subjectCode, 'MR');
-    assert.equal(result.qualifier.conditionCode, 'LC');
+    assert(result.qualifier);
+    expect(result.qualifier.subjectCode).toBe('MR');
+    expect(result.qualifier.conditionCode).toBe('LC');
   });
 
   it('defaults subject and condition codes to XX for non-5-letter Q-code', () => {
     const result = parseNotam(SHORT_QCODE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.notamCode, 'QMR');
-    assert.equal(result.qualifier.subjectCode, 'XX');
-    assert.equal(result.qualifier.conditionCode, 'XX');
+    assert(result.qualifier);
+    expect(result.qualifier.notamCode).toBe('QMR');
+    expect(result.qualifier.subjectCode).toBe('XX');
+    expect(result.qualifier.conditionCode).toBe('XX');
   });
 
   it('parses IV traffic type as IFR_VFR', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.trafficType, 'IFR_VFR');
+    assert(result.qualifier);
+    expect(result.qualifier.trafficType).toBe('IFR_VFR');
   });
 
   it('parses VI traffic type as IFR_VFR', () => {
     const result = parseNotam(VI_TRAFFIC);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.trafficType, 'IFR_VFR');
+    assert(result.qualifier);
+    expect(result.qualifier.trafficType).toBe('IFR_VFR');
   });
 
   it('parses IFR-only traffic type', () => {
     const result = parseNotam(IFR_ONLY);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.trafficType, 'IFR');
+    assert(result.qualifier);
+    expect(result.qualifier.trafficType).toBe('IFR');
   });
 
   it('parses VFR-only traffic type', () => {
     const result = parseNotam(VFR_ONLY);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.trafficType, 'VFR');
+    assert(result.qualifier);
+    expect(result.qualifier.trafficType).toBe('VFR');
   });
 
   it('parses checklist traffic type', () => {
     const result = parseNotam(CHECKLIST);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.trafficType, 'CHECKLIST');
+    assert(result.qualifier);
+    expect(result.qualifier.trafficType).toBe('CHECKLIST');
   });
 
   it('defaults unknown traffic type to IFR_VFR', () => {
     const result = parseNotam(UNKNOWN_TRAFFIC);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.trafficType, 'IFR_VFR');
+    assert(result.qualifier);
+    expect(result.qualifier.trafficType).toBe('IFR_VFR');
   });
 
   it('parses purpose codes', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.qualifier);
-    assert.deepEqual(result.qualifier.purposes, ['N', 'B', 'O']);
+    assert(result.qualifier);
+    expect(result.qualifier.purposes).toEqual(['N', 'B', 'O']);
   });
 
   it('parses aerodrome scope (A)', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.scope, 'AERODROME');
+    assert(result.qualifier);
+    expect(result.qualifier.scope).toBe('AERODROME');
   });
 
   it('parses en route scope (E)', () => {
     const result = parseNotam(ESTIMATED_END);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.scope, 'ENROUTE');
+    assert(result.qualifier);
+    expect(result.qualifier.scope).toBe('ENROUTE');
   });
 
   it('parses navigation warning scope (W)', () => {
     const result = parseNotam(ATL_AIRSPACE_UAS);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.scope, 'NAV_WARNING');
+    assert(result.qualifier);
+    expect(result.qualifier.scope).toBe('NAV_WARNING');
   });
 
   it('parses aerodrome+enroute scope (AE)', () => {
     const result = parseNotam(ATL_OBSTACLE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.scope, 'AERODROME_ENROUTE');
+    assert(result.qualifier);
+    expect(result.qualifier.scope).toBe('AERODROME_ENROUTE');
   });
 
   it('parses aerodrome+warning scope (AW)', () => {
     const result = parseNotam(AW_SCOPE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.scope, 'AERODROME_WARNING');
+    assert(result.qualifier);
+    expect(result.qualifier.scope).toBe('AERODROME_WARNING');
   });
 
   it('parses enroute+warning scope (EW)', () => {
     const result = parseNotam(EW_SCOPE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.scope, 'ENROUTE_WARNING');
+    assert(result.qualifier);
+    expect(result.qualifier.scope).toBe('ENROUTE_WARNING');
   });
 
   it('parses aerodrome+enroute+warning scope (AEW)', () => {
     const result = parseNotam(AEW_SCOPE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.scope, 'AERODROME_ENROUTE_WARNING');
+    assert(result.qualifier);
+    expect(result.qualifier.scope).toBe('AERODROME_ENROUTE_WARNING');
   });
 
   it('defaults unknown scope to AERODROME', () => {
     const result = parseNotam(UNKNOWN_SCOPE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.scope, 'AERODROME');
+    assert(result.qualifier);
+    expect(result.qualifier.scope).toBe('AERODROME');
   });
 
   it('parses non-zero lower and upper altitude limits', () => {
     const result = parseNotam(WITH_SCHEDULE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.lowerAltitudeFt, 5000);
-    assert.equal(result.qualifier.upperAltitudeFt, 35000);
+    assert(result.qualifier);
+    expect(result.qualifier.lowerAltitudeFt).toBe(5000);
+    expect(result.qualifier.upperAltitudeFt).toBe(35000);
   });
 
   it('omits lowerAltitudeFt when surface (000) and parses 999 as 99900', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.lowerAltitudeFt, undefined);
-    assert.equal(result.qualifier.upperAltitudeFt, 99900);
+    assert(result.qualifier);
+    expect(result.qualifier.lowerAltitudeFt).toBe(undefined);
+    expect(result.qualifier.upperAltitudeFt).toBe(99900);
   });
 
   it('parses northern/western hemisphere coordinates', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.qualifier);
+    assert(result.qualifier);
     const { lat, lon } = result.qualifier.coordinates;
-    assert.ok(lat > 61.0 && lat < 61.3, `expected lat near 61.17, got ${lat}`);
-    assert.ok(lon < -149.7 && lon > -150.0, `expected lon near -149.8, got ${lon}`);
-    assert.equal(result.qualifier.radiusNm, 5);
+    assert(lat > 61.0 && lat < 61.3, `expected lat near 61.17, got ${lat}`);
+    assert(lon < -149.7 && lon > -150.0, `expected lon near -149.8, got ${lon}`);
+    expect(result.qualifier.radiusNm).toBe(5);
   });
 
   it('parses northern/eastern hemisphere coordinates', () => {
     const result = parseNotam(EASTERN_HEMISPHERE);
-    assert.ok(result.qualifier);
-    assert.ok(result.qualifier.coordinates.lat > 48.9, 'expected lat near 49');
-    assert.ok(
+    assert(result.qualifier);
+    assert(result.qualifier.coordinates.lat > 48.9, 'expected lat near 49');
+    assert(
       result.qualifier.coordinates.lon > 2.2 && result.qualifier.coordinates.lon < 2.5,
       'expected lon near 2.33',
     );
-    assert.equal(result.qualifier.radiusNm, 5);
+    expect(result.qualifier.radiusNm).toBe(5);
   });
 
   it('parses southern/eastern hemisphere coordinates', () => {
     const result = parseNotam(SOUTHERN_HEMISPHERE);
-    assert.ok(result.qualifier);
-    assert.ok(
+    assert(result.qualifier);
+    assert(
       result.qualifier.coordinates.lat < -26.0,
       'expected negative lat for southern hemisphere',
     );
-    assert.ok(
-      result.qualifier.coordinates.lon > 28.0,
-      'expected positive lon for eastern hemisphere',
-    );
-    assert.equal(result.qualifier.radiusNm, 10);
+    assert(result.qualifier.coordinates.lon > 28.0, 'expected positive lon for eastern hemisphere');
+    expect(result.qualifier.radiusNm).toBe(10);
   });
 
   it('parses southern/western hemisphere coordinates', () => {
     const result = parseNotam(SW_HEMISPHERE);
-    assert.ok(result.qualifier);
-    assert.ok(
+    assert(result.qualifier);
+    assert(
       result.qualifier.coordinates.lat < -22.0,
       'expected negative lat for southern hemisphere',
     );
-    assert.ok(
+    assert(
       result.qualifier.coordinates.lon < -43.0,
       'expected negative lon for western hemisphere',
     );
-    assert.equal(result.qualifier.radiusNm, 10);
+    expect(result.qualifier.radiusNm).toBe(10);
   });
 
   it('parses large radius value', () => {
     const result = parseNotam(CHECKLIST);
-    assert.ok(result.qualifier);
-    assert.equal(result.qualifier.radiusNm, 999);
+    assert(result.qualifier);
+    expect(result.qualifier.radiusNm).toBe(999);
   });
 
   it('sets qualifier to undefined when Q-line has invalid coordinates', () => {
     const result = parseNotam(INVALID_QCOORDS);
-    assert.equal(result.qualifier, undefined);
-    assert.deepEqual(result.locationCodes, ['KJFK']);
-    assert.equal(result.text, 'RWY CLSD');
+    expect(result.qualifier).toBe(undefined);
+    expect(result.locationCodes).toEqual(['KJFK']);
+    expect(result.text).toBe('RWY CLSD');
   });
 
   it('sets qualifier to undefined when Q-line is absent', () => {
     const result = parseNotam(NO_Q_LINE);
-    assert.equal(result.qualifier, undefined);
+    expect(result.qualifier).toBe(undefined);
   });
 });
 
 describe('parseNotam - items A and B', () => {
   it('parses location code', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.deepEqual(result.locationCodes, ['PANC']);
+    expect(result.locationCodes).toEqual(['PANC']);
   });
 
   it('parses effective from datetime', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.equal(result.effectiveFrom.year, 26);
-    assert.equal(result.effectiveFrom.month, 4);
-    assert.equal(result.effectiveFrom.day, 12);
-    assert.equal(result.effectiveFrom.hour, 7);
-    assert.equal(result.effectiveFrom.minute, 30);
+    expect(result.effectiveFrom.year).toBe(26);
+    expect(result.effectiveFrom.month).toBe(4);
+    expect(result.effectiveFrom.day).toBe(12);
+    expect(result.effectiveFrom.hour).toBe(7);
+    expect(result.effectiveFrom.minute).toBe(30);
   });
 
   it('parses multi-location Item A', () => {
     const result = parseNotam(MULTI_LOCATION);
-    assert.deepEqual(result.locationCodes, ['KJFK', 'KLGA', 'KEWR']);
+    expect(result.locationCodes).toEqual(['KJFK', 'KLGA', 'KEWR']);
   });
 
   it('throws when Item A is missing', () => {
@@ -664,12 +660,12 @@ describe('parseNotam - items A and B', () => {
       'C) 2604012359',
       'E) RWY CLSD',
     ].join('\n');
-    assert.throws(() => parseNotam(noItemA), /Unable to parse NOTAM Item A/);
+    expect(() => parseNotam(noItemA)).toThrow(/Unable to parse NOTAM Item A/);
   });
 
   it('throws when Item B is missing', () => {
     const noItemB = ['A1234/26 NOTAMN', 'A) KJFK', 'C) 2604012359', 'E) RWY CLSD'].join('\n');
-    assert.throws(() => parseNotam(noItemB), /Unable to parse NOTAM Item B/);
+    expect(() => parseNotam(noItemB)).toThrow(/Unable to parse NOTAM Item B/);
   });
 
   it('throws when Item B has invalid datetime', () => {
@@ -680,100 +676,100 @@ describe('parseNotam - items A and B', () => {
       'C) 2604012359',
       'E) RWY CLSD',
     ].join('\n');
-    assert.throws(() => parseNotam(invalidItemB), /Unable to parse NOTAM Item B datetime/);
+    expect(() => parseNotam(invalidItemB)).toThrow(/Unable to parse NOTAM Item B datetime/);
   });
 });
 
 describe('parseNotam - item C (effective until)', () => {
   it('parses a definite end time', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.ok(result.effectiveUntil);
-    assert.equal(result.effectiveUntil.year, 26);
-    assert.equal(result.effectiveUntil.month, 4);
-    assert.equal(result.effectiveUntil.day, 12);
-    assert.equal(result.effectiveUntil.hour, 14);
-    assert.equal(result.effectiveUntil.minute, 30);
-    assert.equal(result.isEstimatedEnd, false);
-    assert.equal(result.isPermanent, false);
-    assert.equal(result.isUntilFurtherNotice, false);
+    assert(result.effectiveUntil);
+    expect(result.effectiveUntil.year).toBe(26);
+    expect(result.effectiveUntil.month).toBe(4);
+    expect(result.effectiveUntil.day).toBe(12);
+    expect(result.effectiveUntil.hour).toBe(14);
+    expect(result.effectiveUntil.minute).toBe(30);
+    expect(result.isEstimatedEnd).toBe(false);
+    expect(result.isPermanent).toBe(false);
+    expect(result.isUntilFurtherNotice).toBe(false);
   });
 
   it('parses a permanent NOTAM (PERM)', () => {
     const result = parseNotam(HNL_DECLARED_DIST);
-    assert.equal(result.effectiveUntil, undefined);
-    assert.equal(result.isPermanent, true);
-    assert.equal(result.isEstimatedEnd, false);
-    assert.equal(result.isUntilFurtherNotice, false);
+    expect(result.effectiveUntil).toBe(undefined);
+    expect(result.isPermanent).toBe(true);
+    expect(result.isEstimatedEnd).toBe(false);
+    expect(result.isUntilFurtherNotice).toBe(false);
   });
 
   it('parses an estimated end time (EST)', () => {
     const result = parseNotam(ESTIMATED_END);
-    assert.ok(result.effectiveUntil);
-    assert.equal(result.effectiveUntil.year, 26);
-    assert.equal(result.effectiveUntil.month, 4);
-    assert.equal(result.effectiveUntil.day, 1);
-    assert.equal(result.isEstimatedEnd, true);
-    assert.equal(result.isPermanent, false);
-    assert.equal(result.isUntilFurtherNotice, false);
+    assert(result.effectiveUntil);
+    expect(result.effectiveUntil.year).toBe(26);
+    expect(result.effectiveUntil.month).toBe(4);
+    expect(result.effectiveUntil.day).toBe(1);
+    expect(result.isEstimatedEnd).toBe(true);
+    expect(result.isPermanent).toBe(false);
+    expect(result.isUntilFurtherNotice).toBe(false);
   });
 
   it('parses until further notice (UFN)', () => {
     const result = parseNotam(UFN_NOTAM);
-    assert.equal(result.effectiveUntil, undefined);
-    assert.equal(result.isUntilFurtherNotice, true);
-    assert.equal(result.isPermanent, false);
-    assert.equal(result.isEstimatedEnd, false);
+    expect(result.effectiveUntil).toBe(undefined);
+    expect(result.isUntilFurtherNotice).toBe(true);
+    expect(result.isPermanent).toBe(false);
+    expect(result.isEstimatedEnd).toBe(false);
   });
 
   it('handles absent Item C with all flags false and no effectiveUntil', () => {
     const result = parseNotam(NO_ITEM_C);
-    assert.equal(result.effectiveUntil, undefined);
-    assert.equal(result.isPermanent, false);
-    assert.equal(result.isEstimatedEnd, false);
-    assert.equal(result.isUntilFurtherNotice, false);
+    expect(result.effectiveUntil).toBe(undefined);
+    expect(result.isPermanent).toBe(false);
+    expect(result.isEstimatedEnd).toBe(false);
+    expect(result.isUntilFurtherNotice).toBe(false);
   });
 });
 
 describe('parseNotam - item D (schedule)', () => {
   it('parses schedule when present', () => {
     const result = parseNotam(WITH_SCHEDULE);
-    assert.equal(result.schedule, 'MON-FRI 1000-1600 EXCEPT 26');
+    expect(result.schedule).toBe('MON-FRI 1000-1600 EXCEPT 26');
   });
 
   it('parses daily schedule', () => {
     const result = parseNotam(NO_FG_ITEMS);
-    assert.equal(result.schedule, 'MON-FRI 0700-1700');
+    expect(result.schedule).toBe('MON-FRI 0700-1700');
   });
 
   it('has no schedule when item D is absent', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.equal(result.schedule, undefined);
+    expect(result.schedule).toBe(undefined);
   });
 });
 
 describe('parseNotam - item E (text)', () => {
   it('parses runway closure text', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.equal(result.text, 'RWY 07R/25L CLSD EXC XNG');
+    expect(result.text).toBe('RWY 07R/25L CLSD EXC XNG');
   });
 
   it('parses obstacle text with coordinates and dimensions', () => {
     const result = parseNotam(ATL_OBSTACLE);
-    assert.ok(result.text.includes('OBST CRANE'));
-    assert.ok(result.text.includes('1152FT (155FT AGL)'));
-    assert.ok(result.text.includes('FLAGGED AND LGTD'));
+    assert(result.text.includes('OBST CRANE'));
+    assert(result.text.includes('1152FT (155FT AGL)'));
+    assert(result.text.includes('FLAGGED AND LGTD'));
   });
 
   it('parses long multi-sentence text without truncation', () => {
     const result = parseNotam(LONG_TEXT);
-    assert.ok(result.text.includes('ODP GENERAL EDWARD LAWRENCE LOGAN INTL'));
-    assert.ok(result.text.includes('TREE 3930 FT FROM DER'));
-    assert.ok(result.text.includes('UP TO 183 FT MSL.'));
+    assert(result.text.includes('ODP GENERAL EDWARD LAWRENCE LOGAN INTL'));
+    assert(result.text.includes('TREE 3930 FT FROM DER'));
+    assert(result.text.includes('UP TO 183 FT MSL.'));
   });
 
   it('does not truncate text containing item-delimiter-like patterns', () => {
     const result = parseNotam(ITEM_E_WITH_DELIMITERS);
-    assert.ok(
+    assert(
       result.text.includes('CATEGORY A) AND CATEGORY B) ACFT RESTRICTED'),
       `expected full text with embedded delimiters, got: "${result.text}"`,
     );
@@ -781,69 +777,69 @@ describe('parseNotam - item E (text)', () => {
 
   it('throws when Item E is missing', () => {
     const noItemE = ['A1234/26 NOTAMN', 'A) KJFK', 'B) 2604010000', 'C) 2604012359'].join('\n');
-    assert.throws(() => parseNotam(noItemE), /Unable to parse NOTAM Item E/);
+    expect(() => parseNotam(noItemE)).toThrow(/Unable to parse NOTAM Item E/);
   });
 });
 
 describe('parseNotam - items F and G (altitude limits)', () => {
   it('parses SFC and UNL limits', () => {
     const result = parseNotam(ANC_RUNWAY_CLOSURE);
-    assert.equal(result.lowerLimit, 'SFC');
-    assert.equal(result.upperLimit, 'UNL');
+    expect(result.lowerLimit).toBe('SFC');
+    expect(result.upperLimit).toBe('UNL');
   });
 
   it('parses flight level limits', () => {
     const result = parseNotam(WITH_SCHEDULE);
-    assert.equal(result.lowerLimit, 'FL050');
-    assert.equal(result.upperLimit, 'FL350');
+    expect(result.lowerLimit).toBe('FL050');
+    expect(result.upperLimit).toBe('FL350');
   });
 
   it('parses AGL limits', () => {
     const result = parseNotam(ATL_AIRSPACE_UAS);
-    assert.equal(result.lowerLimit, 'SFC');
-    assert.equal(result.upperLimit, '300FT AGL');
+    expect(result.lowerLimit).toBe('SFC');
+    expect(result.upperLimit).toBe('300FT AGL');
   });
 
   it('omits limits when items F and G are absent', () => {
     const result = parseNotam(ANC_TAXIWAY_CLOSURE);
-    assert.equal(result.lowerLimit, undefined);
-    assert.equal(result.upperLimit, undefined);
+    expect(result.lowerLimit).toBe(undefined);
+    expect(result.upperLimit).toBe(undefined);
   });
 });
 
 describe('parseNotam - edge cases', () => {
   it('handles NOTAM with no Q-line', () => {
     const result = parseNotam(NO_Q_LINE);
-    assert.equal(result.id, 'A9999/24');
-    assert.equal(result.qualifier, undefined);
-    assert.deepEqual(result.locationCodes, ['KJFK']);
-    assert.equal(result.text, 'EXAMPLE NOTAM WITHOUT Q LINE');
+    expect(result.id).toBe('A9999/24');
+    expect(result.qualifier).toBe(undefined);
+    expect(result.locationCodes).toEqual(['KJFK']);
+    expect(result.text).toBe('EXAMPLE NOTAM WITHOUT Q LINE');
   });
 
   it('handles single-line NOTAM', () => {
     const result = parseNotam(SINGLE_LINE);
-    assert.equal(result.id, 'A1000/24');
-    assert.deepEqual(result.locationCodes, ['KJFK']);
-    assert.equal(result.text, 'RWY 13L/31R CLSD');
-    assert.ok(result.qualifier, 'expected qualifier from single-line Q-line');
-    assert.equal(result.qualifier.fir, 'KZNY');
+    expect(result.id).toBe('A1000/24');
+    expect(result.locationCodes).toEqual(['KJFK']);
+    expect(result.text).toBe('RWY 13L/31R CLSD');
+    assert(result.qualifier, 'expected qualifier from single-line Q-line');
+    expect(result.qualifier.fir).toBe('KZNY');
   });
 
   it('handles extra leading and trailing whitespace', () => {
     const padded = '  \n  ' + ANC_RUNWAY_CLOSURE + '  \n  ';
     const result = parseNotam(padded);
-    assert.equal(result.id, 'A0030/26');
-    assert.deepEqual(result.locationCodes, ['PANC']);
+    expect(result.id).toBe('A0030/26');
+    expect(result.locationCodes).toEqual(['PANC']);
   });
 
   it('handles NOTAM with only required items (A, B, E) and no C', () => {
     const result = parseNotam(NO_ITEM_C);
-    assert.equal(result.id, 'A0800/26');
-    assert.deepEqual(result.locationCodes, ['KJFK']);
-    assert.equal(result.text, 'RWY 04L/22R CLSD FOR EMERGENCY REPAIRS');
-    assert.equal(result.effectiveUntil, undefined);
-    assert.equal(result.schedule, undefined);
-    assert.equal(result.lowerLimit, undefined);
-    assert.equal(result.upperLimit, undefined);
+    expect(result.id).toBe('A0800/26');
+    expect(result.locationCodes).toEqual(['KJFK']);
+    expect(result.text).toBe('RWY 04L/22R CLSD FOR EMERGENCY REPAIRS');
+    expect(result.effectiveUntil).toBe(undefined);
+    expect(result.schedule).toBe(undefined);
+    expect(result.lowerLimit).toBe(undefined);
+    expect(result.upperLimit).toBe(undefined);
   });
 });

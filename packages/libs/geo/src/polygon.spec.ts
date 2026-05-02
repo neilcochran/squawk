@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { pointInPolygon, boundingBox, pointInBoundingBox } from './polygon.js';
 
 /** Simple square polygon: corners at (0,0), (10,0), (10,10), (0,10). */
@@ -25,41 +24,41 @@ const lShape: number[][] = [
 describe('pointInPolygon', () => {
   describe('simple square', () => {
     it('returns true for a point inside', () => {
-      assert.equal(pointInPolygon(5, 5, square), true);
+      expect(pointInPolygon(5, 5, square)).toBe(true);
     });
 
     it('returns true for a point near the corner', () => {
-      assert.equal(pointInPolygon(1, 1, square), true);
+      expect(pointInPolygon(1, 1, square)).toBe(true);
     });
 
     it('returns false for a point outside (east)', () => {
-      assert.equal(pointInPolygon(15, 5, square), false);
+      expect(pointInPolygon(15, 5, square)).toBe(false);
     });
 
     it('returns false for a point outside (north)', () => {
-      assert.equal(pointInPolygon(5, 15, square), false);
+      expect(pointInPolygon(5, 15, square)).toBe(false);
     });
 
     it('returns false for a point outside (negative)', () => {
-      assert.equal(pointInPolygon(-1, -1, square), false);
+      expect(pointInPolygon(-1, -1, square)).toBe(false);
     });
   });
 
   describe('concave L-shape', () => {
     it('returns true for a point in the lower portion', () => {
-      assert.equal(pointInPolygon(7, 2, lShape), true);
+      expect(pointInPolygon(7, 2, lShape)).toBe(true);
     });
 
     it('returns true for a point in the upper-left arm', () => {
-      assert.equal(pointInPolygon(2, 8, lShape), true);
+      expect(pointInPolygon(2, 8, lShape)).toBe(true);
     });
 
     it('returns false for a point in the concave notch', () => {
-      assert.equal(pointInPolygon(7, 7, lShape), false);
+      expect(pointInPolygon(7, 7, lShape)).toBe(false);
     });
 
     it('returns false for a point fully outside', () => {
-      assert.equal(pointInPolygon(12, 12, lShape), false);
+      expect(pointInPolygon(12, 12, lShape)).toBe(false);
     });
   });
 
@@ -74,11 +73,11 @@ describe('pointInPolygon', () => {
     ];
 
     it('returns true for a point inside LAX area (negative lon, positive lat)', () => {
-      assert.equal(pointInPolygon(-118.4, 33.945, laxArea), true);
+      expect(pointInPolygon(-118.4, 33.945, laxArea)).toBe(true);
     });
 
     it('returns false for a point outside LAX area', () => {
-      assert.equal(pointInPolygon(-118.5, 33.945, laxArea), false);
+      expect(pointInPolygon(-118.5, 33.945, laxArea)).toBe(false);
     });
   });
 
@@ -89,11 +88,11 @@ describe('pointInPolygon', () => {
         [10, 0],
         [0, 0],
       ];
-      assert.equal(pointInPolygon(5, 0, triangle), false);
+      expect(pointInPolygon(5, 0, triangle)).toBe(false);
     });
 
     it('returns false for an empty ring', () => {
-      assert.equal(pointInPolygon(0, 0, []), false);
+      expect(pointInPolygon(0, 0, [])).toBe(false);
     });
   });
 });
@@ -101,12 +100,12 @@ describe('pointInPolygon', () => {
 describe('boundingBox', () => {
   it('computes the bbox of a simple square', () => {
     const box = boundingBox(square);
-    assert.deepEqual(box, { minLon: 0, maxLon: 10, minLat: 0, maxLat: 10 });
+    expect(box).toEqual({ minLon: 0, maxLon: 10, minLat: 0, maxLat: 10 });
   });
 
   it('computes the bbox of a concave L-shape', () => {
     const box = boundingBox(lShape);
-    assert.deepEqual(box, { minLon: 0, maxLon: 10, minLat: 0, maxLat: 10 });
+    expect(box).toEqual({ minLon: 0, maxLon: 10, minLat: 0, maxLat: 10 });
   });
 
   it('handles real-world negative longitudes', () => {
@@ -118,21 +117,21 @@ describe('boundingBox', () => {
       [-118.42, 33.93],
     ];
     const box = boundingBox(laxArea);
-    assert.deepEqual(box, { minLon: -118.42, maxLon: -118.38, minLat: 33.93, maxLat: 33.96 });
+    expect(box).toEqual({ minLon: -118.42, maxLon: -118.38, minLat: 33.93, maxLat: 33.96 });
   });
 
   it('returns a degenerate empty box for an empty ring', () => {
     const box = boundingBox([]);
-    assert.equal(box.minLon, Infinity);
-    assert.equal(box.maxLon, -Infinity);
-    assert.equal(box.minLat, Infinity);
-    assert.equal(box.maxLat, -Infinity);
+    expect(box.minLon).toBe(Infinity);
+    expect(box.maxLon).toBe(-Infinity);
+    expect(box.minLat).toBe(Infinity);
+    expect(box.maxLat).toBe(-Infinity);
   });
 
   it('empty-ring box rejects every point via pointInBoundingBox', () => {
     const box = boundingBox([]);
-    assert.equal(pointInBoundingBox(0, 0, box), false);
-    assert.equal(pointInBoundingBox(-118.4, 33.945, box), false);
+    expect(pointInBoundingBox(0, 0, box)).toBe(false);
+    expect(pointInBoundingBox(-118.4, 33.945, box)).toBe(false);
   });
 });
 
@@ -140,27 +139,27 @@ describe('pointInBoundingBox', () => {
   const box = { minLon: -118.42, maxLon: -118.38, minLat: 33.93, maxLat: 33.96 };
 
   it('returns true for a point inside', () => {
-    assert.equal(pointInBoundingBox(-118.4, 33.945, box), true);
+    expect(pointInBoundingBox(-118.4, 33.945, box)).toBe(true);
   });
 
   it('returns true for a point on the edge', () => {
-    assert.equal(pointInBoundingBox(box.minLon, box.minLat, box), true);
-    assert.equal(pointInBoundingBox(box.maxLon, box.maxLat, box), true);
+    expect(pointInBoundingBox(box.minLon, box.minLat, box)).toBe(true);
+    expect(pointInBoundingBox(box.maxLon, box.maxLat, box)).toBe(true);
   });
 
   it('returns false for a point outside (west)', () => {
-    assert.equal(pointInBoundingBox(-118.5, 33.945, box), false);
+    expect(pointInBoundingBox(-118.5, 33.945, box)).toBe(false);
   });
 
   it('returns false for a point outside (east)', () => {
-    assert.equal(pointInBoundingBox(-118.3, 33.945, box), false);
+    expect(pointInBoundingBox(-118.3, 33.945, box)).toBe(false);
   });
 
   it('returns false for a point outside (north)', () => {
-    assert.equal(pointInBoundingBox(-118.4, 34.0, box), false);
+    expect(pointInBoundingBox(-118.4, 34.0, box)).toBe(false);
   });
 
   it('returns false for a point outside (south)', () => {
-    assert.equal(pointInBoundingBox(-118.4, 33.9, box), false);
+    expect(pointInBoundingBox(-118.4, 33.9, box)).toBe(false);
   });
 });

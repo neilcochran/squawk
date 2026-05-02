@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { resolve, dirname } from 'node:path';
@@ -17,7 +16,7 @@ describe('loadUsBundledNavaids', () => {
       fetch: async () => new Response(gzBytes),
     });
 
-    assert.deepEqual(dataset, usBundledNavaids);
+    expect(dataset).toEqual(usBundledNavaids);
   });
 
   it('produces the same dataset when the server advertises Content-Encoding: gzip', async () => {
@@ -28,16 +27,15 @@ describe('loadUsBundledNavaids', () => {
         }),
     });
 
-    assert.deepEqual(dataset, usBundledNavaids);
+    expect(dataset).toEqual(usBundledNavaids);
   });
 
   it('throws when the response is not ok', async () => {
-    await assert.rejects(
+    await expect(
       loadUsBundledNavaids({
         fetch: async () => new Response('', { status: 404, statusText: 'Not Found' }),
       }),
-      /404/,
-    );
+    ).rejects.toThrow(/404/);
   });
 
   it('passes the resolved URL to the custom fetch', async () => {
@@ -51,6 +49,30 @@ describe('loadUsBundledNavaids', () => {
       },
     });
 
-    assert.equal(received, 'https://cdn.example/navaids.json.gz');
+    expect(received).toBe('https://cdn.example/navaids.json.gz');
+  });
+
+  it('throws when the response body is null', async () => {
+    await expect(
+      loadUsBundledNavaids({
+        fetch: async () => new Response(null),
+      }),
+    ).rejects.toThrow(/body is null/);
+  });
+
+  it('falls back to globalThis.fetch when no fetch override is provided', async () => {
+    const original = globalThis.fetch;
+    let called = false;
+    globalThis.fetch = async () => {
+      called = true;
+      return new Response(gzBytes);
+    };
+    try {
+      const dataset = await loadUsBundledNavaids();
+      expect(called).toBe(true);
+      expect(dataset).toEqual(usBundledNavaids);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });

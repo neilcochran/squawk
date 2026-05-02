@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
 import type { Ats1Record, Ats2Record } from './parse-ats.js';
 
@@ -26,10 +25,10 @@ describe('parseAts1', () => {
       { col: 21, len: 5, value: '    1' },
     ]);
     const rec = parseAts1(line);
-    assert.equal(rec.designationPrefix, 'AT');
-    assert.equal(rec.airwayId, 'A315');
-    assert.equal(rec.fullDesignation, 'ATA315');
-    assert.equal(rec.sequenceNumber, 1);
+    expect(rec.designationPrefix).toBe('AT');
+    expect(rec.airwayId).toBe('A315');
+    expect(rec.fullDesignation).toBe('ATA315');
+    expect(rec.sequenceNumber).toBe(1);
   });
 
   it('extracts signal gap, us-airspace-only and dogleg flags', () => {
@@ -43,9 +42,9 @@ describe('parseAts1', () => {
       { col: 343, len: 1, value: 'Y' },
     ]);
     const rec = parseAts1(line);
-    assert.equal(rec.signalGap, true);
-    assert.equal(rec.usAirspaceOnly, true);
-    assert.equal(rec.dogleg, true);
+    expect(rec.signalGap).toBe(true);
+    expect(rec.usAirspaceOnly).toBe(true);
+    expect(rec.dogleg).toBe(true);
   });
 
   it('parses numeric altitude fields', () => {
@@ -59,9 +58,9 @@ describe('parseAts1', () => {
       { col: 109, len: 5, value: '45000' },
     ]);
     const rec = parseAts1(line);
-    assert.equal(rec.distanceToNextNm, 120);
-    assert.equal(rec.minimumEnrouteAltitudeFt, 18000);
-    assert.equal(rec.maximumAuthorizedAltitudeFt, 45000);
+    expect(rec.distanceToNextNm).toBe(120);
+    expect(rec.minimumEnrouteAltitudeFt).toBe(18000);
+    expect(rec.maximumAuthorizedAltitudeFt).toBe(45000);
   });
 });
 
@@ -78,10 +77,10 @@ describe('parseAts2', () => {
       { col: 124, len: 14, value: '064-40-33.00W ' },
     ]);
     const rec = parseAts2(line);
-    assert.equal(rec.name, 'BERMUDA');
-    assert.equal(rec.facilityType, 'VOR/DME');
-    assert.equal(rec.latStr, '32-21-54.00N');
-    assert.equal(rec.lonStr, '064-40-33.00W');
+    expect(rec.name).toBe('BERMUDA');
+    expect(rec.facilityType).toBe('VOR/DME');
+    expect(rec.latStr).toBe('32-21-54.00N');
+    expect(rec.lonStr).toBe('064-40-33.00W');
   });
 });
 
@@ -142,12 +141,12 @@ describe('buildAtsWaypoint', () => {
 
   it('builds a NAVAID waypoint with navaid identifier', () => {
     const wp = buildAtsWaypoint(ats1(), ats2());
-    assert.ok(wp);
-    assert.equal(wp.waypointType, 'NAVAID');
-    assert.equal(wp.identifier, 'BDA');
-    assert.equal(wp.navaidFacilityType, 'VOR/DME');
-    assert.ok(wp.lat > 32 && wp.lat < 33);
-    assert.ok(wp.lon < -64 && wp.lon > -65);
+    assert(wp);
+    expect(wp.waypointType).toBe('NAVAID');
+    expect(wp.identifier).toBe('BDA');
+    expect(wp.navaidFacilityType).toBe('VOR/DME');
+    assert(wp.lat > 32 && wp.lat < 33);
+    assert(wp.lon < -64 && wp.lon > -65);
   });
 
   it('sets identifier to name when FIX waypoint has no navaid identifier', () => {
@@ -155,11 +154,11 @@ describe('buildAtsWaypoint', () => {
       ats1(),
       ats2({ facilityType: 'REP-PT', navaidIdentifier: '', name: 'HAIST' }),
     );
-    assert.equal(wp?.identifier, 'HAIST');
+    expect(wp?.identifier).toBe('HAIST');
   });
 
   it('returns undefined when coordinates cannot be parsed', () => {
-    assert.equal(buildAtsWaypoint(ats1(), ats2({ latStr: '' })), undefined);
+    expect(buildAtsWaypoint(ats1(), ats2({ latStr: '' }))).toBe(undefined);
   });
 
   it('propagates ARTCC id, state, and distance fields', () => {
@@ -167,9 +166,9 @@ describe('buildAtsWaypoint', () => {
       ats1({ artccId: 'ZNY', distanceToNextNm: 100, signalGap: true }),
       ats2({ state: 'FL' }),
     );
-    assert.equal(wp?.artccId, 'ZNY');
-    assert.equal(wp?.state, 'FL');
-    assert.equal(wp?.distanceToNextNm, 100);
-    assert.equal(wp?.signalGap, true);
+    expect(wp?.artccId).toBe('ZNY');
+    expect(wp?.state).toBe('FL');
+    expect(wp?.distanceToNextNm).toBe(100);
+    expect(wp?.signalGap).toBe(true);
   });
 });

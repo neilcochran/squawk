@@ -238,4 +238,58 @@ describe('useTheme().setPreference', () => {
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     expect(document.documentElement).not.toHaveClass(DARK_CLASS_NAME);
   });
+
+  it('renders without throwing when window.matchMedia is unavailable', () => {
+    vi.stubGlobal('matchMedia', undefined);
+    expect(() =>
+      render(
+        <ThemeProvider>
+          <span>child</span>
+        </ThemeProvider>,
+      ),
+    ).not.toThrow();
+  });
+
+  it('falls back to system when localStorage.getItem throws', () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get: () => {
+        throw new Error('storage disabled');
+      },
+    });
+    try {
+      const { matchMedia } = buildMatchMediaStub(false);
+      vi.stubGlobal('matchMedia', matchMedia);
+      expect(() =>
+        render(
+          <ThemeProvider>
+            <span>child</span>
+          </ThemeProvider>,
+        ),
+      ).not.toThrow();
+    } finally {
+      if (original !== undefined) {
+        Object.defineProperty(window, 'localStorage', original);
+      }
+    }
+  });
+
+  it('swallows write errors when persisting the preference fails', () => {
+    const { matchMedia } = buildMatchMediaStub(false);
+    vi.stubGlobal('matchMedia', matchMedia);
+    const setItemSpy = vi.spyOn(window.localStorage.__proto__, 'setItem').mockImplementation(() => {
+      throw new Error('quota');
+    });
+    try {
+      render(
+        <ThemeProvider>
+          <PreferenceSetterButtons />
+        </ThemeProvider>,
+      );
+      expect(() => fireEvent.click(screen.getByRole('button', { name: 'set dark' }))).not.toThrow();
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
 });

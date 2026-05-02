@@ -166,4 +166,15 @@ describe('ThemeSwitcher', () => {
     );
     expect(screen.getByRole('button', { name: /Theme: System/ })).toBeInTheDocument();
   });
+
+  it('selecting System persists the preference', () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    render(
+      <ThemeProvider>
+        <ThemeSwitcher />
+      </ThemeProvider>,
+    );
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /System/ }));
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('system');
+  });
 });

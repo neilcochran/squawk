@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect } from 'vitest';
 import { approachTypeFromRouteType, runwayFromApproachIdentifier } from './classify-approach.js';
 
 describe('approachTypeFromRouteType', () => {
@@ -27,69 +26,68 @@ describe('approachTypeFromRouteType', () => {
       ['Y', 'MLS'],
     ];
     for (const [letter, expected] of cases) {
-      assert.equal(
+      expect(
         approachTypeFromRouteType(letter),
-        expected,
         `expected route type ${letter} to map to ${expected}`,
-      );
+      ).toBe(expected);
     }
   });
 
   it('returns undefined for transition and missed-approach route types', () => {
-    assert.equal(approachTypeFromRouteType('A'), undefined);
-    assert.equal(approachTypeFromRouteType('Z'), undefined);
+    expect(approachTypeFromRouteType('A')).toBe(undefined);
+    expect(approachTypeFromRouteType('Z')).toBe(undefined);
   });
 
   it('returns undefined for unknown letters', () => {
-    assert.equal(approachTypeFromRouteType('K'), undefined);
-    assert.equal(approachTypeFromRouteType('O'), undefined);
+    expect(approachTypeFromRouteType('K')).toBe(undefined);
+    expect(approachTypeFromRouteType('O')).toBe(undefined);
   });
 
   it('returns undefined for multi-character input', () => {
-    assert.equal(approachTypeFromRouteType(''), undefined);
-    assert.equal(approachTypeFromRouteType('IL'), undefined);
+    expect(approachTypeFromRouteType('')).toBe(undefined);
+    expect(approachTypeFromRouteType('IL')).toBe(undefined);
   });
 });
 
 describe('runwayFromApproachIdentifier', () => {
   it('extracts a runway with a sidedness suffix', () => {
-    assert.equal(runwayFromApproachIdentifier('I04L'), '04L');
-    assert.equal(runwayFromApproachIdentifier('R27R'), '27R');
-    assert.equal(runwayFromApproachIdentifier('L13C'), '13C');
+    expect(runwayFromApproachIdentifier('I04L')).toBe('04L');
+    expect(runwayFromApproachIdentifier('R27R')).toBe('27R');
+    expect(runwayFromApproachIdentifier('L13C')).toBe('13C');
   });
 
   it('extracts a runway without a sidedness suffix', () => {
-    assert.equal(runwayFromApproachIdentifier('I13'), '13');
-    assert.equal(runwayFromApproachIdentifier('R09'), '09');
+    expect(runwayFromApproachIdentifier('I13')).toBe('13');
+    expect(runwayFromApproachIdentifier('R09')).toBe('09');
   });
 
   it('trims trailing padding spaces from the identifier', () => {
-    assert.equal(runwayFromApproachIdentifier('I04L  '), '04L');
-    assert.equal(runwayFromApproachIdentifier('R13   '), '13');
+    expect(runwayFromApproachIdentifier('I04L  ')).toBe('04L');
+    expect(runwayFromApproachIdentifier('R13   ')).toBe('13');
   });
 
   it('extracts the runway portion when a variant suffix follows', () => {
-    assert.equal(runwayFromApproachIdentifier('I04LY'), '04L');
-    assert.equal(runwayFromApproachIdentifier('R27RZ'), '27R');
-    assert.equal(runwayFromApproachIdentifier('L13CW'), '13C');
+    expect(runwayFromApproachIdentifier('I04LY')).toBe('04L');
+    expect(runwayFromApproachIdentifier('R27RZ')).toBe('27R');
+    expect(runwayFromApproachIdentifier('L13CW')).toBe('13C');
   });
 
   it('returns undefined for circling approaches (no runway-specific identifier)', () => {
-    assert.equal(runwayFromApproachIdentifier('VOR-A'), undefined);
-    assert.equal(runwayFromApproachIdentifier('RNV-B'), undefined);
-    assert.equal(runwayFromApproachIdentifier('GPS-C'), undefined);
-    assert.equal(runwayFromApproachIdentifier('LDA-D'), undefined);
-    assert.equal(runwayFromApproachIdentifier('NDB-A'), undefined);
+    expect(runwayFromApproachIdentifier('VOR-A')).toBe(undefined);
+    expect(runwayFromApproachIdentifier('RNV-B')).toBe(undefined);
+    expect(runwayFromApproachIdentifier('GPS-C')).toBe(undefined);
+    expect(runwayFromApproachIdentifier('LDA-D')).toBe(undefined);
+    expect(runwayFromApproachIdentifier('NDB-A')).toBe(undefined);
   });
 
   it('returns undefined for too-short identifiers', () => {
-    assert.equal(runwayFromApproachIdentifier(''), undefined);
-    assert.equal(runwayFromApproachIdentifier('I'), undefined);
+    expect(runwayFromApproachIdentifier('')).toBe(undefined);
+    expect(runwayFromApproachIdentifier('I')).toBe(undefined);
   });
 
   it('extracts runway when the variant is prefixed with dash-letter', () => {
     // Variant-Y / Variant-Z syntax: "R01-Y" means runway 01, variant Y
-    assert.equal(runwayFromApproachIdentifier('R01-Y'), '01');
-    assert.equal(runwayFromApproachIdentifier('I27-Z'), '27');
+    expect(runwayFromApproachIdentifier('R01-Y')).toBe('01');
+    expect(runwayFromApproachIdentifier('I27-Z')).toBe('27');
   });
 });

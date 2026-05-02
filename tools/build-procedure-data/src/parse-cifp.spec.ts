@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import {
   buildFixIndex,
   composeName,
@@ -183,8 +182,8 @@ describe('buildFixIndex', () => {
       lon: 'W080253243',
     });
     const index = buildFixIndex([record]);
-    assert.ok(index.has('FEYPU::K6::PC'), 'expected index under waypoint region K6');
-    assert.equal(index.has('FEYPU::K5::PC'), false, 'must not index under airport region K5');
+    assert(index.has('FEYPU::K6::PC'), 'expected index under waypoint region K6');
+    expect(index.has('FEYPU::K5::PC'), 'must not index under airport region K5').toBe(false);
   });
 
   it('falls back to the airport region when the waypoint region is blank (PG/PI/PN)', () => {
@@ -197,7 +196,7 @@ describe('buildFixIndex', () => {
       lon: 'W073470505',
     });
     const index = buildFixIndex([record]);
-    assert.ok(index.has('RW04L::K6::PG'), 'expected runway indexed under airport region');
+    assert(index.has('RW04L::K6::PG'), 'expected runway indexed under airport region');
   });
 
   it('dual-indexes NDB (DB) records under both DB and PN section codes', () => {
@@ -210,11 +209,11 @@ describe('buildFixIndex', () => {
       lon: 'W099402722',
     });
     const index = buildFixIndex([record]);
-    assert.ok(index.has('AB::K4::DB'), 'expected DB section key');
-    assert.ok(index.has('AB::K4::PN'), 'expected PN section key (dual-index)');
+    assert(index.has('AB::K4::DB'), 'expected DB section key');
+    assert(index.has('AB::K4::PN'), 'expected PN section key (dual-index)');
     const dbEntry = index.get('AB::K4::DB');
     const pnEntry = index.get('AB::K4::PN');
-    assert.deepEqual(dbEntry, pnEntry, 'DB and PN entries must point to the same coordinates');
+    expect(dbEntry, 'DB and PN entries must point to the same coordinates').toEqual(pnEntry);
   });
 
   it('uses VOR lat/lon when populated (VHF navaid)', () => {
@@ -228,11 +227,11 @@ describe('buildFixIndex', () => {
     });
     const index = buildFixIndex([record]);
     const entry = index.get('ABI::K4::D ');
-    assert.ok(entry);
+    assert(entry);
     // N32° 28' 52.79" = 32.481331
-    assert.ok(Math.abs(entry.lat - 32.481331) < 1e-4, `got ${entry.lat}`);
+    assert(Math.abs(entry.lat - 32.481331) < 1e-4, `got ${entry.lat}`);
     // W99° 51' 48.43" = -99.863453
-    assert.ok(Math.abs(entry.lon - -99.863453) < 1e-4, `got ${entry.lon}`);
+    assert(Math.abs(entry.lon - -99.863453) < 1e-4, `got ${entry.lon}`);
   });
 
   it('falls back to DME lat/lon when the VOR coordinates are blank (DME-only station)', () => {
@@ -246,9 +245,9 @@ describe('buildFixIndex', () => {
     });
     const index = buildFixIndex([record]);
     const entry = index.get('AAT::K2::D ');
-    assert.ok(entry, 'expected DME-only navaid to be indexed via fallback');
-    assert.ok(entry.lat > 41 && entry.lat < 42);
-    assert.ok(entry.lon < -120 && entry.lon > -121);
+    assert(entry, 'expected DME-only navaid to be indexed via fallback');
+    assert(entry.lat > 41 && entry.lat < 42);
+    assert(entry.lon < -120 && entry.lon > -121);
   });
 
   it('indexes enroute waypoints (EA) with FIX category', () => {
@@ -260,8 +259,8 @@ describe('buildFixIndex', () => {
     });
     const index = buildFixIndex([record]);
     const entry = index.get('AAARG::K::EA');
-    assert.ok(entry);
-    assert.equal(entry.category, 'FIX');
+    assert(entry);
+    expect(entry.category).toBe('FIX');
   });
 
   it('indexes airports (PA) with AIRPORT category', () => {
@@ -273,8 +272,8 @@ describe('buildFixIndex', () => {
     });
     const index = buildFixIndex([record]);
     const entry = index.get('KJFK::K6::PA');
-    assert.ok(entry);
-    assert.equal(entry.category, 'AIRPORT');
+    assert(entry);
+    expect(entry.category).toBe('AIRPORT');
   });
 
   it('skips continuation records (continuation number not 0 or 1)', () => {
@@ -288,7 +287,7 @@ describe('buildFixIndex', () => {
     });
     const contRecord = record.substring(0, 21) + '2' + record.substring(22);
     const index = buildFixIndex([contRecord]);
-    assert.equal(index.size, 0, 'continuation records must not populate the index');
+    expect(index.size, 'continuation records must not populate the index').toBe(0);
   });
 
   it('skips records missing coordinates', () => {
@@ -301,7 +300,7 @@ describe('buildFixIndex', () => {
       lon: '          ',
     });
     const index = buildFixIndex([record]);
-    assert.equal(index.has('NOCOO::K6::PC'), false);
+    expect(index.has('NOCOO::K6::PC')).toBe(false);
   });
 
   it('skips records shorter than 132 bytes or without an S prefix', () => {
@@ -319,42 +318,259 @@ describe('buildFixIndex', () => {
     });
     const mutated = 'T' + badPrefix.substring(1);
     const index = buildFixIndex([short, mutated]);
-    assert.equal(index.has('SHORT::K::EA'), false);
-    assert.equal(index.has('BADPF::K::EA'), false);
+    expect(index.has('SHORT::K::EA')).toBe(false);
+    expect(index.has('BADPF::K::EA')).toBe(false);
+  });
+
+  it('skips E-section records that are not EA subsection (e.g. EM)', () => {
+    // Section E + non-A subsection (e.g. M for marker beacons) is not an enroute waypoint.
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'E',
+      5: 'M',
+      13: 'TESTM',
+      19: 'K6',
+      21: '0',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips D-section records with unrecognized subsection codes', () => {
+    // Section D with subsection other than ' ' or 'B' is not a supported navaid.
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'D',
+      5: 'X',
+      13: 'TESTX',
+      19: 'K6',
+      21: '0',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips D-section records that are continuations (charAt(21) not 0 or 1)', () => {
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'D',
+      13: 'TEST',
+      19: 'K6',
+      21: '2',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips EA records that are continuations (charAt(21) not 0 or 1)', () => {
+    const record = buildEaRecord({
+      fixIdent: 'CONT',
+      region: 'K',
+      lat: 'N40000000',
+      lon: 'W074000000',
+    });
+    const continuation = record.substring(0, 21) + '2' + record.substring(22);
+    const index = buildFixIndex([continuation]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips EA records missing required fields', () => {
+    const record = buildEaRecord({
+      fixIdent: '     ',
+      region: 'K',
+      lat: 'N40000000',
+      lon: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips PA airport records that are continuations', () => {
+    const record = buildAirportRecord({
+      airport: 'KJFK',
+      region: 'K6',
+      lat: 'N40000000',
+      lon: 'W074000000',
+    });
+    const continuation = record.substring(0, 21) + '2' + record.substring(22);
+    const index = buildFixIndex([continuation]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips PA airport records missing required fields', () => {
+    const record = buildAirportRecord({
+      airport: '    ',
+      region: 'K6',
+      lat: 'N40000000',
+      lon: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips PC/PG records when both waypoint region and airport region are blank', () => {
+    const record = buildPcRecord({
+      airport: '02G ',
+      airportRegion: '  ',
+      fixIdent: 'TESTA',
+      waypointRegion: '  ',
+      lat: 'N40000000',
+      lon: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
+  });
+
+  it('indexes terminal-NDB (PN) records when subsection is N', () => {
+    // I/N subsection - PN is the terminal NDB section.
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'P',
+      6: 'KJFK',
+      10: 'K6',
+      12: 'N',
+      13: 'TEST',
+      19: 'K6',
+      21: '0',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    assert(index.has('TEST::K6::PN'), 'expected PN section key for subsection N');
+  });
+
+  it('indexes terminal-IAP-fix (PI) records when subsection is I', () => {
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'P',
+      6: 'KJFK',
+      10: 'K6',
+      12: 'I',
+      13: 'TEST',
+      19: 'K6',
+      21: '0',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    assert(index.has('TEST::K6::PI'), 'expected PI section key for subsection I');
+  });
+
+  it('falls back to airport region for I/N records when waypoint region is blank', () => {
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'P',
+      6: 'KJFK',
+      10: 'K6',
+      12: 'I',
+      13: 'TEST',
+      19: '  ',
+      21: '0',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    assert(index.has('TEST::K6::PI'), 'expected fallback to airport region K6');
+  });
+
+  it('skips I/N records when both waypoint region and airport region are blank', () => {
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'P',
+      6: 'KJFK',
+      10: '  ',
+      12: 'I',
+      13: 'TEST',
+      19: '  ',
+      21: '0',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips I/N records with continuation number not 0 or 1', () => {
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'P',
+      6: 'KJFK',
+      10: 'K6',
+      12: 'I',
+      13: 'TEST',
+      19: 'K6',
+      21: '2',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
+  });
+
+  it('skips I/N records missing required ident or coordinates', () => {
+    const record = buildRecord({
+      0: 'S',
+      1: 'USA',
+      4: 'P',
+      6: 'KJFK',
+      10: 'K6',
+      12: 'I',
+      13: '    ',
+      19: 'K6',
+      21: '0',
+      32: 'N40000000',
+      41: 'W074000000',
+    });
+    const index = buildFixIndex([record]);
+    expect(index.size).toBe(0);
   });
 });
 
 describe('isCommonRouteRouteType', () => {
   it('identifies SID common-route route types (2, 5, M, N)', () => {
-    assert.equal(isCommonRouteRouteType('SID', '2'), true);
-    assert.equal(isCommonRouteRouteType('SID', '5'), true);
-    assert.equal(isCommonRouteRouteType('SID', 'M'), true);
-    assert.equal(isCommonRouteRouteType('SID', 'N'), true);
+    expect(isCommonRouteRouteType('SID', '2')).toBe(true);
+    expect(isCommonRouteRouteType('SID', '5')).toBe(true);
+    expect(isCommonRouteRouteType('SID', 'M')).toBe(true);
+    expect(isCommonRouteRouteType('SID', 'N')).toBe(true);
   });
 
   it('rejects SID runway and enroute transition route types', () => {
     for (const rt of ['1', '4', 'F', 'R', 'T', '3', '6', 'S', 'V', 'P', '0']) {
-      assert.equal(isCommonRouteRouteType('SID', rt), false, `SID ${rt} should not be common`);
+      expect(isCommonRouteRouteType('SID', rt), `SID ${rt} should not be common`).toBe(false);
     }
   });
 
   it('identifies STAR common-route route types (2, 5, 8, M, N)', () => {
-    assert.equal(isCommonRouteRouteType('STAR', '2'), true);
-    assert.equal(isCommonRouteRouteType('STAR', '5'), true);
-    assert.equal(isCommonRouteRouteType('STAR', '8'), true);
-    assert.equal(isCommonRouteRouteType('STAR', 'M'), true);
-    assert.equal(isCommonRouteRouteType('STAR', 'N'), true);
+    expect(isCommonRouteRouteType('STAR', '2')).toBe(true);
+    expect(isCommonRouteRouteType('STAR', '5')).toBe(true);
+    expect(isCommonRouteRouteType('STAR', '8')).toBe(true);
+    expect(isCommonRouteRouteType('STAR', 'M')).toBe(true);
+    expect(isCommonRouteRouteType('STAR', 'N')).toBe(true);
   });
 
   it('rejects STAR runway and enroute transition route types', () => {
     for (const rt of ['1', '3', '4', '6', '7', '9', 'F', 'R', 'S', 'P']) {
-      assert.equal(isCommonRouteRouteType('STAR', rt), false, `STAR ${rt} should not be common`);
+      expect(isCommonRouteRouteType('STAR', rt), `STAR ${rt} should not be common`).toBe(false);
     }
   });
 
   it('returns false for IAPs (they use a different dispatch)', () => {
-    assert.equal(isCommonRouteRouteType('IAP', '2'), false);
-    assert.equal(isCommonRouteRouteType('IAP', 'A'), false);
+    expect(isCommonRouteRouteType('IAP', '2')).toBe(false);
+    expect(isCommonRouteRouteType('IAP', 'A')).toBe(false);
   });
 });
 
@@ -377,21 +593,21 @@ describe('findEmbeddedMissedApproachStart', () => {
 
   it('returns -1 when no record carries the embedded-MAP flag', () => {
     const bucket = [makeRec(false, 10), makeRec(false, 20), makeRec(false, 30)];
-    assert.equal(findEmbeddedMissedApproachStart(bucket), -1);
+    expect(findEmbeddedMissedApproachStart(bucket)).toBe(-1);
   });
 
   it('returns the index of the first flagged record', () => {
     const bucket = [makeRec(false, 10), makeRec(false, 20), makeRec(true, 30), makeRec(false, 40)];
-    assert.equal(findEmbeddedMissedApproachStart(bucket), 2);
+    expect(findEmbeddedMissedApproachStart(bucket)).toBe(2);
   });
 
   it('returns 0 when the first record is already the MAP start', () => {
     const bucket = [makeRec(true, 10), makeRec(false, 20)];
-    assert.equal(findEmbeddedMissedApproachStart(bucket), 0);
+    expect(findEmbeddedMissedApproachStart(bucket)).toBe(0);
   });
 
   it('returns -1 for an empty bucket', () => {
-    assert.equal(findEmbeddedMissedApproachStart([]), -1);
+    expect(findEmbeddedMissedApproachStart([])).toBe(-1);
   });
 });
 
@@ -419,31 +635,31 @@ describe('composeName', () => {
 
   it('uses the identifier as the name for SIDs', () => {
     const rec = makeRec('SID', 'AALLE4');
-    assert.equal(composeName(rec, new Map()), 'AALLE4');
+    expect(composeName(rec, new Map())).toBe('AALLE4');
   });
 
   it('uses the identifier as the name for STARs', () => {
     const rec = makeRec('STAR', 'NUBLE4');
-    assert.equal(composeName(rec, new Map()), 'NUBLE4');
+    expect(composeName(rec, new Map())).toBe('NUBLE4');
   });
 
   it('composes an ILS approach name with the runway', () => {
     const rec = makeRec('IAP', 'I04L');
-    assert.equal(composeName(rec, makeBuckets('I')), 'ILS RWY 04L');
+    expect(composeName(rec, makeBuckets('I'))).toBe('ILS RWY 04L');
   });
 
   it('composes an RNAV approach name with the runway', () => {
     const rec = makeRec('IAP', 'R13');
-    assert.equal(composeName(rec, makeBuckets('R')), 'RNAV RWY 13');
+    expect(composeName(rec, makeBuckets('R'))).toBe('RNAV RWY 13');
   });
 
   it('composes a LOC backcourse approach name', () => {
     const rec = makeRec('IAP', 'B22');
-    assert.equal(composeName(rec, makeBuckets('B')), 'LOC_BC RWY 22');
+    expect(composeName(rec, makeBuckets('B'))).toBe('LOC_BC RWY 22');
   });
 
   it('composes a runway name with sidedness and variant suffix', () => {
     const rec = makeRec('IAP', 'I04LY');
-    assert.equal(composeName(rec, makeBuckets('I')), 'ILS RWY 04L');
+    expect(composeName(rec, makeBuckets('I'))).toBe('ILS RWY 04L');
   });
 });

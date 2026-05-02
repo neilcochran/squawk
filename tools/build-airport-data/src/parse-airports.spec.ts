@@ -1,5 +1,4 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, it, expect, assert } from 'vitest';
 import { buildAirport } from './parse-airports.js';
 import type { CsvRecord } from '@squawk/build-shared';
 
@@ -25,21 +24,21 @@ describe('buildAirport', () => {
   describe('required field validation', () => {
     it('builds a minimal valid airport', () => {
       const airport = buildAirport(baseRec(), [], [], [], [], [], []);
-      assert.ok(airport);
-      assert.equal(airport.faaId, 'JFK');
-      assert.equal(airport.name, 'JOHN F KENNEDY INTL');
-      assert.equal(airport.facilityType, 'AIRPORT');
-      assert.equal(airport.ownershipType, 'PUBLIC');
-      assert.equal(airport.useType, 'PUBLIC');
-      assert.equal(airport.status, 'OPEN');
-      assert.equal(airport.city, 'NEW YORK');
-      assert.equal(airport.state, 'NY');
-      assert.equal(airport.country, 'US');
-      assert.equal(airport.lat, 40.6398);
-      assert.equal(airport.lon, -73.7789);
-      assert.equal(airport.timezone, 'America/New_York');
-      assert.deepEqual(airport.runways, []);
-      assert.deepEqual(airport.frequencies, []);
+      assert(airport);
+      expect(airport.faaId).toBe('JFK');
+      expect(airport.name).toBe('JOHN F KENNEDY INTL');
+      expect(airport.facilityType).toBe('AIRPORT');
+      expect(airport.ownershipType).toBe('PUBLIC');
+      expect(airport.useType).toBe('PUBLIC');
+      expect(airport.status).toBe('OPEN');
+      expect(airport.city).toBe('NEW YORK');
+      expect(airport.state).toBe('NY');
+      expect(airport.country).toBe('US');
+      expect(airport.lat).toBe(40.6398);
+      expect(airport.lon).toBe(-73.7789);
+      expect(airport.timezone).toBe('America/New_York');
+      expect(airport.runways).toEqual([]);
+      expect(airport.frequencies).toEqual([]);
     });
 
     it('resolves timezones for airports across US time zones', () => {
@@ -52,7 +51,7 @@ describe('buildAirport', () => {
         [],
         [],
       );
-      assert.equal(la?.timezone, 'America/Los_Angeles');
+      expect(la?.timezone).toBe('America/Los_Angeles');
 
       const honolulu = buildAirport(
         baseRec({ ARPT_ID: 'HNL', LAT_DECIMAL: '21.3187', LONG_DECIMAL: '-157.9225' }),
@@ -63,7 +62,7 @@ describe('buildAirport', () => {
         [],
         [],
       );
-      assert.equal(honolulu?.timezone, 'Pacific/Honolulu');
+      expect(honolulu?.timezone).toBe('Pacific/Honolulu');
 
       const anchorage = buildAirport(
         baseRec({ ARPT_ID: 'ANC', LAT_DECIMAL: '61.1743', LONG_DECIMAL: '-149.9982' }),
@@ -74,48 +73,44 @@ describe('buildAirport', () => {
         [],
         [],
       );
-      assert.equal(anchorage?.timezone, 'America/Anchorage');
+      expect(anchorage?.timezone).toBe('America/Anchorage');
     });
 
     it('returns undefined when ARPT_ID is missing', () => {
-      assert.equal(buildAirport(baseRec({ ARPT_ID: '' }), [], [], [], [], [], []), undefined);
+      expect(buildAirport(baseRec({ ARPT_ID: '' }), [], [], [], [], [], [])).toBe(undefined);
     });
 
     it('returns undefined when ARPT_NAME is missing', () => {
-      assert.equal(buildAirport(baseRec({ ARPT_NAME: '' }), [], [], [], [], [], []), undefined);
+      expect(buildAirport(baseRec({ ARPT_NAME: '' }), [], [], [], [], [], [])).toBe(undefined);
     });
 
     it('returns undefined when LAT_DECIMAL is missing', () => {
-      assert.equal(buildAirport(baseRec({ LAT_DECIMAL: '' }), [], [], [], [], [], []), undefined);
+      expect(buildAirport(baseRec({ LAT_DECIMAL: '' }), [], [], [], [], [], [])).toBe(undefined);
     });
 
     it('returns undefined when SITE_NO is missing', () => {
-      assert.equal(buildAirport(baseRec({ SITE_NO: '' }), [], [], [], [], [], []), undefined);
+      expect(buildAirport(baseRec({ SITE_NO: '' }), [], [], [], [], [], [])).toBe(undefined);
     });
 
     it('returns undefined when SITE_TYPE_CODE is unknown', () => {
-      assert.equal(
-        buildAirport(baseRec({ SITE_TYPE_CODE: 'ZZ' }), [], [], [], [], [], []),
+      expect(buildAirport(baseRec({ SITE_TYPE_CODE: 'ZZ' }), [], [], [], [], [], [])).toBe(
         undefined,
       );
     });
 
     it('returns undefined when OWNERSHIP_TYPE_CODE is unknown', () => {
-      assert.equal(
-        buildAirport(baseRec({ OWNERSHIP_TYPE_CODE: 'ZZ' }), [], [], [], [], [], []),
+      expect(buildAirport(baseRec({ OWNERSHIP_TYPE_CODE: 'ZZ' }), [], [], [], [], [], [])).toBe(
         undefined,
       );
     });
 
     it('maps facility type codes correctly', () => {
-      assert.equal(
+      expect(
         buildAirport(baseRec({ SITE_TYPE_CODE: 'H' }), [], [], [], [], [], [])?.facilityType,
-        'HELIPORT',
-      );
-      assert.equal(
+      ).toBe('HELIPORT');
+      expect(
         buildAirport(baseRec({ SITE_TYPE_CODE: 'C' }), [], [], [], [], [], [])?.facilityType,
-        'SEAPLANE_BASE',
-      );
+      ).toBe('SEAPLANE_BASE');
     });
 
     it('maps all private ownership variants to PRIVATE', () => {
@@ -129,7 +124,7 @@ describe('buildAirport', () => {
           [],
           [],
         );
-        assert.equal(airport?.ownershipType, 'PRIVATE', `code=${code}`);
+        expect(airport?.ownershipType, `code=${code}`).toBe('PRIVATE');
       }
     });
   });
@@ -152,26 +147,26 @@ describe('buildAirport', () => {
         [],
         [],
       );
-      assert.ok(airport);
-      assert.equal(airport.icao, 'KJFK');
-      assert.equal(airport.elevationFt, 13);
-      assert.equal(airport.magneticVariationDeg, 13);
-      assert.equal(airport.magneticVariationDirection, 'W');
-      assert.equal(airport.magneticVariationYear, 2020);
-      assert.equal(airport.trafficPatternAltitudeFt, 1500);
+      assert(airport);
+      expect(airport.icao).toBe('KJFK');
+      expect(airport.elevationFt).toBe(13);
+      expect(airport.magneticVariationDeg).toBe(13);
+      expect(airport.magneticVariationDirection).toBe('W');
+      expect(airport.magneticVariationYear).toBe(2020);
+      expect(airport.trafficPatternAltitudeFt).toBe(1500);
     });
 
     it('omits state when blank', () => {
       const airport = buildAirport(baseRec({ STATE_CODE: '' }), [], [], [], [], [], []);
-      assert.ok(airport);
-      assert.equal(airport.state, undefined);
+      assert(airport);
+      expect(airport.state).toBe(undefined);
     });
 
     it('sets hasLandingFee true only when LNDG_FEE_FLAG is "Y"', () => {
       const yes = buildAirport(baseRec({ LNDG_FEE_FLAG: 'Y' }), [], [], [], [], [], []);
       const no = buildAirport(baseRec({ LNDG_FEE_FLAG: 'N' }), [], [], [], [], [], []);
-      assert.equal(yes?.hasLandingFee, true);
-      assert.equal(no?.hasLandingFee, undefined);
+      expect(yes?.hasLandingFee).toBe(true);
+      expect(no?.hasLandingFee).toBe(undefined);
     });
   });
 
@@ -183,10 +178,10 @@ describe('buildAirport', () => {
         { SITE_NO: 'OTHER', RWY_ID: 'OTHER', RWY_LEN: '1000' },
       ];
       const airport = buildAirport(base, rwys, [], [], [], [], []);
-      assert.equal(airport?.runways.length, 1);
-      assert.equal(airport?.runways[0]?.id, '04L/22R');
-      assert.equal(airport?.runways[0]?.lengthFt, 11351);
-      assert.equal(airport?.runways[0]?.widthFt, 150);
+      expect(airport?.runways.length).toBe(1);
+      expect(airport?.runways[0]?.id).toBe('04L/22R');
+      expect(airport?.runways[0]?.lengthFt).toBe(11351);
+      expect(airport?.runways[0]?.widthFt).toBe(150);
     });
 
     it('attaches runway ends to their parent runway via (SITE_NO, RWY_ID)', () => {
@@ -198,10 +193,10 @@ describe('buildAirport', () => {
       ];
       const airport = buildAirport(base, rwys, ends, [], [], [], []);
       const rwy = airport?.runways[0];
-      assert.equal(rwy?.ends.length, 2);
-      assert.equal(rwy?.ends[0]?.id, '04L');
-      assert.equal(rwy?.ends[0]?.trueHeadingDeg, 40);
-      assert.equal(rwy?.ends[1]?.id, '22R');
+      expect(rwy?.ends.length).toBe(2);
+      expect(rwy?.ends[0]?.id).toBe('04L');
+      expect(rwy?.ends[0]?.trueHeadingDeg).toBe(40);
+      expect(rwy?.ends[1]?.id).toBe('22R');
     });
 
     it('maps surface condition, treatment, and lighting codes', () => {
@@ -217,9 +212,9 @@ describe('buildAirport', () => {
       ];
       const airport = buildAirport(base, rwys, [], [], [], [], []);
       const rwy = airport?.runways[0];
-      assert.equal(rwy?.condition, 'EXCELLENT');
-      assert.equal(rwy?.treatment, 'GROOVED');
-      assert.equal(rwy?.lighting, 'HIGH');
+      expect(rwy?.condition).toBe('EXCELLENT');
+      expect(rwy?.treatment).toBe('GROOVED');
+      expect(rwy?.lighting).toBe('HIGH');
     });
   });
 
@@ -240,10 +235,10 @@ describe('buildAirport', () => {
       ];
       const airport = buildAirport(base, rwys, ends, [], [], [], []);
       const end = airport?.runways[0]?.ends[0];
-      assert.equal(end?.hasRvr, true);
-      assert.equal(end?.hasReil, true);
-      assert.equal(end?.hasCenterlineLights, true);
-      assert.equal(end?.hasTdzLights, undefined);
+      expect(end?.hasRvr).toBe(true);
+      expect(end?.hasReil).toBe(true);
+      expect(end?.hasCenterlineLights).toBe(true);
+      expect(end?.hasTdzLights).toBe(undefined);
     });
 
     it('populates declared distances', () => {
@@ -262,10 +257,10 @@ describe('buildAirport', () => {
       ];
       const airport = buildAirport(base, rwys, ends, [], [], [], []);
       const end = airport?.runways[0]?.ends[0];
-      assert.equal(end?.toraFt, 10000);
-      assert.equal(end?.todaFt, 10500);
-      assert.equal(end?.asdaFt, 10200);
-      assert.equal(end?.ldaFt, 9500);
+      expect(end?.toraFt).toBe(10000);
+      expect(end?.todaFt).toBe(10500);
+      expect(end?.asdaFt).toBe(10200);
+      expect(end?.ldaFt).toBe(9500);
     });
   });
 
@@ -293,15 +288,15 @@ describe('buildAirport', () => {
 
       const airport = buildAirport(base, rwys, ends, [], ilsBase, ilsGs, ilsDme);
       const ils = airport?.runways[0]?.ends[0]?.ils;
-      assert.ok(ils);
-      assert.equal(ils.systemType, 'ILS');
-      assert.equal(ils.identifier, 'I-JFK');
-      assert.equal(ils.category, 'II');
-      assert.equal(ils.localizerFrequencyMhz, 110.9);
-      assert.equal(ils.localizerMagneticCourseDeg, 42);
-      assert.equal(ils.glideSlopeAngleDeg, 3);
-      assert.equal(ils.glideSlopeType, 'GLIDE SLOPE');
-      assert.equal(ils.dmeChannel, '46X');
+      assert(ils);
+      expect(ils.systemType).toBe('ILS');
+      expect(ils.identifier).toBe('I-JFK');
+      expect(ils.category).toBe('II');
+      expect(ils.localizerFrequencyMhz).toBe(110.9);
+      expect(ils.localizerMagneticCourseDeg).toBe(42);
+      expect(ils.glideSlopeAngleDeg).toBe(3);
+      expect(ils.glideSlopeType).toBe('GLIDE SLOPE');
+      expect(ils.dmeChannel).toBe('46X');
     });
 
     it('skips ILS systems with unknown SYSTEM_TYPE_CODE', () => {
@@ -311,7 +306,7 @@ describe('buildAirport', () => {
       const ilsBase: CsvRecord[] = [{ SITE_NO: 'S', RWY_END_ID: '04L', SYSTEM_TYPE_CODE: 'ZZ' }];
 
       const airport = buildAirport(base, rwys, ends, [], ilsBase, [], []);
-      assert.equal(airport?.runways[0]?.ends[0]?.ils, undefined);
+      expect(airport?.runways[0]?.ends[0]?.ils).toBe(undefined);
     });
 
     it('skips ILS systems whose COMPONENT_STATUS is SHUTDOWN', () => {
@@ -328,7 +323,7 @@ describe('buildAirport', () => {
       ];
 
       const airport = buildAirport(base, rwys, ends, [], ilsBase, [], []);
-      assert.equal(airport?.runways[0]?.ends[0]?.ils, undefined);
+      expect(airport?.runways[0]?.ends[0]?.ils).toBe(undefined);
     });
   });
 
@@ -339,13 +334,13 @@ describe('buildAirport', () => {
         { FREQ: '121.9', FREQ_USE: 'GND' },
       ];
       const airport = buildAirport(baseRec(), [], [], freqs, [], [], []);
-      assert.equal(airport?.frequencies.length, 2);
-      assert.deepEqual(airport?.frequencies[0], {
+      expect(airport?.frequencies.length).toBe(2);
+      expect(airport?.frequencies[0]).toEqual({
         frequencyMhz: 118.725,
         use: 'TWR',
         sectorization: 'ALL/CD',
       });
-      assert.deepEqual(airport?.frequencies[1], {
+      expect(airport?.frequencies[1]).toEqual({
         frequencyMhz: 121.9,
         use: 'GND',
       });
@@ -358,8 +353,8 @@ describe('buildAirport', () => {
         { FREQ: '118.1', FREQ_USE: 'TWR' },
       ];
       const airport = buildAirport(baseRec(), [], [], freqs, [], [], []);
-      assert.equal(airport?.frequencies.length, 1);
-      assert.equal(airport?.frequencies[0]?.frequencyMhz, 118.1);
+      expect(airport?.frequencies.length).toBe(1);
+      expect(airport?.frequencies[0]?.frequencyMhz).toBe(118.1);
     });
   });
 });

@@ -1,5 +1,6 @@
 dist/
 node_modules/
 *.tsbuildinfo
+coverage/
 packages/libs/airspace-data/data/
 apps/atlas/src/routeTree.gen.ts
