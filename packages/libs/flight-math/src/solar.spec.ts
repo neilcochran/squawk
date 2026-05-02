@@ -125,6 +125,18 @@ describe('computeSolarTimes', () => {
       `expected sunrise ~11:37 UTC, got ${result.sunrise.toISOString()}`,
     );
   });
+
+  it('handles January dates (Julian day algorithm month <= 2 branch)', () => {
+    // The internal Julian day algorithm takes a different branch when month <= 2;
+    // exercise it with a January date.
+    const result = solar.computeSolarTimes(40.0, -74.0, new Date(Date.UTC(2026, 0, 15)));
+    assert(result.sunrise !== undefined, 'expected sunrise');
+    assert(result.sunset !== undefined, 'expected sunset');
+    assert(
+      result.sunrise < result.sunset,
+      `expected sunrise before sunset, got ${result.sunrise.toISOString()} / ${result.sunset.toISOString()}`,
+    );
+  });
 });
 
 describe('isDaytime', () => {

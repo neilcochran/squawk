@@ -76,4 +76,15 @@ describe('discretizeArc', () => {
     const points = discretizeArc(-100, 40, 5, 0, 90);
     expect(points.length).toBe(65);
   });
+
+  it('falls back to latitude scaling when cos(latitude) is zero (poles)', () => {
+    // At the poles cos(lat) === 0 - the helper falls back to using the
+    // latitude scaling for longitude rather than dividing by zero.
+    const points = discretizeArc(0, 90, 1, 0, 90, 2);
+    expect(points.length).toBe(3);
+    for (const [lon, lat] of points) {
+      assert(Number.isFinite(lon));
+      assert(Number.isFinite(lat));
+    }
+  });
 });

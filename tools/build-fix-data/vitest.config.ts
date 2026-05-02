@@ -6,6 +6,9 @@ export default mergeConfig(
   defineProject({
     test: {
       name: '@squawk/build-fix-data',
+      coverage: {
+        exclude: ['src/index.ts'],
+      },
     },
   }),
 );

@@ -82,4 +82,9 @@ describe('AirspacePanel', () => {
     unmount();
     expect(setHoveredFeatureIndexMock).toHaveBeenCalledWith(undefined);
   });
+
+  it('renders nothing when given an empty features array (defensive single-feature path)', () => {
+    const { container } = render(<AirspacePanel features={[]} />);
+    expect(container.textContent).toBe('');
+  });
 });

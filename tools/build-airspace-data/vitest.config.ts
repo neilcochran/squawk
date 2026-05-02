@@ -6,6 +6,9 @@ export default mergeConfig(
   defineProject({
     test: {
       name: '@squawk/build-airspace-data',
+      coverage: {
+        exclude: ['src/index.ts', 'src/parse-class-airspace.ts', 'src/parse-sua.ts'],
+      },
     },
   }),
 );

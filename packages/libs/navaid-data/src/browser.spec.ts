@@ -51,4 +51,28 @@ describe('loadUsBundledNavaids', () => {
 
     expect(received).toBe('https://cdn.example/navaids.json.gz');
   });
+
+  it('throws when the response body is null', async () => {
+    await expect(
+      loadUsBundledNavaids({
+        fetch: async () => new Response(null),
+      }),
+    ).rejects.toThrow(/body is null/);
+  });
+
+  it('falls back to globalThis.fetch when no fetch override is provided', async () => {
+    const original = globalThis.fetch;
+    let called = false;
+    globalThis.fetch = async () => {
+      called = true;
+      return new Response(gzBytes);
+    };
+    try {
+      const dataset = await loadUsBundledNavaids();
+      expect(called).toBe(true);
+      expect(dataset).toEqual(usBundledNavaids);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
 });

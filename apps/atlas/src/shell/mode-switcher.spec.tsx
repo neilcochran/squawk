@@ -74,4 +74,17 @@ describe('ModeSwitcher', () => {
     link.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
   });
+
+  it('selects the pathname from the router state via the select callback', () => {
+    // Drive useRouterState through its `select` argument so the inline
+    // selector closure (s) => s.location.pathname is exercised, matching
+    // production wiring rather than the mock's short-circuit.
+    useRouterStateMock.mockImplementation(
+      ({ select }: { select: (s: { location: { pathname: string } }) => string }) =>
+        select({ location: { pathname: '/chart' } }),
+    );
+    render(<ModeSwitcher />);
+    fireEvent.click(screen.getByRole('link', { name: 'Chart' }));
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
+  });
 });

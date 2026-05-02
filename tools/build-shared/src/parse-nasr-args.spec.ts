@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach, expect } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -53,5 +53,48 @@ describe('parseNasrArgs', () => {
     expect(() => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' })).toThrow(
       /Cannot determine NASR cycle date/,
     );
+  });
+
+  it('exits with usage when an unknown argument is provided', () => {
+    const exitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((_code?: string | number | null): never => {
+        throw new Error('process.exit called');
+      });
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      process.argv = ['node', 'index.js', '--bogus', 'value'];
+      expect(() => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' })).toThrow(
+        /process\.exit called/,
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      const stderrCalls = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
+      expect(stderrCalls).toMatch(/Unknown argument/);
+      expect(stderrCalls).toMatch(/Usage:/);
+    } finally {
+      exitSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
+  });
+
+  it('exits with usage when --local is missing', () => {
+    const exitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementation((_code?: string | number | null): never => {
+        throw new Error('process.exit called');
+      });
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      process.argv = ['node', 'index.js'];
+      expect(() => parseNasrArgs({ defaultOutputPath: '/tmp/d.json.gz' })).toThrow(
+        /process\.exit called/,
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      const stderrCalls = stderrSpy.mock.calls.map((c) => String(c[0])).join('');
+      expect(stderrCalls).toMatch(/--local <path> is required/);
+    } finally {
+      exitSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
   });
 });

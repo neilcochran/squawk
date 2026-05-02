@@ -391,6 +391,36 @@ describe('flight-math tools', () => {
     }
   });
 
+  it('compute_solar_times returns nulls for polar night', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      // Tromso, Norway in deep December - no sunrise / no sunset / no civil twilight.
+      const result = await client.callTool({
+        name: 'compute_solar_times',
+        arguments: {
+          lat: 78,
+          lon: 16,
+          dateTimeUtc: '2026-12-21T12:00:00Z',
+          dateUtc: '2026-12-21T12:00:00Z',
+        },
+      });
+      const parsed = z
+        .object({
+          times: z.object({
+            sunrise: z.string().nullable(),
+            sunset: z.string().nullable(),
+            civilTwilightBegin: z.string().nullable(),
+            civilTwilightEnd: z.string().nullable(),
+          }),
+        })
+        .parse(result.structuredContent);
+      expect(parsed.times.sunrise).toBe(null);
+      expect(parsed.times.sunset).toBe(null);
+    } finally {
+      await close();
+    }
+  });
+
   it('compute_solar_times surfaces invalid date as isError', async () => {
     const { client, close } = await connectTestClient();
     try {
@@ -872,6 +902,48 @@ describe('navaid tools', () => {
       await close();
     }
   });
+
+  it('find_navaids_by_frequency works without optional arguments', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_navaids_by_frequency',
+        arguments: { frequency: 113.5 },
+      });
+      const parsed = z.object({ navaids: z.array(z.unknown()) }).parse(result.structuredContent);
+      assert(Array.isArray(parsed.navaids));
+    } finally {
+      await close();
+    }
+  });
+
+  it('find_nearest_navaids works without optional arguments', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_nearest_navaids',
+        arguments: { lat: 40.6413, lon: -73.7781 },
+      });
+      const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
+      assert(Array.isArray(parsed.results));
+    } finally {
+      await close();
+    }
+  });
+
+  it('search_navaids works without optional arguments', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_navaids',
+        arguments: { text: 'BOSTON' },
+      });
+      const parsed = z.object({ navaids: z.array(z.unknown()) }).parse(result.structuredContent);
+      assert(Array.isArray(parsed.navaids));
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('fix tools', () => {
@@ -938,6 +1010,34 @@ describe('fix tools', () => {
       await close();
     }
   });
+
+  it('find_nearest_fixes works without optional arguments', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_nearest_fixes',
+        arguments: { lat: 40.6413, lon: -73.7781 },
+      });
+      const parsed = z.object({ results: z.array(z.unknown()) }).parse(result.structuredContent);
+      assert(Array.isArray(parsed.results));
+    } finally {
+      await close();
+    }
+  });
+
+  it('search_fixes works without optional arguments', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_fixes',
+        arguments: { text: 'MERIT' },
+      });
+      const parsed = z.object({ fixes: z.array(z.unknown()) }).parse(result.structuredContent);
+      assert(Array.isArray(parsed.fixes));
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('airway tools', () => {
@@ -964,6 +1064,55 @@ describe('airway tools', () => {
       });
       const parsed = z.object({ expansion: z.null() }).parse(result.structuredContent);
       expect(parsed.expansion).toBe(null);
+    } finally {
+      await close();
+    }
+  });
+
+  it('expand_airway_segment returns the waypoint sequence for a valid segment', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      // Look up an airway, take its first and last waypoint, and expand between them.
+      const lookup = await client.callTool({
+        name: 'get_airway_by_designation',
+        arguments: { designation: 'V16' },
+      });
+      const lookupSchema = z.object({
+        airways: z.array(
+          z
+            .object({
+              waypoints: z.array(z.object({ identifier: z.string() }).passthrough()),
+            })
+            .passthrough(),
+        ),
+      });
+      const airwayResult = lookupSchema.parse(lookup.structuredContent);
+      assert(airwayResult.airways.length > 0, 'expected V16 to exist');
+      const waypoints = airwayResult.airways[0]?.waypoints ?? [];
+      assert(waypoints.length >= 2, 'expected V16 to have at least two waypoints');
+      const entry = waypoints[0]!.identifier;
+      const exit = waypoints[waypoints.length - 1]!.identifier;
+
+      const result = await client.callTool({
+        name: 'expand_airway_segment',
+        arguments: { designation: 'V16', entryFix: entry, exitFix: exit },
+      });
+      const parsed = z.object({ expansion: z.unknown() }).parse(result.structuredContent);
+      assert(parsed.expansion !== null, 'expected a non-null expansion');
+    } finally {
+      await close();
+    }
+  });
+
+  it('search_airways works without optional arguments', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_airways',
+        arguments: { text: 'V1' },
+      });
+      const parsed = z.object({ airways: z.array(z.unknown()) }).parse(result.structuredContent);
+      assert(Array.isArray(parsed.airways));
     } finally {
       await close();
     }
@@ -1046,6 +1195,49 @@ describe('icao registry tools', () => {
         .object({ aircraft: z.union([z.null(), z.object({}).passthrough()]) })
         .parse(result.structuredContent);
       assert(parsed.aircraft === null || typeof parsed.aircraft === 'object');
+    } finally {
+      await close();
+    }
+  });
+
+  it('reuses the cached registry on subsequent calls', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const first = await client.callTool({
+        name: 'lookup_aircraft_by_icao_hex',
+        arguments: { icaoHex: 'A00001' },
+      });
+      const second = await client.callTool({
+        name: 'lookup_aircraft_by_icao_hex',
+        arguments: { icaoHex: 'A00002' },
+      });
+      const schema = z.object({ aircraft: z.union([z.null(), z.object({}).passthrough()]) });
+      schema.parse(first.structuredContent);
+      schema.parse(second.structuredContent);
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_dataset_status reports the registry as loaded after a lookup', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      // Force registry load via a lookup first.
+      await client.callTool({
+        name: 'lookup_aircraft_by_icao_hex',
+        arguments: { icaoHex: 'A00001' },
+      });
+      const result = await client.callTool({ name: 'get_dataset_status', arguments: {} });
+      const parsed = z
+        .object({
+          datasets: z.object({
+            icaoRegistry: z.object({
+              loaded: z.boolean(),
+            }),
+          }),
+        })
+        .parse(result.structuredContent);
+      expect(parsed.datasets.icaoRegistry.loaded).toBe(true);
     } finally {
       await close();
     }

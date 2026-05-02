@@ -121,4 +121,17 @@ describe('AirwayPanel', () => {
     render(<AirwayPanel record={buildAirway(0)} />);
     expect(screen.queryByText('Route')).toBeNull();
   });
+
+  it('falls back to the waypoint name when the identifier is undefined', () => {
+    // Waypoints sourced from CIFP-style tables sometimes lack a short
+    // identifier; the panel must still label the row using the long name.
+    const record: Airway = {
+      designation: 'V16',
+      type: 'VICTOR',
+      region: 'US',
+      waypoints: [{ name: 'BORDER POINT NORTH', waypointType: 'BORDER', lat: 40, lon: -100 }],
+    };
+    render(<AirwayPanel record={record} />);
+    expect(screen.getByText('BORDER POINT NORTH')).toBeInTheDocument();
+  });
 });

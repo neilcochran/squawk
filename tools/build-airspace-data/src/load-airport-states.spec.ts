@@ -70,4 +70,17 @@ describe('loadAirportStates', () => {
     const map = await loadAirportStates(csvPath);
     expect(map.size).toBe(0);
   });
+
+  it('skips blank lines in the middle of the file', async () => {
+    const csvPath = join(sandbox, 'APT_BASE.csv');
+    writeFileSync(
+      csvPath,
+      '"ARPT_ID","STATE_CODE"\n' + '\n' + '   \n' + '"BOS","MA"\n' + '\n' + '"AUS","TX"\n',
+      'utf-8',
+    );
+    const map = await loadAirportStates(csvPath);
+    expect(map.size).toBe(2);
+    expect(map.get('BOS')).toBe('MA');
+    expect(map.get('AUS')).toBe('TX');
+  });
 });
