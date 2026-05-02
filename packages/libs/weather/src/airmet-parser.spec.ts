@@ -951,4 +951,82 @@ CIG BLW 010/VIS BLW 3SM BR. CONDS CONTG BYD 0400Z.`;
       expect(result.hazards.length).toBe(0);
     });
   });
+
+  describe('outlook hazard variants', () => {
+    it('parses an outlook AREA with IFR conditions', () => {
+      // Exercises the IFR branch in parseOutlookConditionDescription.
+      const raw = `AIRMET SIERRA FOR IFR AND MTN OBSCN
+VALID UNTIL 050400Z
+AIRMET IFR...NY PA
+FROM 30SW ALB-20NW BDR-40E ACK-20NE BOS-30SW ALB
+CIG BLW 010/VIS BLW 3SM BR.
+.
+OTLK VALID 0400-1000Z
+AREA 1...IFR NY PA BOUNDED BY 30SW ALB-20NW BDR-40E ACK-30SW ALB
+CIG BLW 010/VIS BLW 3SM BR.`;
+      const result = parseAirmet(raw);
+      const ifrOutlook = result.outlooks.find((o) => o.hazardType === 'IFR');
+      expect(ifrOutlook).toBeDefined();
+    });
+
+    it('parses an outlook AREA with MTN OBSCN conditions', () => {
+      const raw = `AIRMET SIERRA FOR IFR AND MTN OBSCN
+VALID UNTIL 050400Z
+AIRMET MTN OBSCN...CO UT
+FROM 30NW DEN-40SE DEN-50SW DEN-30NW DEN
+MTNS OBSCD BY CLDS/PCPN.
+.
+OTLK VALID 0400-1000Z
+AREA 1...MTN OBSCN CO UT BOUNDED BY 30NW DEN-40SE DEN-50SW DEN-30NW DEN
+MTNS OBSCD BY CLDS/PCPN.`;
+      const result = parseAirmet(raw);
+      const mtnOutlook = result.outlooks.find((o) => o.hazardType === 'MTN_OBSCN');
+      expect(mtnOutlook).toBeDefined();
+    });
+
+    it('parses an outlook AREA with strong surface winds', () => {
+      const raw = `AIRMET TANGO FOR TURB AND SFC WND AND LLWS
+VALID UNTIL 050400Z
+AIRMET STG SFC WNDS...WY MT
+FROM 30NW BIL-40SE BIL-50W SHR-30NW BIL
+SUSTAINED SURFACE WINDS GTR THAN 30KT EXP.
+.
+OTLK VALID 0400-1000Z
+AREA 1...STG SFC WNDS WY MT BOUNDED BY 30NW BIL-40SE BIL-50W SHR-30NW BIL
+SUSTAINED SURFACE WINDS GTR THAN 30KT EXP.`;
+      const result = parseAirmet(raw);
+      const wndOutlook = result.outlooks.find((o) => o.hazardType === 'STG_SFC_WND');
+      expect(wndOutlook).toBeDefined();
+    });
+
+    it('parses an outlook AREA with LLWS conditions', () => {
+      const raw = `AIRMET TANGO FOR TURB AND SFC WND AND LLWS
+VALID UNTIL 050400Z
+AIRMET LLWS...TX OK
+FROM 30NW DFW-40SE DFW-50SW DFW-30NW DFW
+LLWS DUE TO JTSTR.
+.
+OTLK VALID 0400-1000Z
+AREA 1...LLWS TX OK BOUNDED BY 30NW DFW-40SE DFW-50SW DFW-30NW DFW
+LLWS DUE TO JTSTR.`;
+      const result = parseAirmet(raw);
+      const llwsOutlook = result.outlooks.find((o) => o.hazardType === 'LLWS');
+      expect(llwsOutlook).toBeDefined();
+    });
+
+    it('parses an outlook AREA with TURB conditions distinct from the ICE outlook variant', () => {
+      const raw = `AIRMET ZULU FOR ICE AND FRZLVL
+VALID UNTIL 050400Z
+AIRMET ICE...WA OR
+FROM 30NW SEA-40SE SEA-50W EUG-30NW SEA
+MOD ICE BTN FRZLVL AND FL180.
+.
+OTLK VALID 0400-1000Z
+AREA 1...TURB WA OR BOUNDED BY 30NW SEA-40SE SEA-50W EUG-30NW SEA
+MOD TURB BTN FL250 AND FL380.`;
+      const result = parseAirmet(raw);
+      const turbOutlook = result.outlooks.find((o) => o.hazardType === 'TURB');
+      expect(turbOutlook).toBeDefined();
+    });
+  });
 });

@@ -159,6 +159,34 @@ describe('decodePrimaryLegRecord', () => {
     expect(decoded?.leg.altitudeConstraint).toBe(undefined);
   });
 
+  it('omits the altitude constraint when the descriptor is invalid', () => {
+    // Exercises the "invalid descriptor" branch in parseAltitudeConstraint.
+    const raw = buildLegRecord({ 82: 'Z', 84: '03000' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.altitudeConstraint).toBe(undefined);
+  });
+
+  it('omits the altitude constraint when the primary altitude is unparseable', () => {
+    // Exercises the "primaryFt undefined" branch.
+    const raw = buildLegRecord({ 82: '+', 84: 'XXXXX' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.altitudeConstraint).toBe(undefined);
+  });
+
+  it('omits the speed constraint when the speed value is zero', () => {
+    // Exercises the "speedKt === 0" branch in parseSpeedConstraint.
+    const raw = buildLegRecord({ 99: '000' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.speedConstraint).toBe(undefined);
+  });
+
+  it('omits the speed constraint when the speed descriptor is invalid', () => {
+    // Exercises the "invalid speed descriptor" branch.
+    const raw = buildLegRecord({ 99: '250', 117: 'X' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.speedConstraint).toBe(undefined);
+  });
+
   it('decodes a speed constraint with an explicit descriptor', () => {
     const raw = buildLegRecord({
       99: '250',
