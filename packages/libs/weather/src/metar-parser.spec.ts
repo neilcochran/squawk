@@ -1333,4 +1333,302 @@ describe('parseMetar - coverage edge cases', () => {
     );
     expect(result.rvr[0]?.trend).toBe('RISING');
   });
+
+  it('parses multiple lightning observations in a single remarks block', () => {
+    // Two lightning entries exercise the "lightning array already initialized" branch.
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 5SM TS BKN040CB 22/14 A3015 RMK AO2 LTGIC OHD LTGCG DSNT NW',
+    );
+    assert(result.remarks);
+    assert(result.remarks.lightning);
+    expect(result.remarks.lightning.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('parses multiple thunderstorm info reports in a single remarks block', () => {
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 5SM TS BKN040CB 22/14 A3015 RMK AO2 TS NE MOV E TS SW MOV E',
+    );
+    assert(result.remarks);
+    assert(result.remarks.thunderstormInfo);
+    expect(result.remarks.thunderstormInfo.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('parses multiple virga observations in a single remarks block', () => {
+    const result = parseMetar(
+      'METAR KSFO 041853Z 24015KT 10SM SCT060 22/14 A3015 RMK AO2 VIRGA NE VIRGA SW',
+    );
+    assert(result.remarks);
+    assert(result.remarks.virga);
+    expect(result.remarks.virga.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('parses multiple significant cloud reports in a single remarks block', () => {
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 5SM BKN040 22/14 A3015 RMK AO2 CB DSNT NE TCU OHD',
+    );
+    assert(result.remarks);
+    assert(result.remarks.significantClouds);
+    expect(result.remarks.significantClouds.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('parses multiple obscuration reports in a single remarks block', () => {
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 1/2SM FG BR OVC005 12/11 A2998 RMK AO2 FG SCT000 BR SCT001',
+    );
+    assert(result.remarks);
+    assert(result.remarks.obscurations);
+    expect(result.remarks.obscurations.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('parses multiple sector visibility reports', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1SM BR OVC008 12/11 A2998 RMK AO2 VIS NE2 VIS SW1',
+    );
+    assert(result.remarks);
+    assert(result.remarks.sectorVisibility);
+    expect(result.remarks.sectorVisibility.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('parses both TWR VIS and SFC VIS in the same remarks block', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1/2SM FG OVC003 12/11 A2998 RMK AO2 TWR VIS 1/4 SFC VIS 1/2',
+    );
+    assert(result.remarks);
+    assert(result.remarks.towerSurfaceVisibility);
+    expect(result.remarks.towerSurfaceVisibility.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('parses VISNO with location qualifier', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 10SM CLR 22/14 A3015 RMK AO2 VISNO RWY06',
+    );
+    assert(result.remarks);
+    assert(result.remarks.missingData);
+    expect(result.remarks.missingData).toContain('VISNO RWY06');
+  });
+
+  it('parses bare VISNO without a location qualifier', () => {
+    const result = parseMetar('METAR KORD 041853Z 24012KT 10SM CLR 22/14 A3015 RMK AO2 VISNO');
+    assert(result.remarks);
+    assert(result.remarks.missingData);
+    expect(result.remarks.missingData).toContain('VISNO');
+  });
+
+  it('parses CHINO with location qualifier', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 10SM CLR 22/14 A3015 RMK AO2 CHINO RWY06',
+    );
+    assert(result.remarks);
+    assert(result.remarks.missingData);
+    expect(result.remarks.missingData).toContain('CHINO RWY06');
+  });
+
+  it('parses bare CHINO without a location qualifier', () => {
+    const result = parseMetar('METAR KORD 041853Z 24012KT 10SM CLR 22/14 A3015 RMK AO2 CHINO');
+    assert(result.remarks);
+    assert(result.remarks.missingData);
+    expect(result.remarks.missingData).toContain('CHINO');
+  });
+
+  it('parses peak wind with HHMM time format', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24052G65KT 5SM TS BKN040CB 22/14 A3015 RMK AO2 PK WND 24065/1842',
+    );
+    assert(result.remarks);
+    assert(result.remarks.peakWind);
+    expect(result.remarks.peakWind.time.hour).toBe(18);
+    expect(result.remarks.peakWind.time.minute).toBe(42);
+  });
+
+  it('parses peak wind with MM-only time using observation hour', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24052G65KT 5SM TS BKN040CB 22/14 A3015 RMK AO2 PK WND 24065/45',
+    );
+    assert(result.remarks);
+    assert(result.remarks.peakWind);
+    // observationHour is 18 (from 041853Z)
+    expect(result.remarks.peakWind.time.hour).toBe(18);
+    expect(result.remarks.peakWind.time.minute).toBe(45);
+  });
+
+  it('parses wind shift with HHMM and FROPA marker', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24015KT 10SM CLR 22/14 A3015 RMK AO2 WSHFT 1830 FROPA',
+    );
+    assert(result.remarks);
+    assert(result.remarks.windShift);
+    expect(result.remarks.windShift.frontalPassage).toBe(true);
+  });
+
+  it('parses wind shift with MM-only time (no hour)', () => {
+    const result = parseMetar('METAR KORD 041853Z 24015KT 10SM CLR 22/14 A3015 RMK AO2 WSHFT 30');
+    assert(result.remarks);
+    assert(result.remarks.windShift);
+    expect(result.remarks.windShift.time.minute).toBe(30);
+  });
+
+  it('parses precipitation events (RAB15E32 etc.)', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24015KT 5SM RA OVC020 12/11 A2998 RMK AO2 RAB15E32 SNB10',
+    );
+    assert(result.remarks);
+    assert(result.remarks.precipitationEvents);
+    expect(result.remarks.precipitationEvents.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('parses VIS at second location (VIS 3/4 RWY11)', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1SM BR OVC008 12/11 A2998 RMK AO2 VIS 3/4 RWY11',
+    );
+    assert(result.remarks);
+    assert(result.remarks.secondLocationObservations);
+    expect(result.remarks.secondLocationObservations[0]!.type).toBe('VIS');
+  });
+
+  it('parses VIRGA with a directional range qualifier (NE-E)', () => {
+    const result = parseMetar(
+      'METAR KSFO 041853Z 24015KT 10SM SCT060 22/14 A3015 RMK AO2 VIRGA NE-E',
+    );
+    assert(result.remarks);
+    assert(result.remarks.virga);
+    expect(result.remarks.virga[0]!.direction).toBe('NE-E');
+  });
+
+  it('parses variable sky condition (FEW020 V SCT)', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 5SM FEW020 22/14 A3015 RMK AO2 FEW020 V SCT',
+    );
+    assert(result.remarks);
+    assert(result.remarks.variableSkyCondition);
+    expect(result.remarks.variableSkyCondition[0]!.coverageLow).toBe('FEW');
+    expect(result.remarks.variableSkyCondition[0]!.coverageHigh).toBe('SCT');
+  });
+
+  it('parses ice accretion in remarks (1nnn 6-hourly)', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 36015KT 3SM -FZRA OVC020 M02/M03 A2998 RMK AO2 I1010 I3025 I6050',
+    );
+    assert(result.remarks);
+    expect(result.remarks.iceAccretion).toBeDefined();
+  });
+
+  it('parses snow water equivalent (933###)', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 36015KT 3SM SN OVC020 M02/M03 A2998 RMK AO2 933036',
+    );
+    assert(result.remarks);
+    expect(result.remarks.waterEquivalentSnowIn).toBeCloseTo(3.6);
+  });
+
+  it('parses GS (small hail observed without size)', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24025KT 2SM TSRA SHGS BKN030CB 18/16 A2992 RMK AO2 GS',
+    );
+    // GS is recognized but produces no specific output; just ensure parsing
+    // doesn't fail and other remarks are still captured.
+    assert(result.remarks);
+  });
+
+  it('parses a METAR with RVR variable max and trend (e.g. R27L/2400V3000FTU)', () => {
+    // Exercises RVR variable-max truthy and trend truthy branches.
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 1/2SM R27L/2400V3000FTU FG OVC004 12/11 A2998 RMK AO2',
+    );
+    expect(result.rvr.length).toBeGreaterThan(0);
+    expect(result.rvr[0]?.variableMaxFt).toBe(3000);
+    expect(result.rvr[0]?.trend).toBe('RISING');
+  });
+
+  it('parses a METAR with RVR P (greater-than) prefix', () => {
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 1/2SM R27L/P6000FT FG OVC004 12/11 A2998 RMK AO2',
+    );
+    expect(result.rvr[0]?.isMoreThan).toBe(true);
+  });
+
+  it('parses a METAR with RVR M (less-than) prefix', () => {
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 1/2SM R27L/M0200FT FG OVC004 12/11 A2998 RMK AO2',
+    );
+    expect(result.rvr[0]?.isLessThan).toBe(true);
+  });
+
+  it('parses a METAR with falling RVR trend', () => {
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 1/2SM R27L/2400FTD FG OVC004 12/11 A2998 RMK AO2',
+    );
+    expect(result.rvr[0]?.trend).toBe('FALLING');
+  });
+
+  it('parses a METAR with no-change RVR trend', () => {
+    const result = parseMetar(
+      'METAR KORD 041851Z 24012KT 1/2SM R27L/2400FTN FG OVC004 12/11 A2998 RMK AO2',
+    );
+    expect(result.rvr[0]?.trend).toBe('NO_CHANGE');
+  });
+
+  it('handles GR token at the end of remarks (no following hail size)', () => {
+    // Exercises the "i + 1 < tokens.length" false branch in hail parsing.
+    const result = parseMetar(
+      'METAR KORD 041853Z 24025KT 2SM TSRA SHGR BKN030CB 18/16 A2992 RMK AO2 GR',
+    );
+    assert(result.remarks);
+    expect(result.remarks.hailSizeIn).toBeUndefined();
+  });
+
+  it('handles WSHFT token at the end of remarks (no following time)', () => {
+    const result = parseMetar('METAR KORD 041853Z 24015KT 10SM CLR 22/14 A3015 RMK AO2 WSHFT');
+    assert(result.remarks);
+    expect(result.remarks.windShift).toBeUndefined();
+  });
+
+  it('handles SNINCR token at the end of remarks (no following counter)', () => {
+    const result = parseMetar(
+      'METAR KMSP 041853Z 36018KT 1SM SN BKN015 OVC025 M02/M04 A2998 RMK AO2 SNINCR',
+    );
+    assert(result.remarks);
+    expect(result.remarks.snowIncreasing).toBeUndefined();
+  });
+
+  it('handles PK at the end of remarks (no following WND token)', () => {
+    const result = parseMetar('METAR KORD 041853Z 24052KT 5SM TS BKN040CB 22/14 A3015 RMK AO2 PK');
+    assert(result.remarks);
+    expect(result.remarks.peakWind).toBeUndefined();
+  });
+
+  it('handles a remarks block with no recognized tokens (just AO2)', () => {
+    // Exercises the "fallthrough" loop end where i++ runs without matching
+    // any pattern - keeps the remark intact with no specific extractions.
+    const result = parseMetar(
+      'METAR KORD 041853Z 24015KT 10SM CLR 22/14 A3015 RMK AO2 UNKNOWN_TOKEN ANOTHER_ONE',
+    );
+    assert(result.remarks);
+    // The unrecognized tokens just get passed over; sea-level pressure / temp
+    // groups won't be set because the regexes don't match.
+  });
+
+  it('parses obscuration phenomenon followed by a non-cloud token (no obscMatch)', () => {
+    // Exercises the false branch of obscMatch in remarks parsing.
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 1/2SM FG OVC005 12/11 A2998 RMK AO2 FG NOTACLOUD',
+    );
+    assert(result.remarks);
+    expect(result.remarks.obscurations).toBeUndefined();
+  });
+
+  it('parses CIG followed by a non-numeric / non-V token', () => {
+    // Exercises the false branches of cigVarMatch and cigHgtMatch.
+    const result = parseMetar('METAR KORD 041853Z 24012KT 5SM BKN005 12/11 A2998 RMK AO2 CIG XYZ');
+    assert(result.remarks);
+    expect(result.remarks.variableCeiling).toBeUndefined();
+  });
+
+  it('parses VIS followed by a token that matches neither variable nor sector format', () => {
+    const result = parseMetar(
+      'METAR KORD 041853Z 24012KT 5SM BR OVC008 12/11 A2998 RMK AO2 VIS XYZ',
+    );
+    assert(result.remarks);
+    expect(result.remarks.variableVisibility).toBeUndefined();
+    expect(result.remarks.sectorVisibility).toBeUndefined();
+  });
 });

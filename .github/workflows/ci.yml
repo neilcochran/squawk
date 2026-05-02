@@ -26,8 +26,6 @@ jobs:
 
       - run: npm run test:coverage
 
-      - run: npm run check-coverage
-
       - run: npm run lint:pack
 
       - name: Check README data dates

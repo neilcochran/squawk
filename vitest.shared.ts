@@ -15,8 +15,10 @@ import { defineConfig } from 'vitest/config';
  *   lines / 90% functions / 90% branches, read from each package's
  *   `coverage/coverage-summary.json`. Vitest cannot express both a per-file
  *   and an aggregate gate in one threshold block, so the aggregate gate stays
- *   in a small post-coverage script (run as `npm run check-coverage` after
- *   `turbo run test:coverage`).
+ *   in a small post-coverage script. The root `npm run test:coverage` script
+ *   chains it after `turbo run test:coverage`, so both gates run as one
+ *   command; `npm run check-coverage` remains available for re-running just
+ *   the aggregate check against existing coverage data.
  *
  * The `json-summary` reporter is enabled here so every package emits the
  * file the aggregate gate reads.

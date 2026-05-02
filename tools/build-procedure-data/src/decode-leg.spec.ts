@@ -187,6 +187,36 @@ describe('decodePrimaryLegRecord', () => {
     expect(decoded?.leg.speedConstraint).toBe(undefined);
   });
 
+  it('returns undefined when the airport identifier is blank', () => {
+    const raw = buildLegRecord({ 6: '    ' });
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
+  });
+
+  it('returns undefined when the procedure identifier is blank', () => {
+    const raw = buildLegRecord({ 13: '      ' });
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
+  });
+
+  it('returns undefined when the sequence number is unparseable', () => {
+    const raw = buildLegRecord({ 26: 'XXX' });
+    expect(decodePrimaryLegRecord(raw)).toBe(undefined);
+  });
+
+  it('omits icaoRegionCode on the leg when the fix region field is blank', () => {
+    // Fix identifier is present but its 2-character ICAO region slot is blank.
+    const raw = buildLegRecord({ 34: '  ' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.icaoRegionCode).toBe(undefined);
+  });
+
+  it('omits the recommended navaid region when blank', () => {
+    // Recommended navaid present but its 2-character region slot is blank.
+    const raw = buildLegRecord({ 50: 'BOS ', 54: '  ' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.recommendedNavaid).toBe('BOS');
+    expect(decoded?.leg.recommendedNavaidIcaoRegionCode).toBe(undefined);
+  });
+
   it('decodes a speed constraint with an explicit descriptor', () => {
     const raw = buildLegRecord({
       99: '250',

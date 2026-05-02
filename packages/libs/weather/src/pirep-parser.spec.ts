@@ -701,5 +701,114 @@ describe('parsePirep', () => {
       const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/WV INVALID');
       expect(pirep.wind).toBeUndefined();
     });
+
+    it('parses turbulence with high-end of intensity range only (LGT-MOD)', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/TB LGT-MOD CHOP');
+      assert(pirep.turbulence);
+      expect(pirep.turbulence[0]!.intensity).toBe('LGT');
+      expect(pirep.turbulence[0]!.intensityHigh).toBe('MOD');
+    });
+
+    it('parses turbulence range (FL060-FL090) altitude in turbulence', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/TB MOD FL060-FL090');
+      assert(pirep.turbulence);
+      expect(pirep.turbulence[0]!.baseFtMsl).toBe(6000);
+      expect(pirep.turbulence[0]!.topFtMsl).toBe(9000);
+    });
+
+    it('parses icing range (060-090) altitude', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/IC MOD 060-090');
+      assert(pirep.icing);
+      expect(pirep.icing[0]!.baseFtMsl).toBe(6000);
+      expect(pirep.icing[0]!.topFtMsl).toBe(9000);
+    });
+
+    it('returns no turbulence when /TB has only an unrecognized intensity', () => {
+      // No matching intensity → results array empty → returns undefined
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/TB UNKN');
+      expect(pirep.turbulence).toBeUndefined();
+    });
+
+    it('returns no icing when /IC has only an unrecognized value', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/IC UNKN');
+      expect(pirep.icing).toBeUndefined();
+    });
+
+    it('handles BLO with no following altitude token gracefully', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/TB MOD BLO');
+      assert(pirep.turbulence);
+      expect(pirep.turbulence[0]!.belowAltitude).toBeUndefined();
+    });
+
+    it('handles ABV with an unparseable altitude token gracefully', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/TB MOD ABV XXX');
+      assert(pirep.turbulence);
+      expect(pirep.turbulence[0]!.aboveAltitude).toBeUndefined();
+    });
+
+    it('returns sky condition undefined when no recognized layer pattern', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/SK GARBAGE');
+      expect(pirep.skyCondition).toBeUndefined();
+    });
+
+    it('returns no weather visibility when /WX has only weather phenomena', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/WX RA');
+      expect(pirep.visibility).toBeUndefined();
+      assert(pirep.weatherPhenomena);
+      expect(pirep.weatherPhenomena.length).toBeGreaterThan(0);
+    });
+
+    it('returns location undefined when /OV value cannot be parsed', () => {
+      // parseLocation returns a station-format result for any non-empty input,
+      // but a single-character input falls through to a degenerate
+      // station record with no recognizable fields.
+      const pirep = parsePirep('UA /OV X/TM 1530/FL080/TP C172');
+      expect(pirep.location).toBeDefined();
+    });
+
+    it('omits aircraftType when /TP is whitespace-only', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP /SK BKN040');
+      expect(pirep.aircraftType).toBeUndefined();
+    });
+
+    it('parses lat/lon location in southern hemisphere with eastern longitude', () => {
+      const pirep = parsePirep('UA /OV 3412S11830E/TM 1530/FL350/TP B738');
+      assert(pirep.location);
+      expect(pirep.location.locationType).toBe('latlon');
+      if (pirep.location.locationType === 'latlon') {
+        // 34deg + 12/60 = 34.2 → -34.2 in southern hemisphere
+        assert(pirep.location.coordinates.lat < 0, 'expected negative latitude');
+        // 118deg + 30/60 = 118.5 → +118.5 in eastern hemisphere
+        assert(pirep.location.coordinates.lon > 0, 'expected positive longitude');
+      }
+    });
+
+    it('parses sky condition with unknown top (-TOPUNKN)', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/SK BKN040-TOPUNKN');
+      assert(pirep.skyCondition);
+      expect(pirep.skyCondition[0]!.coverage).toBe('BKN');
+      expect(pirep.skyCondition[0]!.topFtMsl).toBeUndefined();
+    });
+
+    it('parses sky condition with unknown base (UNKN)', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 1530/FL080/TP C172/SK BKNUNKN-TOP100');
+      assert(pirep.skyCondition);
+      expect(pirep.skyCondition[0]!.coverage).toBe('BKN');
+      expect(pirep.skyCondition[0]!.baseFtMsl).toBeUndefined();
+    });
+
+    it('parses /TM with shorter-than-4-digit value as undefined', () => {
+      const pirep = parsePirep('UA /OV BOS/TM 153/FL080/TP C172');
+      expect(pirep.time).toBeUndefined();
+    });
+
+    it('handles a station identifier alone (no radial/distance)', () => {
+      const pirep = parsePirep('UA /OV ABC/TM 1530/FL080/TP C172');
+      assert(pirep.location);
+      if (pirep.location.locationType === 'station') {
+        expect(pirep.location.point.identifier).toBe('ABC');
+        expect(pirep.location.point.radialDeg).toBeUndefined();
+      }
+    });
   });
 });

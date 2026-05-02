@@ -433,3 +433,42 @@ describe('getLevelAtFt', () => {
     expect(level.temperatureC).toBe(undefined);
   });
 });
+
+describe('parseWindsAloft - error paths', () => {
+  it('throws when the bulletin is missing the VALID header', () => {
+    const noValid = `FBUS31 KWNO 050840
+FD1US1
+DATA BASED ON 050840Z
+FT  3000  6000  9000
+BOS 1234`;
+    expect(() => parseWindsAloft(noValid)).toThrow();
+  });
+
+  it('throws when the FT altitude header is missing', () => {
+    const noFt = `FBUS31 KWNO 050840
+FD1US1
+DATA BASED ON 050840Z
+VALID 050900Z FOR USE 0900-1500Z. TEMPS NEG ABV 24000`;
+    expect(() => parseWindsAloft(noFt)).toThrow();
+  });
+
+  it('throws when the DATA BASED ON header is malformed', () => {
+    const malformed = `FBUS31 KWNO 050840
+FD1US1
+DATA BASED ON GARBAGE
+VALID 050900Z FOR USE 0900-1500Z. TEMPS NEG ABV 24000
+FT  3000  6000  9000
+BOS 1234`;
+    expect(() => parseWindsAloft(malformed)).toThrow();
+  });
+
+  it('throws when the VALID header is malformed', () => {
+    const malformed = `FBUS31 KWNO 050840
+FD1US1
+DATA BASED ON 050840Z
+VALID INVALID HEADER
+FT  3000  6000  9000
+BOS 1234`;
+    expect(() => parseWindsAloft(malformed)).toThrow();
+  });
+});
