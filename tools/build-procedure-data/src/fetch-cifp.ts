@@ -116,55 +116,83 @@ function loadFromZip(zipPath: string): LoadedCifp {
 }
 
 /**
- * Extracts the cycle-effective date from the CIFP header record and
- * formats it as ISO `YYYY-MM-DD`.
+ * Extracts the AIRAC cycle-effective date from the CIFP header record
+ * and formats it as ISO `YYYY-MM-DD`.
  *
- * The header record is a fixed-width line starting with `HDR01` and
- * carries the cycle date in a `DD-MON-YYYY` format within the record
- * body. Example:
+ * The header is a fixed-width record starting with `HDR01`. Two date-
+ * relevant fields appear in it: a 5-digit AIRAC cycle code (`0YYNN`,
+ * leading zero plus 2-digit year and 2-digit cycle-within-year) and a
+ * `DD-MON-YYYY` FAA file-publish date. The publish date is typically
+ * ~3 weeks before the AIRAC effective date and is NOT what consumers
+ * mean by "cycle date". Example:
  *
  * ```text
  * HDR01FAACIFP18      001P013203974102604  25-MAR-202612:51:00  U.S.A. DOT FAA
  * ```
  *
- * Here `25-MAR-2026` is the effective date.
+ * Here `02604` (cycle 2604, i.e. 4th cycle of 2026) maps to effective
+ * date `2026-04-16`; `25-MAR-2026` is the file publish date.
  *
  * Exported for unit testing; not part of the tool's public interface.
  */
 export function extractCycleDate(contents: string): string {
   const firstLine = contents.slice(0, 200);
-  const match = /(\d{2})-([A-Z]{3})-(\d{4})/.exec(firstLine);
-  if (match === null) {
-    throw new Error('Could not extract CIFP cycle date from FAACIFP18 header');
+  const match = /(\d{5})\s+\d{2}-[A-Z]{3}-\d{4}/.exec(firstLine);
+  if (match === null || match[1] === undefined) {
+    throw new Error('Could not extract AIRAC cycle code from FAACIFP18 header');
   }
-  const day = match[1];
-  const monthName = match[2];
-  const year = match[3];
-  if (day === undefined || monthName === undefined || year === undefined) {
-    throw new Error('Could not extract CIFP cycle date from FAACIFP18 header');
-  }
-  const month = MONTH_TO_NUMBER[monthName];
-  if (month === undefined) {
-    throw new Error(`Unrecognized month abbreviation in CIFP header: ${monthName}`);
-  }
-  return `${year}-${month}-${day}`;
+  const cycleCode = match[1];
+  const yy = Number.parseInt(cycleCode.slice(1, 3), 10);
+  const nn = Number.parseInt(cycleCode.slice(3, 5), 10);
+  return airacCycleEffectiveDate(yy, nn);
 }
 
 /**
- * Maps a 3-letter uppercase English month abbreviation to its
- * two-digit numeric month, suitable for ISO `YYYY-MM-DD` formatting.
+ * AIRAC anchor: cycle 2401 was effective 2024-01-25 (UTC midnight).
+ * All other supported cycles are computed by adding 28-day multiples.
  */
-const MONTH_TO_NUMBER: Readonly<Record<string, string>> = {
-  JAN: '01',
-  FEB: '02',
-  MAR: '03',
-  APR: '04',
-  MAY: '05',
-  JUN: '06',
-  JUL: '07',
-  AUG: '08',
-  SEP: '09',
-  OCT: '10',
-  NOV: '11',
-  DEC: '12',
-};
+const AIRAC_ANCHOR_MS = Date.UTC(2024, 0, 25);
+
+/**
+ * One AIRAC cycle in milliseconds (28 days).
+ */
+const AIRAC_CYCLE_MS = 28 * 24 * 60 * 60 * 1000;
+
+/**
+ * Lowest 2-digit year supported by the AIRAC formula. Year 2024 is the
+ * fixed anchor.
+ */
+const AIRAC_MIN_YEAR_YY = 24;
+
+/**
+ * Highest 2-digit year supported by the AIRAC formula. Year 2058 has
+ * 14 cycles instead of 13, breaking the simple `(yy - 24) * 13` math;
+ * the upper bound is therefore the last all-13-cycle year before that.
+ */
+const AIRAC_MAX_YEAR_YY = 57;
+
+/**
+ * Maps an AIRAC cycle (year YY + cycle-within-year NN) to its effective
+ * date in ISO `YYYY-MM-DD`. AIRAC cycles are 28 days; cycle 2401 was
+ * effective 2024-01-25 and every year from 2024 through 2057 has
+ * exactly 13 cycles, so the linear formula holds.
+ *
+ * @param yy - 2-digit year portion of the cycle code (e.g. `26` for 2026).
+ * @param nn - 1-based cycle number within the year (1 through 13).
+ */
+function airacCycleEffectiveDate(yy: number, nn: number): string {
+  if (yy < AIRAC_MIN_YEAR_YY || yy > AIRAC_MAX_YEAR_YY) {
+    throw new Error(
+      `AIRAC cycle year 20${String(yy).padStart(2, '0')} outside supported range 2024-2057`,
+    );
+  }
+  if (nn < 1 || nn > 13) {
+    throw new Error(`AIRAC cycle number ${nn} outside supported range 1-13`);
+  }
+  const cyclesSinceAnchor = (yy - AIRAC_MIN_YEAR_YY) * 13 + (nn - 1);
+  const effective = new Date(AIRAC_ANCHOR_MS + cyclesSinceAnchor * AIRAC_CYCLE_MS);
+  const year = effective.getUTCFullYear().toString();
+  const month = (effective.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = effective.getUTCDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
