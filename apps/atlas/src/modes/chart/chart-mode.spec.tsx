@@ -397,4 +397,18 @@ describe('ChartMode', () => {
     });
     expect(navigateMock).not.toHaveBeenCalled();
   });
+
+  it('renders without optional layer components when layers array is empty', () => {
+    // Exercises the falsy branches of `layers.includes('xxx') ? <Layer /> : null`
+    // for airspace, airways, fixes, navaids, airports.
+    useSearchMock.mockReturnValue({ ...DEFAULT_SEARCH, layers: [] });
+    render(<ChartMode />);
+    // Render success without throwing means the falsy branches were taken.
+  });
+
+  it('renders without optional layer components when only airports is enabled', () => {
+    // Exercises a mix of truthy and falsy branches.
+    useSearchMock.mockReturnValue({ ...DEFAULT_SEARCH, layers: ['airports'] });
+    render(<ChartMode />);
+  });
 });

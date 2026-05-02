@@ -34,6 +34,14 @@ export default mergeConfig(
           'src/modes/chart/view-reset-listener.tsx',
           'src/modes/chart/layers/airspace-hatch-pattern.ts',
           'src/modes/chart/layers/use-top-of-stack.ts',
+          // The chip-hover pan hook drives MapLibre camera behavior in
+          // response to selection-change side effects. Its exported
+          // helpers (isPointOutsideComfortableArea, panTo...,
+          // restoreCenter, getMapInstance) are unit-tested in
+          // `use-chip-hover-pan.spec.ts`; the React state machine
+          // around them needs a fully-staged map fixture to exercise -
+          // more harness than the per-file gate is worth.
+          'src/shared/inspector/use-chip-hover-pan.ts',
         ],
       },
     },

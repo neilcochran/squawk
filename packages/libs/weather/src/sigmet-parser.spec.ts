@@ -1186,6 +1186,94 @@ describe('parseSigmet', () => {
       expect(result.cancelledSeriesName).toBe('A');
       expect(result.cancelledSeriesNumber).toBe(6);
     });
+
+    it('parses a cancellation referencing a numeric-only identifier', () => {
+      // Exercises the cnlNumMatch fallback in parseInternationalCancellation.
+      const numericCancel = `WSCH31 SCCI 170500
+SCCZ SIGMET 8 VALID 170500/170515 SCCI-
+SCCZ PUNTA ARENAS FIR CNL SIGMET 7 162347/170347=`;
+      const result = parseSigmet(numericCancel);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.isCancellation).toBe(true);
+      expect(result.cancelledSeriesNumber).toBe(7);
+    });
+
+    it('parses an international SIGMET that lacks an obvious phenomenon prefix', () => {
+      // No SEV/FRQ/OBSC/EMBD prefix - phenMatch should be null.
+      const noPhenom = `WSAU21 ADRM 040800
+SIGMET ALFA 1 VALID 040800/041200 ADRM-
+YBBB BRISBANE FIR=`;
+      const result = parseSigmet(noPhenom);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.phenomena).toBeUndefined();
+    });
+
+    it('parses a TC SIGMET without optional CB/WI/FCST fields', () => {
+      // Bare TC SIGMET - no CB TOP, no WI ... OF CENTER, no FCST AT.
+      // Exercises the false branches of cbMatch / wiMatch / fcstMatch.
+      const minimalTc = `WTNT35 KNHC 041500
+KZMA SIGMET TANGO 3 VALID 041500/042100 KNHC-
+KZMA MIAMI OCEANIC FIR TC FRANCINE OBS AT 1500Z N2540 W08830
+MOV NW 12KT INTSF=`;
+      const result = parseSigmet(minimalTc);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.cycloneName).toBe('FRANCINE');
+      expect(result.cbTopFl).toBeUndefined();
+      expect(result.withinNm).toBeUndefined();
+      expect(result.forecastTime).toBeUndefined();
+    });
+
+    it('parses a TC SIGMET where the body starts with OBS AT instead of TC', () => {
+      // Exercises the cycloneName-fallback branch in phenomena resolution
+      // (phenMatch is null because content doesn't start with TC, but TC
+      // appears later in the body).
+      const tcLater = `WTNT35 KNHC 041500
+KZMA SIGMET TANGO 3 VALID 041500/042100 KNHC-
+KZMA MIAMI OCEANIC FIR OBS AT 1500Z TC FRANCINE N2540 W08830
+MOV NW 12KT INTSF=`;
+      const result = parseSigmet(tcLater);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.cycloneName).toBe('FRANCINE');
+    });
+
+    it('parses an international SIGMET with bare OBS observation status (no AT time)', () => {
+      const obsBare = `WSAU21 ADRM 040800
+SIGMET ALFA 1 VALID 040800/041200 ADRM-
+YBBB BRISBANE FIR SEV TURB OBS WI N2500 E15000 - N2500 E16000 -
+N3000 E16000 - N3000 E15000 - N2500 E15000 FL280/360 STNR=`;
+      const result = parseSigmet(obsBare);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.observationStatus).toBe('OBSERVED');
+    });
+
+    it('parses an international SIGMET with FCST observation status (no OBS AT)', () => {
+      // No OBS AT, but contains FCST without AT/time - should set FORECAST status.
+      const fcstOnly = `WSAU21 ADRM 040800
+SIGMET ALFA 1 VALID 040800/041200 ADRM-
+YBBB BRISBANE FIR SEV TURB FCST WI N2500 E15000 - N2500 E16000 -
+N3000 E16000 - N3000 E15000 - N2500 E15000 FL280/360 STNR NC=`;
+      const result = parseSigmet(fcstOnly);
+      expect(result.format).toBe('INTERNATIONAL');
+      if (result.format !== 'INTERNATIONAL') {
+        return;
+      }
+      expect(result.observationStatus).toBe('FORECAST');
+    });
   });
 
   describe('parseSigmetBulletin', () => {
