@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/procedure-data)](https://www.npmjs.com/package/@squawk/procedure-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed snapshot of US instrument procedure data from the **2026-03-25** FAA CIFP
+Pre-processed snapshot of US instrument procedure data from the **2026-05-14** FAA CIFP
 cycle. Covers Standard Instrument Departures (SIDs), Standard Terminal Arrival Routes
 (STARs), and Instrument Approach Procedures (IAPs) in the unified ARINC 424 leg model.
 Data only - no query logic, no dependency on `@squawk/procedures`.
@@ -37,7 +37,7 @@ npm install @squawk/procedure-data
 import { usBundledProcedures } from '@squawk/procedure-data';
 
 // Inspect metadata
-console.log(usBundledProcedures.properties.cifpCycleDate); // "2026-03-25"
+console.log(usBundledProcedures.properties.cifpCycleDate); // "2026-05-14"
 console.log(usBundledProcedures.properties.recordCount);
 console.log(usBundledProcedures.properties.sidCount);
 console.log(usBundledProcedures.properties.starCount);
