@@ -81,6 +81,22 @@ describe('fetchCifp', () => {
     await expect(fetchCifp('CIFP_999999.zip')).rejects.toThrow(/FAA download failed: 404/);
   });
 
+  it('rejects filenames that do not match the CIFP_YYMMDD.zip pattern without fetching', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const invalidNames = [
+      '../etc/passwd',
+      'CIFP_260416.zip\n',
+      'cifp_260416.zip',
+      'CIFP_26041.zip',
+      'CIFP_260416.tar',
+      '',
+    ];
+    for (const name of invalidNames) {
+      await expect(fetchCifp(name)).rejects.toThrow(/Invalid CIFP zip filename/);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('cleanup removes the temp zip without throwing if already gone', async () => {
     const zip = new AdmZip();
     zip.addFile('FAACIFP18', Buffer.from(SAMPLE_HEADER, 'utf-8'));
