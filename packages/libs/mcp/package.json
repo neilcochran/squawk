@@ -1,6 +1,6 @@
 {
   "name": "@squawk/mcp",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "type": "module",
   "description": "Model Context Protocol server exposing squawk's aviation libraries as tools for LLM clients",
   "author": "Neil Cochran",
@@ -58,7 +58,7 @@
     "@squawk/procedure-data": "^0.7.0",
     "@squawk/procedures": "^0.4.3",
     "@squawk/types": "^0.7.1",
-    "@squawk/weather": "^0.5.2",
+    "@squawk/weather": "^0.5.3",
     "zod": "^4.4.2"
   },
   "devDependencies": {
