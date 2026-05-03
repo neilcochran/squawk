@@ -1,5 +1,25 @@
 # @squawk/airspace
 
+## 0.6.3
+
+### Patch Changes
+
+- ce87588: ### Removed
+
+  **@squawk/airways**
+  - Removed the unused `@squawk/units` runtime dependency.
+
+  ### Changed
+
+  **@squawk/geo**
+  - `@types/geojson` is now declared as a direct dependency. The public GeoJSON-shaped helpers in `polygonGeoJson` take and return `Polygon` types, so an explicit declaration keeps consumer type-resolution stable rather than relying on the transitive through `@squawk/types`.
+
+  **@squawk/airspace**
+  - `@types/geojson` is now declared as a direct dependency. The resolver's public `FeatureCollection` input now has an explicit type-resolution path rather than relying on the transitive through `@squawk/types`.
+
+- Updated dependencies [ce87588]
+  - @squawk/geo@0.4.1
+
 ## 0.6.2
 
 ### Patch Changes
