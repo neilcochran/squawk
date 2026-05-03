@@ -1,0 +1,43 @@
+name: Enhancement
+description: Suggest a new feature, improvement, or change
+title: '[Enhancement]: '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What change are you proposing?
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this useful? What problem does it solve, or what use case does it enable?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the codebase does this target?
+      options:
+        - apps/atlas
+        - packages/libs/mcp
+        - packages/libs (other)
+        - tools/build-* (data tooling)
+        - repo / CI / build
+        - cross-cutting / multiple
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Optional rough sketch of the API, behavior, or implementation approach.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Other approaches you considered and why you set them aside.
