@@ -1,6 +1,6 @@
 <h1><img src="../../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/mcp</h1>
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/mcp)](https://www.npmjs.com/package/@squawk/mcp) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/mcp)](https://www.npmjs.com/package/@squawk/mcp) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Model Context Protocol (MCP) server that exposes the squawk aviation libraries as tools for LLM clients
 like Claude Desktop, Cursor, and any other MCP-compatible host. A single `npx @squawk/mcp` command starts
@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.8.7"]
+      "args": ["-y", "@squawk/mcp@0.8.8"]
     }
   }
 }
