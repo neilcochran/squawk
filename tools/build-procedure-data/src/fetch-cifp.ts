@@ -23,6 +23,23 @@ const FAA_BASE_URL = 'https://aeronav.faa.gov/Upload_313-d/cifp/';
 const FAACIFP_FILENAME = 'FAACIFP18';
 
 /**
+ * Strict pattern for the FAA-published CIFP zip filename. The published
+ * format is always `CIFP_YYMMDD.zip` where `YYMMDD` is the 6-digit
+ * cycle-effective date. Anchored to reject any caller input that does
+ * not match exactly, so neither the constructed download URL nor the
+ * on-disk temp path can be steered by an attacker.
+ */
+const CIFP_ZIP_FILENAME_PATTERN = /^CIFP_\d{6}\.zip$/;
+
+/**
+ * Fixed local filename for the downloaded CIFP zip inside its private
+ * temporary directory. The on-disk name does not need to match the
+ * remote filename - only `loadFromZip` reads it back, and it just
+ * opens the file as a zip archive.
+ */
+const LOCAL_CIFP_ZIP_FILENAME = 'cifp.zip';
+
+/**
  * Result of loading the CIFP dataset from a zip or raw ARINC 424 file.
  */
 export interface LoadedCifp {
@@ -47,6 +64,9 @@ export interface LoadedCifp {
  * @param zipFilename - Filename from the FAA's CIFP download page (e.g. `CIFP_260416.zip`).
  */
 export async function fetchCifp(zipFilename: string): Promise<LoadedCifp> {
+  if (!CIFP_ZIP_FILENAME_PATTERN.test(zipFilename)) {
+    throw new Error(`Invalid CIFP zip filename: ${zipFilename} (expected CIFP_YYMMDD.zip)`);
+  }
   const url = `${FAA_BASE_URL}${zipFilename}`;
   console.log(`[fetch] Downloading ${url}...`);
   const response = await fetch(url);
@@ -55,7 +75,7 @@ export async function fetchCifp(zipFilename: string): Promise<LoadedCifp> {
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   const tempDir = mkdtempSync(join(tmpdir(), 'cifp-'));
-  const tempPath = join(tempDir, zipFilename);
+  const tempPath = join(tempDir, LOCAL_CIFP_ZIP_FILENAME);
   writeFileSync(tempPath, buffer);
   console.log(`[fetch] Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB to ${tempPath}`);
   const loaded = loadFromZip(tempPath);
