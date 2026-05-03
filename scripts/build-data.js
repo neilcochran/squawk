@@ -19,7 +19,7 @@
  * are built through the separate --cifp-fetch / --cifp-local flags.
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 const NASR_SCRIPTS = [
@@ -119,7 +119,7 @@ if (nasrInput) {
     console.log(`Building ${script.name}...`);
     console.log('='.repeat(60));
     try {
-      execSync(`node ${script.pkg}/dist/index.js --local "${nasrInput}"`, {
+      execFileSync(process.execPath, [`${script.pkg}/dist/index.js`, '--local', nasrInput], {
         stdio: 'inherit',
         cwd: resolve(import.meta.dirname, '..'),
       });
@@ -134,9 +134,9 @@ if (icaoMode) {
   console.log(`\n${'='.repeat(60)}`);
   console.log('Building ICAO registry...');
   console.log('='.repeat(60));
-  const icaoArgs = icaoMode === 'fetch' ? '--fetch' : `--local "${icaoPath}"`;
+  const icaoArgs = icaoMode === 'fetch' ? ['--fetch'] : ['--local', icaoPath];
   try {
-    execSync(`node tools/build-icao-registry-data/dist/index.js ${icaoArgs}`, {
+    execFileSync(process.execPath, ['tools/build-icao-registry-data/dist/index.js', ...icaoArgs], {
       stdio: 'inherit',
       cwd: resolve(import.meta.dirname, '..'),
     });
@@ -150,9 +150,9 @@ if (cifpMode) {
   console.log(`\n${'='.repeat(60)}`);
   console.log('Building procedures (CIFP)...');
   console.log('='.repeat(60));
-  const cifpArgs = cifpMode === 'fetch' ? '--cifp-fetch' : `--cifp-local "${cifpPath}"`;
+  const cifpArgs = cifpMode === 'fetch' ? ['--cifp-fetch'] : ['--cifp-local', cifpPath];
   try {
-    execSync(`node tools/build-procedure-data/dist/index.js ${cifpArgs}`, {
+    execFileSync(process.execPath, ['tools/build-procedure-data/dist/index.js', ...cifpArgs], {
       stdio: 'inherit',
       cwd: resolve(import.meta.dirname, '..'),
     });
