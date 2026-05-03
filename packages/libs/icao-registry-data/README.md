@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/icao-registry-data)](https://www.npmjs.com/package/@squawk/icao-registry-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed snapshot of US aircraft registrations from the **2026-05-02** FAA ReleasableAircraft database. Data only - no dependency on `@squawk/icao-registry`. Versioned and released independently;
+Pre-processed snapshot of US aircraft registrations from the **2026-05-03** FAA ReleasableAircraft database. Data only - no dependency on `@squawk/icao-registry`. Versioned and released independently;
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_icao-registry-data.html)**
 
