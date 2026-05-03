@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+
 import type { Fix } from '@squawk/types';
+
 import { FixPanel } from './fix-panel.tsx';
 
 function buildFix(overrides: Partial<Fix> = {}): Fix {

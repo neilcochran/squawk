@@ -10,6 +10,7 @@
  */
 
 import type { Airport } from '@squawk/types';
+
 import type { AirportDataset, AirportDatasetProperties } from './node.js';
 
 /**

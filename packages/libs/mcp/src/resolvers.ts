@@ -11,18 +11,18 @@
  */
 
 import { usBundledAirports } from '@squawk/airport-data';
-import { usBundledAirspace } from '@squawk/airspace-data';
-import { usBundledAirways } from '@squawk/airway-data';
-import { usBundledFixes } from '@squawk/fix-data';
-import { usBundledNavaids } from '@squawk/navaid-data';
-import { usBundledProcedures } from '@squawk/procedure-data';
 import { createAirportResolver, type AirportResolver } from '@squawk/airports';
 import { createAirspaceResolver, type AirspaceResolver } from '@squawk/airspace';
+import { usBundledAirspace } from '@squawk/airspace-data';
+import { usBundledAirways } from '@squawk/airway-data';
 import { createAirwayResolver, type AirwayResolver } from '@squawk/airways';
+import { usBundledFixes } from '@squawk/fix-data';
 import { createFixResolver, type FixResolver } from '@squawk/fixes';
-import { createNavaidResolver, type NavaidResolver } from '@squawk/navaids';
-import { createProcedureResolver, type ProcedureResolver } from '@squawk/procedures';
 import { createIcaoRegistry, type IcaoRegistry } from '@squawk/icao-registry';
+import { usBundledNavaids } from '@squawk/navaid-data';
+import { createNavaidResolver, type NavaidResolver } from '@squawk/navaids';
+import { usBundledProcedures } from '@squawk/procedure-data';
+import { createProcedureResolver, type ProcedureResolver } from '@squawk/procedures';
 
 /** Eagerly-built airport resolver backed by the US NASR snapshot. */
 export const airportResolver: AirportResolver = createAirportResolver({

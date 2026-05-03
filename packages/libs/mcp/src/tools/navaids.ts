@@ -5,9 +5,11 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
 import type { NavaidFrequencyQuery, NavaidSearchQuery, NearestNavaidQuery } from '@squawk/navaids';
 import type { NavaidType } from '@squawk/types';
-import { z } from 'zod';
+
 import { navaidResolver } from '../resolvers.js';
 
 /** All {@link NavaidType} values, used for input validation. */

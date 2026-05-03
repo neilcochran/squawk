@@ -6,9 +6,11 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
 import type { AirspaceQuery } from '@squawk/airspace';
 import type { AirspaceFeature, AirspaceType, ArtccStratum } from '@squawk/types';
-import { z } from 'zod';
+
 import { airportResolver, airspaceResolver } from '../resolvers.js';
 
 /** All {@link AirspaceType} values, used for input validation. */

@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit && eslint src"
   },
   "devDependencies": {
     "@types/node": "^25.6.0"

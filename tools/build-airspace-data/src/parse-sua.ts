@@ -1,10 +1,12 @@
 import AdmZip from 'adm-zip';
 import { XMLParser } from 'fast-xml-parser';
 import type { Polygon } from 'geojson';
-import type { AirspaceFeature, AirspaceType } from '@squawk/types';
+
 import { closeRing } from '@squawk/build-shared';
-import { normalizeSaaAltitude } from './normalize-altitude.js';
+import type { AirspaceFeature, AirspaceType } from '@squawk/types';
+
 import { discretizeArc } from './discretize-arc.js';
+import { normalizeSaaAltitude } from './normalize-altitude.js';
 
 /** Feet per nautical mile, used to convert radius values when uom is "FT". */
 const FT_PER_NM = 6076.12;
@@ -211,7 +213,7 @@ function parseSuaXml(
       : [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const baseComponent: any =
-    geometryComponents.find((gc: any) => gc?.AirspaceGeometryComponent?.operation === 'BASE') ??
+    geometryComponents.find((gc) => gc?.AirspaceGeometryComponent?.operation === 'BASE') ??
     geometryComponents[0];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const volume: any = baseComponent?.AirspaceGeometryComponent?.theAirspaceVolume?.AirspaceVolume;

@@ -1,5 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import {
   inchesOfMercuryToHectopascals,
   hectopascalsToInchesOfMercury,
@@ -27,6 +27,7 @@ import {
   ISA_P0_HPA,
   ISA_P0_INHG,
 } from './pressure.js';
+import { close } from './test-utils.js';
 
 describe('pressure conversions', () => {
   describe('inchesOfMercuryToHectopascals / hectopascalsToInchesOfMercury', () => {

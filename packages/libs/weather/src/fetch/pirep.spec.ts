@@ -1,6 +1,7 @@
 import { describe, it, vi, afterEach, expect } from 'vitest';
-import { fetchPirep } from './pirep.js';
+
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
+import { fetchPirep } from './pirep.js';
 
 afterEach(() => {
   vi.restoreAllMocks();

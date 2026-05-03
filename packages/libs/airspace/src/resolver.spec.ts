@@ -1,7 +1,9 @@
-import { describe, it, beforeAll, expect, assert } from 'vitest';
 import type { FeatureCollection, Feature } from 'geojson';
-import type { AirspaceType } from '@squawk/types';
+import { describe, it, beforeAll, expect, assert } from 'vitest';
+
 import { usBundledAirspace } from '@squawk/airspace-data';
+import type { AirspaceType } from '@squawk/types';
+
 import { createAirspaceResolver } from './resolver.js';
 import type { AirspaceResolver } from './resolver.js';
 

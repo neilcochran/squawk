@@ -1,11 +1,20 @@
-import { useMemo } from 'react';
-import type { ReactElement } from 'react';
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import { getRouteApi } from '@tanstack/react-router';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
-import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
+import { useMemo } from 'react';
+import type { ReactElement } from 'react';
+
 import type { AirspaceType } from '@squawk/types';
+
 import { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
+import {
+  AIRSPACE_CEILING_FT_PROPERTY,
+  AIRSPACE_CEILING_REF_PROPERTY,
+  AIRSPACE_FLOOR_FT_PROPERTY,
+  AIRSPACE_FLOOR_REF_PROPERTY,
+  AIRSPACE_MATCH_KEY_PROPERTY,
+} from '../../../shared/inspector/airspace-feature.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import type {
   ChartAirspaceBadgeColors,
@@ -14,18 +23,9 @@ import type {
 } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef, useHoveredFeatureIndex } from '../highlight-context.ts';
 import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
-import {
-  AIRSPACE_CEILING_FT_PROPERTY,
-  AIRSPACE_CEILING_REF_PROPERTY,
-  AIRSPACE_FLOOR_FT_PROPERTY,
-  AIRSPACE_FLOOR_REF_PROPERTY,
-  AIRSPACE_MATCH_KEY_PROPERTY,
-} from '../../../shared/inspector/airspace-feature.ts';
-import { hatchImageId, useHatchPatternImage } from './airspace-hatch-pattern.ts';
+
 import { AIRPORTS_HIGHLIGHT_LAYER_ID } from './airports-layer.tsx';
-import { AIRWAYS_HIGHLIGHT_LAYER_ID } from './airways-layer.tsx';
-import { FIXES_HIGHLIGHT_LAYER_ID } from './fixes-layer.tsx';
-import { NAVAIDS_HIGHLIGHT_LAYER_ID } from './navaids-layer.tsx';
+import { hatchImageId, useHatchPatternImage } from './airspace-hatch-pattern.ts';
 import {
   AIRSPACE_BADGE_OFFSET_PROPERTY,
   AIRSPACE_FEATURE_COUNT_PROPERTY,
@@ -33,6 +33,9 @@ import {
   AIRSPACE_FEATURE_LABEL_PROPERTY,
   projectAirspaceSource,
 } from './airspace-source-projection.ts';
+import { AIRWAYS_HIGHLIGHT_LAYER_ID } from './airways-layer.tsx';
+import { FIXES_HIGHLIGHT_LAYER_ID } from './fixes-layer.tsx';
+import { NAVAIDS_HIGHLIGHT_LAYER_ID } from './navaids-layer.tsx';
 import { useTopOfStack } from './use-top-of-stack.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);

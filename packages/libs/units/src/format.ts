@@ -1,8 +1,8 @@
-import { isaTemperatureCelsius } from './isa.js';
 import type { DistanceUnit } from './distance.js';
+import type { FuelUnit } from './fuel.js';
+import { isaTemperatureCelsius } from './isa.js';
 import type { PressureUnit } from './pressure.js';
 import type { TemperatureUnit } from './temperature.js';
-import type { FuelUnit } from './fuel.js';
 
 /**
  * Speed unit string literals accepted by formatSpeed. Includes 'mach' in addition

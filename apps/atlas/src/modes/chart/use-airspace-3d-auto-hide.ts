@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import type { Airspace3DDialogChoice } from './airspace-3d-dialog.tsx';
 import {
   AIRSPACE_3D_AUTO_HIDE_CLASSES,

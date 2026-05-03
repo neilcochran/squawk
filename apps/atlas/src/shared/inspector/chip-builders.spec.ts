@@ -1,9 +1,13 @@
-import { describe, it, expect } from 'vitest';
 import type { Feature, Polygon } from 'geojson';
+import { describe, it, expect } from 'vitest';
+
 import type { Airway, AirspaceFeature } from '@squawk/types';
+
+import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
 import { AIRPORTS_LAYER_ID } from '../../modes/chart/layers/airports-layer.tsx';
 import { AIRSPACE_FILL_LAYER_ID } from '../../modes/chart/layers/airspace-layer.tsx';
-import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
+
+import { AIRSPACE_CEILING_FT_PROPERTY, AIRSPACE_FLOOR_FT_PROPERTY } from './airspace-feature.ts';
 import {
   buildInspectorChipList,
   buildOverlappingAirspaceChips,
@@ -11,7 +15,6 @@ import {
   footprintForSelection,
   MAX_OVERLAP_CHIPS,
 } from './chip-builders.ts';
-import { AIRSPACE_CEILING_FT_PROPERTY, AIRSPACE_FLOOR_FT_PROPERTY } from './airspace-feature.ts';
 import type { ChartDatasetStates, ResolvedEntityState } from './entity-resolver.ts';
 
 const ALL_CLASSES = [

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { parseMasterCsv, parseAcftRefCsv, joinRegistryRecords } from './faa-parser.js';
 
 const MASTER_HEADER =

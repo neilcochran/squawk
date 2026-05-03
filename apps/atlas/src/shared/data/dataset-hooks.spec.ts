@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock each `@squawk/*-data/browser` entry point with a deferred
 // promise the test can resolve / reject on demand. Hoisted so the

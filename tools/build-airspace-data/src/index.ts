@@ -1,9 +1,12 @@
-import { writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { readdirSync } from 'node:fs';
+import { writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+
 import AdmZip from 'adm-zip';
+
 import { parseNasrArgs } from '@squawk/build-shared';
+
 import { loadAirportStates } from './load-airport-states.js';
 import { parseArtcc } from './parse-artcc.js';
 import { parseClassAirspace } from './parse-class-airspace.js';

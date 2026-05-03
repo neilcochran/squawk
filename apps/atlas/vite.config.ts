@@ -1,9 +1,11 @@
-import { defineConfig, mergeConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tailwindcss from '@tailwindcss/vite';
-import tsrConfig from './tsr.config.json';
+import { tanstackRouter } from '@tanstack/router-plugin/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig, mergeConfig } from 'vitest/config';
+
 import { sharedVitestConfig } from '../../vitest.shared.js';
+
+import tsrConfig from './tsr.config.json';
 
 /**
  * Atlas Vite + Vitest config. Vite plugins (TanStack Router, React, Tailwind)

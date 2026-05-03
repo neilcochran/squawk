@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { gunzipSync } from 'node:zlib';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { usBundledAirways } from './node.js';
+import { gunzipSync } from 'node:zlib';
+
+import { describe, it, expect } from 'vitest';
+
 import { loadUsBundledAirways } from './browser.js';
+import { usBundledAirways } from './node.js';
 
 const dataPath = resolve(dirname(fileURLToPath(import.meta.url)), '../data/airways.json.gz');
 const gzBytes = readFileSync(dataPath);

@@ -1,7 +1,7 @@
-import type { Navaid, NavaidStatus, NavaidType } from '@squawk/types';
-import { NAVAID_STATUS_MAP, NAVAID_TYPE_MAP } from '@squawk/types';
 import { lookupCode } from '@squawk/build-shared';
 import type { CsvRecord } from '@squawk/build-shared';
+import type { Navaid, NavaidStatus, NavaidType } from '@squawk/types';
+import { NAVAID_STATUS_MAP, NAVAID_TYPE_MAP } from '@squawk/types';
 
 /** Navaid types whose frequency is expressed in MHz. */
 const MHZ_TYPES: ReadonlySet<NavaidType> = new Set([

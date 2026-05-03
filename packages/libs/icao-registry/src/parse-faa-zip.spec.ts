@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
 import AdmZip from 'adm-zip';
+import { describe, it, expect } from 'vitest';
+
 import { parseFaaRegistryZip } from './parse-faa-zip.js';
 
 const MASTER_HEADER =

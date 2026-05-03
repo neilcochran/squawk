@@ -1,6 +1,8 @@
 import { describe, it, expect, assert } from 'vitest';
-import { buildNavaid } from './parse-navaids.js';
+
 import type { CsvRecord } from '@squawk/build-shared';
+
+import { buildNavaid } from './parse-navaids.js';
 
 /**
  * Builds a NAV_BASE.csv record with the BOSTON VOR/DME baseline plus

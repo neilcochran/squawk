@@ -1,10 +1,13 @@
 import type { ReactElement } from 'react';
+
 import type { Airport } from '@squawk/types';
+
 import {
   formatAirportFacilityType,
   formatAirportRunway,
   formatAirportStatus,
 } from '../formatters.ts';
+
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**

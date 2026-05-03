@@ -6,9 +6,11 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
 import type { ProcedureSearchQuery } from '@squawk/procedures';
 import type { ApproachType, ProcedureType } from '@squawk/types';
-import { z } from 'zod';
+
 import { procedureResolver } from '../resolvers.js';
 
 /** All {@link ProcedureType} values, used for input validation. */

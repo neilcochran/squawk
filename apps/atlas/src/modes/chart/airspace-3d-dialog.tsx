@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+
 import { FLOATING_SURFACE_CLASSES, FOCUS_RING_CLASSES } from '../../shared/styles/style-tokens.ts';
 
 /**

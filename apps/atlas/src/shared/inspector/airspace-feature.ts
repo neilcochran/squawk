@@ -1,4 +1,5 @@
 import type { Feature, GeoJsonProperties, Geometry, Polygon } from 'geojson';
+
 import type { AirspaceFeature, AltitudeBound } from '@squawk/types';
 
 /**

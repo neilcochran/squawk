@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, afterEach } from 'vitest';
+
 import { useCanHover } from './use-can-hover.ts';
 
 interface MockMediaQueryList {

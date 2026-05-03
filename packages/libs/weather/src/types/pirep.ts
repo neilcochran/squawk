@@ -1,4 +1,5 @@
 import type { Coordinates } from '@squawk/types';
+
 import type { CloudCoverage, DayTime, Visibility, WeatherPhenomenon } from './shared.js';
 
 /**

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { closeRing, stripClosingDuplicate, type LonLat } from './close-ring.js';
 
 describe('closeRing', () => {

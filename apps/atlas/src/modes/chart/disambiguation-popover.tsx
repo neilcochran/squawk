@@ -1,14 +1,19 @@
+import { useMap } from '@vis.gl/react-maplibre';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
-import { useMap } from '@vis.gl/react-maplibre';
+
 import {
   compareAirspaceByAltitudeDesc,
   formatAirspaceAltitudeRange,
   readAirspaceAltitudeKey,
 } from '../../shared/inspector/airspace-feature.ts';
 import type { AirspaceAltitudeKey } from '../../shared/inspector/airspace-feature.ts';
-import { useCanHover } from '../../shared/styles/use-can-hover.ts';
 import { FLOATING_SURFACE_CLASSES } from '../../shared/styles/style-tokens.ts';
+import { useCanHover } from '../../shared/styles/use-can-hover.ts';
+
+import { formatChipLabel, selectedFromFeature } from './click-to-select.ts';
+import type { InspectableFeature } from './click-to-select.ts';
+import { useSetHoveredChipSelection } from './highlight-context.ts';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
 import {
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
@@ -18,9 +23,6 @@ import {
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
-import { formatChipLabel, selectedFromFeature } from './click-to-select.ts';
-import type { InspectableFeature } from './click-to-select.ts';
-import { useSetHoveredChipSelection } from './highlight-context.ts';
 
 /**
  * Pixel offset between the click point and the popover's top-left

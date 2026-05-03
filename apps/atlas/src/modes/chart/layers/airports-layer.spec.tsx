@@ -1,12 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import type { AirportDataset } from '@squawk/airport-data';
+
 import {
   AIRPORTS_HIGHLIGHT_LAYER_ID,
   AIRPORTS_LAYER_ID,
   AirportsLayer,
 } from './airports-layer.tsx';
-import type { AirportDataset } from '@squawk/airport-data';
 
 const { useAirportDatasetMock, useActiveHighlightRefMock } = vi.hoisted(() => ({
   useAirportDatasetMock: vi.fn(),

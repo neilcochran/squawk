@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+
 import type { ResolvedEntityState } from './entity-resolver.ts';
 import { AirportPanel } from './renderers/airport-panel.tsx';
 import { AirspacePanel } from './renderers/airspace-panel.tsx';

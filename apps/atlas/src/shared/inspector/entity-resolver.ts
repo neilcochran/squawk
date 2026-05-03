@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+
 import { polygonGeoJson } from '@squawk/geo';
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
+
 import { useAirportDataset } from '../data/airport-dataset.ts';
 import type { AirportDatasetState } from '../data/airport-dataset.ts';
 import { useAirspaceDataset } from '../data/airspace-dataset.ts';
@@ -11,6 +13,7 @@ import { useFixDataset } from '../data/fix-dataset.ts';
 import type { FixDatasetState } from '../data/fix-dataset.ts';
 import { useNavaidDataset } from '../data/navaid-dataset.ts';
 import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
+
 import { compareAirspaceByAltitudeDesc, isAirspacePolygonFeature } from './airspace-feature.ts';
 import type { AirspacePolygonFeature } from './airspace-feature.ts';
 import { parseSelected } from './entity.ts';

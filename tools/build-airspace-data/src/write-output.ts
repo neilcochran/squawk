@@ -1,8 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { updateReadmeDate } from '@squawk/build-shared';
 import { gzipSync } from 'node:zlib';
+
 import type { FeatureCollection, Feature, Polygon } from 'geojson';
+
+import { updateReadmeDate } from '@squawk/build-shared';
 import type { AirspaceFeature } from '@squawk/types';
 
 /**

@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ReactElement, ReactNode } from 'react';
+import { layers, namedFlavor } from '@protomaps/basemaps';
 import { Map, useMap } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent, ViewStateChangeEvent } from '@vis.gl/react-maplibre';
 import maplibregl from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
-import { layers, namedFlavor } from '@protomaps/basemaps';
+import type { ReactElement, ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useResolvedTheme } from '../styles/theme-context.ts';
 import type { ResolvedTheme } from '../styles/theme-context.ts';

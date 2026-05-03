@@ -6,10 +6,11 @@
  * payload shape.
  */
 
-import { afterEach, beforeEach, describe, it, expect, assert } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { afterEach, beforeEach, describe, it, expect, assert } from 'vitest';
 import { z } from 'zod';
+
 import { createSquawkMcpServer } from './server.js';
 
 async function connectTestClient(): Promise<{

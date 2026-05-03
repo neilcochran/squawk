@@ -6,9 +6,11 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
 import type { AirportSearchQuery, NearestAirportQuery } from '@squawk/airports';
 import type { FacilityType } from '@squawk/types';
-import { z } from 'zod';
+
 import { airportResolver } from '../resolvers.js';
 
 /** All {@link FacilityType} values, used for input validation. */

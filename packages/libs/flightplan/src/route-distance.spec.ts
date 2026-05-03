@@ -1,8 +1,10 @@
-import { describe, it, beforeAll } from 'vitest';
 import assert from 'node:assert/strict';
+
+import { describe, it, beforeAll } from 'vitest';
+
 import { greatCircle } from '@squawk/geo';
 import type { Airport, AirwayWaypoint } from '@squawk/types';
-import { computeRouteDistance } from './route-distance.js';
+
 import type {
   ParsedRoute,
   RouteElement,
@@ -17,6 +19,7 @@ import type {
   UnresolvedRouteElement,
   FlightplanResolver,
 } from './resolver.js';
+import { computeRouteDistance } from './route-distance.js';
 
 /**
  * Returns true if two numbers are within the given delta of each other.

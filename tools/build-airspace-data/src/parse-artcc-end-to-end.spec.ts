@@ -1,7 +1,9 @@
-import { describe, it, expect, assert } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { describe, it, expect, assert } from 'vitest';
+
 import { parseArtcc } from './parse-artcc.js';
 
 /**

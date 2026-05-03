@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+
 import type { AltitudeBound } from '@squawk/types';
+
 import { altitudeMatches } from './vertical-filter.js';
 
 const sfc: AltitudeBound = { valueFt: 0, reference: 'SFC' };

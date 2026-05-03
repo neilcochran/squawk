@@ -1,5 +1,6 @@
-import type { Metar } from '../types/index.js';
 import { parseMetar } from '../metar-parser.js';
+import type { Metar } from '../types/index.js';
+
 import {
   buildAwcUrl,
   parseRecords,

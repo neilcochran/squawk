@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
-import type { ReactElement } from 'react';
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
-import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Feature, FeatureCollection, Point } from 'geojson';
+import { useMemo } from 'react';
+import type { ReactElement } from 'react';
+
 import type { Navaid, NavaidType } from '@squawk/types';
+
 import { useNavaidDataset } from '../../../shared/data/navaid-dataset.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';

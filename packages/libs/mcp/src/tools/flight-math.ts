@@ -15,6 +15,8 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
 import {
   airspeed,
   atmosphere,
@@ -28,7 +30,7 @@ import {
   wind,
 } from '@squawk/flight-math';
 import type { MagneticFieldOptions } from '@squawk/flight-math';
-import { z } from 'zod';
+
 import { extractErrorMessage } from './tool-helpers.js';
 
 /** Reusable zod fragment describing a latitude input. */

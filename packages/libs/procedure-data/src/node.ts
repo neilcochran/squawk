@@ -10,11 +10,12 @@
  * `DecompressionStream`.
  */
 
-import type { Procedure } from '@squawk/types';
 import { readFileSync } from 'node:fs';
-import { gunzipSync } from 'node:zlib';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
+
+import type { Procedure } from '@squawk/types';
 
 /**
  * Metadata properties attached to the procedure dataset describing the

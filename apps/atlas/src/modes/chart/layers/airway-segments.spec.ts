@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+
 import type { AirwayWaypoint } from '@squawk/types';
+
 import { buildSegments } from './airway-segments.ts';
 
 /**

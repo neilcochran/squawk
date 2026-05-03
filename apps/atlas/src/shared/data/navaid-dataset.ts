@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { loadUsBundledNavaids } from '@squawk/navaid-data/browser';
+
 import type { NavaidDataset } from '@squawk/navaid-data';
+import { loadUsBundledNavaids } from '@squawk/navaid-data/browser';
 
 /**
  * Module-level cached promise so the bundled navaid dataset is fetched at

@@ -1,8 +1,10 @@
-import { writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
+import { writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+
 import { parseFaaRegistryZip } from '@squawk/icao-registry';
+
 import { writeOutput } from './write-output.js';
 
 /** Direct download URL for the FAA ReleasableAircraft database. */

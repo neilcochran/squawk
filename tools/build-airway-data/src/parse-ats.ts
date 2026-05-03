@@ -1,4 +1,5 @@
 import type { AirwayWaypoint } from '@squawk/types';
+
 import { parseDms, classifyWaypointType } from './parse-awy.js';
 
 /**

@@ -10,6 +10,7 @@
  */
 
 import type { Airway } from '@squawk/types';
+
 import type { AirwayDataset, AirwayDatasetProperties } from './node.js';
 
 /**

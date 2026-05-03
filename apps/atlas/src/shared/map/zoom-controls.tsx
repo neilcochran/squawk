@@ -1,8 +1,10 @@
+import { useMap } from '@vis.gl/react-maplibre';
 import { useCallback, useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
-import { useMap } from '@vis.gl/react-maplibre';
+
 import { FOCUS_RING_INSET_CLASSES } from '../styles/style-tokens.ts';
 import { FloatingPanel } from '../ui/floating-panel.tsx';
+
 import { MAP_MAX_PITCH } from './map-canvas.tsx';
 
 /** Animation duration for the +/- zoom transitions, in milliseconds. */

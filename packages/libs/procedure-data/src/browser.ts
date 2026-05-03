@@ -10,6 +10,7 @@
  */
 
 import type { Procedure } from '@squawk/types';
+
 import type { ProcedureDataset, ProcedureDatasetProperties } from './node.js';
 
 /**

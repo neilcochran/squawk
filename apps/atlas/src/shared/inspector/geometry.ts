@@ -1,6 +1,7 @@
 import type { Polygon } from 'geojson';
-import type { AirspaceFeature } from '@squawk/types';
+
 import type { BoundingBox } from '@squawk/geo';
+import type { AirspaceFeature } from '@squawk/types';
 
 /**
  * Re-export of {@link @squawk/geo!BoundingBox} so inspector modules can

@@ -1,6 +1,7 @@
 import { describe, it, expect, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import { feetToMeters, metersToFeet } from './altitude.js';
+import { close } from './test-utils.js';
 
 describe('altitude conversions', () => {
   describe('feetToMeters', () => {

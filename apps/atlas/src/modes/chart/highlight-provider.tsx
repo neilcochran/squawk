@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+
 import { parseSelected } from '../../shared/inspector/entity.ts';
+
 import { HighlightContext } from './highlight-context.ts';
 import type { HighlightContextValue } from './highlight-context.ts';
 

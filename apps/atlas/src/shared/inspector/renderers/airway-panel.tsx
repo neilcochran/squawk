@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import type { ReactElement } from 'react';
+
 import type { Airway } from '@squawk/types';
+
 import { useSetHoveredAirwayWaypointIndex } from '../../../modes/chart/highlight-context.ts';
 import { useCanHover } from '../../styles/use-can-hover.ts';
 import {
@@ -8,6 +10,7 @@ import {
   formatAirwayType,
   formatAirwayWaypointAltitude,
 } from '../formatters.ts';
+
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**

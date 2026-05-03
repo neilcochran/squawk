@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+
 import {
   DARK_CLASS_NAME,
   PREFERS_DARK_MEDIA_QUERY,

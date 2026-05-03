@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import type { ReactElement } from 'react';
 import { render, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { describe, it, expect, vi } from 'vitest';
+
 import { ShellLayout } from './shell-layout.tsx';
 
 vi.mock('./mode-switcher.tsx', () => ({

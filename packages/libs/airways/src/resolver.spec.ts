@@ -1,4 +1,5 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
+
 import { createAirwayResolver } from './resolver.js';
 import type { AirwayResolver } from './resolver.js';
 

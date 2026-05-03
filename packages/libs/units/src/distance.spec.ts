@@ -1,6 +1,7 @@
-import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
-import { close } from './test-utils.js';
+
+import { describe, it } from 'vitest';
+
 import {
   nauticalMilesToKilometers,
   kilometersToNauticalMiles,
@@ -23,6 +24,7 @@ import {
   feetToMeters,
   metersToFeet,
 } from './distance.js';
+import { close } from './test-utils.js';
 
 describe('distance conversions', () => {
   describe('nauticalMilesToKilometers / kilometersToNauticalMiles', () => {

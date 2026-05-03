@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import type { MapRef } from '@vis.gl/react-maplibre';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import type { Airway } from '@squawk/types';
-import { useAirwayLegHoverPan } from './use-airway-leg-hover-pan.ts';
+
 import type { ResolvedEntityState } from './entity-resolver.ts';
+import { useAirwayLegHoverPan } from './use-airway-leg-hover-pan.ts';
 
 const {
   getMapInstanceMock,

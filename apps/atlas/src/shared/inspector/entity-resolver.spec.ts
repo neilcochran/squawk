@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
+
 import { useResolvedEntity } from './entity-resolver.ts';
 
 const { airportStateMock, navaidStateMock, fixStateMock, airwayStateMock, airspaceStateMock } =

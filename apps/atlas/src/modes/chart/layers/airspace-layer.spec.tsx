@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import {
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
   AIRSPACE_FILL_LAYER_ID,

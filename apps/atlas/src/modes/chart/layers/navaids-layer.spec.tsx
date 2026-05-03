@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
-import { NAVAIDS_HIGHLIGHT_LAYER_ID, NAVAIDS_LAYER_ID, NavaidsLayer } from './navaids-layer.tsx';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import type { NavaidDataset } from '@squawk/navaid-data';
+
+import { NAVAIDS_HIGHLIGHT_LAYER_ID, NAVAIDS_LAYER_ID, NavaidsLayer } from './navaids-layer.tsx';
 
 const { useNavaidDatasetMock, useActiveHighlightRefMock } = vi.hoisted(() => ({
   useNavaidDatasetMock: vi.fn(),
