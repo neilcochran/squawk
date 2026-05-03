@@ -25,4 +25,4 @@ npm run dev
 
 ## License
 
-[MIT](./LICENSE.md)
+[MIT](../../LICENSE.md)

@@ -1,6 +1,6 @@
 <h1><img src="../../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/navaids</h1>
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/navaids)](https://www.npmjs.com/package/@squawk/navaids) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/navaids)](https://www.npmjs.com/package/@squawk/navaids) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US navaid data. Look up navaids by identifier,
 frequency, geographic proximity, type, or name search. Contains no bundled data -

@@ -1,6 +1,6 @@
 <h1><img src="../../../assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk/icao-registry</h1>
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/icao-registry)](https://www.npmjs.com/package/@squawk/icao-registry) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/icao-registry)](https://www.npmjs.com/package/@squawk/icao-registry) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Resolves a 24-bit ICAO hex address to its aircraft registration and info. Pure logic library - contains no bundled data. Accepts an array of AircraftRegistration records at initialization. For zero-config use, pair with `@squawk/icao-registry-data`. Includes FAA ReleasableAircraft ZIP parsing utilities for consumers who want to fetch their own fresh data.
 

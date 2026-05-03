@@ -1,0 +1,9 @@
+# Lychee link checker config. Auto-discovered by the lychee CLI when run
+# from the repo root (see .github/workflows/lychee.yml).
+
+# npmjs.com returns 403 to cloud-CI User-Agents (Cloudflare bot protection),
+# so every link to a package or org page reports as broken even though the
+# URLs are valid. Skip the host entirely; published-package URLs are
+# validated by `npm publish` itself, so the practical risk of a stale link
+# slipping through is low.
+exclude = ["^https://www\\.npmjs\\.com/"]
