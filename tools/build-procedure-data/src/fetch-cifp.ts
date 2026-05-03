@@ -1,7 +1,4 @@
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import AdmZip from 'adm-zip';
 
 /**
@@ -26,18 +23,10 @@ const FAACIFP_FILENAME = 'FAACIFP18';
  * Strict pattern for the FAA-published CIFP zip filename. The published
  * format is always `CIFP_YYMMDD.zip` where `YYMMDD` is the 6-digit
  * cycle-effective date. Anchored to reject any caller input that does
- * not match exactly, so neither the constructed download URL nor the
- * on-disk temp path can be steered by an attacker.
+ * not match exactly, so the constructed download URL cannot be steered
+ * by an attacker.
  */
 const CIFP_ZIP_FILENAME_PATTERN = /^CIFP_\d{6}\.zip$/;
-
-/**
- * Fixed local filename for the downloaded CIFP zip inside its private
- * temporary directory. The on-disk name does not need to match the
- * remote filename - only `loadFromZip` reads it back, and it just
- * opens the file as a zip archive.
- */
-const LOCAL_CIFP_ZIP_FILENAME = 'cifp.zip';
 
 /**
  * Result of loading the CIFP dataset from a zip or raw ARINC 424 file.
@@ -58,8 +47,8 @@ export interface LoadedCifp {
  * `CIFP_260416.zip`). The caller resolves the filename separately; this
  * helper downloads and extracts `FAACIFP18` in one step.
  *
- * The downloaded zip is saved into a private temporary directory that
- * is removed by the returned `cleanup` function.
+ * The downloaded zip is held in memory and parsed directly, so nothing
+ * is written to the local filesystem.
  *
  * @param zipFilename - Filename from the FAA's CIFP download page (e.g. `CIFP_260416.zip`).
  */
@@ -74,18 +63,8 @@ export async function fetchCifp(zipFilename: string): Promise<LoadedCifp> {
     throw new Error(`FAA download failed: ${response.status} ${response.statusText}`);
   }
   const buffer = Buffer.from(await response.arrayBuffer());
-  const tempDir = mkdtempSync(join(tmpdir(), 'cifp-'));
-  const tempPath = join(tempDir, LOCAL_CIFP_ZIP_FILENAME);
-  writeFileSync(tempPath, buffer);
-  console.log(`[fetch] Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB to ${tempPath}`);
-  const loaded = loadFromZip(tempPath);
-  return {
-    ...loaded,
-    sourceName: zipFilename,
-    cleanup: async () => {
-      await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
-    },
-  };
+  console.log(`[fetch] Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB`);
+  return loadFromZip(buffer, zipFilename);
 }
 
 /**
@@ -103,7 +82,7 @@ export async function fetchCifp(zipFilename: string): Promise<LoadedCifp> {
 export function loadCifpFromPath(path: string): LoadedCifp {
   const lower = path.toLowerCase();
   if (lower.endsWith('.zip')) {
-    return loadFromZip(path);
+    return loadFromZip(path, path);
   }
   const contents = readFileSync(path, 'utf-8');
   return {
@@ -115,22 +94,26 @@ export function loadCifpFromPath(path: string): LoadedCifp {
 }
 
 /**
- * Opens a CIFP zip and extracts the `FAACIFP18` ARINC 424 data file
- * contents as a UTF-8 string. Throws when the zip does not contain a
+ * Opens a CIFP zip from either a filesystem path or an in-memory
+ * buffer and extracts the `FAACIFP18` ARINC 424 data file contents
+ * as a UTF-8 string. Throws when the zip does not contain a
  * `FAACIFP18` entry.
+ *
+ * @param input - Path to a CIFP zip on disk, or its raw bytes as a Buffer.
+ * @param sourceName - Human-readable identifier used in logs and error messages.
  */
-function loadFromZip(zipPath: string): LoadedCifp {
-  console.log(`[fetch] Extracting ${FAACIFP_FILENAME} from ${zipPath}...`);
-  const zip = new AdmZip(zipPath);
+function loadFromZip(input: string | Buffer, sourceName: string): LoadedCifp {
+  console.log(`[fetch] Extracting ${FAACIFP_FILENAME} from ${sourceName}...`);
+  const zip = new AdmZip(input);
   const entry = zip.getEntry(FAACIFP_FILENAME);
   if (entry === null) {
-    throw new Error(`CIFP zip at ${zipPath} does not contain ${FAACIFP_FILENAME}`);
+    throw new Error(`CIFP zip ${sourceName} does not contain ${FAACIFP_FILENAME}`);
   }
   const contents = entry.getData().toString('utf-8');
   return {
     contents,
     cycleDate: extractCycleDate(contents),
-    sourceName: zipPath,
+    sourceName,
     cleanup: async () => undefined,
   };
 }

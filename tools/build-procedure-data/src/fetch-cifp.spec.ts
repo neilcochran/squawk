@@ -96,21 +96,6 @@ describe('fetchCifp', () => {
     }
     expect(fetchSpy).not.toHaveBeenCalled();
   });
-
-  it('cleanup removes the temp zip without throwing if already gone', async () => {
-    const zip = new AdmZip();
-    zip.addFile('FAACIFP18', Buffer.from(SAMPLE_HEADER, 'utf-8'));
-    const buffer = zip.toBuffer();
-
-    vi.spyOn(globalThis, 'fetch').mockImplementation(
-      async () => new Response(buffer, { status: 200 }),
-    );
-
-    const loaded = await fetchCifp('CIFP_260416.zip');
-    await loaded.cleanup();
-    // Second cleanup should be a silent no-op since the file is already removed.
-    await loaded.cleanup();
-  });
 });
 
 describe('extractCycleDate', () => {
