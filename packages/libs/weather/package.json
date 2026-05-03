@@ -1,6 +1,6 @@
 {
   "name": "@squawk/weather",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "type": "module",
   "description": "Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP) into structured objects",
   "author": "Neil Cochran",
