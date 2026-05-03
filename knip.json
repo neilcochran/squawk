@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "include": ["files", "dependencies", "devDependencies", "unlisted", "binaries", "unresolved"],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.js"],
+      "project": ["scripts/*.js"]
+    },
+    "apps/atlas": {
+      "entry": ["src/routes/**/*.tsx"]
+    }
+  }
+}
