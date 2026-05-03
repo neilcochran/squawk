@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+
 import { parseNasrArgs } from '@squawk/build-shared';
-import { parseAwy1, parseAwy2, buildWaypoint } from './parse-awy.js';
-import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
-import { writeOutput } from './write-output.js';
 import type { Airway, AirwayType, AirwayRegion, AirwayWaypoint } from '@squawk/types';
 import { AWY_TYPE_MAP, ATS_TYPE_MAP, AIRWAY_REGION_MAP } from '@squawk/types';
+
+import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
+import { parseAwy1, parseAwy2, buildWaypoint } from './parse-awy.js';
+import { writeOutput } from './write-output.js';
 
 /** Fixed-width data files within the NASR subscription directory. */
 const AWY_FILE = 'AWY.txt';

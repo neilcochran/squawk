@@ -1,3 +1,5 @@
+import { deriveFlightCategory } from './flight-category.js';
+import { parseRemarks } from './remarks-parser.js';
 import type {
   Altimeter,
   DayTime,
@@ -11,8 +13,6 @@ import type {
   WeatherPhenomenon,
   Wind,
 } from './types/index.js';
-import { parseRemarks } from './remarks-parser.js';
-import { deriveFlightCategory } from './flight-category.js';
 import {
   isWindToken,
   parseWind,

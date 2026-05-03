@@ -1,5 +1,7 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
+
 import type { Navaid, NavaidType } from '@squawk/types';
+
 import { createNavaidResolver } from './resolver.js';
 import type { NavaidResolver } from './resolver.js';
 

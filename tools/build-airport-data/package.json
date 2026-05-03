@@ -7,14 +7,15 @@
   "author": "Neil Cochran",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.16"
   },
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit && eslint src"
   },
   "dependencies": {
     "@squawk/build-shared": "*",

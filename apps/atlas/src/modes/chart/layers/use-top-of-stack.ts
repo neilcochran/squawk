@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { useMap } from '@vis.gl/react-maplibre';
+import { useEffect } from 'react';
 
 /**
  * Subscribes to MapLibre layer-stack changes (`styledata`) and re-asserts

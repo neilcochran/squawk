@@ -5,9 +5,11 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
 import type { FixSearchQuery, NearestFixQuery } from '@squawk/fixes';
 import type { FixUseCode } from '@squawk/types';
-import { z } from 'zod';
+
 import { fixResolver } from '../resolvers.js';
 
 /** All {@link FixUseCode} values, used for input validation. */

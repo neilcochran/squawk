@@ -5,8 +5,10 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { parseFaaNotam, parseNotam } from '@squawk/notams';
 import { z } from 'zod';
+
+import { parseFaaNotam, parseNotam } from '@squawk/notams';
+
 import { runParser } from './tool-helpers.js';
 
 /**

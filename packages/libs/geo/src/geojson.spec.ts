@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
 import type { Polygon } from 'geojson';
+import { describe, it, expect } from 'vitest';
+
 import {
   boundingBoxesOverlap,
   pointInBoundingBox,

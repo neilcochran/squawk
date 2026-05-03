@@ -1,5 +1,5 @@
-import type { ComponentPropsWithoutRef, ReactElement } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import type { ComponentPropsWithoutRef, ReactElement } from 'react';
 
 /**
  * Base classes for a Radix dropdown-menu checkbox item rendered in the

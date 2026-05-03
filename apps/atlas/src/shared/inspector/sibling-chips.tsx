@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
+
 import { useCanHover } from '../styles/use-can-hover.ts';
+
 import { CHIP_GROUP_LABELS } from './chip-builders.ts';
 import type { Chip } from './chip-builders.ts';
 import { ENTITY_TYPES } from './entity.ts';

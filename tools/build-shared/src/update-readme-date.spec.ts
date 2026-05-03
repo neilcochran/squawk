@@ -1,7 +1,9 @@
-import { describe, it, beforeEach, afterEach, expect, assert } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { describe, it, beforeEach, afterEach, expect, assert } from 'vitest';
+
 import { updateReadmeDate } from './update-readme-date.js';
 
 let tempDir: string;

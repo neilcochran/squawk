@@ -1,19 +1,21 @@
-import { useCallback, useState } from 'react';
-import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { MapProvider } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent } from '@vis.gl/react-maplibre';
+import type { ReactElement } from 'react';
+import { useCallback, useState } from 'react';
+
+import { EntityInspector } from '../../shared/inspector/inspector.tsx';
 import { MapCanvas } from '../../shared/map/map-canvas.tsx';
 import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
 import { ZoomControls } from '../../shared/map/zoom-controls.tsx';
-import { EntityInspector } from '../../shared/inspector/inspector.tsx';
+
+import { Airspace3DAutoHideDialog } from './airspace-3d-dialog.tsx';
 import { ChartLoadingIndicator } from './chart-loading-indicator.tsx';
 import { classifyClick, INSPECTABLE_LAYER_IDS, selectedFromFeature } from './click-to-select.ts';
 import type { InspectableFeature } from './click-to-select.ts';
 import { DisambiguationPopover } from './disambiguation-popover.tsx';
 import { HighlightProvider } from './highlight-provider.tsx';
 import { InspectableHoverCursor } from './inspectable-cursor.tsx';
-import { ChartViewResetListener } from './view-reset-listener.tsx';
 import { LayerToggle } from './layer-toggle.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
 import {
@@ -26,8 +28,8 @@ import { FixesLayer } from './layers/fixes-layer.tsx';
 import { NavaidsLayer } from './layers/navaids-layer.tsx';
 import type { AirspaceClass, LayerId } from './url-state.ts';
 import { CHART_ROUTE_PATH } from './url-state.ts';
-import { Airspace3DAutoHideDialog } from './airspace-3d-dialog.tsx';
 import { useAirspace3DAutoHide } from './use-airspace-3d-auto-hide.ts';
+import { ChartViewResetListener } from './view-reset-listener.tsx';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 

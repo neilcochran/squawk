@@ -1,6 +1,7 @@
+import { useMap } from '@vis.gl/react-maplibre';
 import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
-import { useMap } from '@vis.gl/react-maplibre';
+
 import { useAirportDataset } from '../../shared/data/airport-dataset.ts';
 import { useAirspaceDataset } from '../../shared/data/airspace-dataset.ts';
 import { useAirwayDataset } from '../../shared/data/airway-dataset.ts';

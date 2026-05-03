@@ -10,11 +10,12 @@
  * `DecompressionStream`.
  */
 
-import type { FeatureCollection } from 'geojson';
 import { readFileSync } from 'node:fs';
-import { gunzipSync } from 'node:zlib';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
+
+import type { FeatureCollection } from 'geojson';
 
 /**
  * Metadata properties attached to the top-level FeatureCollection describing

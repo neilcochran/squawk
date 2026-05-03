@@ -1,6 +1,7 @@
 import { describe, it, vi, afterEach, expect } from 'vitest';
-import { fetchInternationalSigmets } from './international-sigmet.js';
+
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
+import { fetchInternationalSigmets } from './international-sigmet.js';
 
 afterEach(() => {
   vi.restoreAllMocks();

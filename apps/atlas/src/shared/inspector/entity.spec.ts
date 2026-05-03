@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { encodeSelected, parseSelected } from './entity.ts';
 
 describe('parseSelected', () => {

@@ -1,4 +1,5 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router';
+
 import { ShellLayout } from '../shell/shell-layout.tsx';
 
 /**

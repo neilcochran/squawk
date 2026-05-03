@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+
 import { ChartMode } from '../modes/chart/chart-mode.tsx';
 import { chartSearchSchema } from '../modes/chart/url-state.ts';
 

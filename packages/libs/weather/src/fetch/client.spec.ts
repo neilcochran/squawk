@@ -1,4 +1,5 @@
 import { describe, it, vi, afterEach, expect, assert } from 'vitest';
+
 import {
   AwcFetchError,
   buildAwcUrl,

@@ -1,8 +1,10 @@
-import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
-import AdmZip from 'adm-zip';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import AdmZip from 'adm-zip';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
+
 import { extractCycleDate, fetchCifp, loadCifpFromPath } from './fetch-cifp.js';
 
 const SAMPLE_HEADER =

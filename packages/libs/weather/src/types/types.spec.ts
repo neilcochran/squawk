@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import {
   AIRMET_SERIES_MAP,
   AIRMET_HAZARD_TYPE_MAP,
@@ -13,7 +14,6 @@ import {
   ICING_TYPE_MAP,
 } from './pirep.js';
 import { WEATHER_DESCRIPTOR_MAP, WEATHER_PHENOMENON_MAP, CLOUD_COVERAGE_MAP } from './shared.js';
-import { TAF_CHANGE_TYPE_MAP, TURBULENCE_INTENSITY_MAP, ICING_INTENSITY_MAP } from './taf.js';
 import {
   SIGMET_FORMAT_MAP,
   SIGMET_HAZARD_TYPE_MAP,
@@ -21,6 +21,7 @@ import {
   CONVECTIVE_THUNDERSTORM_TYPE_MAP,
   SIGMET_INTENSITY_CHANGE_MAP,
 } from './sigmet.js';
+import { TAF_CHANGE_TYPE_MAP, TURBULENCE_INTENSITY_MAP, ICING_INTENSITY_MAP } from './taf.js';
 
 describe('AIRMET type maps', () => {
   it('AIRMET_SERIES_MAP has SIERRA / TANGO / ZULU entries', () => {

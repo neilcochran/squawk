@@ -1,5 +1,6 @@
-import type { Sigmet } from '../types/index.js';
 import { parseSigmet } from '../sigmet-parser.js';
+import type { Sigmet } from '../types/index.js';
+
 import {
   buildAwcUrl,
   parseRecords,

@@ -1,6 +1,7 @@
 import { describe, it, expect, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import { degreesToRadians, radiansToDegrees } from './angle.js';
+import { close } from './test-utils.js';
 
 describe('angle conversions', () => {
   describe('degreesToRadians', () => {

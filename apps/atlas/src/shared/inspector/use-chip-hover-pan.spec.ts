@@ -1,7 +1,10 @@
 /**
  * @vitest-environment jsdom
  */
+import type { MapRef } from '@vis.gl/react-maplibre';
+import type { Map as MaplibreMap } from 'maplibre-gl';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX,
   isPointOutsideComfortableArea,
@@ -9,8 +12,6 @@ import {
   restoreCenter,
   getMapInstance,
 } from './use-chip-hover-pan.ts';
-import type { Map as MaplibreMap } from 'maplibre-gl';
-import type { MapRef } from '@vis.gl/react-maplibre';
 
 interface FakeCanvas {
   clientWidth: number;

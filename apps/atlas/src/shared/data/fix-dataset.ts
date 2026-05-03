@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { loadUsBundledFixes } from '@squawk/fix-data/browser';
+
 import type { FixDataset } from '@squawk/fix-data';
+import { loadUsBundledFixes } from '@squawk/fix-data/browser';
 
 /**
  * Module-level cached promise so the bundled fix dataset is fetched at

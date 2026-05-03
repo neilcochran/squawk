@@ -1,5 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import {
   celsiusToFahrenheit,
   fahrenheitToCelsius,
@@ -8,6 +8,7 @@ import {
   fahrenheitToKelvin,
   kelvinToFahrenheit,
 } from './temperature.js';
+import { close } from './test-utils.js';
 
 describe('temperature conversions', () => {
   describe('celsiusToFahrenheit', () => {

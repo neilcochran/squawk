@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { loadUsBundledAirspace } from '@squawk/airspace-data/browser';
+
 import type { AirspaceDataset } from '@squawk/airspace-data';
+import { loadUsBundledAirspace } from '@squawk/airspace-data/browser';
 
 /**
  * Module-level cached promise so the bundled airspace dataset is fetched at

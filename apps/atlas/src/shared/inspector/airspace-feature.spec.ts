@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { compareAirspaceByAltitudeDesc } from './airspace-feature.ts';
 import type { AirspaceAltitudeKey } from './airspace-feature.ts';
 

@@ -1,5 +1,6 @@
-import { describe, it, expect, assert } from 'vitest';
 import type { Polygon } from 'geojson';
+import { describe, it, expect, assert } from 'vitest';
+
 import { simplifyPolygon } from './simplify-polygon.js';
 
 describe('simplifyPolygon', () => {

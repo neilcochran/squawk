@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import { useAirspace3DAutoHide } from './use-airspace-3d-auto-hide.ts';
-import type { UseAirspace3DAutoHideParams } from './use-airspace-3d-auto-hide.ts';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { setAirspace3DAutoHidePreference } from './airspace-3d-preference.ts';
 import type { AirspaceClass, LayerId } from './url-state.ts';
+import { useAirspace3DAutoHide } from './use-airspace-3d-auto-hide.ts';
+import type { UseAirspace3DAutoHideParams } from './use-airspace-3d-auto-hide.ts';
 
 const ALL_LAYERS: readonly LayerId[] = ['airports', 'navaids', 'fixes', 'airways', 'airspace'];
 

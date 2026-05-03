@@ -1,3 +1,4 @@
+import { parseAltitudeFt, parseAltitudeRange, parseTimeString } from './advisory-utils.js';
 import type {
   Airmet,
   AirmetConditions,
@@ -10,7 +11,6 @@ import type {
   FreezingLevelBoundary,
   FreezingLevelContour,
 } from './types/index.js';
-import { parseAltitudeFt, parseAltitudeRange, parseTimeString } from './advisory-utils.js';
 
 /**
  * Parses an AIRMET bulletin string into a structured {@link Airmet} object.

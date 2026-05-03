@@ -1,6 +1,9 @@
 import { describe, it, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import { isa } from '@squawk/units';
+
+import { close } from './test-utils.js';
+
 import { atmosphere } from './index.js';
 
 describe('densityAltitude', () => {

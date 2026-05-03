@@ -1,6 +1,8 @@
 import type { FeatureCollection, Feature } from 'geojson';
-import type { AirspaceFeature, AirspaceType, AltitudeBound, ArtccStratum } from '@squawk/types';
+
 import { polygon, type BoundingBox } from '@squawk/geo';
+import type { AirspaceFeature, AirspaceType, AltitudeBound, ArtccStratum } from '@squawk/types';
+
 import { altitudeMatches } from './vertical-filter.js';
 
 /**

@@ -1,5 +1,7 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { close } from './test-utils.js';
+
 import { navigation } from './index.js';
 
 describe('holdingPatternEntry', () => {

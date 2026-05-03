@@ -1,6 +1,7 @@
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+
 import {
   setAirspace3DAutoHidePreference,
   useAirspace3DAutoHidePreference,

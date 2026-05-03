@@ -1,6 +1,9 @@
 import type { Feature, FeatureCollection } from 'geojson';
+
 import { polygonGeoJson } from '@squawk/geo';
 import type { AltitudeBound } from '@squawk/types';
+
+import type { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
 import {
   AIRSPACE_CEILING_FT_PROPERTY,
   AIRSPACE_CEILING_REF_PROPERTY,
@@ -9,7 +12,6 @@ import {
   AIRSPACE_MATCH_KEY_PROPERTY,
   readAltitudeBoundPrimitives,
 } from '../../../shared/inspector/airspace-feature.ts';
-import type { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
 
 /**
  * Synthetic per-feature `[xEm, yEm]` offset applied to the badge layer's

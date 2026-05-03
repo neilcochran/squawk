@@ -1,9 +1,12 @@
-import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
+
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
+
 import type { Airport } from '@squawk/types';
+
 import { writeOutput } from './write-output.js';
 
 let sandbox: string;

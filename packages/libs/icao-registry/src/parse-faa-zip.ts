@@ -1,5 +1,7 @@
-import type { AircraftRegistration } from '@squawk/types';
 import AdmZip from 'adm-zip';
+
+import type { AircraftRegistration } from '@squawk/types';
+
 import { parseMasterCsv, parseAcftRefCsv, joinRegistryRecords } from './faa-parser.js';
 
 /**

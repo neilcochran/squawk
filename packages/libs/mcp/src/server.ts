@@ -4,10 +4,12 @@
  * with every squawk aviation tool module.
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
 import { registerAirportTools } from './tools/airports.js';
 import { registerAirspaceTools } from './tools/airspace.js';
 import { registerAirwayTools } from './tools/airways.js';

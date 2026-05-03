@@ -1,4 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { parseArincLatitude, parseArincLongitude } from './coord.js';
 
 describe('parseArincLatitude', () => {

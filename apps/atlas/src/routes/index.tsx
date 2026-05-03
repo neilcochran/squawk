@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
+
 import { CHART_ROUTE_PATH } from '../modes/chart/url-state.ts';
 
 /**

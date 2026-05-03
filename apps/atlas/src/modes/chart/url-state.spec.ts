@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import {
   AIRSPACE_CLASSES,
   AIRWAY_CATEGORIES,

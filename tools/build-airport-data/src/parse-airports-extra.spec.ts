@@ -1,6 +1,8 @@
 import { describe, it, expect, assert } from 'vitest';
-import { buildAirport } from './parse-airports.js';
+
 import type { CsvRecord } from '@squawk/build-shared';
+
+import { buildAirport } from './parse-airports.js';
 
 /**
  * Builds a minimal valid APT_BASE.csv record with optional overrides.

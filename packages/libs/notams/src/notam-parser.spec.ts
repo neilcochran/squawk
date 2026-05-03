@@ -1,4 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { parseNotam } from './notam-parser.js';
 
 // ---------------------------------------------------------------------------

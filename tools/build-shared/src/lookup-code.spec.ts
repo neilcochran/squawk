@@ -1,4 +1,5 @@
 import { describe, it, beforeEach, afterEach, expect, assert } from 'vitest';
+
 import { lookupCode } from './lookup-code.js';
 
 const originalWarn = console.warn;

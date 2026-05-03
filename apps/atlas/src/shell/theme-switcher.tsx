@@ -1,5 +1,6 @@
-import type { ReactElement } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import type { ReactElement } from 'react';
+
 import { useTheme } from '../shared/styles/theme-context.ts';
 import type { ThemePreference } from '../shared/styles/theme-context.ts';
 

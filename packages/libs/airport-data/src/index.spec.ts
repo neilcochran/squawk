@@ -1,5 +1,7 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import type { IlsSystem } from '@squawk/types';
+
 import { usBundledAirports } from './index.js';
 
 describe('usBundledAirports', () => {

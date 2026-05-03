@@ -1,6 +1,8 @@
 import { describe, it, expect, assert } from 'vitest';
-import { createProcedureResolver } from './resolver.js';
+
 import type { Procedure } from '@squawk/types';
+
+import { createProcedureResolver } from './resolver.js';
 
 describe('expand - edge cases', () => {
   it('returns undefined when expanding a procedure with no common route and no transition argument', () => {

@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { gzipSync } from 'node:zlib';
+
 import { updateReadmeDate } from '@squawk/build-shared';
 import type { AircraftRegistration } from '@squawk/icao-registry';
 

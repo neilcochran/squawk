@@ -1,5 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import {
   isaTemperatureCelsius,
   pressureAtAltitudeHectopascals,
@@ -13,6 +13,7 @@ import {
   ISA_TROPOPAUSE_ALTITUDE_FT,
   ISA_SPEED_OF_SOUND_SEA_LEVEL_KT,
 } from './isa.js';
+import { close } from './test-utils.js';
 
 describe('ISA standard atmosphere model', () => {
   describe('isaTemperatureCelsius', () => {

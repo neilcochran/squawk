@@ -1,12 +1,13 @@
+import { act, render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render } from '@testing-library/react';
+
 import { ChartMode } from './chart-mode.tsx';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
-import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
-import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
-import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
+import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
+import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
+import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
 import type { ChartSearch } from './url-state.ts';
 
 /**

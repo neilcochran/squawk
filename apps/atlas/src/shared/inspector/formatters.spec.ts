@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+
 import type { Airport, Airway, AirwayWaypoint, Fix, Navaid } from '@squawk/types';
+
 import {
   formatAirportFacilityType,
   formatAirportRunway,

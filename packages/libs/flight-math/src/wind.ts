@@ -4,8 +4,9 @@
  * reverse wind triangle (finding the wind from observed ground track and airspeed).
  */
 
-import type { WindComponents, WindTriangleResult, WindVector } from './types/wind.js';
 import { angle } from '@squawk/units';
+
+import type { WindComponents, WindTriangleResult, WindVector } from './types/wind.js';
 
 /**
  * Normalizes an angle to the range [0, 360).

@@ -1,9 +1,7 @@
-import { useMemo } from 'react';
-import type { ReactElement } from 'react';
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import { getRouteApi } from '@tanstack/react-router';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
-import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type {
   Feature,
   FeatureCollection,
@@ -12,11 +10,16 @@ import type {
   MultiLineString,
   Point,
 } from 'geojson';
+import type { ReactElement } from 'react';
+import { useMemo } from 'react';
+
 import type { Airway, AirwayType } from '@squawk/types';
+
 import { useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef, useHoveredAirwayWaypointIndex } from '../highlight-context.ts';
 import { AIRWAY_CATEGORY_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
+
 import { buildSegments } from './airway-segments.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);

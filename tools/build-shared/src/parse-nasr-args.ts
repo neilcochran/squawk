@@ -1,4 +1,5 @@
 import { basename } from 'node:path';
+
 import { resolveInput } from './resolve-input.js';
 import type { ResolvedInput } from './resolve-input.js';
 

@@ -1,6 +1,7 @@
+import { Link, useRouterState } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import type { MouseEvent, ReactElement, ReactNode } from 'react';
-import { Link, useRouterState } from '@tanstack/react-router';
+
 import { CHART_ROUTE_PATH } from '../modes/chart/url-state.ts';
 import { dispatchChartViewReset } from '../modes/chart/view-reset-bus.ts';
 

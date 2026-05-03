@@ -1,4 +1,5 @@
 import type { Position } from 'geojson';
+
 import type { AirwayWaypoint } from '@squawk/types';
 
 /**

@@ -12,6 +12,7 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+
 import { getIcaoRegistry } from '../resolvers.js';
 
 /** Pattern matching a valid 24-bit ICAO hex address (1-6 hex digits). */

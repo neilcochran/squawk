@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+
 import { dispatchChartViewReset, subscribeChartViewReset } from './view-reset-bus.ts';
 
 describe('chart-view reset bus', () => {

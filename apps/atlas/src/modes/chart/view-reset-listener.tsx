@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
 import { useMap } from '@vis.gl/react-maplibre';
+import { useEffect } from 'react';
+
 import { CHART_DEFAULTS } from './url-state.ts';
 import { subscribeChartViewReset } from './view-reset-bus.ts';
 

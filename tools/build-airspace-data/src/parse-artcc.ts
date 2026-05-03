@@ -1,8 +1,11 @@
 import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
+
 import type { Polygon } from 'geojson';
-import type { AirspaceFeature, AltitudeBound, ArtccStratum, Coordinates } from '@squawk/types';
+
 import { closeRing, parseCsvLine } from '@squawk/build-shared';
+import type { AirspaceFeature, AltitudeBound, ArtccStratum, Coordinates } from '@squawk/types';
+
 import { simplifyPolygon } from './simplify-polygon.js';
 import { splitAtAntimeridian } from './split-antimeridian.js';
 

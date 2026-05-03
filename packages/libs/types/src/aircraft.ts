@@ -1,6 +1,7 @@
 import type { Airport } from './airport.js';
-import type { AircraftRegistration } from './index.js';
 import type { Position } from './position.js';
+
+import type { AircraftRegistration } from './index.js';
 
 /**
  * ICAO/FAA aircraft category codes mapped to human-readable labels.

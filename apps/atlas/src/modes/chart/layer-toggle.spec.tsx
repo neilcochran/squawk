@@ -1,6 +1,7 @@
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+
 import { LayerToggle } from './layer-toggle.tsx';
 import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, LAYER_IDS } from './url-state.ts';
 import type { ChartSearch } from './url-state.ts';

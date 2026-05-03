@@ -1,11 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ChartLoadingIndicator } from './chart-loading-indicator.tsx';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import * as airportDataset from '../../shared/data/airport-dataset.ts';
 import * as airspaceDataset from '../../shared/data/airspace-dataset.ts';
 import * as airwayDataset from '../../shared/data/airway-dataset.ts';
 import * as fixDataset from '../../shared/data/fix-dataset.ts';
 import * as navaidDataset from '../../shared/data/navaid-dataset.ts';
+
+import { ChartLoadingIndicator } from './chart-loading-indicator.tsx';
 
 interface FakeMap {
   on: ReturnType<typeof vi.fn>;

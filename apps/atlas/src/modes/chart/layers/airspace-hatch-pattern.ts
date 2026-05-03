@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { useMap } from '@vis.gl/react-maplibre';
+import { useEffect } from 'react';
 
 /**
  * Base name for the diagonal hatch pattern image used by the highlight

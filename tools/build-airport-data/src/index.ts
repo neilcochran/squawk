@@ -1,11 +1,14 @@
 import { readdirSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
+
 import AdmZip from 'adm-zip';
+
 import { parseNasrArgs, parseCsv } from '@squawk/build-shared';
 import type { CsvRecord } from '@squawk/build-shared';
+import type { Airport } from '@squawk/types';
+
 import { buildAirport } from './parse-airports.js';
 import { writeOutput } from './write-output.js';
-import type { Airport } from '@squawk/types';
 
 /** Subdirectory within a NASR subscription directory containing the CSV data ZIP. */
 const CSV_DATA_DIR = 'CSV_Data';

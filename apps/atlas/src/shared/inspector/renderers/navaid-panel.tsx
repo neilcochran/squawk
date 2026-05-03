@@ -1,10 +1,13 @@
 import type { ReactElement } from 'react';
+
 import type { Navaid } from '@squawk/types';
+
 import {
   formatNavaidFrequency,
   formatNavaidMagVariation,
   formatNavaidStatus,
 } from '../formatters.ts';
+
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**

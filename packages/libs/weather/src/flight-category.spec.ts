@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { deriveFlightCategory } from './flight-category.js';
 import type { SkyCondition } from './types/index.js';
 

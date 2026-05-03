@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
-import { FIXES_HIGHLIGHT_LAYER_ID, FIXES_LAYER_ID, FixesLayer } from './fixes-layer.tsx';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import type { FixDataset } from '@squawk/fix-data';
+
+import { FIXES_HIGHLIGHT_LAYER_ID, FIXES_LAYER_ID, FixesLayer } from './fixes-layer.tsx';
 
 const { useFixDatasetMock, useActiveHighlightRefMock } = vi.hoisted(() => ({
   useFixDatasetMock: vi.fn(),

@@ -1,9 +1,10 @@
+import { render, screen, fireEvent } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+
+import type { InspectableFeature } from './click-to-select.ts';
 import { DisambiguationPopover } from './disambiguation-popover.tsx';
 import { HighlightProvider } from './highlight-provider.tsx';
-import type { InspectableFeature } from './click-to-select.ts';
 import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
 import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspace-layer.tsx';
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';

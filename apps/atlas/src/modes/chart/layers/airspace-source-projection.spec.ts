@@ -1,12 +1,6 @@
-import { describe, it, expect } from 'vitest';
 import type { Feature, FeatureCollection, Polygon } from 'geojson';
-import {
-  AIRSPACE_BADGE_OFFSET_PROPERTY,
-  AIRSPACE_FEATURE_COUNT_PROPERTY,
-  AIRSPACE_FEATURE_INDEX_PROPERTY,
-  AIRSPACE_FEATURE_LABEL_PROPERTY,
-  projectAirspaceSource,
-} from './airspace-source-projection.ts';
+import { describe, it, expect } from 'vitest';
+
 import {
   AIRSPACE_CEILING_FT_PROPERTY,
   AIRSPACE_CEILING_REF_PROPERTY,
@@ -14,6 +8,14 @@ import {
   AIRSPACE_FLOOR_REF_PROPERTY,
   AIRSPACE_MATCH_KEY_PROPERTY,
 } from '../../../shared/inspector/airspace-feature.ts';
+
+import {
+  AIRSPACE_BADGE_OFFSET_PROPERTY,
+  AIRSPACE_FEATURE_COUNT_PROPERTY,
+  AIRSPACE_FEATURE_INDEX_PROPERTY,
+  AIRSPACE_FEATURE_LABEL_PROPERTY,
+  projectAirspaceSource,
+} from './airspace-source-projection.ts';
 
 interface BuildFeatureParams {
   type: string;

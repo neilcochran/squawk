@@ -1,5 +1,6 @@
-import type { Taf } from '../types/index.js';
 import { parseTaf } from '../taf-parser.js';
+import type { Taf } from '../types/index.js';
+
 import {
   buildAwcUrl,
   parseRecords,

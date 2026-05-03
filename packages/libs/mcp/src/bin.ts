@@ -9,6 +9,7 @@
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
 import {
   createSquawkMcpServer,
   PACKAGE_NAME,

@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 import type { ReactElement } from 'react';
+
 import type { AirspaceFeature } from '@squawk/types';
+
 import { useSetHoveredFeatureIndex } from '../../../modes/chart/highlight-context.ts';
 import { formatAltitudeBoundVerbose } from '../airspace-feature.ts';
+
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**

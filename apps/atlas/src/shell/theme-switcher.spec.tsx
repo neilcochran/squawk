@@ -1,9 +1,12 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { createContext } from 'react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { ThemeSwitcher } from './theme-switcher.tsx';
-import { ThemeProvider } from '../shared/styles/theme-provider.tsx';
+
 import { THEME_STORAGE_KEY } from '../shared/styles/theme-context.ts';
+import { ThemeProvider } from '../shared/styles/theme-provider.tsx';
+
+import { ThemeSwitcher } from './theme-switcher.tsx';
 
 // Radix DropdownMenu's open/close cycle drives off pointer events that
 // jsdom does not fully simulate, and its internals (portal layout,
@@ -105,7 +108,6 @@ vi.mock('@radix-ui/react-dropdown-menu', () => {
 // Lightweight context shim used by the mocked RadioGroup/RadioItem to
 // thread the current value + change handler from the parent into the
 // items, mirroring Radix's real implementation.
-import { createContext } from 'react';
 const RadioGroupContext = createContext<
   { value: string; onValueChange: (next: string) => void } | undefined
 >(undefined);
