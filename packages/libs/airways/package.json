@@ -35,8 +35,7 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/types": "^0.7.1",
-    "@squawk/units": "^0.4.1"
+    "@squawk/types": "^0.7.1"
   },
   "devDependencies": {
     "@squawk/airway-data": "^0.5.1",

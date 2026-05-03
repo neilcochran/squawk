@@ -36,7 +36,8 @@
   },
   "dependencies": {
     "@squawk/geo": "^0.4.0",
-    "@squawk/types": "^0.7.1"
+    "@squawk/types": "^0.7.1",
+    "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {
     "@squawk/airspace-data": "^0.5.1",

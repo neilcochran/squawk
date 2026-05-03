@@ -23,6 +23,8 @@ jobs:
 
       - run: npm run lint
 
+      - run: npm run knip
+
       - run: npm run format:check
 
       - run: npm run build

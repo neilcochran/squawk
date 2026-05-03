@@ -48,7 +48,8 @@
   },
   "dependencies": {
     "@squawk/types": "^0.7.1",
-    "@squawk/units": "^0.4.1"
+    "@squawk/units": "^0.4.1",
+    "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {
     "@types/node": "^25.6.0"
