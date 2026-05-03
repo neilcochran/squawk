@@ -1193,4 +1193,25 @@ MOD TURB BTN FL250 AND FL380.`;
       expect(turbOutlook).toBeDefined();
     });
   });
+
+  // Regression for CodeQL js/polynomial-redos on the section splitter.
+  // The previous regex /\n\s*\.\s*\n|\n\s*\.\s*$/ allowed two ambiguous \s*
+  // quantifiers to overlap on newline runs, producing O(n^2) backtracking.
+  // With the original pattern, 80k newlines took ~23 seconds; the linear
+  // replacement completes in well under a millisecond. The 100ms threshold
+  // leaves ~50x headroom over slow CI noise and still fails the original
+  // regex by ~230x.
+  describe('section-splitter ReDoS regression', () => {
+    it('parses pathological newline-heavy input in well under 100ms', () => {
+      const raw = `AIRMET SIERRA FOR IFR\nVALID UNTIL 050400Z\n${'\n'.repeat(80_000)}`;
+      const start = performance.now();
+      try {
+        parseAirmet(raw);
+      } catch {
+        // Header-only input is allowed to throw; we only care about runtime.
+      }
+      const elapsedMs = performance.now() - start;
+      expect(elapsedMs).toBeLessThan(100);
+    });
+  });
 });

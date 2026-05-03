@@ -216,8 +216,11 @@ function splitSections(body: string): string[] {
 
   const afterHeader = body.substring(validMatch.index! + validMatch[0].length);
 
-  // Split on lines that are just "." (possibly with whitespace)
-  const rawSections = afterHeader.split(/\n\s*\.\s*\n|\n\s*\.\s*$/);
+  // Split on lines that are just "." (possibly with horizontal whitespace).
+  // [^\S\n] matches whitespace except newline; using \s* here allowed two
+  // ambiguous quantifiers to overlap on newline runs, producing O(n^2)
+  // backtracking on attacker-controlled input (CodeQL js/polynomial-redos).
+  const rawSections = afterHeader.split(/\n[^\S\n]*\.[^\S\n]*(?:\n|$)/);
 
   // Also handle inline dots for simple test data that has no newlines
   const sections: string[] = [];
