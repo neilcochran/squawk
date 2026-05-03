@@ -29,6 +29,8 @@ jobs:
 
       - run: npm run build
 
+      # The test:coverage script uses --concurrency=50% to avoid
+      # oversubscription with vitest's internal worker pool.
       - run: npm run test:coverage
 
       - run: npm run lint:pack
