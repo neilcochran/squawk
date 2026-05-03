@@ -7,8 +7,10 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { computeRouteDistance, createFlightplanResolver } from '@squawk/flightplan';
 import { z } from 'zod';
+
+import { computeRouteDistance, createFlightplanResolver } from '@squawk/flightplan';
+
 import {
   airportResolver,
   airwayResolver,

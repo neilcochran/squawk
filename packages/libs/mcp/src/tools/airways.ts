@@ -5,9 +5,11 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
 import type { AirwaySearchQuery } from '@squawk/airways';
 import type { AirwayType } from '@squawk/types';
-import { z } from 'zod';
+
 import { airwayResolver } from '../resolvers.js';
 
 /** All {@link AirwayType} values, used for input validation. */

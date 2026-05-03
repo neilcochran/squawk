@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+
 import { fetchCifp, loadCifpFromPath, type LoadedCifp } from './fetch-cifp.js';
 import { parseCifp } from './parse-cifp.js';
 import { writeOutput } from './write-output.js';

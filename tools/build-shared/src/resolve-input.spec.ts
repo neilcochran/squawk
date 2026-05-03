@@ -1,8 +1,10 @@
-import { describe, it, beforeEach, afterEach, expect, assert } from 'vitest';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { describe, it, beforeEach, afterEach, expect, assert } from 'vitest';
+
 import { resolveInput } from './resolve-input.js';
 
 let sandbox: string;

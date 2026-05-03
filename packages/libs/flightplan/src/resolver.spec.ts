@@ -1,11 +1,14 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
-import type { FlightplanResolver } from './resolver.js';
+
 import { createFlightplanResolver } from './resolver.js';
-import type { FlightplanAirportLookup } from './resolver.js';
-import type { FlightplanNavaidLookup } from './resolver.js';
-import type { FlightplanFixLookup } from './resolver.js';
-import type { FlightplanAirwayLookup } from './resolver.js';
-import type { FlightplanProcedureLookup } from './resolver.js';
+import type {
+  FlightplanResolver,
+  FlightplanAirportLookup,
+  FlightplanNavaidLookup,
+  FlightplanFixLookup,
+  FlightplanAirwayLookup,
+  FlightplanProcedureLookup,
+} from './resolver.js';
 
 let airports: FlightplanAirportLookup;
 let navaids: FlightplanNavaidLookup;

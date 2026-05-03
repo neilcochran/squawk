@@ -3,8 +3,9 @@
  * ETE/fuel planning, and 1-in-60 rule crosstrack corrections.
  */
 
-import type { HoldingPatternEntryType } from './types/navigation.js';
 import { angle } from '@squawk/units';
+
+import type { HoldingPatternEntryType } from './types/navigation.js';
 
 /** Standard acceleration of gravity in ft/s^2. */
 const G_FT_S2 = 32.174;

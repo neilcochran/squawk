@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import type { Airway } from '@squawk/types';
+
 import { AirwayPanel } from './airway-panel.tsx';
 
 const { setHoveredAirwayWaypointIndexMock, canHoverMock } = vi.hoisted(() => ({

@@ -1,5 +1,7 @@
 import { describe, it, assert } from 'vitest';
+
 import { close } from './test-utils.js';
+
 import { wind } from './index.js';
 
 describe('solveWindTriangle', () => {

@@ -1,10 +1,12 @@
-import { useCallback, useMemo } from 'react';
-import type { ReactElement } from 'react';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useMap } from '@vis.gl/react-maplibre';
+import { useCallback, useMemo } from 'react';
+import type { ReactElement } from 'react';
+
 import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
 import { useHoveredAirwayWaypointIndex } from '../../modes/chart/highlight-context.ts';
 import { CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
+
 import { buildInspectorChipList } from './chip-builders.ts';
 import type { Chip } from './chip-builders.ts';
 import { useDatasetStates, resolveSelectionFromState } from './entity-resolver.ts';

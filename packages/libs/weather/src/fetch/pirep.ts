@@ -1,5 +1,6 @@
-import type { Pirep } from '../types/index.js';
 import { parsePirep } from '../pirep-parser.js';
+import type { Pirep } from '../types/index.js';
+
 import {
   buildAwcUrl,
   parseRecords,

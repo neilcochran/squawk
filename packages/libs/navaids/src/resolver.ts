@@ -1,5 +1,5 @@
-import type { Navaid, NavaidType } from '@squawk/types';
 import { greatCircle } from '@squawk/geo';
+import type { Navaid, NavaidType } from '@squawk/types';
 
 /**
  * Options for creating a navaid resolver.

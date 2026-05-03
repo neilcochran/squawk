@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { useChartColors } from './chart-colors.ts';
 import type { ChartColorPalette } from './chart-colors.ts';
-import { ThemeProvider } from './theme-provider.tsx';
 import { PREFERS_DARK_MEDIA_QUERY, THEME_STORAGE_KEY } from './theme-context.ts';
+import { ThemeProvider } from './theme-provider.tsx';
 
 /**
  * Builds a matchMedia stub honoring the supplied dark preference for

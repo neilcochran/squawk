@@ -1,5 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import {
   FUEL_DENSITY,
   gallonsToLiters,
@@ -16,6 +16,7 @@ import {
   kilogramsToLiters,
 } from './fuel.js';
 import type { FuelDensity } from './fuel.js';
+import { close } from './test-utils.js';
 
 describe('fuel conversions', () => {
   describe('gallonsToLiters / litersToGallons', () => {

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+
 import type { AircraftRegistration } from '@squawk/types';
+
 import { createIcaoRegistry } from './registry.js';
 
 const sampleRecords: AircraftRegistration[] = [

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { loadUsBundledAirways } from '@squawk/airway-data/browser';
+
 import type { AirwayDataset } from '@squawk/airway-data';
+import { loadUsBundledAirways } from '@squawk/airway-data/browser';
 
 /**
  * Module-level cached promise so the bundled airway dataset is fetched at

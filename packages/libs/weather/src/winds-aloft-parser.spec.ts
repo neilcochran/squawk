@@ -1,4 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { getLevelAtFt, parseWindsAloft } from './winds-aloft-parser.js';
 
 // Reference data - selected rows from reference-data/weather/winds-aloft/basic-conus-low.txt

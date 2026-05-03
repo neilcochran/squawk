@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { pointInPolygon, boundingBox, pointInBoundingBox } from './polygon.js';
 
 /** Simple square polygon: corners at (0,0), (10,0), (10,10), (0,10). */

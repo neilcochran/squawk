@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { AIRCRAFT_TYPE_MAP, ENGINE_TYPE_MAP } from './code-maps.js';
 
 describe('AIRCRAFT_TYPE_MAP', () => {

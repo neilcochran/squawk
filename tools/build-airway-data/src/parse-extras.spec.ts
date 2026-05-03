@@ -1,4 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
 import type { Ats1Record, Ats2Record } from './parse-ats.js';
 import { parseAwy1, parseAwy2, buildWaypoint } from './parse-awy.js';

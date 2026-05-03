@@ -1,6 +1,9 @@
 import type { ReactElement } from 'react';
+
 import type { Fix } from '@squawk/types';
+
 import { formatFixUseCode } from '../formatters.ts';
+
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**

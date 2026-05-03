@@ -10,6 +10,7 @@
  */
 
 import type { Fix } from '@squawk/types';
+
 import type { FixDataset, FixDatasetProperties } from './node.js';
 
 /**

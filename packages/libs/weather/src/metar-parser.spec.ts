@@ -1,4 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { parseMetar } from './metar-parser.js';
 
 // ---------------------------------------------------------------------------

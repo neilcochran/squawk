@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
-import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join, basename } from 'node:path';
 
 /**
  * Result of resolving a `--local` input path.

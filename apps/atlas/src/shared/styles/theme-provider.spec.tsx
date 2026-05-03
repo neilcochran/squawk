@@ -1,13 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { ThemeProvider } from './theme-provider.tsx';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
   DARK_CLASS_NAME,
   PREFERS_DARK_MEDIA_QUERY,
   THEME_STORAGE_KEY,
   useTheme,
 } from './theme-context.ts';
+import { ThemeProvider } from './theme-provider.tsx';
 
 /**
  * Builds a matchMedia stub that lets tests force a specific

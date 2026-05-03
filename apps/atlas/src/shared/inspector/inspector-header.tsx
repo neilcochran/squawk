@@ -1,5 +1,7 @@
 import type { ReactElement } from 'react';
+
 import { MapControlButton } from '../ui/map-control-button.tsx';
+
 import type { ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
 import { CloseIcon, RecenterIcon } from './inspector-icons.tsx';
 

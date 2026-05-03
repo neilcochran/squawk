@@ -1,4 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { parsePirep } from './pirep-parser.js';
 
 describe('parsePirep', () => {

@@ -1,4 +1,5 @@
 import type { AircraftRegistration } from '@squawk/types';
+
 import { AIRCRAFT_TYPE_MAP, ENGINE_TYPE_MAP } from './code-maps.js';
 
 /**

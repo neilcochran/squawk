@@ -1,4 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { usBundledNavaids } from './index.js';
 
 describe('usBundledNavaids', () => {

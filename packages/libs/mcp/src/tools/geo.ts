@@ -6,8 +6,9 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { greatCircle } from '@squawk/geo';
 import { z } from 'zod';
+
+import { greatCircle } from '@squawk/geo';
 
 /** Reusable zod fragment describing a latitude input. */
 const latFragment = z

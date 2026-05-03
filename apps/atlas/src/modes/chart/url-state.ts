@@ -1,5 +1,7 @@
 import { z } from 'zod';
+
 import type { AirspaceType, AirwayType } from '@squawk/types';
+
 import { MAP_MAX_PITCH } from '../../shared/map/map-canvas.tsx';
 
 /**

@@ -1,5 +1,7 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
+
 import type { Fix, FixUseCode } from '@squawk/types';
+
 import { createFixResolver } from './resolver.js';
 import type { FixResolver } from './resolver.js';
 

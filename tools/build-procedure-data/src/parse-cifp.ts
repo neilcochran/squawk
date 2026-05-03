@@ -5,8 +5,9 @@ import type {
   ProcedureLegFixCategory,
   ProcedureTransition,
 } from '@squawk/types';
-import { parseArincLatitude, parseArincLongitude } from './coord.js';
+
 import { approachTypeFromRouteType, runwayFromApproachIdentifier } from './classify-approach.js';
+import { parseArincLatitude, parseArincLongitude } from './coord.js';
 import { decodePrimaryLegRecord, type DecodedLegRecord } from './decode-leg.js';
 
 /**

@@ -1,6 +1,7 @@
 import { describe, it, expect, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import { distanceNm, bearing, bearingAndDistance, midpoint, destination } from './great-circle.js';
+import { close } from './test-utils.js';
 
 describe('distanceNm', () => {
   it('returns 0 for the same point', () => {

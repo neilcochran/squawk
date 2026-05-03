@@ -1,4 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
+
 import { splitAtAntimeridian } from './split-antimeridian.js';
 
 describe('splitAtAntimeridian', () => {

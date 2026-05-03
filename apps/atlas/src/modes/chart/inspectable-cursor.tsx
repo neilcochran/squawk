@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
 import { useMap } from '@vis.gl/react-maplibre';
+import { useEffect } from 'react';
+
 import { INSPECTABLE_LAYER_IDS } from './click-to-select.ts';
 
 /**

@@ -1,6 +1,8 @@
 import { describe, it, expect, assert } from 'vitest';
-import { buildFix, buildNavaidAssociation } from './parse-fixes.js';
+
 import type { CsvRecord } from '@squawk/build-shared';
+
+import { buildFix, buildNavaidAssociation } from './parse-fixes.js';
 
 function baseRec(overrides: Partial<CsvRecord> = {}): CsvRecord {
   return {

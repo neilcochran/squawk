@@ -1,13 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import type { AirwayDataset } from '@squawk/airway-data';
+
 import {
   AIRWAYS_HIGHLIGHT_LAYER_ID,
   AIRWAYS_LAYER_ID,
   AirwayLegFocusLayer,
   AirwaysLayer,
 } from './airways-layer.tsx';
-import type { AirwayDataset } from '@squawk/airway-data';
 
 const {
   useAirwayDatasetMock,

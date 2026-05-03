@@ -1,12 +1,14 @@
 import { describe, it, expect, assert } from 'vitest';
+
+import type { ProcedureLeg } from '@squawk/types';
+
+import type { DecodedLegRecord } from './decode-leg.js';
 import {
   buildFixIndex,
   composeName,
   findEmbeddedMissedApproachStart,
   isCommonRouteRouteType,
 } from './parse-cifp.js';
-import type { DecodedLegRecord } from './decode-leg.js';
-import type { ProcedureLeg } from '@squawk/types';
 
 /**
  * Builds a 132-character ARINC 424 record from field-keyed overrides.

@@ -1,9 +1,14 @@
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { Fragment, useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
-import { getRouteApi, useNavigate } from '@tanstack/react-router';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { MenuItemRow } from '../../shared/ui/menu-item-row.tsx';
+
 import { FLOATING_SURFACE_CLASSES, FOCUS_RING_CLASSES } from '../../shared/styles/style-tokens.ts';
+import { MenuItemRow } from '../../shared/ui/menu-item-row.tsx';
+
+import { useAirspace3DAutoHidePreference } from './airspace-3d-preference.ts';
+import { CheckIcon } from './layer-toggle-icons.tsx';
+import { ExpandableParentRow, SimpleParentRow, SubRow } from './layer-toggle-rows.tsx';
 import {
   AIRSPACE_CLASSES,
   AIRWAY_CATEGORIES,
@@ -12,9 +17,6 @@ import {
   LAYER_MIN_ZOOM,
 } from './url-state.ts';
 import type { AirspaceClass, AirwayCategory, LayerId } from './url-state.ts';
-import { ExpandableParentRow, SimpleParentRow, SubRow } from './layer-toggle-rows.tsx';
-import { CheckIcon } from './layer-toggle-icons.tsx';
-import { useAirspace3DAutoHidePreference } from './airspace-3d-preference.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 

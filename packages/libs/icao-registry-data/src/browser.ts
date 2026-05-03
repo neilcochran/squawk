@@ -10,6 +10,7 @@
  */
 
 import type { AircraftRegistration } from '@squawk/types';
+
 import type { RegistryDataset, RegistryDatasetProperties } from './node.js';
 
 /**

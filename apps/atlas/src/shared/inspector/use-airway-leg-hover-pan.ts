@@ -1,12 +1,13 @@
-import { useEffect, useRef } from 'react';
 import type { MapRef } from '@vis.gl/react-maplibre';
+import { useEffect, useRef } from 'react';
+
+import type { ResolvedEntityState } from './entity-resolver.ts';
 import {
   getMapInstance,
   isPointOutsideComfortableArea,
   panToFeatureWithInspectorOffset,
   restoreCenter,
 } from './use-chip-hover-pan.ts';
-import type { ResolvedEntityState } from './entity-resolver.ts';
 
 /**
  * Inputs for {@link useAirwayLegHoverPan}. The hook is hard-wired to

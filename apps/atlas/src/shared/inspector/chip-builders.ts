@@ -1,5 +1,7 @@
 import type { Polygon } from 'geojson';
+
 import { polygonGeoJson } from '@squawk/geo';
+
 import {
   formatAirspaceLabel,
   formatChipLabel,
@@ -8,18 +10,19 @@ import {
 import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
 import { AIRSPACE_CLASS_FOR_TYPE } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
+
 import {
   compareAirspaceByAltitudeDesc,
   isAirspacePolygonFeature,
   readAirspaceAltitudeKey,
 } from './airspace-feature.ts';
 import type { AirspaceAltitudeKey } from './airspace-feature.ts';
+import { resolveSelectionFromState } from './entity-resolver.ts';
+import type { ChartDatasetStates, ResolvedEntityState } from './entity-resolver.ts';
 import { parseSelected } from './entity.ts';
 import type { EntityType } from './entity.ts';
 import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.ts';
 import type { BoundingBox } from './geometry.ts';
-import { resolveSelectionFromState } from './entity-resolver.ts';
-import type { ChartDatasetStates, ResolvedEntityState } from './entity-resolver.ts';
 
 /**
  * Maximum number of chips rendered in the "Switch to another feature here"

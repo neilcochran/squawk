@@ -1,4 +1,13 @@
 import type { Coordinates } from '@squawk/types';
+
+import {
+  parseAltitudeRange,
+  parseIcaoPosition,
+  parseIntensityChange,
+  parseMovement,
+  parseTimeString,
+  parseVolcanoPosition,
+} from './advisory-utils.js';
 import type {
   ConvectiveSigmet,
   ConvectiveSigmetOutlook,
@@ -13,14 +22,6 @@ import type {
   SigmetSeriesName,
   SigmetTops,
 } from './types/index.js';
-import {
-  parseAltitudeRange,
-  parseIcaoPosition,
-  parseIntensityChange,
-  parseMovement,
-  parseTimeString,
-  parseVolcanoPosition,
-} from './advisory-utils.js';
 
 /**
  * Parses a single SIGMET record into a structured {@link Sigmet} object.

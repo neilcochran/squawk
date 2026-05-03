@@ -7,12 +7,14 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
 import { usBundledAirports } from '@squawk/airport-data';
 import { usBundledAirspace } from '@squawk/airspace-data';
 import { usBundledAirways } from '@squawk/airway-data';
 import { usBundledFixes } from '@squawk/fix-data';
 import { usBundledNavaids } from '@squawk/navaid-data';
 import { usBundledProcedures } from '@squawk/procedure-data';
+
 import { getIcaoRegistryMetadata, isIcaoRegistryLoaded } from '../resolvers.js';
 
 /**

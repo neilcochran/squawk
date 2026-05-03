@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { resolveStratum, splitClosedShapes, type ArtccSegPoint } from './parse-artcc.js';
 
 describe('resolveStratum', () => {

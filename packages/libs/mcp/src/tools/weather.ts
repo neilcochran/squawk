@@ -10,6 +10,8 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
 import {
   parseAirmet,
   parseMetar,
@@ -34,7 +36,7 @@ import {
   type WindsAloftAltitudeBand,
   type WindsAloftRegion,
 } from '@squawk/weather/fetch';
-import { z } from 'zod';
+
 import { runParser, summarizeParseErrors } from './tool-helpers.js';
 
 /** Allowed values for the AWC SIGMET hazard filter. */

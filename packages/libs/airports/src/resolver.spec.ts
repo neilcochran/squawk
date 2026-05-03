@@ -1,5 +1,7 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
+
 import type { Airport, FacilityType } from '@squawk/types';
+
 import { createAirportResolver } from './resolver.js';
 import type { AirportResolver } from './resolver.js';
 

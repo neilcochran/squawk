@@ -1,4 +1,5 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
+
 import { createProcedureResolver } from './resolver.js';
 import type { ProcedureResolver } from './resolver.js';
 

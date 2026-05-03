@@ -1,12 +1,4 @@
-import type {
-  Airway,
-  AirwayType,
-  AirwayRegion,
-  AirwayWaypoint,
-  AirwayWaypointType,
-  AWY_TYPE_MAP,
-  AIRWAY_REGION_MAP,
-} from '@squawk/types';
+import type { AirwayWaypoint, AirwayWaypointType } from '@squawk/types';
 
 /**
  * Parsed fields from an AWY1 (segment data) record.

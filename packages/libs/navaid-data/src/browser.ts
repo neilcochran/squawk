@@ -10,6 +10,7 @@
  */
 
 import type { Navaid } from '@squawk/types';
+
 import type { NavaidDataset, NavaidDatasetProperties } from './node.js';
 
 /**

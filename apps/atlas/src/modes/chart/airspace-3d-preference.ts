@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+
 import type { AirspaceClass } from './url-state.ts';
 
 /**

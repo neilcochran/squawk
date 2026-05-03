@@ -1,12 +1,15 @@
 import { createRequire } from 'node:module';
+
 import type { Polygon, MultiPolygon, Feature } from 'geojson';
+
 import type { AirspaceFeature, AirspaceType } from '@squawk/types';
+
 import { normalizeShapefileAltitude } from './normalize-altitude.js';
 import { simplifyPolygon } from './simplify-polygon.js';
 
 // The shapefile package is CommonJS-only. createRequire lets us load it from
 // an ESM module without converting the whole script to CommonJS.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const require = createRequire(import.meta.url);
 
 /** Minimal typing for the parts of the shapefile package used here. */

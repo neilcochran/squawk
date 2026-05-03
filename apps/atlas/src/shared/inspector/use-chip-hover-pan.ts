@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MapRef } from '@vis.gl/react-maplibre';
 import type { Map as MaplibreMap } from 'maplibre-gl';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.ts';
+
 import { resolveSelectionFromState } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
 import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.ts';

@@ -8,6 +8,7 @@
  */
 
 import type { Polygon } from 'geojson';
+
 import type { BoundingBox } from './polygon.js';
 
 /**

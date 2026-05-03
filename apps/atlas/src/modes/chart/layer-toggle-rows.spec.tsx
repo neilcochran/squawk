@@ -1,6 +1,7 @@
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+
 import { ExpandableParentRow, SimpleParentRow, SubRow } from './layer-toggle-rows.tsx';
 
 // Radix DropdownMenu's primitives expect to live inside a Root + Portal +

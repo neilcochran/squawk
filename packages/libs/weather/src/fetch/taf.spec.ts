@@ -1,6 +1,7 @@
 import { describe, it, vi, afterEach, expect, assert } from 'vitest';
-import { fetchTaf } from './taf.js';
+
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
+import { fetchTaf } from './taf.js';
 
 afterEach(() => {
   vi.restoreAllMocks();

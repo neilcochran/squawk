@@ -1,15 +1,16 @@
+import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createRouter, RouterProvider } from '@tanstack/react-router';
+
 import './index.css';
 import { routeTree } from './routeTree.gen.ts';
-import { ThemeProvider } from './shared/styles/theme-provider.tsx';
 import {
   DARK_CLASS_NAME,
   PREFERS_DARK_MEDIA_QUERY,
   THEME_STORAGE_KEY,
   isThemePreference,
 } from './shared/styles/theme-context.ts';
+import { ThemeProvider } from './shared/styles/theme-provider.tsx';
 
 // FOUC guard. Resolve the persisted theme preference (or the OS preference
 // when the user is on `'system'`) and apply the `.dark` class to

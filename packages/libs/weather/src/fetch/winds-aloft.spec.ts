@@ -1,6 +1,7 @@
 import { describe, it, vi, afterEach, expect } from 'vitest';
-import { fetchWindsAloft } from './winds-aloft.js';
+
 import { AwcFetchError, DEFAULT_AWC_BASE_URL } from './client.js';
+import { fetchWindsAloft } from './winds-aloft.js';
 
 afterEach(() => {
   vi.restoreAllMocks();

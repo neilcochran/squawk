@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+
 import type { EntityRef } from '../../shared/inspector/entity.ts';
 
 /**

@@ -1,6 +1,8 @@
-import type { KeyboardEvent, MouseEvent, PointerEvent, ReactElement } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactElement } from 'react';
+
 import { MenuItemRow } from '../../shared/ui/menu-item-row.tsx';
+
 import { SubCountChip, ZoomGatedHint } from './layer-toggle-chips.tsx';
 import { CheckIcon, ChevronRightIcon } from './layer-toggle-icons.tsx';
 

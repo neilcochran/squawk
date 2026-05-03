@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, renderHook } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
+import { describe, it, expect, vi } from 'vitest';
+
 import {
   useActiveHighlightRef,
   useHoveredAirwayWaypointIndex,

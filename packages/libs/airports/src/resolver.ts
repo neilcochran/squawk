@@ -1,5 +1,5 @@
-import type { Airport, FacilityType } from '@squawk/types';
 import { greatCircle } from '@squawk/geo';
+import type { Airport, FacilityType } from '@squawk/types';
 
 /**
  * Options for creating an airport resolver.

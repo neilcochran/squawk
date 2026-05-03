@@ -7,7 +7,7 @@
   "author": "Neil Cochran",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.16"
   },
   "main": "./dist/index.js",
   "scripts": {
@@ -16,7 +16,8 @@
     "test:coverage": "vitest run --coverage",
     "start": "node dist/index.js",
     "validate": "node validate.mjs",
-    "viewer": "npx http-server ../.. -p 8080 -o /scripts/build-airspace-data/viewer.html"
+    "viewer": "npx http-server ../.. -p 8080 -o /scripts/build-airspace-data/viewer.html",
+    "lint": "tsc --noEmit && eslint src"
   },
   "dependencies": {
     "@squawk/build-shared": "*",

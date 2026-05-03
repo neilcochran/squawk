@@ -1,5 +1,5 @@
 import { describe, it, expect, assert } from 'vitest';
-import { close } from './test-utils.js';
+
 import {
   magneticDeclination,
   magneticField,
@@ -7,6 +7,7 @@ import {
   magneticToTrue,
   dateToDecimalYear,
 } from './magnetic.js';
+import { close } from './test-utils.js';
 import type { MagneticFieldResult } from './types/magnetic.js';
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
-import type { Fix, FixUseCode } from '@squawk/types';
 import { greatCircle } from '@squawk/geo';
+import type { Fix, FixUseCode } from '@squawk/types';
 
 /**
  * Options for creating a fix resolver.

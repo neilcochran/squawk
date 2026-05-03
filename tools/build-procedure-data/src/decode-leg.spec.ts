@@ -1,15 +1,6 @@
 import { describe, it, expect, assert } from 'vitest';
-import { decodePrimaryLegRecord, isFirstMissedApproachLeg } from './decode-leg.js';
 
-/**
- * Pads a string to the given length with spaces so record fragments
- * can be assembled into a full 132-character ARINC 424 record.
- */
-function pad(value: string, length: number): string {
-  return value.length >= length
-    ? value.substring(0, length)
-    : value + ' '.repeat(length - value.length);
-}
+import { decodePrimaryLegRecord, isFirstMissedApproachLeg } from './decode-leg.js';
 
 /**
  * Builds a 132-character ARINC 424 airport-section primary record from
