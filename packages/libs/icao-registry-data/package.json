@@ -1,6 +1,6 @@
 {
   "name": "@squawk/icao-registry-data",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "type": "module",
   "description": "Pre-processed FAA ReleasableAircraft snapshot for use with @squawk/icao-registry",
   "author": "Neil Cochran",
@@ -42,7 +42,7 @@
     "lint:pack": "publint && attw --pack . --profile esm-only --exclude-entrypoints \"./data/icao-registry.json.gz\""
   },
   "dependencies": {
-    "@squawk/types": "^0.7.1"
+    "@squawk/types": "^0.7.2"
   },
   "keywords": [
     "aviation",

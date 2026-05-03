@@ -1,6 +1,6 @@
 {
   "name": "@squawk/fix-data",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "description": "Pre-processed FAA NASR fix/waypoint snapshot for use with @squawk/fixes",
   "author": "Neil Cochran",
@@ -42,7 +42,7 @@
     "lint:pack": "publint && attw --pack . --profile esm-only --exclude-entrypoints \"./data/fixes.json.gz\""
   },
   "dependencies": {
-    "@squawk/types": "^0.7.1"
+    "@squawk/types": "^0.7.2"
   },
   "keywords": [
     "aviation",

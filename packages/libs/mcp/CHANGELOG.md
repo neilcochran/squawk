@@ -1,5 +1,35 @@
 # @squawk/mcp
 
+## 0.8.8
+
+### Patch Changes
+
+- b9ff30c: ### Fixed
+  - Fix the broken MIT license badge link in every package README. The relative path was one level too shallow, so on GitHub (and on npm renderers that resolve relative paths against the repo) the badge landed on a non-existent `packages/LICENSE.md` instead of the repo's `LICENSE.md`. The badge now resolves correctly.
+  - Fix the broken `Documentation` link in `@squawk/flight-math`'s README. The typedoc URL slug used an underscore (`_squawk_flight_math.html`) instead of the dash form every sibling README uses (`_squawk_flight-math.html`), returning 404. Now points at the live docs page.
+
+- Updated dependencies [b9ff30c]
+  - @squawk/airport-data@0.7.2
+  - @squawk/airports@0.5.4
+  - @squawk/airspace-data@0.5.2
+  - @squawk/airspace@0.6.4
+  - @squawk/airway-data@0.5.2
+  - @squawk/airways@0.3.5
+  - @squawk/fix-data@0.6.2
+  - @squawk/fixes@0.2.5
+  - @squawk/flight-math@0.5.3
+  - @squawk/flightplan@0.4.5
+  - @squawk/geo@0.4.2
+  - @squawk/icao-registry-data@0.8.2
+  - @squawk/icao-registry@0.3.4
+  - @squawk/navaid-data@0.6.2
+  - @squawk/navaids@0.3.5
+  - @squawk/notams@0.3.4
+  - @squawk/procedure-data@0.7.1
+  - @squawk/procedures@0.4.4
+  - @squawk/types@0.7.2
+  - @squawk/weather@0.5.4
+
 ## 0.8.7
 
 ### Patch Changes
