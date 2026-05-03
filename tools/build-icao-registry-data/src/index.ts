@@ -1,8 +1,7 @@
-import { writeFile, unlink } from 'node:fs/promises';
+import { writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { parseFaaRegistryZip } from '@squawk/icao-registry';
 import { writeOutput } from './write-output.js';
 
@@ -38,11 +37,12 @@ function printUsageAndExit(): never {
 }
 
 /**
- * Downloads the FAA ReleasableAircraft.zip to a temporary file.
- * Returns the absolute path to the downloaded file. The caller is
- * responsible for deleting the temp file when done.
+ * Downloads the FAA ReleasableAircraft.zip into a private temporary
+ * directory. Returns the absolute path to the downloaded file along
+ * with the parent temp directory. The caller is responsible for
+ * removing the temp directory when done.
  */
-async function downloadFaaZip(): Promise<string> {
+async function downloadFaaZip(): Promise<{ zipPath: string; tempDir: string }> {
   console.log(`[index] Downloading ${FAA_DOWNLOAD_URL}...`);
   const response = await fetch(FAA_DOWNLOAD_URL, {
     headers: { 'User-Agent': FAA_USER_AGENT },
@@ -52,10 +52,11 @@ async function downloadFaaZip(): Promise<string> {
   }
 
   const buffer = Buffer.from(await response.arrayBuffer());
-  const tempPath = join(tmpdir(), `releasable-aircraft-${randomUUID()}.zip`);
-  await writeFile(tempPath, buffer);
-  console.log(`[index] Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB to ${tempPath}`);
-  return tempPath;
+  const tempDir = await mkdtemp(join(tmpdir(), 'releasable-aircraft-'));
+  const zipPath = join(tempDir, 'ReleasableAircraft.zip');
+  await writeFile(zipPath, buffer);
+  console.log(`[index] Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB to ${zipPath}`);
+  return { zipPath, tempDir };
 }
 
 /**
@@ -93,11 +94,12 @@ async function main(): Promise<void> {
   }
 
   let zipPath: string;
-  let tempZipPath: string | undefined;
+  let tempDir: string | undefined;
 
   if (mode === 'fetch') {
-    zipPath = await downloadFaaZip();
-    tempZipPath = zipPath;
+    const downloaded = await downloadFaaZip();
+    zipPath = downloaded.zipPath;
+    tempDir = downloaded.tempDir;
   } else {
     if (!localPath) {
       process.stderr.write('Error: --local requires a path argument.\n');
@@ -114,8 +116,8 @@ async function main(): Promise<void> {
 
     await writeOutput(records, outputPath);
   } finally {
-    if (tempZipPath) {
-      await unlink(tempZipPath).catch(() => undefined);
+    if (tempDir) {
+      await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
     }
   }
 }

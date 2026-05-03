@@ -1,8 +1,7 @@
-import { writeFile, unlink } from 'node:fs/promises';
+import { writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve, basename } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { join, resolve } from 'node:path';
 import AdmZip from 'adm-zip';
 import { parseNasrArgs } from '@squawk/build-shared';
 import { loadAirportStates } from './load-airport-states.js';
@@ -46,15 +45,16 @@ function openCsvZip(subscriptionDir: string): AdmZip {
 
 /**
  * Extracts a single named CSV file from the inner NASR CSV ZIP and writes
- * it to a temp file. Returns the absolute path to the written temp file.
- * The caller is responsible for deleting the temp file when done.
+ * it to the given temp directory. Returns the absolute path to the
+ * written temp file. The caller owns the temp directory and is
+ * responsible for removing it when done.
  */
-async function extractCsvToTemp(csvZip: AdmZip, csvName: string): Promise<string> {
+async function extractCsvToTemp(csvZip: AdmZip, csvName: string, tempDir: string): Promise<string> {
   const csvBuffer = csvZip.readFile(csvName);
   if (!csvBuffer) {
     throw new Error(`Could not read ${csvName} from CSV ZIP`);
   }
-  const tempPath = join(tmpdir(), `${basename(csvName, '.csv')}-${randomUUID()}.csv`);
+  const tempPath = join(tempDir, csvName);
   await writeFile(tempPath, csvBuffer);
   return tempPath;
 }
@@ -76,15 +76,12 @@ async function main(): Promise<void> {
     const saaZipPath = join(subscriptionDir, SAA_ZIP_PATH);
 
     const csvZip = openCsvZip(subscriptionDir);
-    const tempPaths: string[] = [];
+    const csvTempDir = await mkdtemp(join(tmpdir(), 'airspace-csv-'));
     try {
       console.log(`[index] Extracting ${APT_BASE_CSV}, ${ARB_BASE_CSV}, ${ARB_SEG_CSV}...`);
-      const aptBaseCsvPath = await extractCsvToTemp(csvZip, APT_BASE_CSV);
-      tempPaths.push(aptBaseCsvPath);
-      const arbBaseCsvPath = await extractCsvToTemp(csvZip, ARB_BASE_CSV);
-      tempPaths.push(arbBaseCsvPath);
-      const arbSegCsvPath = await extractCsvToTemp(csvZip, ARB_SEG_CSV);
-      tempPaths.push(arbSegCsvPath);
+      const aptBaseCsvPath = await extractCsvToTemp(csvZip, APT_BASE_CSV, csvTempDir);
+      const arbBaseCsvPath = await extractCsvToTemp(csvZip, ARB_BASE_CSV, csvTempDir);
+      const arbSegCsvPath = await extractCsvToTemp(csvZip, ARB_SEG_CSV, csvTempDir);
 
       console.log('[index] Loading airport states...');
       const airportStates = await loadAirportStates(aptBaseCsvPath);
@@ -107,7 +104,7 @@ async function main(): Promise<void> {
 
       await writeOutput(allFeatures, outputPath, nasrCycleDate);
     } finally {
-      await Promise.all(tempPaths.map((p) => unlink(p).catch(() => undefined)));
+      await rm(csvTempDir, { recursive: true, force: true }).catch(() => undefined);
     }
   } finally {
     cleanup();
