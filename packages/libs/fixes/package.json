@@ -1,6 +1,6 @@
 {
   "name": "@squawk/fixes",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "type": "module",
   "description": "Fix/waypoint queries by identifier, location, or name search",
   "author": "Neil Cochran",
@@ -35,11 +35,11 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/geo": "^0.4.0",
-    "@squawk/types": "^0.7.1"
+    "@squawk/geo": "^0.4.2",
+    "@squawk/types": "^0.7.2"
   },
   "devDependencies": {
-    "@squawk/fix-data": "^0.6.1",
+    "@squawk/fix-data": "^0.6.2",
     "@types/node": "^25.6.0"
   },
   "keywords": [

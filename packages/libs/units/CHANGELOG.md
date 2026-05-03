@@ -1,5 +1,13 @@
 # @squawk/units
 
+## 0.4.2
+
+### Patch Changes
+
+- b9ff30c: ### Fixed
+  - Fix the broken MIT license badge link in every package README. The relative path was one level too shallow, so on GitHub (and on npm renderers that resolve relative paths against the repo) the badge landed on a non-existent `packages/LICENSE.md` instead of the repo's `LICENSE.md`. The badge now resolves correctly.
+  - Fix the broken `Documentation` link in `@squawk/flight-math`'s README. The typedoc URL slug used an underscore (`_squawk_flight_math.html`) instead of the dash form every sibling README uses (`_squawk_flight-math.html`), returning 404. Now points at the live docs page.
+
 ## 0.4.1
 
 ### Patch Changes

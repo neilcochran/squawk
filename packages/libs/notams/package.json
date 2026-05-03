@@ -1,6 +1,6 @@
 {
   "name": "@squawk/notams",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "type": "module",
   "description": "Parse raw ICAO-format NOTAM strings into fully typed, structured objects",
   "author": "Neil Cochran",
@@ -46,6 +46,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@squawk/types": "^0.7.1"
+    "@squawk/types": "^0.7.2"
   }
 }

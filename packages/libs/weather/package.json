@@ -1,6 +1,6 @@
 {
   "name": "@squawk/weather",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "type": "module",
   "description": "Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP) into structured objects",
   "author": "Neil Cochran",
@@ -39,7 +39,7 @@
     "lint:pack": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@squawk/types": "^0.7.1"
+    "@squawk/types": "^0.7.2"
   },
   "devDependencies": {
     "@types/node": "^25.6.0"
