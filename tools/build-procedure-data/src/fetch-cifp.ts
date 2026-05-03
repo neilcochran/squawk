@@ -1,8 +1,7 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import { unlink } from 'node:fs/promises';
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import AdmZip from 'adm-zip';
 
 /**
@@ -42,8 +41,8 @@ export interface LoadedCifp {
  * `CIFP_260416.zip`). The caller resolves the filename separately; this
  * helper downloads and extracts `FAACIFP18` in one step.
  *
- * The downloaded zip is saved to a temporary file that is removed by
- * the returned `cleanup` function.
+ * The downloaded zip is saved into a private temporary directory that
+ * is removed by the returned `cleanup` function.
  *
  * @param zipFilename - Filename from the FAA's CIFP download page (e.g. `CIFP_260416.zip`).
  */
@@ -55,7 +54,8 @@ export async function fetchCifp(zipFilename: string): Promise<LoadedCifp> {
     throw new Error(`FAA download failed: ${response.status} ${response.statusText}`);
   }
   const buffer = Buffer.from(await response.arrayBuffer());
-  const tempPath = join(tmpdir(), `cifp-${randomUUID()}.zip`);
+  const tempDir = mkdtempSync(join(tmpdir(), 'cifp-'));
+  const tempPath = join(tempDir, zipFilename);
   writeFileSync(tempPath, buffer);
   console.log(`[fetch] Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB to ${tempPath}`);
   const loaded = loadFromZip(tempPath);
@@ -63,7 +63,7 @@ export async function fetchCifp(zipFilename: string): Promise<LoadedCifp> {
     ...loaded,
     sourceName: zipFilename,
     cleanup: async () => {
-      await unlink(tempPath).catch(() => undefined);
+      await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
     },
   };
 }
