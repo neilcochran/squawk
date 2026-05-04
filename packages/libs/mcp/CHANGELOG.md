@@ -1,5 +1,12 @@
 # @squawk/mcp
 
+## 0.8.9
+
+### Patch Changes
+
+- Updated dependencies [e62a291]
+  - @squawk/icao-registry@0.4.0
+
 ## 0.8.8
 
 ### Patch Changes
