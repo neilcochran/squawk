@@ -47,7 +47,9 @@ All input files come from the NASR subscription CSV data ZIP (e.g.
 
 ## Dependencies
 
-| Package         | Purpose                                |
-| --------------- | -------------------------------------- |
-| `@squawk/types` | `Airport` and related type definitions |
-| `adm-zip`       | ZIP extraction                         |
+| Package                | Purpose                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| `@squawk/build-shared` | Shared NASR build utilities (CLI args, input resolution) |
+| `@squawk/types`        | `Airport` and related type definitions                   |
+| `adm-zip`              | ZIP extraction                                           |
+| `geo-tz`               | IANA timezone resolution from airport coordinates        |

@@ -33,7 +33,7 @@ The default output path is `packages/libs/icao-registry-data/data/icao-registry.
 
 ## Dependencies
 
-| Package                 | Purpose                               |
-| ----------------------- | ------------------------------------- |
-| `@squawk/icao-registry` | `parseFaaRegistryZip()` parsing logic |
-| `adm-zip`               | ZIP extraction                        |
+| Package                 | Purpose                                                  |
+| ----------------------- | -------------------------------------------------------- |
+| `@squawk/build-shared`  | Shared NASR build utilities (CLI args, input resolution) |
+| `@squawk/icao-registry` | `parseFaaRegistryZip()` parsing logic                    |

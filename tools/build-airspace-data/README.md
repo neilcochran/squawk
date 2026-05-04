@@ -20,7 +20,7 @@ The `--local` path must be the root of an extracted NASR 28-day subscription
 directory named `28DaySubscription_Effective_YYYY-MM-DD`. The cycle date is
 parsed from the directory name and embedded in the output metadata.
 
-The default output path is `packages/libs/airspace-data/data/airspace.geojson`.
+The default output path is `packages/libs/airspace-data/data/airspace.geojson.gz`.
 
 ### Validating output
 
@@ -60,9 +60,10 @@ All input files come from inside the NASR subscription directory:
 
 ## Dependencies
 
-| Package           | Purpose                                                |
-| ----------------- | ------------------------------------------------------ |
-| `shapefile`       | Parse ESRI Shapefile format                            |
-| `fast-xml-parser` | Parse SAA AIXM 5.0 XML                                 |
-| `adm-zip`         | Read nested ZIP archives in memory                     |
-| `@squawk/types`   | `AirspaceFeature` and `AltitudeBound` type definitions |
+| Package                | Purpose                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| `@squawk/build-shared` | Shared NASR build utilities (CLI args, input resolution) |
+| `@squawk/types`        | `AirspaceFeature` and `AltitudeBound` type definitions   |
+| `shapefile`            | Parse ESRI Shapefile format                              |
+| `fast-xml-parser`      | Parse SAA AIXM 5.0 XML                                   |
+| `adm-zip`              | Read nested ZIP archives in memory                       |

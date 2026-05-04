@@ -39,5 +39,6 @@ node dist/index.js --local /path/to/28DaySubscription_Effective_YYYY-MM-DD
 
 ## Dependencies
 
+- `@squawk/build-shared` - Shared NASR build utilities (CLI args, input resolution)
 - `@squawk/types` - Fix type definitions and mapping constants
 - `adm-zip` - ZIP file extraction

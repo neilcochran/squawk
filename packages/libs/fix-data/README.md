@@ -34,7 +34,7 @@ npm install @squawk/fix-data
 import { usBundledFixes } from '@squawk/fix-data';
 
 // Inspect metadata
-console.log(usBundledFixes.properties.nasrCycleDate); // "2026-01-22"
+console.log(usBundledFixes.properties.nasrCycleDate); // YYYY-MM-DD
 console.log(usBundledFixes.properties.recordCount);
 
 // Use with @squawk/fixes for zero-config fix queries

@@ -76,3 +76,4 @@ Functions that already exist in `@squawk/units` are not re-exported. Import them
 - **pivotal** - Pivotal altitude for ground reference maneuvers
 - **solar** - Sunrise/sunset, civil twilight, day/night determination (NOAA algorithm)
 - **magnetic** - Magnetic declination and field components (WMM2025), true/magnetic bearing conversion
+- **planning** - Fuel required, endurance, point of no return, equal time point
