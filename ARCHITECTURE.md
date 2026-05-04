@@ -80,7 +80,7 @@ Why: gzip keeps the on-disk and on-wire footprint down. Eager loading keeps quer
 
 ### Type ownership
 
-Types shared across multiple packages (3+ consumers across the logic / data / build-script boundary) live in `@squawk/types` - position, aircraft, airport, navaid, fix, airway, procedure, airspace, registry. Domain-specific types live in the package that produces them - weather types in `@squawk/weather`, NOTAM types in `@squawk/notams`, etc.
+Types shared across multiple packages live in `@squawk/types` - position, aircraft, airport, navaid, fix, airway, procedure, airspace, registry. The default suggestion is to consider promotion to `@squawk/types` once a type has 2+ consumers across the logic / data / build-script boundary, but the threshold is a guideline rather than a hard rule (judgment call on stability, domain boundaries, and the coupling cost of moving the type). Domain-specific types live in the package that produces them - weather types in `@squawk/weather`, NOTAM types in `@squawk/notams`, etc. See `CONVENTIONS.md` dependency rule 8 for the full guidance.
 
 Why: keeping `@squawk/types` focused on genuinely shared models avoids forcing a version bump on every package whenever a single domain's types evolve.
 
