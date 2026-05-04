@@ -41,6 +41,31 @@ function readCsvFromZip(zip: AdmZip, filename: string): CsvRecord[] {
 }
 
 /**
+ * Groups records into buckets keyed by the value returned from `keyFn`.
+ * Records whose key is missing or empty are skipped.
+ *
+ * @param records - The records to group.
+ * @param keyFn - Returns the bucket key for a given record, or `undefined` to skip it.
+ * @returns A map from key to the records that share that key, in input order.
+ */
+function groupBy<T>(records: T[], keyFn: (record: T) => string | undefined): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const record of records) {
+    const key = keyFn(record);
+    if (!key) {
+      continue;
+    }
+    let arr = map.get(key);
+    if (!arr) {
+      arr = [];
+      map.set(key, arr);
+    }
+    arr.push(record);
+  }
+  return map;
+}
+
+/**
  * Main entry point. Parses CLI arguments, resolves input file paths,
  * runs the data pipeline, and writes the output.
  */
@@ -73,86 +98,14 @@ async function main(): Promise<void> {
     const ilsGsRecords = readCsvFromZip(csvZip, ILS_GS_CSV);
     const ilsDmeRecords = readCsvFromZip(csvZip, ILS_DME_CSV);
 
-    // Index runway and runway-end records by SITE_NO for efficient lookup.
-    const rwyBySite = new Map<string, CsvRecord[]>();
-    for (const rec of rwyRecords) {
-      const siteNo = rec.SITE_NO;
-      if (siteNo) {
-        let arr = rwyBySite.get(siteNo);
-        if (!arr) {
-          arr = [];
-          rwyBySite.set(siteNo, arr);
-        }
-        arr.push(rec);
-      }
-    }
+    const rwyBySite = groupBy(rwyRecords, (r) => r.SITE_NO);
+    const rwyEndBySite = groupBy(rwyEndRecords, (r) => r.SITE_NO);
 
-    const rwyEndBySite = new Map<string, CsvRecord[]>();
-    for (const rec of rwyEndRecords) {
-      const siteNo = rec.SITE_NO;
-      if (siteNo) {
-        let arr = rwyEndBySite.get(siteNo);
-        if (!arr) {
-          arr = [];
-          rwyEndBySite.set(siteNo, arr);
-        }
-        arr.push(rec);
-      }
-    }
+    const freqByFacility = groupBy(freqRecords, (r) => r.SERVICED_FACILITY ?? r.FACILITY);
 
-    // Index frequency records by SERVICED_FACILITY (falls back to FACILITY).
-    const freqByFacility = new Map<string, CsvRecord[]>();
-    for (const rec of freqRecords) {
-      const key = rec.SERVICED_FACILITY ?? rec.FACILITY;
-      if (key) {
-        let arr = freqByFacility.get(key);
-        if (!arr) {
-          arr = [];
-          freqByFacility.set(key, arr);
-        }
-        arr.push(rec);
-      }
-    }
-
-    // Index ILS records by SITE_NO for efficient lookup.
-    const ilsBaseBySite = new Map<string, CsvRecord[]>();
-    for (const rec of ilsBaseRecords) {
-      const siteNo = rec.SITE_NO;
-      if (siteNo) {
-        let arr = ilsBaseBySite.get(siteNo);
-        if (!arr) {
-          arr = [];
-          ilsBaseBySite.set(siteNo, arr);
-        }
-        arr.push(rec);
-      }
-    }
-
-    const ilsGsBySite = new Map<string, CsvRecord[]>();
-    for (const rec of ilsGsRecords) {
-      const siteNo = rec.SITE_NO;
-      if (siteNo) {
-        let arr = ilsGsBySite.get(siteNo);
-        if (!arr) {
-          arr = [];
-          ilsGsBySite.set(siteNo, arr);
-        }
-        arr.push(rec);
-      }
-    }
-
-    const ilsDmeBySite = new Map<string, CsvRecord[]>();
-    for (const rec of ilsDmeRecords) {
-      const siteNo = rec.SITE_NO;
-      if (siteNo) {
-        let arr = ilsDmeBySite.get(siteNo);
-        if (!arr) {
-          arr = [];
-          ilsDmeBySite.set(siteNo, arr);
-        }
-        arr.push(rec);
-      }
-    }
+    const ilsBaseBySite = groupBy(ilsBaseRecords, (r) => r.SITE_NO);
+    const ilsGsBySite = groupBy(ilsGsRecords, (r) => r.SITE_NO);
+    const ilsDmeBySite = groupBy(ilsDmeRecords, (r) => r.SITE_NO);
 
     // Build Airport objects from the indexed data.
     console.log('[index] Building airport records...');
