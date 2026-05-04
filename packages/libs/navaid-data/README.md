@@ -31,7 +31,7 @@ npm install @squawk/navaid-data
 import { usBundledNavaids } from '@squawk/navaid-data';
 
 // Inspect metadata
-console.log(usBundledNavaids.properties.nasrCycleDate); // "2026-01-22"
+console.log(usBundledNavaids.properties.nasrCycleDate); // YYYY-MM-DD
 console.log(usBundledNavaids.properties.recordCount);
 
 // Use with @squawk/navaids for zero-config navaid queries

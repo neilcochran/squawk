@@ -17,6 +17,7 @@ Closes #
 - [ ] Changeset added under `.changeset/` for any user-facing change to a published `@squawk/*` package (or N/A - internal-only / docs / tooling)
 
 <!--
-For changeset format and CI gate details, see ARCHITECTURE.md.
+For the changeset format, see CONVENTIONS.md (Changeset format).
+For CI gate details, see ARCHITECTURE.md (Quality gates).
 For security vulnerabilities, do not use this template - see SECURITY.md.
 -->

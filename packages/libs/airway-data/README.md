@@ -36,7 +36,7 @@ npm install @squawk/airway-data
 import { usBundledAirways } from '@squawk/airway-data';
 
 // Inspect metadata
-console.log(usBundledAirways.properties.nasrCycleDate); // "2026-01-22"
+console.log(usBundledAirways.properties.nasrCycleDate); // YYYY-MM-DD
 console.log(usBundledAirways.properties.recordCount);
 console.log(usBundledAirways.properties.waypointCount);
 

@@ -31,8 +31,8 @@ npm install @squawk/airport-data
 import { usBundledAirports } from '@squawk/airport-data';
 
 // Inspect metadata
-console.log(usBundledAirports.properties.nasrCycleDate); // "2026-01-22"
-console.log(usBundledAirports.properties.recordCount); // 19146
+console.log(usBundledAirports.properties.nasrCycleDate); // YYYY-MM-DD
+console.log(usBundledAirports.properties.recordCount);
 
 // Use with @squawk/airports for zero-config airport queries
 import { createAirportResolver } from '@squawk/airports';
