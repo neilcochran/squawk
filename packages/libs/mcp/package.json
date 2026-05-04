@@ -59,7 +59,7 @@
     "@squawk/procedures": "^0.4.4",
     "@squawk/types": "^0.7.2",
     "@squawk/weather": "^0.5.4",
-    "zod": "^4.4.2"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0"
