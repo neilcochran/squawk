@@ -59,6 +59,10 @@ For libraries that query an FAA dataset (airports, navaids, fixes, airways, airs
 
 Why: consumers can bring their own data or use the bundled snapshots. Logic stays testable without filesystem access. Data updates don't force a re-publish of the query library, and vice versa.
 
+**Exception: icao-registry exposes a runtime parser.** [`@squawk/icao-registry`](packages/libs/icao-registry/) intentionally re-exports `parseFaaRegistryZip` from its package entrypoint, letting external consumers fetch and parse a fresh FAA ReleasableAircraft ZIP at runtime instead of (or in addition to) using the bundled `@squawk/icao-registry-data` snapshot.
+
+Why: aircraft registration data changes daily (registrations are created, transferred, and cancelled continuously), so the gap between the bundled snapshot's publish cadence and "now" can be material for consumers building real-time tracking surfaces. The other NASR-derived datasets (airports, navaids, fixes, airways, airspace, procedures) update on the FAA's 28-day cycle, where a few weeks of staleness is rarely meaningful and the bundled-data path is sufficient. New domains should default to the build-tool-only parser pattern; expose a runtime parser only when there is a concrete data-freshness gap that the bundled cadence cannot close.
+
 Other library shapes (utility libraries like `@squawk/units` / `@squawk/geo` / `@squawk/flight-math`, parser libraries like `@squawk/weather` / `@squawk/notams`, and `@squawk/types`) aren't data-querying and don't follow this pattern.
 
 ### Resolver / factory pattern (for query libraries)
