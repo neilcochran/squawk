@@ -1,10 +1,12 @@
 <h1><img src="assets/squawk-logo.svg" alt="squawk logo" width="48" height="48" style="vertical-align: middle">&nbsp; @squawk</h1>
 
-![MIT License](https://img.shields.io/badge/license-MIT-blue.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
+![MIT License](https://img.shields.io/badge/license-MIT-blue.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white) [![npm](https://img.shields.io/badge/npm-@squawk-cb3837?logo=npm&logoColor=white)](https://www.npmjs.com/org/squawk)
 
 TypeScript libraries for building aviation applications - airspace geometry, weather parsing, flight planning, aircraft registry lookup, and more.
 
 **[Documentation](https://neilcochran.github.io/squawk/)**
+
+**[Architecture & conventions](ARCHITECTURE.md)**
 
 ## Layout
 
