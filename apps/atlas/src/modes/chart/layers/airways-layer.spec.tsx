@@ -23,9 +23,13 @@ const {
   useHoveredAirwayWaypointIndexMock: vi.fn(),
 }));
 
-vi.mock('../../../shared/data/airway-dataset.ts', () => ({
-  useAirwayDataset: useAirwayDatasetMock,
-}));
+vi.mock(import('../../../shared/data/airway-dataset.ts'), async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useAirwayDataset: useAirwayDatasetMock,
+  };
+});
 
 vi.mock('../highlight-context.ts', () => ({
   useActiveHighlightRef: useActiveHighlightRefMock,

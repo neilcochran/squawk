@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import { createAirspaceResolver } from '@squawk/airspace/browser';
+import type { AirspaceResolver } from '@squawk/airspace/browser';
 import type { AirspaceDataset } from '@squawk/airspace-data';
 import { loadUsBundledAirspace } from '@squawk/airspace-data/browser';
 
@@ -75,4 +77,24 @@ export function useAirspaceDataset(): AirspaceDatasetState {
   }, []);
 
   return state;
+}
+
+/**
+ * WeakMap-cached `AirspaceResolver` per loaded `AirspaceDataset`. Keyed
+ * on the dataset reference so test fixtures get a fresh resolver per
+ * dataset object while normal session reuse pays the indexing cost once.
+ */
+const resolverCache = new WeakMap<AirspaceDataset, AirspaceResolver>();
+
+/**
+ * Returns the memoized {@link AirspaceResolver} for the given dataset,
+ * building it on first access.
+ */
+export function getAirspaceResolver(dataset: AirspaceDataset): AirspaceResolver {
+  let resolver = resolverCache.get(dataset);
+  if (resolver === undefined) {
+    resolver = createAirspaceResolver({ data: dataset });
+    resolverCache.set(dataset, resolver);
+  }
+  return resolver;
 }

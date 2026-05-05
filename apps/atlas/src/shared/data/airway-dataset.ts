@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import type { AirwayDataset } from '@squawk/airway-data';
 import { loadUsBundledAirways } from '@squawk/airway-data/browser';
+import { createAirwayResolver } from '@squawk/airways/browser';
+import type { AirwayResolver } from '@squawk/airways/browser';
 
 /**
  * Module-level cached promise so the bundled airway dataset is fetched at
@@ -75,4 +77,24 @@ export function useAirwayDataset(): AirwayDatasetState {
   }, []);
 
   return state;
+}
+
+/**
+ * WeakMap-cached `AirwayResolver` per loaded `AirwayDataset`. Keyed on
+ * the dataset reference so test fixtures get a fresh resolver per
+ * dataset object while normal session reuse pays the indexing cost once.
+ */
+const resolverCache = new WeakMap<AirwayDataset, AirwayResolver>();
+
+/**
+ * Returns the memoized {@link AirwayResolver} for the given dataset,
+ * building it on first access.
+ */
+export function getAirwayResolver(dataset: AirwayDataset): AirwayResolver {
+  let resolver = resolverCache.get(dataset);
+  if (resolver === undefined) {
+    resolver = createAirwayResolver({ data: dataset.records });
+    resolverCache.set(dataset, resolver);
+  }
+  return resolver;
 }

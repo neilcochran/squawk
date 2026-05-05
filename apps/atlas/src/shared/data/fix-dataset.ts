@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import type { FixDataset } from '@squawk/fix-data';
 import { loadUsBundledFixes } from '@squawk/fix-data/browser';
+import { createFixResolver } from '@squawk/fixes/browser';
+import type { FixResolver } from '@squawk/fixes/browser';
 
 /**
  * Module-level cached promise so the bundled fix dataset is fetched at
@@ -75,4 +77,24 @@ export function useFixDataset(): FixDatasetState {
   }, []);
 
   return state;
+}
+
+/**
+ * WeakMap-cached `FixResolver` per loaded `FixDataset`. Keyed on the
+ * dataset reference so test fixtures get a fresh resolver per dataset
+ * object while normal session reuse pays the indexing cost once.
+ */
+const resolverCache = new WeakMap<FixDataset, FixResolver>();
+
+/**
+ * Returns the memoized {@link FixResolver} for the given dataset,
+ * building it on first access.
+ */
+export function getFixResolver(dataset: FixDataset): FixResolver {
+  let resolver = resolverCache.get(dataset);
+  if (resolver === undefined) {
+    resolver = createFixResolver({ data: dataset.records });
+    resolverCache.set(dataset, resolver);
+  }
+  return resolver;
 }

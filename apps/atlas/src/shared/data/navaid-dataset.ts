@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import type { NavaidDataset } from '@squawk/navaid-data';
 import { loadUsBundledNavaids } from '@squawk/navaid-data/browser';
+import { createNavaidResolver } from '@squawk/navaids/browser';
+import type { NavaidResolver } from '@squawk/navaids/browser';
 
 /**
  * Module-level cached promise so the bundled navaid dataset is fetched at
@@ -75,4 +77,24 @@ export function useNavaidDataset(): NavaidDatasetState {
   }, []);
 
   return state;
+}
+
+/**
+ * WeakMap-cached `NavaidResolver` per loaded `NavaidDataset`. Keyed on
+ * the dataset reference so test fixtures get a fresh resolver per
+ * dataset object while normal session reuse pays the indexing cost once.
+ */
+const resolverCache = new WeakMap<NavaidDataset, NavaidResolver>();
+
+/**
+ * Returns the memoized {@link NavaidResolver} for the given dataset,
+ * building it on first access.
+ */
+export function getNavaidResolver(dataset: NavaidDataset): NavaidResolver {
+  let resolver = resolverCache.get(dataset);
+  if (resolver === undefined) {
+    resolver = createNavaidResolver({ data: dataset.records });
+    resolverCache.set(dataset, resolver);
+  }
+  return resolver;
 }

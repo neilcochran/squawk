@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import type { AirportDataset } from '@squawk/airport-data';
 import { loadUsBundledAirports } from '@squawk/airport-data/browser';
+import { createAirportResolver } from '@squawk/airports/browser';
+import type { AirportResolver } from '@squawk/airports/browser';
 
 /**
  * Module-level cached promise so the bundled airport dataset is fetched at
@@ -75,4 +77,27 @@ export function useAirportDataset(): AirportDatasetState {
   }, []);
 
   return state;
+}
+
+/**
+ * WeakMap-cached `AirportResolver` per loaded `AirportDataset`. The
+ * dataset itself is module-cached above, so in normal app use this map
+ * holds at most one entry; tests that build fresh dataset objects per
+ * case get fresh resolvers per case.
+ */
+const resolverCache = new WeakMap<AirportDataset, AirportResolver>();
+
+/**
+ * Returns the memoized {@link AirportResolver} for the given dataset,
+ * building it on first access. Keyed on the dataset reference so a
+ * subsequent reload (or a test fixture's fresh dataset) gets a fresh
+ * resolver while normal session reuse pays the indexing cost once.
+ */
+export function getAirportResolver(dataset: AirportDataset): AirportResolver {
+  let resolver = resolverCache.get(dataset);
+  if (resolver === undefined) {
+    resolver = createAirportResolver({ data: dataset.records });
+    resolverCache.set(dataset, resolver);
+  }
+  return resolver;
 }
