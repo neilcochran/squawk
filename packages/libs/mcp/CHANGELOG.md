@@ -1,5 +1,18 @@
 # @squawk/mcp
 
+## 0.8.10
+
+### Patch Changes
+
+- Updated dependencies [504124c]
+  - @squawk/airports@0.6.0
+  - @squawk/airspace@0.7.0
+  - @squawk/airways@0.4.0
+  - @squawk/fixes@0.3.0
+  - @squawk/navaids@0.4.0
+  - @squawk/procedures@0.5.0
+  - @squawk/icao-registry@0.5.0
+
 ## 0.8.9
 
 ### Patch Changes

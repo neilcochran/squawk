@@ -40,15 +40,15 @@
   },
   "devDependencies": {
     "@squawk/airport-data": "^0.7.2",
-    "@squawk/airports": "^0.5.4",
+    "@squawk/airports": "^0.6.0",
     "@squawk/airway-data": "^0.5.2",
-    "@squawk/airways": "^0.3.5",
+    "@squawk/airways": "^0.4.0",
     "@squawk/fix-data": "^0.6.2",
-    "@squawk/fixes": "^0.2.5",
+    "@squawk/fixes": "^0.3.0",
     "@squawk/navaid-data": "^0.6.2",
-    "@squawk/navaids": "^0.3.5",
+    "@squawk/navaids": "^0.4.0",
     "@squawk/procedure-data": "^0.7.1",
-    "@squawk/procedures": "^0.4.4",
+    "@squawk/procedures": "^0.5.0",
     "@types/node": "^25.6.0"
   },
   "keywords": [

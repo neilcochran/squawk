@@ -1,6 +1,6 @@
 {
   "name": "@squawk/airspace",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "type": "module",
   "description": "Pure logic library for querying US airspace geometry by position and altitude",
   "author": "Neil Cochran",
