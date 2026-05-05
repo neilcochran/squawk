@@ -58,7 +58,7 @@ subpath. It fetches and decompresses the bundled `.gz` using Web Streams
 
 ```typescript
 import { loadUsBundledAirways } from '@squawk/airway-data/browser';
-import { createAirwayResolver } from '@squawk/airways';
+import { createAirwayResolver } from '@squawk/airways/browser';
 
 const dataset = await loadUsBundledAirways();
 const resolver = createAirwayResolver({ data: dataset.records });

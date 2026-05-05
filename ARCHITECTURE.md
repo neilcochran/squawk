@@ -32,7 +32,7 @@ Five guiding principles shape every decision in this repo:
 - **Real-world data, not toy examples.** Libraries work against actual FAA datasets and live aviation weather feeds, not mocked or synthetic data.
 - **Designed for composition.** Libraries fit together naturally when building an application, but never require each other.
 - **Published quality from day one.** Every library ships with a README, TypeScript types, unit tests, and a changelog. No "I'll clean this up before publishing."
-- **Backend-first for libraries; data packages also ship browser entries.** Library packages target Node and stay pure. Data packages expose a `/browser` async loader so SPAs and edge runtimes can consume them too.
+- **Backend-first for libraries; data packages and most logic packages also ship browser entries.** Libraries target Node first and stay pure. Data packages expose a `/browser` async loader so SPAs and edge runtimes can consume them, and pure-logic query libraries (airports, airspace, airways, fixes, navaids, procedures) expose a `/browser` resolver entry that mirrors the main entry. Packages that include a Node-only surface ship a slim `/browser` entry that excludes it (`@squawk/icao-registry/browser` omits `parseFaaRegistryZip`). Server-only packages like `@squawk/mcp` and the build tools remain Node-only.
 - **Complete data models.** Models capture all reasonable, distinct fields for a concept, even fields not currently consumed. The libraries are published for others to build on; completeness and correctness of the data model is a primary goal.
 
 ---
@@ -88,9 +88,13 @@ Types shared across multiple packages live in `@squawk/types` - position, aircra
 
 Why: keeping `@squawk/types` focused on genuinely shared models avoids forcing a version bump on every package whenever a single domain's types evolve.
 
-### Browser entries on data packages
+### Browser entries on data and logic packages
 
-Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders so SPAs and edge runtimes can consume them. The library packages themselves are Node-only.
+Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders so SPAs and edge runtimes can consume the bundled snapshots. Pure-logic query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/navaids`, `@squawk/procedures`) also expose a `/browser` subpath that aliases the main entry, since their resolver code has no Node-specific imports. The `/browser` import is the explicit, supported way for SPAs to consume these packages; the contract is enforced by `lint:pack` (publint) so a future Node-only import would have to split the surface explicitly rather than silently breaking browsers.
+
+`@squawk/icao-registry` is a hybrid: the main entry exposes a runtime `parseFaaRegistryZip` parser that depends on Node's `Buffer` and the `adm-zip` package, so the `/browser` entry is a strict subset that re-exports only `createIcaoRegistry` and the shared types.
+
+`@squawk/mcp` and the build tools under `tools/` remain Node-only.
 
 ### Namespace exports for utility packages
 

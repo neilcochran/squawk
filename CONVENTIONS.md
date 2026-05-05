@@ -104,6 +104,16 @@ Each data package's metadata includes at least `generatedAt` (ISO timestamp), `r
 
 ---
 
+## Logic package browser entries
+
+Query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/navaids`, `@squawk/procedures`, `@squawk/icao-registry`) ship a `/browser` exports subpath alongside the default entry. For pure-logic packages with no Node-specific imports, the `/browser` subpath aliases the same compiled `dist/index.js`; the separate entry exists so browser support is an explicit, `publint`-verified part of the public API surface and a future Node-only import has to split the surface intentionally.
+
+Packages that mix pure-logic with a Node-only helper (e.g. `@squawk/icao-registry`'s `parseFaaRegistryZip`) instead expose a thin `src/browser.ts` re-exporting only the browser-safe symbols, with the `/browser` subpath pointing at its compiled output. The Node-only helper stays exported from the default entry.
+
+When adding a new query library, mirror this pattern: add a `./browser` entry to `package.json` `exports`, and create `src/browser.ts` only if the main entry transitively reaches Node-only code.
+
+---
+
 ## TSDoc
 
 Every exported symbol (interface, type, function, const, enum) must have a `/** */` TSDoc comment. Every property and parameter must have its own inline `/** */` comment.

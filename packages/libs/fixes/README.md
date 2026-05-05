@@ -38,6 +38,20 @@ import { createFixResolver } from '@squawk/fixes';
 const resolver = createFixResolver({ data: myFixes });
 ```
 
+## Browser / SPA usage
+
+The resolver factory has no Node-specific imports and ships an explicit `/browser` subpath for SPAs and edge runtimes. Pair it with `@squawk/fix-data/browser`:
+
+```typescript
+import { loadUsBundledFixes } from '@squawk/fix-data/browser';
+import { createFixResolver } from '@squawk/fixes/browser';
+
+const dataset = await loadUsBundledFixes();
+const resolver = createFixResolver({ data: dataset.records });
+```
+
+The `/browser` entry is identical to the main entry; the separate subpath exists so browser support is an explicit, `publint`-verified part of the public API surface.
+
 ## API
 
 ### `createFixResolver(options)`

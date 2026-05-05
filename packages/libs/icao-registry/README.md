@@ -52,4 +52,18 @@ const registry = createIcaoRegistry({
 });
 ```
 
+## Browser / SPA usage
+
+For SPAs and edge runtimes, import from the `/browser` subpath. It re-exports `createIcaoRegistry` and the shared types but omits `parseFaaRegistryZip`, which depends on Node's `Buffer` and the `adm-zip` package and is unsuitable for browser bundles. Pair it with `@squawk/icao-registry-data/browser`:
+
+```typescript
+import { loadUsBundledRegistry } from '@squawk/icao-registry-data/browser';
+import { createIcaoRegistry } from '@squawk/icao-registry/browser';
+
+const dataset = await loadUsBundledRegistry();
+const registry = createIcaoRegistry({ data: dataset.records });
+```
+
+Browser consumers that need fresh FAA data should fetch and parse the ZIP server-side (where `parseFaaRegistryZip` is available) and feed the resulting records into the browser via their own API.
+
 > Under active development. See the [docs](https://neilcochran.github.io/squawk/modules/_squawk_icao-registry.html) for current API status.

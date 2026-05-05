@@ -55,7 +55,7 @@ subpath. It fetches and decompresses the bundled `.gz` using Web Streams
 
 ```typescript
 import { loadUsBundledFixes } from '@squawk/fix-data/browser';
-import { createFixResolver } from '@squawk/fixes';
+import { createFixResolver } from '@squawk/fixes/browser';
 
 const dataset = await loadUsBundledFixes();
 const resolver = createFixResolver({ data: dataset.records });
