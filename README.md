@@ -8,6 +8,8 @@ TypeScript libraries for building aviation applications - airspace geometry, wea
 
 **[Architecture & conventions](ARCHITECTURE.md)**
 
+**[Discussions](https://github.com/neilcochran/squawk/discussions)**
+
 ## Layout
 
 The repo splits into three top-level directories:

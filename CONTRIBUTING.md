@@ -41,6 +41,10 @@ Use the [Bug report](.github/ISSUE_TEMPLATE/bug.yml) template. Include reproduct
 
 Use the [Enhancement](.github/ISSUE_TEMPLATE/enhancement.yml) template. Motivation and use case context go a long way.
 
+## Questions and discussions
+
+For questions about how to use a `@squawk/*` package, ask in the [Q&A category of Discussions](https://github.com/neilcochran/squawk/discussions/categories/q-a). The Issues tracker is reserved for bug reports and concrete feature requests; open-ended questions, usage help, and "is this the right approach" threads belong in Discussions.
+
 ## Security
 
 Don't open public issues for security vulnerabilities. See [SECURITY.md](SECURITY.md) for the disclosure process.

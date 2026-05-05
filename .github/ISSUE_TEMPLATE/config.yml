@@ -1,0 +1,4 @@
+contact_links:
+  - name: Question or usage help
+    url: https://github.com/neilcochran/squawk/discussions/categories/q-a
+    about: Ask in the Q&A category of Discussions. The Issues tracker is for bug reports and concrete feature requests.
