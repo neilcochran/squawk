@@ -14,11 +14,26 @@ const { airportStateMock, navaidStateMock, fixStateMock, airwayStateMock, airspa
     airspaceStateMock: vi.fn(),
   }));
 
-vi.mock('../data/airport-dataset.ts', () => ({ useAirportDataset: airportStateMock }));
-vi.mock('../data/navaid-dataset.ts', () => ({ useNavaidDataset: navaidStateMock }));
-vi.mock('../data/fix-dataset.ts', () => ({ useFixDataset: fixStateMock }));
-vi.mock('../data/airway-dataset.ts', () => ({ useAirwayDataset: airwayStateMock }));
-vi.mock('../data/airspace-dataset.ts', () => ({ useAirspaceDataset: airspaceStateMock }));
+vi.mock(import('../data/airport-dataset.ts'), async (importOriginal) => ({
+  ...(await importOriginal()),
+  useAirportDataset: airportStateMock,
+}));
+vi.mock(import('../data/navaid-dataset.ts'), async (importOriginal) => ({
+  ...(await importOriginal()),
+  useNavaidDataset: navaidStateMock,
+}));
+vi.mock(import('../data/fix-dataset.ts'), async (importOriginal) => ({
+  ...(await importOriginal()),
+  useFixDataset: fixStateMock,
+}));
+vi.mock(import('../data/airway-dataset.ts'), async (importOriginal) => ({
+  ...(await importOriginal()),
+  useAirwayDataset: airwayStateMock,
+}));
+vi.mock(import('../data/airspace-dataset.ts'), async (importOriginal) => ({
+  ...(await importOriginal()),
+  useAirspaceDataset: airspaceStateMock,
+}));
 
 const sampleAirport: Airport = {
   faaId: 'BOS',
@@ -68,6 +83,19 @@ const sampleAirway: Airway = {
   region: 'US',
   waypoints: [],
 };
+
+// Minimal valid polygon ring (4 coords with first == last). The
+// airspace resolver rejects features whose outer ring has fewer than 4
+// coordinates, so identifier-path tests need a real ring even though
+// the test does not exercise polygon geometry.
+const SAMPLE_RING = [
+  [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 0],
+  ],
+];
 
 function buildAirspaceFeature(
   overrides: Partial<AirspaceFeature> & Pick<AirspaceFeature, 'type' | 'identifier'>,
@@ -167,9 +195,21 @@ describe('useResolvedEntity', () => {
       status: 'loaded',
       dataset: {
         features: [
-          { type: 'Feature', geometry: { type: 'Polygon', coordinates: [] }, properties: featureA },
-          { type: 'Feature', geometry: { type: 'Polygon', coordinates: [] }, properties: featureB },
-          { type: 'Feature', geometry: { type: 'Polygon', coordinates: [] }, properties: decoy },
+          {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: SAMPLE_RING },
+            properties: featureA,
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: SAMPLE_RING },
+            properties: featureB,
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: SAMPLE_RING },
+            properties: decoy,
+          },
         ],
       },
     });
@@ -330,17 +370,17 @@ describe('useResolvedEntity', () => {
         features: [
           {
             type: 'Feature',
-            geometry: { type: 'Polygon', coordinates: [] },
+            geometry: { type: 'Polygon', coordinates: SAMPLE_RING },
             properties: surfaceCore,
           },
           {
             type: 'Feature',
-            geometry: { type: 'Polygon', coordinates: [] },
+            geometry: { type: 'Polygon', coordinates: SAMPLE_RING },
             properties: innerRing,
           },
           {
             type: 'Feature',
-            geometry: { type: 'Polygon', coordinates: [] },
+            geometry: { type: 'Polygon', coordinates: SAMPLE_RING },
             properties: outerRing,
           },
         ],

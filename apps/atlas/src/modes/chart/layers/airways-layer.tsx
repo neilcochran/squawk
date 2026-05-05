@@ -15,7 +15,7 @@ import { useMemo } from 'react';
 
 import type { Airway, AirwayType } from '@squawk/types';
 
-import { useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
+import { getAirwayResolver, useAirwayDataset } from '../../../shared/data/airway-dataset.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef, useHoveredAirwayWaypointIndex } from '../highlight-context.ts';
 import { AIRWAY_CATEGORY_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
@@ -311,7 +311,7 @@ export function AirwayLegFocusLayer(): ReactElement | null {
     if (state.status !== 'loaded') {
       return undefined;
     }
-    const airway = state.dataset.records.find((record) => record.designation === activeRef.id);
+    const airway = getAirwayResolver(state.dataset).byDesignation(activeRef.id)[0];
     if (airway === undefined || airway.waypoints.length === 0) {
       return undefined;
     }

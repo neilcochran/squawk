@@ -3,15 +3,15 @@ import { useMemo } from 'react';
 import { polygonGeoJson } from '@squawk/geo';
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
 
-import { useAirportDataset } from '../data/airport-dataset.ts';
+import { getAirportResolver, useAirportDataset } from '../data/airport-dataset.ts';
 import type { AirportDatasetState } from '../data/airport-dataset.ts';
-import { useAirspaceDataset } from '../data/airspace-dataset.ts';
+import { getAirspaceResolver, useAirspaceDataset } from '../data/airspace-dataset.ts';
 import type { AirspaceDatasetState } from '../data/airspace-dataset.ts';
-import { useAirwayDataset } from '../data/airway-dataset.ts';
+import { getAirwayResolver, useAirwayDataset } from '../data/airway-dataset.ts';
 import type { AirwayDatasetState } from '../data/airway-dataset.ts';
-import { useFixDataset } from '../data/fix-dataset.ts';
+import { getFixResolver, useFixDataset } from '../data/fix-dataset.ts';
 import type { FixDatasetState } from '../data/fix-dataset.ts';
-import { useNavaidDataset } from '../data/navaid-dataset.ts';
+import { getNavaidResolver, useNavaidDataset } from '../data/navaid-dataset.ts';
 import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
 
 import { compareAirspaceByAltitudeDesc, isAirspacePolygonFeature } from './airspace-feature.ts';
@@ -165,19 +165,6 @@ function buildAirspaceCentroidMatcher(
 }
 
 /**
- * Builds a matcher that returns true iff a candidate airspace feature
- * has the given type and identifier. The classic compound-key path,
- * used when the URL remainder is not a centroid encoding.
- */
-function buildAirspaceIdentifierMatcher(
-  identifier: string,
-  airspaceTypeStr: string,
-): (feature: AirspacePolygonFeature) => boolean {
-  return (feature) =>
-    feature.properties.type === airspaceTypeStr && feature.properties.identifier === identifier;
-}
-
-/**
  * Subscribes to all five entity datasets via the existing `useXDataset()`
  * hooks and returns their combined fetch state. The hooks share their
  * fetches at module scope, so calling this hook does not trigger any new
@@ -231,7 +218,7 @@ export function resolveSelectionFromState(
       if (states.airport.status === 'error') {
         return { status: 'not-found', ref };
       }
-      const record = states.airport.dataset.records.find((a) => a.faaId === ref.id);
+      const record = getAirportResolver(states.airport.dataset).byFaaId(ref.id);
       if (record === undefined) {
         return { status: 'not-found', ref };
       }
@@ -244,7 +231,7 @@ export function resolveSelectionFromState(
       if (states.navaid.status === 'error') {
         return { status: 'not-found', ref };
       }
-      const record = states.navaid.dataset.records.find((n) => n.identifier === ref.id);
+      const record = getNavaidResolver(states.navaid.dataset).byIdent(ref.id)[0];
       if (record === undefined) {
         return { status: 'not-found', ref };
       }
@@ -257,7 +244,7 @@ export function resolveSelectionFromState(
       if (states.fix.status === 'error') {
         return { status: 'not-found', ref };
       }
-      const record = states.fix.dataset.records.find((f) => f.identifier === ref.id);
+      const record = getFixResolver(states.fix.dataset).byIdent(ref.id)[0];
       if (record === undefined) {
         return { status: 'not-found', ref };
       }
@@ -270,7 +257,7 @@ export function resolveSelectionFromState(
       if (states.airway.status === 'error') {
         return { status: 'not-found', ref };
       }
-      const record = states.airway.dataset.records.find((a) => a.designation === ref.id);
+      const record = getAirwayResolver(states.airway.dataset).byDesignation(ref.id)[0];
       if (record === undefined) {
         return { status: 'not-found', ref };
       }
@@ -289,24 +276,16 @@ export function resolveSelectionFromState(
       }
       const airspaceTypeStr = ref.id.slice(0, slashIdx);
       const remainder = ref.id.slice(slashIdx + 1);
-      // Two encoding forms: a real `IDENTIFIER`, or `c:LON,LAT` for
-      // empty-identifier airspaces whose only stable URL handle is the
-      // polygon centroid (chip-build uses this in `inspector.tsx`).
-      const matcher = remainder.startsWith('c:')
-        ? buildAirspaceCentroidMatcher(remainder.slice(2), airspaceTypeStr)
-        : buildAirspaceIdentifierMatcher(remainder, airspaceTypeStr);
-      if (matcher === undefined) {
+      const features = remainder.startsWith('c:')
+        ? // Centroid encoding (`c:LON,LAT`) is the only stable URL handle
+          // for airspaces with an empty `identifier` (some Class E5
+          // surfaces). The resolver indexes by identifier only, so this
+          // path still iterates the source dataset and matches by
+          // centroid distance.
+          resolveAirspaceByCentroid(states.airspace, airspaceTypeStr, remainder.slice(2))
+        : resolveAirspaceByIdentifier(states.airspace, airspaceTypeStr, remainder);
+      if (features === undefined) {
         return { status: 'not-found', ref };
-      }
-      const features: AirspaceFeature[] = [];
-      for (const feature of states.airspace.dataset.features) {
-        if (isAirspacePolygonFeature(feature) && matcher(feature)) {
-          // The dataset write step puts the boundary on the GeoJSON
-          // geometry, not the properties bag. Re-attach it here so the
-          // resolved AirspaceFeature carries the polygon downstream
-          // (the inspector reads it for bbox-overlap chip computation).
-          features.push({ ...feature.properties, boundary: feature.geometry });
-        }
       }
       // Sort the matched features so the highest "vertical layer" is
       // first. Without this the panel's per-feature sub-sections render
@@ -338,6 +317,64 @@ export function resolveSelectionFromState(
       };
     }
   }
+}
+
+/**
+ * Resolves an `(airspaceType, identifier)` URL key against the airspace
+ * resolver's identifier indexes. Dispatches between `byArtcc` and
+ * `byAirport` because the two methods partition the identifier index
+ * (ARTCC vs everything else); after the bucket lookup, features are
+ * filtered to the exact `airspaceType` requested so a single identifier
+ * shared across types (rare but possible) only returns the URL-pinned one.
+ *
+ * Returns undefined when the airspace dataset is not loaded; otherwise
+ * returns the matched features (possibly empty - the caller treats
+ * empty as `not-found`).
+ */
+function resolveAirspaceByIdentifier(
+  state: AirspaceDatasetState,
+  airspaceTypeStr: string,
+  identifier: string,
+): AirspaceFeature[] | undefined {
+  if (state.status !== 'loaded') {
+    return undefined;
+  }
+  const resolver = getAirspaceResolver(state.dataset);
+  const bucket =
+    airspaceTypeStr === 'ARTCC' ? resolver.byArtcc(identifier) : resolver.byAirport(identifier);
+  return bucket.filter((feature) => feature.type === airspaceTypeStr);
+}
+
+/**
+ * Resolves an `airspace:TYPE/c:LON,LAT` URL by walking the source
+ * dataset's features and matching every airspace polygon whose centroid
+ * lies within {@link CENTROID_MATCH_TOLERANCE} of the encoded coordinates.
+ * Returns undefined when the dataset is not loaded or the encoded
+ * coordinates cannot be parsed.
+ */
+function resolveAirspaceByCentroid(
+  state: AirspaceDatasetState,
+  airspaceTypeStr: string,
+  encoded: string,
+): AirspaceFeature[] | undefined {
+  if (state.status !== 'loaded') {
+    return undefined;
+  }
+  const matcher = buildAirspaceCentroidMatcher(encoded, airspaceTypeStr);
+  if (matcher === undefined) {
+    return undefined;
+  }
+  const features: AirspaceFeature[] = [];
+  for (const feature of state.dataset.features) {
+    if (isAirspacePolygonFeature(feature) && matcher(feature)) {
+      // The dataset write step puts the boundary on the GeoJSON
+      // geometry, not the properties bag. Re-attach it here so the
+      // resolved AirspaceFeature carries the polygon downstream
+      // (the inspector reads it for bbox-overlap chip computation).
+      features.push({ ...feature.properties, boundary: feature.geometry });
+    }
+  }
+  return features;
 }
 
 /**
