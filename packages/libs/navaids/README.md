@@ -44,6 +44,20 @@ import { createNavaidResolver } from '@squawk/navaids';
 const resolver = createNavaidResolver({ data: myNavaids });
 ```
 
+## Browser / SPA usage
+
+The resolver factory has no Node-specific imports and ships an explicit `/browser` subpath for SPAs and edge runtimes. Pair it with `@squawk/navaid-data/browser`:
+
+```typescript
+import { loadUsBundledNavaids } from '@squawk/navaid-data/browser';
+import { createNavaidResolver } from '@squawk/navaids/browser';
+
+const dataset = await loadUsBundledNavaids();
+const resolver = createNavaidResolver({ data: dataset.records });
+```
+
+The `/browser` entry is identical to the main entry; the separate subpath exists so browser support is an explicit, `publint`-verified part of the public API surface.
+
 ## API
 
 ### `createNavaidResolver(options)`

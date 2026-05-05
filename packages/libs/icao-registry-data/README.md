@@ -35,7 +35,7 @@ subpath. It fetches and decompresses the bundled `.gz` using Web Streams
 
 ```typescript
 import { loadUsBundledRegistry } from '@squawk/icao-registry-data/browser';
-import { createIcaoRegistry } from '@squawk/icao-registry';
+import { createIcaoRegistry } from '@squawk/icao-registry/browser';
 
 const dataset = await loadUsBundledRegistry();
 const registry = createIcaoRegistry({ data: dataset.records });

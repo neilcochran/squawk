@@ -61,7 +61,7 @@ subpath. It fetches and decompresses the bundled `.gz` using Web Streams
 
 ```typescript
 import { loadUsBundledProcedures } from '@squawk/procedure-data/browser';
-import { createProcedureResolver } from '@squawk/procedures';
+import { createProcedureResolver } from '@squawk/procedures/browser';
 
 const dataset = await loadUsBundledProcedures();
 const resolver = createProcedureResolver({ data: dataset.records });

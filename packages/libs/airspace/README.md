@@ -50,6 +50,20 @@ import { createAirspaceResolver } from '@squawk/airspace';
 const resolver = createAirspaceResolver({ data: myGeoJson });
 ```
 
+## Browser / SPA usage
+
+The resolver factory has no Node-specific imports and ships an explicit `/browser` subpath for SPAs and edge runtimes. Pair it with `@squawk/airspace-data/browser`:
+
+```typescript
+import { loadUsBundledAirspace } from '@squawk/airspace-data/browser';
+import { createAirspaceResolver } from '@squawk/airspace/browser';
+
+const dataset = await loadUsBundledAirspace();
+const resolver = createAirspaceResolver({ data: dataset });
+```
+
+The `/browser` entry is identical to the main entry; the separate subpath exists so browser support is an explicit, `publint`-verified part of the public API surface.
+
 ## How it works
 
 `createAirspaceResolver` parses the GeoJSON FeatureCollection at initialization and

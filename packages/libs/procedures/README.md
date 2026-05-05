@@ -60,6 +60,20 @@ import { createProcedureResolver } from '@squawk/procedures';
 const resolver = createProcedureResolver({ data: myProcedures });
 ```
 
+## Browser / SPA usage
+
+The resolver factory has no Node-specific imports and ships an explicit `/browser` subpath for SPAs and edge runtimes. Pair it with `@squawk/procedure-data/browser`:
+
+```typescript
+import { loadUsBundledProcedures } from '@squawk/procedure-data/browser';
+import { createProcedureResolver } from '@squawk/procedures/browser';
+
+const dataset = await loadUsBundledProcedures();
+const resolver = createProcedureResolver({ data: dataset.records });
+```
+
+The `/browser` entry is identical to the main entry; the separate subpath exists so browser support is an explicit, `publint`-verified part of the public API surface.
+
 ## API
 
 ### `createProcedureResolver(options)`

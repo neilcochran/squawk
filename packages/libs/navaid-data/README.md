@@ -52,7 +52,7 @@ subpath. It fetches and decompresses the bundled `.gz` using Web Streams
 
 ```typescript
 import { loadUsBundledNavaids } from '@squawk/navaid-data/browser';
-import { createNavaidResolver } from '@squawk/navaids';
+import { createNavaidResolver } from '@squawk/navaids/browser';
 
 const dataset = await loadUsBundledNavaids();
 const resolver = createNavaidResolver({ data: dataset.records });

@@ -40,6 +40,20 @@ import { createAirportResolver } from '@squawk/airports';
 const resolver = createAirportResolver({ data: myAirports });
 ```
 
+## Browser / SPA usage
+
+The resolver factory has no Node-specific imports and ships an explicit `/browser` subpath for SPAs and edge runtimes. Pair it with `@squawk/airport-data/browser`:
+
+```typescript
+import { loadUsBundledAirports } from '@squawk/airport-data/browser';
+import { createAirportResolver } from '@squawk/airports/browser';
+
+const dataset = await loadUsBundledAirports();
+const resolver = createAirportResolver({ data: dataset.records });
+```
+
+The `/browser` entry is identical to the main entry; the separate subpath exists so browser support is an explicit, `publint`-verified part of the public API surface.
+
 ## API
 
 ### `createAirportResolver(options)`
