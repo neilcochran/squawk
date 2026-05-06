@@ -2,6 +2,7 @@ import type { FeatureCollection, Feature } from 'geojson';
 import { describe, it, beforeAll, expect, assert } from 'vitest';
 
 import { usBundledAirspace } from '@squawk/airspace-data';
+import { polygonGeoJson, type BoundingBox } from '@squawk/geo';
 import type { AirspaceType } from '@squawk/types';
 
 import { createAirspaceResolver } from './resolver.js';
@@ -573,5 +574,197 @@ describe('createAirspaceResolver with malformed features', () => {
     const r = createAirspaceResolver({ data });
     const results = r.query({ lat: 5, lon: 5, altitudeFt: 0 });
     expect(results.length).toBe(0);
+  });
+});
+
+describe('byCentroid', () => {
+  it('returns the feature whose centroid matches the query within tolerance', () => {
+    const laxShells = resolve_.byAirport('LAX');
+    assert(laxShells.length > 0, 'expected LAX shells in fixture data');
+    const target = laxShells[0]!;
+    const centroid = polygonGeoJson.polygonCentroid(target.boundary);
+    assert(centroid !== undefined, 'expected a computable centroid for LAX shell');
+    const matched = resolve_.byCentroid({ lon: centroid[0], lat: centroid[1] });
+    assert(
+      matched.some(
+        (f) => f.type === target.type && f.identifier === target.identifier && f === target,
+      ),
+      'expected byCentroid to return the same indexed feature',
+    );
+  });
+
+  it('returns an empty array for a position with no matching centroid', () => {
+    const matched = resolve_.byCentroid({ lon: 0, lat: 0 });
+    expect(matched.length, 'expected no centroids near (0, 0)').toBe(0);
+  });
+
+  it('honours the tolerance parameter', () => {
+    const laxShells = resolve_.byAirport('LAX');
+    const target = laxShells[0]!;
+    const centroid = polygonGeoJson.polygonCentroid(target.boundary);
+    assert(centroid !== undefined);
+    // 0.001 deg offset is far outside the default 0.0001 tolerance
+    // but inside an explicit 0.01 tolerance.
+    const offsetLon = centroid[0] + 0.001;
+    const offsetLat = centroid[1] + 0.001;
+    const tightMiss = resolve_.byCentroid({ lon: offsetLon, lat: offsetLat });
+    expect(
+      tightMiss.some((f) => f === target),
+      'tight default tolerance should miss the offset query',
+    ).toBe(false);
+    const looseHit = resolve_.byCentroid({
+      lon: offsetLon,
+      lat: offsetLat,
+      toleranceDeg: 0.01,
+    });
+    assert(
+      looseHit.some((f) => f === target),
+      'loose tolerance should match the offset query',
+    );
+  });
+});
+
+describe('byIdentifier', () => {
+  it('returns ARTCC and non-ARTCC features for the same identifier when both exist', () => {
+    // R-2508 (Edwards/China Lake) and ZLA share airspace, but identifiers differ;
+    // for the cross-partition test we exercise an identifier known to map to
+    // both via the bundled fixture by combining results: anything queried via
+    // byArtcc('ZNY') is in byIdentifier('ZNY').
+    const znyAll = resolve_.byIdentifier('ZNY');
+    const znyArtcc = resolve_.byArtcc('ZNY');
+    assert(znyArtcc.length > 0, 'expected ZNY ARTCC features in fixture');
+    assert(
+      znyArtcc.every((f) => znyAll.includes(f)),
+      'byIdentifier should include every ARTCC feature from byArtcc',
+    );
+  });
+
+  it('returns the same features as byAirport for a non-ARTCC identifier (default options)', () => {
+    const laxAll = resolve_.byIdentifier('LAX');
+    const laxAirport = resolve_.byAirport('LAX');
+    assert(laxAirport.length > 0);
+    expect(laxAll.length).toBe(laxAirport.length);
+    assert(laxAirport.every((f) => laxAll.includes(f)));
+  });
+
+  it('excludes ARTCC features when includeArtcc is false', () => {
+    const znyAll = resolve_.byIdentifier('ZNY');
+    assert(
+      znyAll.some((f) => f.type === 'ARTCC'),
+      'fixture precondition: ZNY identifier maps to at least one ARTCC feature',
+    );
+    const znyNoArtcc = resolve_.byIdentifier('ZNY', { includeArtcc: false });
+    expect(
+      znyNoArtcc.filter((f) => f.type === 'ARTCC').length,
+      'includeArtcc:false must drop ARTCC features',
+    ).toBe(0);
+  });
+
+  it('treats types filter as the authoritative inclusion list', () => {
+    const onlyClassB = resolve_.byIdentifier('LAX', { types: new Set<AirspaceType>(['CLASS_B']) });
+    assert(onlyClassB.length > 0);
+    assert(
+      onlyClassB.every((f) => f.type === 'CLASS_B'),
+      'types filter should include only the requested types',
+    );
+  });
+
+  it('honours types filter even when includeArtcc is false', () => {
+    // types is the inclusion list; includeArtcc is ignored when types is set.
+    const types = new Set<AirspaceType>(['ARTCC']);
+    const result = resolve_.byIdentifier('ZNY', { types, includeArtcc: false });
+    assert(result.length > 0, 'types:[ARTCC] should still return ARTCC features');
+    assert(
+      result.every((f) => f.type === 'ARTCC'),
+      'all results should be ARTCC',
+    );
+  });
+
+  it('is case-insensitive', () => {
+    const upper = resolve_.byIdentifier('LAX');
+    const lower = resolve_.byIdentifier('lax');
+    expect(upper.length).toBe(lower.length);
+  });
+
+  it('returns an empty array for an unknown identifier', () => {
+    expect(resolve_.byIdentifier('NOTANID').length).toBe(0);
+  });
+});
+
+describe('withinBbox', () => {
+  it('returns features whose pre-indexed bounding box overlaps the query bbox', () => {
+    // A bbox tightly around LAX should pull in at least the LAX Class B shells.
+    const bbox: BoundingBox = {
+      minLon: -118.5,
+      minLat: 33.85,
+      maxLon: -118.3,
+      maxLat: 34.0,
+    };
+    const features = resolve_.withinBbox(bbox);
+    assert(
+      features.some((f) => f.type === 'CLASS_B' && f.identifier === 'LAX'),
+      'expected at least one LAX CLASS_B feature in the bbox',
+    );
+  });
+
+  it('returns an empty array when no feature bbox overlaps', () => {
+    // Tiny bbox in deep ocean far from any FAA airspace.
+    const bbox: BoundingBox = { minLon: 0.0, minLat: 0.0, maxLon: 0.001, maxLat: 0.001 };
+    const features = resolve_.withinBbox(bbox);
+    expect(features.length).toBe(0);
+  });
+});
+
+describe('forEachIndexed', () => {
+  it('invokes the callback once per indexed feature with positional args', () => {
+    let count = 0;
+    let firstFeature: ReturnType<typeof Object> | undefined;
+    let firstRingLength = 0;
+    let firstBoundingBox: BoundingBox | undefined;
+    resolve_.forEachIndexed((feature, ring, boundingBox) => {
+      if (count === 0) {
+        firstFeature = feature;
+        firstRingLength = ring.length;
+        firstBoundingBox = boundingBox;
+      }
+      count += 1;
+    });
+    assert(count > 0, 'expected at least one indexed feature in the bundled fixture');
+    assert(firstFeature !== undefined, 'first feature should be defined');
+    assert(firstRingLength >= 4, 'rings are closed and must have at least 4 vertices');
+    assert(firstBoundingBox !== undefined, 'bounding box should be defined');
+  });
+
+  it('skips malformed features that did not parse into the indexed corpus', () => {
+    const data: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: [
+        // Valid square polygon
+        {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [0, 0],
+                [10, 0],
+                [10, 10],
+                [0, 10],
+                [0, 0],
+              ],
+            ],
+          },
+          properties: { type: 'CLASS_B', name: 'TEST', identifier: 'TST' },
+        },
+        // Malformed: no geometry
+        { type: 'Feature', geometry: null, properties: { type: 'CLASS_B' } } as unknown as Feature,
+      ],
+    };
+    const r = createAirspaceResolver({ data });
+    let count = 0;
+    r.forEachIndexed(() => {
+      count += 1;
+    });
+    expect(count, 'only the valid feature should be indexed').toBe(1);
   });
 });

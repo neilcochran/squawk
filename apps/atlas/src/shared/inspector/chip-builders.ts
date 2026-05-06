@@ -10,12 +10,9 @@ import {
 import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
 import { AIRSPACE_CLASS_FOR_TYPE } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
+import { getAirspaceResolver } from '../data/airspace-dataset.ts';
 
-import {
-  compareAirspaceByAltitudeDesc,
-  isAirspacePolygonFeature,
-  readAirspaceAltitudeKey,
-} from './airspace-feature.ts';
+import { compareAirspaceByAltitudeDesc, readAirspaceAltitudeKey } from './airspace-feature.ts';
 import type { AirspaceAltitudeKey } from './airspace-feature.ts';
 import { resolveSelectionFromState } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntityState } from './entity-resolver.ts';
@@ -157,19 +154,25 @@ export function* buildOverlappingAirspaceChips(
     return;
   }
   const activeClassSet = new Set<string>(activeClasses);
-  for (const feature of datasets.airspace.dataset.features) {
-    if (!isAirspacePolygonFeature(feature)) {
-      continue;
-    }
-    const props = feature.properties;
-    if (!activeClassSet.has(AIRSPACE_CLASS_FOR_TYPE[props.type])) {
+  // The resolver's withinBbox query reuses the bounding box pre-computed at
+  // resolver-creation time, so the per-feature bounding-box recomputation
+  // the chip walk used to do is gone. Each candidate is already a parsed
+  // AirspaceFeature with its `boundary` polygon, so the GeoJSON narrowing
+  // guard and the property-bag access disappear too.
+  const resolver = getAirspaceResolver(datasets.airspace.dataset);
+  for (const feature of resolver.withinBbox(footprint.bbox)) {
+    if (!activeClassSet.has(AIRSPACE_CLASS_FOR_TYPE[feature.type])) {
       continue;
     }
     // Build the encoded selection. Empty-identifier features use a
     // centroid-based disambiguator so they still get a stable URL
     // handle (and thus a clickable chip) - same convention the click
     // path uses.
-    const selection = encodeAirspaceChipSelection(props.type, props.identifier, feature.geometry);
+    const selection = encodeAirspaceChipSelection(
+      feature.type,
+      feature.identifier,
+      feature.boundary,
+    );
     if (selection === undefined) {
       continue;
     }
@@ -179,14 +182,7 @@ export function* buildOverlappingAirspaceChips(
     if (seen.has(selection)) {
       continue;
     }
-    const featureBbox = polygonGeoJson.polygonBoundingBox(feature.geometry);
-    // Cheap bbox pre-filter against the selected footprint, then a
-    // per-feature centroid for both the viewport check and (for
-    // airspace selections) the substantial-overlap check below.
-    if (!polygonGeoJson.boundingBoxesOverlap(footprint.bbox, featureBbox)) {
-      continue;
-    }
-    const featureCentroid = polygonGeoJson.polygonCentroid(feature.geometry);
+    const featureCentroid = polygonGeoJson.polygonCentroid(feature.boundary);
     if (featureCentroid === undefined) {
       continue;
     }
@@ -205,7 +201,7 @@ export function* buildOverlappingAirspaceChips(
       let overlaps = false;
       for (const polygon of footprint.polygons) {
         if (
-          polygonGeoJson.polygonsSubstantiallyOverlap(feature.geometry, polygon, featureCentroid)
+          polygonGeoJson.polygonsSubstantiallyOverlap(feature.boundary, polygon, featureCentroid)
         ) {
           overlaps = true;
           break;
@@ -217,8 +213,8 @@ export function* buildOverlappingAirspaceChips(
     }
     yield {
       selection,
-      label: formatAirspaceLabel(props.type, props.identifier, props.name),
-      altitudeKey: { ceilingFt: props.ceiling.valueFt, floorFt: props.floor.valueFt },
+      label: formatAirspaceLabel(feature.type, feature.identifier, feature.name),
+      altitudeKey: { ceilingFt: feature.ceiling.valueFt, floorFt: feature.floor.valueFt },
     };
   }
 }

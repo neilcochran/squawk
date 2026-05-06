@@ -67,7 +67,7 @@ The `/browser` entry is identical to the main entry; the separate subpath exists
 ## How it works
 
 `createAirspaceResolver` parses the GeoJSON FeatureCollection at initialization and
-returns a resolver object with three methods:
+returns a resolver object with the following methods:
 
 - `query(AirspaceQuery)` - returns features containing the given position and
   altitude, via a ray casting point-in-polygon test combined with a vertical
@@ -79,6 +79,19 @@ returns a resolver object with three methods:
 - `byArtcc(identifier, stratum?)` - returns every ARTCC feature for the given
   3-letter center code (e.g. `"ZNY"`), optionally filtered to a single
   stratum (`LOW`, `HIGH`, `UTA`, `CTA`, `FIR`, or `CTA/FIR`).
+- `byIdentifier(identifier, options?)` - type-agnostic identifier lookup that
+  spans both partitions in one call, with an optional `types` inclusion
+  filter and `includeArtcc` toggle.
+- `byCentroid({ lon, lat, toleranceDeg? })` - returns features whose polygon
+  centroid lies within tolerance of the query coordinates. Useful for
+  resolving features whose `identifier` is empty (some Class E5 surfaces),
+  where the centroid is the only stable handle.
+- `withinBbox(bbox)` - returns features whose pre-indexed bounding box
+  overlaps the query bbox. Reuses the bounding box cached at init time
+  rather than recomputing per call.
+- `forEachIndexed(callback)` - read-only iteration over the indexed corpus
+  with positional `(feature, ring, boundingBox)` arguments, for callers
+  that need to filter the corpus without reparsing the source GeoJSON.
 
 All matching features are returned as `AirspaceFeature` objects (from `@squawk/types`),
 including the full polygon boundary coordinates.
@@ -116,7 +129,9 @@ Creates a resolver from a GeoJSON dataset.
 - `options.data` - a GeoJSON `FeatureCollection` with airspace features
 
 **Returns:** `AirspaceResolver` - an object exposing `query(AirspaceQuery)`,
-`byAirport(identifier, types?)`, and `byArtcc(identifier, stratum?)` methods.
+`byAirport(identifier, types?)`, `byArtcc(identifier, stratum?)`,
+`byIdentifier(identifier, options?)`, `byCentroid(query)`, `withinBbox(bbox)`,
+and `forEachIndexed(callback)` methods.
 
 ### `AirspaceQuery`
 
@@ -167,6 +182,81 @@ const zny = resolver.byArtcc('ZNY');
 
 // Just the high-altitude boundary for the Boston center
 const zbwHigh = resolver.byArtcc('ZBW', 'HIGH');
+```
+
+### `resolver.byIdentifier(identifier, options?)`
+
+Type-agnostic identifier lookup. Returns every feature whose `identifier`
+matches, spanning both the ARTCC and non-ARTCC partitions in one call.
+Reach for this when the airspace type is not known up-front (e.g. parsed
+from a URL); for ergonomic shortcuts, the partition-specific `byAirport` /
+`byArtcc` wrappers stay available.
+
+| Option         | Type                       | Description                                                                                     |
+| -------------- | -------------------------- | ----------------------------------------------------------------------------------------------- |
+| `types`        | ReadonlySet\<AirspaceType> | Optional. When provided, acts as the authoritative inclusion filter; `includeArtcc` is ignored. |
+| `includeArtcc` | boolean                    | Defaults to `true`. When `false` and `types` is omitted, ARTCC features are excluded.           |
+
+```typescript
+// Every feature for the identifier, ARTCC included
+const all = resolver.byIdentifier('ZNY');
+
+// Only the non-ARTCC partition
+const nonArtcc = resolver.byIdentifier('ZNY', { includeArtcc: false });
+
+// Only matching types
+const onlyClassB = resolver.byIdentifier('JFK', { types: new Set(['CLASS_B']) });
+```
+
+### `resolver.byCentroid(query)`
+
+Returns every feature whose polygon centroid is within `toleranceDeg` of
+`(lon, lat)`. The centroid is computed per call (not cached) so this is
+O(n) over the corpus - suitable for occasional URL-driven lookups, not
+hot loops. Useful for resolving features with an empty `identifier` (some
+Class E5 surfaces), where the centroid is the fallback URL handle.
+
+| Property       | Type   | Description                                                                                              |
+| -------------- | ------ | -------------------------------------------------------------------------------------------------------- |
+| `lon`          | number | Longitude in decimal degrees (WGS84)                                                                     |
+| `lat`          | number | Latitude in decimal degrees (WGS84)                                                                      |
+| `toleranceDeg` | number | Optional. Centroid match tolerance in degrees, applied independently to lon and lat. Defaults to 0.0001. |
+
+```typescript
+const matches = resolver.byCentroid({ lon: -118.4081, lat: 33.9425 });
+```
+
+### `resolver.withinBbox(bbox)`
+
+Returns every feature whose pre-indexed bounding box overlaps the query
+bbox. Reuses the bounding box cached at init time, so this is suitable
+for tight loops over the corpus. Bounding-box overlap is a coarse spatial
+filter: callers that need true polygon-polygon intersection should follow
+up with their own geometry test on the returned features.
+
+```typescript
+const overlapping = resolver.withinBbox({
+  minLon: -119,
+  minLat: 33,
+  maxLon: -118,
+  maxLat: 35,
+});
+```
+
+### `resolver.forEachIndexed(callback)`
+
+Read-only iteration over the indexed corpus, invoking `callback` once per
+feature with positional `(feature, ring, boundingBox)`. Exposes the
+resolver's pre-parsed shape so callers that need to filter the corpus
+themselves do not have to reparse the source GeoJSON or recompute geometry
+per call. The `ring` and `boundingBox` arguments are the resolver's
+internal caches and must not be mutated.
+
+```typescript
+resolver.forEachIndexed((feature, ring, boundingBox) => {
+  // ring is the parsed exterior ring (number[][]).
+  // boundingBox is the pre-computed axis-aligned bbox.
+});
 ```
 
 ### ARTCC altitude bounds
