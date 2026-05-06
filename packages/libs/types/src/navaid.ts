@@ -14,6 +14,43 @@ export type NavaidType =
   | 'VOT';
 
 /**
+ * The full set of {@link NavaidType} values, in declaration order.
+ *
+ * Use as the single source of truth for value-side iteration (e.g. building a
+ * lookup table keyed by navaid type) or with {@link isNavaidType} to narrow
+ * an external string into the union. The `as const satisfies` brand keeps
+ * this array in sync with the type at compile time.
+ */
+export const NAVAID_TYPES = [
+  'VOR',
+  'VORTAC',
+  'VOR/DME',
+  'TACAN',
+  'DME',
+  'NDB',
+  'NDB/DME',
+  'FAN_MARKER',
+  'MARINE_NDB',
+  'VOT',
+] as const satisfies readonly NavaidType[];
+
+const NAVAID_TYPE_SET: ReadonlySet<string> = new Set(NAVAID_TYPES);
+
+/**
+ * Type guard that narrows a string to {@link NavaidType} when it matches a
+ * member of {@link NAVAID_TYPES}.
+ *
+ * Useful when consuming external strings (URL params, config files, MCP tool
+ * inputs) that should be validated before being used as a navaid type.
+ *
+ * @param value - The string to test.
+ * @returns `true` if `value` is a valid `NavaidType`.
+ */
+export function isNavaidType(value: string): value is NavaidType {
+  return NAVAID_TYPE_SET.has(value);
+}
+
+/**
  * Maps FAA NAV_TYPE values from NASR data to NavaidType.
  */
 export const NAVAID_TYPE_MAP: Record<string, NavaidType> = {

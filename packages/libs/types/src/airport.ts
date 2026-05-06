@@ -10,6 +10,39 @@ export type FacilityType =
   | 'BALLOONPORT';
 
 /**
+ * The full set of {@link FacilityType} values, in declaration order.
+ *
+ * Use as the single source of truth for value-side iteration (e.g. building a
+ * lookup table keyed by facility type) or with {@link isFacilityType} to
+ * narrow an external string into the union. The `as const satisfies` brand
+ * keeps this array in sync with the type at compile time.
+ */
+export const FACILITY_TYPES = [
+  'AIRPORT',
+  'HELIPORT',
+  'SEAPLANE_BASE',
+  'GLIDERPORT',
+  'ULTRALIGHT',
+  'BALLOONPORT',
+] as const satisfies readonly FacilityType[];
+
+const FACILITY_TYPE_SET: ReadonlySet<string> = new Set(FACILITY_TYPES);
+
+/**
+ * Type guard that narrows a string to {@link FacilityType} when it matches a
+ * member of {@link FACILITY_TYPES}.
+ *
+ * Useful when consuming external strings (URL params, config files, MCP tool
+ * inputs) that should be validated before being used as a facility type.
+ *
+ * @param value - The string to test.
+ * @returns `true` if `value` is a valid `FacilityType`.
+ */
+export function isFacilityType(value: string): value is FacilityType {
+  return FACILITY_TYPE_SET.has(value);
+}
+
+/**
  * Maps FAA SITE_TYPE_CODE values to FacilityType.
  */
 export const FACILITY_TYPE_MAP: Record<string, FacilityType> = {

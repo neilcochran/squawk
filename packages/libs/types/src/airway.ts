@@ -29,6 +29,45 @@ export type AirwayType =
   | 'PUERTO_RICO';
 
 /**
+ * The full set of {@link AirwayType} values, in declaration order.
+ *
+ * Use as the single source of truth for value-side iteration (e.g. building a
+ * lookup table keyed by airway type) or with {@link isAirwayType} to narrow
+ * an external string into the union. The `as const satisfies` brand keeps
+ * this array in sync with the type at compile time.
+ */
+export const AIRWAY_TYPES = [
+  'VICTOR',
+  'JET',
+  'RNAV_Q',
+  'RNAV_T',
+  'GREEN',
+  'RED',
+  'AMBER',
+  'BLUE',
+  'ATLANTIC',
+  'BAHAMA',
+  'PACIFIC',
+  'PUERTO_RICO',
+] as const satisfies readonly AirwayType[];
+
+const AIRWAY_TYPE_SET: ReadonlySet<string> = new Set(AIRWAY_TYPES);
+
+/**
+ * Type guard that narrows a string to {@link AirwayType} when it matches a
+ * member of {@link AIRWAY_TYPES}.
+ *
+ * Useful when consuming external strings (URL params, config files, MCP tool
+ * inputs) that should be validated before being used as an airway type.
+ *
+ * @param value - The string to test.
+ * @returns `true` if `value` is a valid `AirwayType`.
+ */
+export function isAirwayType(value: string): value is AirwayType {
+  return AIRWAY_TYPE_SET.has(value);
+}
+
+/**
  * Maps the first character of an AWY.txt airway designation to its AirwayType.
  */
 export const AWY_TYPE_MAP: Record<string, AirwayType> = {
