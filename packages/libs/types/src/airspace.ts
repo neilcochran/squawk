@@ -61,6 +61,50 @@ export type AirspaceType =
   | 'ARTCC';
 
 /**
+ * The full set of {@link AirspaceType} values, in declaration order.
+ *
+ * Use as the single source of truth for value-side iteration (e.g. building a
+ * lookup table keyed by airspace type) or with {@link isAirspaceType} to
+ * narrow an external string into the union. The `as const satisfies` brand
+ * keeps this array in sync with the type at compile time - adding a new
+ * union member without updating the array fails the build.
+ */
+export const AIRSPACE_TYPES = [
+  'CLASS_B',
+  'CLASS_C',
+  'CLASS_D',
+  'CLASS_E2',
+  'CLASS_E3',
+  'CLASS_E4',
+  'CLASS_E5',
+  'CLASS_E6',
+  'CLASS_E7',
+  'MOA',
+  'RESTRICTED',
+  'PROHIBITED',
+  'WARNING',
+  'ALERT',
+  'NSA',
+  'ARTCC',
+] as const satisfies readonly AirspaceType[];
+
+const AIRSPACE_TYPE_SET: ReadonlySet<string> = new Set(AIRSPACE_TYPES);
+
+/**
+ * Type guard that narrows a string to {@link AirspaceType} when it matches a
+ * member of {@link AIRSPACE_TYPES}.
+ *
+ * Useful when consuming external strings (URL params, config files, MCP tool
+ * inputs) that should be validated before being used as an airspace type.
+ *
+ * @param value - The string to test.
+ * @returns `true` if `value` is a valid `AirspaceType`.
+ */
+export function isAirspaceType(value: string): value is AirspaceType {
+  return AIRSPACE_TYPE_SET.has(value);
+}
+
+/**
  * The boundary stratum of an ARTCC feature, derived from NASR ARB_SEG
  * `ALTITUDE` and `TYPE` columns.
  *
@@ -79,6 +123,41 @@ export type AirspaceType =
  * Set to `null` for non-ARTCC features.
  */
 export type ArtccStratum = 'LOW' | 'HIGH' | 'UTA' | 'CTA' | 'FIR' | 'CTA/FIR';
+
+/**
+ * The full set of {@link ArtccStratum} values, in declaration order.
+ *
+ * Use as the single source of truth for value-side iteration over ARTCC
+ * stratum kinds (e.g. building a lookup table keyed by stratum) or with
+ * {@link isArtccStratum} to narrow an external string into the union. The
+ * `as const satisfies` brand keeps this array in sync with the type at
+ * compile time.
+ */
+export const ARTCC_STRATA = [
+  'LOW',
+  'HIGH',
+  'UTA',
+  'CTA',
+  'FIR',
+  'CTA/FIR',
+] as const satisfies readonly ArtccStratum[];
+
+const ARTCC_STRATUM_SET: ReadonlySet<string> = new Set(ARTCC_STRATA);
+
+/**
+ * Type guard that narrows a string to {@link ArtccStratum} when it matches a
+ * member of {@link ARTCC_STRATA}.
+ *
+ * Useful when consuming external strings (URL params, config files, MCP tool
+ * inputs) that should be validated before being used as an ARTCC stratum
+ * filter.
+ *
+ * @param value - The string to test.
+ * @returns `true` if `value` is a valid `ArtccStratum`.
+ */
+export function isArtccStratum(value: string): value is ArtccStratum {
+  return ARTCC_STRATUM_SET.has(value);
+}
 
 /**
  * A single airspace designation feature derived from FAA NASR data.

@@ -13,6 +13,41 @@
 export type FixUseCode = 'WP' | 'RP' | 'MW' | 'MR' | 'CN' | 'VFR' | 'NRS' | 'RADAR';
 
 /**
+ * The full set of {@link FixUseCode} values, in declaration order.
+ *
+ * Use as the single source of truth for value-side iteration (e.g. building a
+ * lookup table keyed by use code) or with {@link isFixUseCode} to narrow an
+ * external string into the union. The `as const satisfies` brand keeps this
+ * array in sync with the type at compile time.
+ */
+export const FIX_USE_CODES = [
+  'WP',
+  'RP',
+  'MW',
+  'MR',
+  'CN',
+  'VFR',
+  'NRS',
+  'RADAR',
+] as const satisfies readonly FixUseCode[];
+
+const FIX_USE_CODE_SET: ReadonlySet<string> = new Set(FIX_USE_CODES);
+
+/**
+ * Type guard that narrows a string to {@link FixUseCode} when it matches a
+ * member of {@link FIX_USE_CODES}.
+ *
+ * Useful when consuming external strings (URL params, config files, MCP tool
+ * inputs) that should be validated before being used as a fix use code.
+ *
+ * @param value - The string to test.
+ * @returns `true` if `value` is a valid `FixUseCode`.
+ */
+export function isFixUseCode(value: string): value is FixUseCode {
+  return FIX_USE_CODE_SET.has(value);
+}
+
+/**
  * Maps FAA FIX_USE_CODE values from NASR data to FixUseCode.
  * FAA values may have trailing whitespace so trimmed values are mapped here.
  */
