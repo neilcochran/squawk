@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 
-import { polygonGeoJson } from '@squawk/geo';
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
 
 import { getAirportResolver, useAirportDataset } from '../data/airport-dataset.ts';
@@ -14,8 +13,7 @@ import type { FixDatasetState } from '../data/fix-dataset.ts';
 import { getNavaidResolver, useNavaidDataset } from '../data/navaid-dataset.ts';
 import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
 
-import { compareAirspaceByAltitudeDesc, isAirspacePolygonFeature } from './airspace-feature.ts';
-import type { AirspacePolygonFeature } from './airspace-feature.ts';
+import { compareAirspaceByAltitudeDesc } from './airspace-feature.ts';
 import { parseSelected } from './entity.ts';
 import type { EntityRef } from './entity.ts';
 
@@ -120,48 +118,6 @@ export interface ChartDatasetStates {
   airway: AirwayDatasetState;
   /** Airspace dataset fetch state. */
   airspace: AirspaceDatasetState;
-}
-
-/**
- * Match tolerance (in degrees lon/lat) used when looking up an airspace
- * feature by polygon centroid. The chip walk encodes centroids to 5
- * decimal places (~1m precision); 0.0001 (~11m) is generous enough to
- * absorb floating-point round-trips through URL parsing.
- */
-const CENTROID_MATCH_TOLERANCE = 0.0001;
-
-/**
- * Builds a matcher that returns true iff a candidate airspace feature
- * has the given type AND its polygon centroid is within
- * {@link CENTROID_MATCH_TOLERANCE} of the target coordinates. Returns
- * undefined when the encoded coords cannot be parsed.
- */
-function buildAirspaceCentroidMatcher(
-  encoded: string,
-  airspaceTypeStr: string,
-): ((feature: AirspacePolygonFeature) => boolean) | undefined {
-  const parts = encoded.split(',');
-  if (parts.length !== 2) {
-    return undefined;
-  }
-  const targetLon = Number(parts[0]);
-  const targetLat = Number(parts[1]);
-  if (!Number.isFinite(targetLon) || !Number.isFinite(targetLat)) {
-    return undefined;
-  }
-  return (feature) => {
-    if (feature.properties.type !== airspaceTypeStr) {
-      return false;
-    }
-    const centroid = polygonGeoJson.polygonCentroid(feature.geometry);
-    if (centroid === undefined) {
-      return false;
-    }
-    return (
-      Math.abs(centroid[0] - targetLon) < CENTROID_MATCH_TOLERANCE &&
-      Math.abs(centroid[1] - targetLat) < CENTROID_MATCH_TOLERANCE
-    );
-  };
 }
 
 /**
@@ -320,12 +276,10 @@ export function resolveSelectionFromState(
 }
 
 /**
- * Resolves an `(airspaceType, identifier)` URL key against the airspace
- * resolver's identifier indexes. Dispatches between `byArtcc` and
- * `byAirport` because the two methods partition the identifier index
- * (ARTCC vs everything else); after the bucket lookup, features are
- * filtered to the exact `airspaceType` requested so a single identifier
- * shared across types (rare but possible) only returns the URL-pinned one.
+ * Resolves an `(airspaceType, identifier)` URL key via the airspace
+ * resolver's type-agnostic identifier lookup, then post-filters to the
+ * exact `airspaceType` requested so a single identifier shared across
+ * types (rare but possible) only returns the URL-pinned one.
  *
  * Returns undefined when the airspace dataset is not loaded; otherwise
  * returns the matched features (possibly empty - the caller treats
@@ -340,17 +294,16 @@ function resolveAirspaceByIdentifier(
     return undefined;
   }
   const resolver = getAirspaceResolver(state.dataset);
-  const bucket =
-    airspaceTypeStr === 'ARTCC' ? resolver.byArtcc(identifier) : resolver.byAirport(identifier);
-  return bucket.filter((feature) => feature.type === airspaceTypeStr);
+  return resolver.byIdentifier(identifier).filter((feature) => feature.type === airspaceTypeStr);
 }
 
 /**
- * Resolves an `airspace:TYPE/c:LON,LAT` URL by walking the source
- * dataset's features and matching every airspace polygon whose centroid
- * lies within {@link CENTROID_MATCH_TOLERANCE} of the encoded coordinates.
- * Returns undefined when the dataset is not loaded or the encoded
- * coordinates cannot be parsed.
+ * Resolves an `airspace:TYPE/c:LON,LAT` URL by parsing the centroid encoding
+ * and delegating to the resolver's `byCentroid` query. Post-filters the
+ * matches to the exact `airspaceType` requested so distinct features whose
+ * centroids happen to coincide only return the URL-pinned type. Returns
+ * undefined when the dataset is not loaded or the encoded coordinates
+ * cannot be parsed.
  */
 function resolveAirspaceByCentroid(
   state: AirspaceDatasetState,
@@ -360,21 +313,17 @@ function resolveAirspaceByCentroid(
   if (state.status !== 'loaded') {
     return undefined;
   }
-  const matcher = buildAirspaceCentroidMatcher(encoded, airspaceTypeStr);
-  if (matcher === undefined) {
+  const parts = encoded.split(',');
+  if (parts.length !== 2) {
     return undefined;
   }
-  const features: AirspaceFeature[] = [];
-  for (const feature of state.dataset.features) {
-    if (isAirspacePolygonFeature(feature) && matcher(feature)) {
-      // The dataset write step puts the boundary on the GeoJSON
-      // geometry, not the properties bag. Re-attach it here so the
-      // resolved AirspaceFeature carries the polygon downstream
-      // (the inspector reads it for bbox-overlap chip computation).
-      features.push({ ...feature.properties, boundary: feature.geometry });
-    }
+  const lon = Number(parts[0]);
+  const lat = Number(parts[1]);
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
+    return undefined;
   }
-  return features;
+  const resolver = getAirspaceResolver(state.dataset);
+  return resolver.byCentroid({ lon, lat }).filter((feature) => feature.type === airspaceTypeStr);
 }
 
 /**

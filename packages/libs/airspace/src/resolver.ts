@@ -1,6 +1,6 @@
 import type { FeatureCollection, Feature } from 'geojson';
 
-import { polygon, type BoundingBox } from '@squawk/geo';
+import { polygon, polygonGeoJson, type BoundingBox } from '@squawk/geo';
 import type { AirspaceFeature, AirspaceType, AltitudeBound, ArtccStratum } from '@squawk/types';
 
 import { altitudeMatches } from './vertical-filter.js';
@@ -25,6 +25,50 @@ export interface AirspaceQuery {
    * When omitted, all airspace types are included.
    */
   types?: ReadonlySet<AirspaceType>;
+}
+
+/**
+ * A query describing a geographic position and tolerance for a centroid-based
+ * airspace lookup.
+ */
+export interface AirspaceCentroidQuery {
+  /** Longitude in decimal degrees (WGS84). */
+  lon: number;
+  /** Latitude in decimal degrees (WGS84). */
+  lat: number;
+  /**
+   * Optional tolerance in degrees for the centroid match. A feature is
+   * returned when both `|centroidLon - lon|` and `|centroidLat - lat|`
+   * fall below this value. Defaults to `0.0001` (~11 m), generous enough to
+   * absorb floating-point round-trips through URL parsing for centroids
+   * encoded to ~5 decimal places.
+   */
+  toleranceDeg?: number;
+}
+
+/**
+ * Options accepted by {@link AirspaceResolver.byIdentifier}.
+ */
+export interface AirspaceByIdentifierOptions {
+  /**
+   * Optional set of airspace types to include in the results. When provided,
+   * acts as an inclusion filter and overrides the partition between ARTCC and
+   * non-ARTCC features: callers who want ARTCC results in addition to the
+   * usual partition include `'ARTCC'` in this set explicitly, and callers who
+   * want only non-ARTCC results pass a set of the non-ARTCC types. When
+   * omitted, every type is eligible (subject to {@link includeArtcc}).
+   */
+  types?: ReadonlySet<AirspaceType>;
+  /**
+   * When `true` (the default), ARTCC features for the identifier are included
+   * alongside the airport-associated and SUA features. When `false`, ARTCC
+   * features are excluded - useful when you only want the non-ARTCC partition
+   * for an identifier without enumerating every non-ARTCC type yourself.
+   *
+   * Ignored when {@link types} is provided: `types` is the authoritative
+   * inclusion list in that case.
+   */
+  includeArtcc?: boolean;
 }
 
 /**
@@ -86,6 +130,86 @@ export interface AirspaceResolver {
    * @returns All matching ARTCC features, or an empty array.
    */
   byArtcc(identifier: string, stratum?: ArtccStratum): AirspaceFeature[];
+
+  /**
+   * Returns every airspace feature whose polygon centroid lies within the
+   * given tolerance of the query coordinates. Useful for resolving features
+   * that have an empty `identifier` (some Class E5 surfaces) and therefore
+   * have no stable identifier-keyed lookup - the polygon centroid is the
+   * fallback handle.
+   *
+   * Reach for this when you have a centroid encoded into a URL or other
+   * external string and want to recover the original feature(s); for
+   * identifier-keyed lookups, prefer {@link byIdentifier} (or the more
+   * specific {@link byAirport} / {@link byArtcc}). Centroid is computed
+   * per call - no internal caching - so this is O(n) over the indexed
+   * corpus, suitable for occasional URL-driven lookups but not for
+   * tight loops.
+   *
+   * @param query - Query coordinates and optional tolerance.
+   * @returns All features whose centroid is within tolerance, in dataset order.
+   */
+  byCentroid(query: AirspaceCentroidQuery): AirspaceFeature[];
+
+  /**
+   * Returns every airspace feature for the given identifier across both the
+   * ARTCC and non-ARTCC partitions, independent of position or altitude.
+   * Lookup is case-insensitive.
+   *
+   * Reach for this when you have an identifier whose airspace type is not
+   * known up-front (e.g. parsed from a URL) and you want a single call that
+   * returns the matching feature(s) regardless of partition. For ergonomic
+   * shortcuts when the partition is known, prefer {@link byAirport} (returns
+   * non-ARTCC features only) or {@link byArtcc} (returns ARTCC features
+   * only) - those wrappers encode the common "shells for this airport" /
+   * "stratums for this center" questions and stay available alongside this
+   * type-agnostic form.
+   *
+   * @param identifier - FAA identifier, NASR designator, or ARTCC code.
+   * @param options - Optional `types` inclusion filter and `includeArtcc`
+   *                  toggle. See {@link AirspaceByIdentifierOptions}.
+   * @returns All matching features, or an empty array.
+   */
+  byIdentifier(identifier: string, options?: AirspaceByIdentifierOptions): AirspaceFeature[];
+
+  /**
+   * Returns every airspace feature whose pre-indexed bounding box overlaps
+   * the given bounding box. Reuses the bounding box computed once at
+   * resolver creation time rather than recomputing per call, so this is
+   * suitable for tight loops over the corpus (e.g. a chip rebuild against
+   * a selection footprint).
+   *
+   * Bounding-box overlap is a coarse spatial filter: it matches any feature
+   * whose axis-aligned rectangle intersects the query rectangle, including
+   * features whose actual polygon does not. Callers that need true
+   * polygon-polygon intersection should follow up with their own geometry
+   * test on the returned features.
+   *
+   * @param bbox - Query bounding box.
+   * @returns All features whose pre-indexed bounding box overlaps, in dataset order.
+   */
+  withinBbox(bbox: BoundingBox): AirspaceFeature[];
+
+  /**
+   * Iterates the indexed corpus in dataset order, invoking `callback` once
+   * per feature with the parsed feature, its exterior ring, and its
+   * pre-computed bounding box. Exposes the resolver's pre-parsed shape so
+   * callers that need to filter the corpus themselves do not have to
+   * reparse the source GeoJSON or recompute geometry per call.
+   *
+   * The `ring` and `boundingBox` arguments are the resolver's internal
+   * caches and must not be mutated by the callback - copy them first if a
+   * mutation is needed.
+   *
+   * @param callback - Function invoked once per indexed feature.
+   */
+  forEachIndexed(
+    callback: (
+      feature: AirspaceFeature,
+      ring: readonly number[][],
+      boundingBox: BoundingBox,
+    ) => void,
+  ): void;
 }
 
 /**
@@ -163,6 +287,9 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
  * const overhead = resolver.query({ lat: 33.9425, lon: -118.4081, altitudeFt: 3000 });
  * const laxShells = resolver.byAirport('LAX');
  * const newYorkArtcc = resolver.byArtcc('ZNY');
+ * const anyZnyFeature = resolver.byIdentifier('ZNY');
+ * const nearbyByCentroid = resolver.byCentroid({ lon: -118.4, lat: 33.9 });
+ * const overlapping = resolver.withinBbox({ minLon: -119, minLat: 33, maxLon: -118, maxLat: 35 });
  * ```
  */
 export function createAirspaceResolver(options: AirspaceResolverOptions): AirspaceResolver {
@@ -230,6 +357,62 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
         return artccFeatures;
       }
       return artccFeatures.filter((f) => f.artccStratum === stratum);
+    },
+
+    byCentroid(query: AirspaceCentroidQuery): AirspaceFeature[] {
+      const tolerance = query.toleranceDeg ?? 0.0001;
+      const results: AirspaceFeature[] = [];
+      for (const { feature } of indexed) {
+        const centroid = polygonGeoJson.polygonCentroid(feature.boundary);
+        if (centroid === undefined) {
+          continue;
+        }
+        if (
+          Math.abs(centroid[0] - query.lon) < tolerance &&
+          Math.abs(centroid[1] - query.lat) < tolerance
+        ) {
+          results.push(feature);
+        }
+      }
+      return results;
+    },
+
+    byIdentifier(identifier: string, options?: AirspaceByIdentifierOptions): AirspaceFeature[] {
+      const bucket = byIdentifierMap.get(identifier.toUpperCase());
+      if (bucket === undefined) {
+        return [];
+      }
+      const types = options?.types;
+      if (types !== undefined) {
+        return bucket.filter((f) => types.has(f.type));
+      }
+      const includeArtcc = options?.includeArtcc ?? true;
+      if (includeArtcc) {
+        return bucket.slice();
+      }
+      return bucket.filter((f) => f.type !== 'ARTCC');
+    },
+
+    withinBbox(bbox: BoundingBox): AirspaceFeature[] {
+      const results: AirspaceFeature[] = [];
+      for (const { feature, boundingBox } of indexed) {
+        if (polygonGeoJson.boundingBoxesOverlap(bbox, boundingBox)) {
+          results.push(feature);
+        }
+      }
+      return results;
+    },
+
+    forEachIndexed(
+      callback: (
+        feature: AirspaceFeature,
+        ring: readonly number[][],
+        boundingBox: BoundingBox,
+      ) => void,
+    ): void {
+      for (const { feature, ring, boundingBox } of indexed) {
+        callback(feature, ring, boundingBox);
+      }
     },
   };
 }
