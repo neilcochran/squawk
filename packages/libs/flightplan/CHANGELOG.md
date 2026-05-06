@@ -1,5 +1,12 @@
 # @squawk/flightplan
 
+## 0.5.0
+
+### Minor Changes
+
+- 1ec1345: ### Added
+  - `/browser` exports subpath aliasing the main entry, so SPAs and edge runtimes have an explicit, `publint`-verified browser surface that mirrors the other query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/navaids`, `@squawk/procedures`).
+
 ## 0.4.5
 
 ### Patch Changes

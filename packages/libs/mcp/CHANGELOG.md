@@ -1,5 +1,12 @@
 # @squawk/mcp
 
+## 0.8.11
+
+### Patch Changes
+
+- Updated dependencies [1ec1345]
+  - @squawk/flightplan@0.5.0
+
 ## 0.8.10
 
 ### Patch Changes
