@@ -28,8 +28,7 @@ The default output path is `packages/libs/icao-registry-data/data/icao-registry.
 2. Delegates parsing to `parseFaaRegistryZip()` from `@squawk/icao-registry`,
    which extracts `MASTER.txt` and `ACFTREF.txt`, parses both CSVs, and joins
    them by manufacturer/model code
-3. Compacts records into short-key JSON format for size reduction
-4. Gzip compresses and writes the output
+3. Serializes records as JSON, gzip compresses, and writes the output
 
 ## Dependencies
 

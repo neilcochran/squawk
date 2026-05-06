@@ -44,7 +44,7 @@ The repo splits into three top-level directories:
 | [`@squawk/procedure-data`](packages/libs/procedure-data)         | Pre-processed FAA CIFP procedure snapshot for use with `@squawk/procedures`        |
 | [`@squawk/flightplan`](packages/libs/flightplan)                 | Flight plan route string parsing and resolution using composed resolvers           |
 | [`@squawk/weather`](packages/libs/weather)                       | Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP)      |
-| [`@squawk/notams`](packages/libs/notams)                         | Parse raw ICAO-format NOTAM strings into structured objects                        |
+| [`@squawk/notams`](packages/libs/notams)                         | Parse raw ICAO-format and FAA domestic NOTAM strings into structured objects       |
 | [`@squawk/mcp`](packages/libs/mcp)                               | Model Context Protocol server exposing the squawk libraries as tools for LLMs      |
 
 ## Development

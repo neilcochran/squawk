@@ -93,7 +93,7 @@ See any existing lib's `src/index.ts` for the canonical shape.
 
 ## Data package pattern
 
-Each data package bundles a single gzipped JSON snapshot under `data/<name>.json.gz`. The JSON wire format is `{ meta: {...}, records: FullRecord[] }` - records are stored in their full typed shape, no compaction or expansion step. Two entry points expose the same `<Name>Dataset` shape:
+Each data package bundles a single gzipped snapshot under `data/<name>.{json,geojson}.gz`. The wire format depends on the dataset shape: record-array packages use `{ meta: {...}, records: FullRecord[] }`, while `@squawk/airspace-data` uses a GeoJSON `FeatureCollection` with a top-level `properties` object carrying the metadata. Either way, records are stored in their full typed shape (no compaction or expansion step), and two entry points expose the same `<Name>Dataset` shape:
 
 - **`src/node.ts`** (re-exported by `src/index.ts`): synchronous read at module load via `node:fs` + `node:zlib`, exposed as a single eager constant `usBundled<X>`. This is the default entry consumed by Node lib tests, mcp tool modules, and any Node consumer.
 - **`src/browser.ts`** (exposed via the `/browser` exports subpath): async function `loadUsBundled<X>(options?)` that uses `fetch` + `DecompressionStream('gzip')`. Returns the same `<Name>Dataset` shape. Handles servers that advertise `Content-Encoding: gzip` (fetch decodes automatically) as well as servers that serve `.gz` as opaque bytes.
@@ -106,7 +106,7 @@ Each data package's metadata includes at least `generatedAt` (ISO timestamp), `r
 
 ## Logic package browser entries
 
-Query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/navaids`, `@squawk/procedures`, `@squawk/icao-registry`) ship a `/browser` exports subpath alongside the default entry. For pure-logic packages with no Node-specific imports, the `/browser` subpath aliases the same compiled `dist/index.js`; the separate entry exists so browser support is an explicit, `publint`-verified part of the public API surface and a future Node-only import has to split the surface intentionally.
+Query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/flightplan`, `@squawk/navaids`, `@squawk/procedures`, `@squawk/icao-registry`) ship a `/browser` exports subpath alongside the default entry. For pure-logic packages with no Node-specific imports, the `/browser` subpath aliases the same compiled `dist/index.js`; the separate entry exists so browser support is an explicit, `publint`-verified part of the public API surface and a future Node-only import has to split the surface intentionally.
 
 Packages that mix pure-logic with a Node-only helper (e.g. `@squawk/icao-registry`'s `parseFaaRegistryZip`) instead expose a thin `src/browser.ts` re-exporting only the browser-safe symbols, with the `/browser` subpath pointing at its compiled output. The Node-only helper stays exported from the default entry.
 
@@ -232,7 +232,7 @@ Examples: `@squawk/weather` (`types/metar.ts`, `types/taf.ts`, etc.), `@squawk/n
 4. Data packages depend on `@squawk/types` only.
 5. Query libraries that pair with a data package list that data package as a `devDependency` for testing.
 6. Query libraries and their companion data packages never depend on each other at runtime.
-7. Library packages may depend on other library packages when there is a clear logical dependency (e.g. `@squawk/airports` depending on `@squawk/flight-math` for wind component calculations). Avoid circular or gratuitous cross-dependencies.
+7. Domain libraries do not depend on each other at runtime. Cross-dependencies are limited to the foundational tier (`@squawk/types`, `@squawk/units`, `@squawk/geo`); see the [Architectural principles](ARCHITECTURE.md#architectural-principles) section of `ARCHITECTURE.md`. If a logical dependency between two domain libraries appears necessary, raise it in review rather than introducing it directly - the foundational-tier rule is the principle, and any exception needs to be deliberate.
 8. Once a type has 2+ consumers across the library / data / build-script boundary, consider promoting it to `@squawk/types`. The 2+ threshold is a suggestion, not a hard requirement - context matters. Reasons to leave a 2-consumer type in its owning package: the type is still in flux and likely to churn, the second consumer is incidental (a build script or one-off tool rather than another domain library), or the second consumer already lives close enough that direct dependency is cleaner than a `@squawk/types` round-trip. Conversely, promote earlier than 2 consumers if the type is foundational and a third consumer is clearly imminent. Domain-specific types that are produced and consumed by a single package belong in that package (e.g. weather types in `@squawk/weather`, NOTAM types in `@squawk/notams`). This keeps `@squawk/types` focused on genuinely shared domain models and avoids unnecessary coupling when domain-specific types change.
 
 ---

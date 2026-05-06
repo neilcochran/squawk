@@ -14,7 +14,7 @@ with NAV_BASE.csv.
 2. Parses NAV_BASE.csv into navaid records
 3. Filters out shutdown navaids
 4. Builds typed Navaid objects from CSV fields
-5. Compacts records into short-key JSON and gzip compresses
+5. Serializes records as JSON, gzip compresses, and writes the output
 
 ## Output
 

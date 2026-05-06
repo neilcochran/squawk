@@ -16,7 +16,7 @@ with FIX_BASE.csv, FIX_CHRT.csv, and FIX_NAV.csv.
 4. Builds typed Fix objects from CSV fields
 5. Enriches fixes with chart type associations from FIX_CHRT.csv
 6. Enriches fixes with navaid associations from FIX_NAV.csv
-7. Compacts records into short-key JSON and gzip compresses
+7. Serializes records as JSON, gzip compresses, and writes the output
 
 ## Output
 

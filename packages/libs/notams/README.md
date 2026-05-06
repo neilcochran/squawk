@@ -2,11 +2,12 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/notams)](https://www.npmjs.com/package/@squawk/notams) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pure parsing library for ICAO-format NOTAM (Notice to Air Missions) strings.
-Parses raw NOTAMs into fully typed, structured objects. Contains no network
-calls or data fetching - consumers provide raw NOTAM strings however they
-obtain them (FAA NOTAM API, ICAO API, local feed, file dump) and the package
-returns structured results.
+Pure parsing library for NOTAM (Notice to Air Missions) strings. Supports
+both ICAO-format and FAA domestic (legacy) format NOTAMs. Parses raw NOTAMs
+into fully typed, structured objects. Contains no network calls or data
+fetching - consumers provide raw NOTAM strings however they obtain them (FAA
+NOTAM API, ICAO API, local feed, file dump) and the package returns
+structured results.
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
@@ -58,6 +59,13 @@ Parses the Q-line qualifier and items A through G:
 
 Accepts both multi-line and single-line NOTAM input. Gracefully handles
 NOTAMs without a Q-line when items A through E are present.
+
+### `parseFaaNotam(raw)`
+
+Parses a raw FAA domestic (legacy) NOTAM string into a structured `FaaNotam`
+object. FAA domestic NOTAMs use a keyword-prefixed body format (RWY, TWY,
+OBST, AD, etc.) rather than the ICAO Q-line + items A through G structure.
+The recognized keywords are enumerated by the `FaaNotamKeyword` type.
 
 ## Types
 

@@ -24,15 +24,15 @@ Big-picture orientation: the principles, conventions, and processes that shape t
 
 ## Vision
 
-A monorepo of focused, well-documented Node.js / TypeScript libraries covering common aviation data problems - airspace geometry, weather parsing, flight planning, and more - plus the apps that compose them. Libraries publish to npm under `@squawk/*`; apps are private.
+A monorepo of focused, well-documented TypeScript libraries covering common aviation data problems - airspace geometry, weather parsing, flight planning, and more - plus the apps that compose them. Libraries publish to npm under `@squawk/*`; apps are private.
 
-Five guiding principles shape every decision in this repo:
+Six guiding principles shape every decision in this repo:
 
-- **Focused scope per package.** Each library does one thing well. No library should have to know about another to function. Shared types are the only acceptable cross-dependency.
-- **Real-world data, not toy examples.** Libraries work against actual FAA datasets and live aviation weather feeds, not mocked or synthetic data.
-- **Designed for composition.** Libraries fit together naturally when building an application, but never require each other.
-- **Published quality from day one.** Every library ships with a README, TypeScript types, unit tests, and a changelog. No "I'll clean this up before publishing."
-- **Backend-first for libraries; data packages and most logic packages also ship browser entries.** Libraries target Node first and stay pure. Data packages expose a `/browser` async loader so SPAs and edge runtimes can consume them, and pure-logic query libraries (airports, airspace, airways, fixes, navaids, procedures) expose a `/browser` resolver entry that mirrors the main entry. Packages that include a Node-only surface ship a slim `/browser` entry that excludes it (`@squawk/icao-registry/browser` omits `parseFaaRegistryZip`). Server-only packages like `@squawk/mcp` and the build tools remain Node-only.
+- **Focused scope per package.** Each library does one thing well. Domain libraries (airports, navaids, weather, etc.) do not depend on each other; cross-dependencies are limited to the foundational tier (`@squawk/types`, `@squawk/units`, `@squawk/geo`).
+- **Real-world data.** Libraries work against actual FAA datasets and live aviation weather feeds, not mocked or synthetic data.
+- **Designed for composition.** Libraries fit together naturally when building an application. Domain libraries are independent of each other - the foundational tier is the only shared substrate.
+- **Published quality from day one.** Every library ships with a README, TypeScript types, unit tests, and a changelog.
+- **Runtime-pure libraries.** Libraries are written to run in any modern JS runtime. Node-only surface is isolated to opt-in entries; server-only packages (`@squawk/mcp`, build tools) are explicitly Node-only.
 - **Complete data models.** Models capture all reasonable, distinct fields for a concept, even fields not currently consumed. The libraries are published for others to build on; completeness and correctness of the data model is a primary goal.
 
 ---
@@ -75,7 +75,7 @@ This pattern only applies to query / lookup libraries. Utility libraries (`@squa
 
 ### Bundled snapshots loaded eagerly
 
-Each data package bundles a gzipped JSON snapshot containing the full typed records plus build metadata. Two entry points expose the same shape:
+Each data package bundles a gzipped snapshot (JSON or GeoJSON) containing the full typed records plus build metadata. Two entry points expose the same shape:
 
 - The default (Node) entry reads, decompresses, and parses synchronously at module load via `node:fs` + `node:zlib`, exposing a single eager constant (`usBundled<X>`).
 - The `/browser` entry exposes an async loader (`loadUsBundled<X>`) that uses `fetch` + `DecompressionStream('gzip')` so SPAs and edge runtimes consume the same shape without Node-only APIs.
@@ -90,7 +90,7 @@ Why: keeping `@squawk/types` focused on genuinely shared models avoids forcing a
 
 ### Browser entries on data and logic packages
 
-Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders so SPAs and edge runtimes can consume the bundled snapshots. Pure-logic query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/navaids`, `@squawk/procedures`) also expose a `/browser` subpath that aliases the main entry, since their resolver code has no Node-specific imports. The `/browser` import is the explicit, supported way for SPAs to consume these packages; the contract is enforced by `lint:pack` (publint) so a future Node-only import would have to split the surface explicitly rather than silently breaking browsers.
+Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders so SPAs and edge runtimes can consume the bundled snapshots. Pure-logic query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/flightplan`, `@squawk/navaids`, `@squawk/procedures`) also expose a `/browser` subpath that aliases the main entry, since their resolver code has no Node-specific imports. The `/browser` import is the explicit, supported way for SPAs to consume these packages; the contract is enforced by `lint:pack` (publint) so a future Node-only import would have to split the surface explicitly rather than silently breaking browsers.
 
 `@squawk/icao-registry` is a hybrid: the main entry exposes a runtime `parseFaaRegistryZip` parser that depends on Node's `Buffer` and the `adm-zip` package, so the `/browser` entry is a strict subset that re-exports only `createIcaoRegistry` and the shared types.
 
@@ -139,7 +139,7 @@ App-specific principles:
 
 ## Data pipelines
 
-The `*-data` packages each ship a gzipped JSON snapshot derived from FAA source data. Snapshots are produced by the private workspaces under [`tools/`](tools/) and orchestrated by [`scripts/build-data.js`](scripts/build-data.js) (`npm run build:data -- --help` for usage).
+The `*-data` packages each ship a gzipped snapshot (JSON or GeoJSON) derived from FAA source data. Snapshots are produced by the private workspaces under [`tools/`](tools/) and orchestrated by [`scripts/build-data.js`](scripts/build-data.js) (`npm run build:data -- --help` for usage).
 
 Sources:
 
@@ -157,16 +157,17 @@ The date embedded in each data package's README matches the cycle date inside th
 
 The gates that run in [.github/workflows/ci.yml](.github/workflows/ci.yml) on every PR:
 
-| Gate                     | Tool                                                                   | What it covers                                                     |
-| ------------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Lint                     | typescript-eslint flat config + eslint-plugin-import + eslint-plugin-n | Per-package `tsc --noEmit && eslint src`                           |
-| Knip                     | knip                                                                   | Dead deps, unlisted deps, unresolved imports, orphaned files       |
-| Format                   | prettier                                                               | `prettier --check .`                                               |
-| Build                    | tsc (via Turborepo)                                                    | Every package compiles                                             |
-| Test + per-file coverage | vitest                                                                 | Per-file 80% lines / functions / branches / statements             |
-| Aggregate coverage       | [scripts/check-coverage.js](scripts/check-coverage.js)                 | Per-package and workspace-wide 90% lines / functions / branches    |
-| Pack shape               | publint + arethetypeswrong (`lint:pack`)                               | npm tarball / `exports` / types are valid                          |
-| README data dates        | [scripts/check-readme-dates.js](scripts/check-readme-dates.js)         | Each data package README's cycle date matches its bundled snapshot |
+| Gate                     | Tool                                                                   | What it covers                                                                            |
+| ------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Lint                     | typescript-eslint flat config + eslint-plugin-import + eslint-plugin-n | Per-package `tsc --noEmit && eslint src`                                                  |
+| Knip                     | knip                                                                   | Dead deps, unlisted deps, unresolved imports, orphaned files                              |
+| Format                   | prettier                                                               | `prettier --check .`                                                                      |
+| Build                    | tsc (via Turborepo)                                                    | Every package compiles                                                                    |
+| Test + per-file coverage | vitest                                                                 | Per-file 80% lines / functions / branches / statements                                    |
+| Aggregate coverage       | [scripts/check-coverage.js](scripts/check-coverage.js)                 | Per-package and workspace-wide 90% lines / functions / branches                           |
+| Pack shape               | publint + arethetypeswrong (`lint:pack`)                               | npm tarball / `exports` / types are valid                                                 |
+| README data dates        | [scripts/check-readme-dates.js](scripts/check-readme-dates.js)         | Each data package README's cycle date matches its bundled snapshot                        |
+| MCP pinned version       | [scripts/check-mcp-pin.js](scripts/check-mcp-pin.js)                   | `packages/libs/mcp/README.md` pin matches the projected publish version (changeset-aware) |
 
 Two properties of the gate set:
 
@@ -209,7 +210,7 @@ Two reasons the publish flow uses `squawk-release-bot` instead of the default `G
 1. **Downstream workflow triggering.** PRs opened by the default `github-actions[bot]` don't retrigger workflows when merged - GitHub blocks that path to prevent recursion. PRs opened with a custom App's installation token do. The App's token is what allows the merged "Version Packages" PR to retrigger CI, which then retriggers Publish, which then runs `npm publish`.
 2. **Auditable scoped permissions.** App permissions (read/write on contents, pull-requests, etc.) are explicit in the App settings and easy to audit, vs. the broader umbrella permission of the default token.
 
-The App's credentials live in two repo secrets, `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`. The Publish workflow mints a short-lived installation token from them via [actions/create-github-app-token](https://github.com/actions/create-github-app-token).
+The App's credentials are split between a repo variable and a repo secret: `RELEASE_APP_CLIENT_ID` (variable, since the Client ID is the public half of the OAuth pair) and `RELEASE_APP_PRIVATE_KEY` (secret). The Publish workflow mints a short-lived installation token from them via [actions/create-github-app-token](https://github.com/actions/create-github-app-token).
 
 Even though the App opens the "Version Packages" PR, the commits inside that PR show `github-actions[bot]` as author. The changesets/action library hardcodes the commit author independent of the token used; this is cosmetic.
 
@@ -217,7 +218,7 @@ Even though the App opens the "Version Packages" PR, the commits inside that PR 
 
 ```
 [1] Dev opens a feature PR
-        |- Adds a .changeset/<random-name>.md describing the change
+        |- Adds a .changeset/<some-name>.md describing the change
         |- CI runs (lint, build, test, coverage, etc.)
         '- Reviewer merges to main
 
@@ -261,7 +262,7 @@ The full configuration is in [.changeset/config.json](.changeset/config.json). A
 
 ### CHANGELOG.md is generated
 
-`CHANGELOG.md` files are not edited manually - changesets/action owns them. Manual edits get overwritten on the next bot run.
+`CHANGELOG.md` files are not edited manually - changesets/action owns them.
 
 ---
 
