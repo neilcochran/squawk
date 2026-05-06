@@ -30,8 +30,7 @@ The default output path is `packages/libs/airport-data/data/airports.json.gz`.
    `FRQ.csv`
 3. Joins runways and runway ends by site number, frequencies by facility ID
 4. Filters to open facilities only (closed facilities are excluded)
-5. Compacts records into short-key JSON format for size reduction
-6. Gzip compresses and writes the output (~1.8 MB)
+5. Serializes records as JSON, gzip compresses, and writes the output (~1.8 MB)
 
 ## Input files
 

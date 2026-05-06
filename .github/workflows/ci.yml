@@ -37,3 +37,6 @@ jobs:
 
       - name: Check README data dates
         run: node scripts/check-readme-dates.js
+
+      - name: Check MCP pinned-version snippet
+        run: node scripts/check-mcp-pin.js

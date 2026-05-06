@@ -42,10 +42,9 @@ The build does two passes over the file:
 
 ## Output
 
-Writes a gzipped compact-key JSON file containing every decoded procedure to
-`packages/libs/procedure-data/data/procedures.json.gz`. The output is consumed by
-`@squawk/procedure-data`, which eagerly expands the records into the public
-`Procedure` interface at import time.
+Writes a gzipped JSON file containing every decoded procedure to
+`packages/libs/procedure-data/data/procedures.json.gz`. The output is consumed
+by `@squawk/procedure-data`.
 
 ## Notes on ODPs
 

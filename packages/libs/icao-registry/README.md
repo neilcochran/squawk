@@ -66,4 +66,11 @@ const registry = createIcaoRegistry({ data: dataset.records });
 
 Browser consumers that need fresh FAA data should fetch and parse the ZIP server-side (where `parseFaaRegistryZip` is available) and feed the resulting records into the browser via their own API.
 
+## API
+
+- `createIcaoRegistry({ data })` - builds a registry from an array of `AircraftRegistration` records.
+- `registry.lookup(icaoHex)` - resolves a 24-bit ICAO hex address to a record, or `undefined`.
+- `registry.recordCount` - total number of records in the loaded dataset.
+- `parseFaaRegistryZip(buffer)` - parses a downloaded FAA `ReleasableAircraft.zip` into the `AircraftRegistration[]` shape that `createIcaoRegistry` expects. Node-only; not exported from the `/browser` entry.
+
 > Under active development. See the [docs](https://neilcochran.github.io/squawk/modules/_squawk_icao-registry.html) for current API status.

@@ -50,6 +50,42 @@ const resolver = createFlightplanResolver({ airports: myAirportResolver });
 const route = resolver.parse('KJFK DCT KLAX');
 ```
 
+## Browser / SPA usage
+
+The resolver factory has no Node-specific imports and ships an explicit `/browser` subpath for SPAs and edge runtimes. Pair it with the `/browser` entries of the resolvers you want to compose:
+
+```typescript
+import { loadUsBundledAirports } from '@squawk/airport-data/browser';
+import { loadUsBundledNavaids } from '@squawk/navaid-data/browser';
+import { loadUsBundledFixes } from '@squawk/fix-data/browser';
+import { loadUsBundledAirways } from '@squawk/airway-data/browser';
+import { loadUsBundledProcedures } from '@squawk/procedure-data/browser';
+import { createAirportResolver } from '@squawk/airports/browser';
+import { createNavaidResolver } from '@squawk/navaids/browser';
+import { createFixResolver } from '@squawk/fixes/browser';
+import { createAirwayResolver } from '@squawk/airways/browser';
+import { createProcedureResolver } from '@squawk/procedures/browser';
+import { createFlightplanResolver } from '@squawk/flightplan/browser';
+
+const [airports, navaids, fixes, airways, procedures] = await Promise.all([
+  loadUsBundledAirports(),
+  loadUsBundledNavaids(),
+  loadUsBundledFixes(),
+  loadUsBundledAirways(),
+  loadUsBundledProcedures(),
+]);
+
+const resolver = createFlightplanResolver({
+  airports: createAirportResolver({ data: airports.records }),
+  navaids: createNavaidResolver({ data: navaids.records }),
+  fixes: createFixResolver({ data: fixes.records }),
+  airways: createAirwayResolver({ data: airways.records }),
+  procedures: createProcedureResolver({ data: procedures.records }),
+});
+```
+
+The `/browser` entry is identical to the main entry; the separate subpath exists so browser support is an explicit, `publint`-verified part of the public API surface.
+
 ## API
 
 ### `createFlightplanResolver(options)`

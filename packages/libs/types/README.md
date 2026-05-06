@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/types)](https://www.npmjs.com/package/@squawk/types) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Shared TypeScript type definitions used across multiple `@squawk` packages. Contains types for core domain models that cross the logic/data/build-script boundary: aircraft, position, airports, navaids, fixes, airways, procedures, airspace, and flight-math results.
+Shared TypeScript type definitions used across multiple `@squawk` packages. Contains types for core domain models that cross the logic/data/build-script boundary: aircraft, position, airports, navaids, fixes, airways, procedures, airspace, and aircraft registration.
 
 Domain-specific types that are produced and consumed by a single package live in that package instead:
 
