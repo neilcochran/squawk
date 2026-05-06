@@ -1,5 +1,12 @@
 # @squawk/mcp
 
+## 0.8.13
+
+### Patch Changes
+
+- Updated dependencies [1c007dd]
+  - @squawk/airspace@0.8.0
+
 ## 0.8.12
 
 ### Patch Changes
