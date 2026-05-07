@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.8.13"]
+      "args": ["-y", "@squawk/mcp@0.9.0"]
     }
   }
 }
@@ -129,6 +129,50 @@ server still serves the old behavior after a host restart, clear the cache direc
 again, or fall back to a pinned version. The host process itself also has to restart for any
 update to take effect, since each MCP server is a long-running stdio subprocess that loads its
 code once at spawn time.
+
+### Enabling the aircraft registry (optional peer)
+
+`@squawk/icao-registry-data` is the largest snapshot in the suite (roughly 8 MB on disk after
+gzip). Most sessions never need a tail-number lookup, so the package is declared as an optional
+**peer dependency** of `@squawk/mcp` rather than a required dep - npm 7+ does not auto-install
+optional peers, which keeps the default `npx @squawk/mcp` install lean.
+
+When the data package is not installed, `lookup_aircraft_by_icao_hex` is still listed in the tool
+catalog. The first invocation returns a structured `isError: true` result whose
+`structuredContent.missingDataPackage.installCommand` field names the exact command to run; the
+rest of the server keeps working normally. If you do not need aircraft lookups, no further action
+is required.
+
+To enable lookups, install the data package alongside `@squawk/mcp`. Through `npx` the cleanest
+option is the `-p` flag, which adds extra packages to the temporary install npx builds:
+
+```json
+{
+  "mcpServers": {
+    "squawk": {
+      "command": "npx",
+      "args": ["-y", "-p", "@squawk/icao-registry-data", "@squawk/mcp"]
+    }
+  }
+}
+```
+
+Pinning works the same way:
+
+```json
+{
+  "mcpServers": {
+    "squawk": {
+      "command": "npx",
+      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.3", "@squawk/mcp@0.9.0"]
+    }
+  }
+}
+```
+
+For non-`npx` setups (a local install, a global install, a Docker image), add
+`@squawk/icao-registry-data` to the same dependency manifest that pulls in `@squawk/mcp` and the
+runtime will resolve it through ordinary Node module resolution.
 
 ### Pinning a specific Node binary
 
@@ -262,8 +306,11 @@ Covers SIDs, STARs, and Instrument Approach Procedures (IAPs) from FAA CIFP.
 | ----------------------------- | ------------------------------------------------------------- |
 | `lookup_aircraft_by_icao_hex` | Resolve a 24-bit ICAO hex address to an aircraft registration |
 
-The registry data (~40 MB raw) is loaded lazily on the first lookup so sessions that never need it
-do not pay the decompression cost.
+`@squawk/icao-registry-data` is an optional peer dependency. Default installs of `@squawk/mcp` do
+not include it; the tool reports a structured "data not installed" error with the exact install
+command until the peer is added. See [Enabling the aircraft registry](#enabling-the-aircraft-registry-optional-peer)
+for how to add it. Once present, the registry (~40 MB raw) is decompressed lazily on the first
+lookup so sessions that never need it do not pay the cost.
 
 ### Weather (`@squawk/weather` + `@squawk/weather/fetch`)
 
@@ -351,5 +398,6 @@ left to the model itself.
   override above). They are the only tools that touch the network at invocation time; everything
   else operates against bundled snapshots in memory.
 - The bundled snapshots are decompressed and indexed once when the server starts. Expect a few
-  hundred milliseconds of startup time. The aircraft registration snapshot (the largest) is loaded
-  lazily on the first `lookup_aircraft_by_icao_hex` call.
+  hundred milliseconds of startup time. The aircraft registration snapshot (the largest, and an
+  optional peer dependency) is decompressed lazily on the first `lookup_aircraft_by_icao_hex` call,
+  if the package is installed.

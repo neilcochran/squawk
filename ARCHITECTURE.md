@@ -104,12 +104,13 @@ Why: self-documenting call sites without polluting the import namespace with doz
 
 ### MCP as the aggregator
 
-[`@squawk/mcp`](packages/libs/mcp/) is the Model Context Protocol server that exposes every other package as tools for LLM clients. Tool modules live under `packages/libs/mcp/src/tools/<domain>.ts`; resolvers are constructed once by `src/resolvers.ts` and reused. The bundled aircraft registry is loaded lazily on first lookup to keep cold-start cheap. Live weather fetching is the only tool surface that performs network I/O at invocation time.
+[`@squawk/mcp`](packages/libs/mcp/) is the Model Context Protocol server that exposes every other package as tools for LLM clients. Tool modules live under `packages/libs/mcp/src/tools/<domain>.ts`; resolvers are constructed once by `src/resolvers.ts` and reused. The aircraft registry is loaded lazily on first lookup to keep cold-start cheap, and `@squawk/icao-registry-data` is declared as an optional peer dependency so default installs stay lean - the tool catalog still lists `lookup_aircraft_by_icao_hex` when the peer is absent and returns a structured "data not installed" error pointing at the install command. Live weather fetching is the only tool surface that performs network I/O at invocation time.
 
-Two non-obvious maintenance patterns hold here:
+Three non-obvious maintenance patterns hold here:
 
 - **MCP stays in sync with its dependencies.** Any change to a package mcp consumes (or a new package that should be exposed through mcp) lands together with updates to the matching tool module, resolver wiring, README, and `packages/libs/mcp/package.json` in the same change. Intentional non-propagation is called out explicitly rather than silently skipped.
 - **The pinned-version README snippet tracks the upcoming release.** When a change bumps `@squawk/mcp` to a new published version (even transitively), the pinned-version snippet in [packages/libs/mcp/README.md](packages/libs/mcp/README.md) under "Picking an install version" reflects the version that will publish from that change.
+- **Optional peer datasets follow the lazy-import + structured-error pattern.** A data package exposed through mcp may be declared `optional: true` under `peerDependenciesMeta` when its size is disproportionate to the audience that needs it. Tool handlers for those datasets `await import(...)` the data package inside the handler (not at module top level), catch `ERR_MODULE_NOT_FOUND`, and surface a structured `MissingDataPackageError` carrying the dataset name, package name, and install command. The tool stays listed in the catalog so the LLM can offer the install instructions to the user; the rest of the server keeps running. `@squawk/icao-registry-data` is the first dataset on this path.
 
 ---
 
