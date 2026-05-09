@@ -206,9 +206,10 @@ const CEILING_CAP_FT = 60000;
  * for the airspace 3D extrusion layer. The structure is forced by a
  * MapLibre constraint - the `zoom` expression may only be used as
  * input to a top-level `interpolate` or `step`, so the per-feature
- * `match` (which collapses SFC/AGL refs to zero - terrain-aware
- * rendering is deferred, see `ATLAS_PLAN.md`) lives inside each
- * interpolation stop value rather than wrapping the whole expression.
+ * `match` (which collapses SFC/AGL refs to 0 so the extrusion
+ * anchors to MSL=0 rather than tracking ground elevation) lives
+ * inside each interpolation stop value rather than wrapping the
+ * whole expression.
  *
  * The stops apply zoom-driven vertical exaggeration so airspace
  * volume stays readable at continental zooms, where true-scale
@@ -301,9 +302,8 @@ const FILL_EXTRUSION_BASE_EXPRESSION = buildExtrusionAltitudeExpression(
  * primitives and applies {@link CEILING_CAP_FT} to bound the `99999`
  * sentinel before the zoom-driven exaggeration multiplies it into orbit.
  * Special-use airspace with an AGL ceiling collapses to a zero-thickness
- * extrusion (the documented v1 limitation) until terrain support is wired
- * up; the 2D fill / outline below still renders unchanged so the airspace
- * stays selectable.
+ * extrusion (since SFC and AGL refs both collapse to MSL=0); the 2D fill /
+ * outline below still renders unchanged so the airspace stays selectable.
  */
 const FILL_EXTRUSION_HEIGHT_EXPRESSION = buildExtrusionAltitudeExpression(
   AIRSPACE_CEILING_REF_PROPERTY,
@@ -553,7 +553,7 @@ export function AirspaceLayer(): ReactElement | null {
  * shading approximate visible edges - MapLibre 5 has no
  * fill-extrusion outline / edge paint property, so explicit edge
  * strokes on the 3D box would require a different rendering library
- * (deck.gl) or custom WebGL. Tracked in `ATLAS_PLAN.md`.
+ * (deck.gl) or custom WebGL.
  */
 export function AirspaceExtrusionLayer(): ReactElement | null {
   const { airspaceClasses, pitch } = route.useSearch();
