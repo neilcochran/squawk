@@ -4,7 +4,6 @@ docs/
 .DS_Store
 *.tsbuildinfo
 .turbo/
-.claude/
 coverage/
 .env*
 reference-data/
