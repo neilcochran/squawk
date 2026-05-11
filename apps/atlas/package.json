@@ -54,7 +54,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@maplibre/maplibre-gl-style-spec": "^24.8.3",
-    "@tailwindcss/vite": "^4.2.4",
+    "@tailwindcss/vite": "^4.3.0",
     "@tanstack/router-cli": "^1.166.40",
     "@tanstack/router-plugin": "^1.167.32",
     "@testing-library/jest-dom": "^6.9.1",
