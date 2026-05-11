@@ -3,12 +3,23 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
     open-pull-requests-limit: 20
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types:
+          - patch
+          - minor
+      production-dependencies:
+        dependency-type: production
+        update-types:
+          - patch
+          - minor
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
     groups:
       github-actions:
         patterns:
