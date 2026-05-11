@@ -53,7 +53,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@maplibre/maplibre-gl-style-spec": "^24.8.3",
+    "@maplibre/maplibre-gl-style-spec": "^24.8.5",
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/router-cli": "^1.166.40",
     "@tanstack/router-plugin": "^1.167.32",
