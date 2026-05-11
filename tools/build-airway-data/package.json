@@ -20,6 +20,6 @@
     "@squawk/types": "*"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0"
+    "@types/node": "^25.7.0"
   }
 }
