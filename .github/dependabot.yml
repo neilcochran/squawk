@@ -16,6 +16,13 @@ updates:
         update-types:
           - patch
           - minor
+    # Pause @tanstack/* updates while the 2026-05-11 npm supply-chain
+    # compromise of those packages is being resolved upstream. Remove
+    # this entry once clean versions are confirmed and the lockfile has
+    # been re-pinned.
+    # Tracking: https://github.com/TanStack/router/issues/7383
+    ignore:
+      - dependency-name: '@tanstack/*'
   - package-ecosystem: github-actions
     directory: /
     schedule:
