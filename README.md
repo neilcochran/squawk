@@ -4,6 +4,9 @@
 
 TypeScript libraries for building aviation applications - airspace geometry, weather parsing, flight planning, aircraft registry lookup, and more.
 
+> [!IMPORTANT]
+> **Security Notice (2026-05-11):** All `@squawk/*` packages were targeted by the mini-Shai-Hulud npm supply-chain compromise. All malicious versions have been removed from npm and `latest` dist-tags point at clean versions; new installs are safe. See the [full incident report](https://github.com/neilcochran/squawk/discussions/251) for the timeline, affected version list, and remediation details.
+
 **[Documentation](https://neilcochran.github.io/squawk/)**
 
 **[Architecture & conventions](ARCHITECTURE.md)**
