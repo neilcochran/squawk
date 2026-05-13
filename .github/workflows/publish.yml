@@ -61,6 +61,8 @@ jobs:
           node-version: 22
           cache: npm
 
+      - run: npm install -g npm@11.5
+
       - run: npm ci --ignore-scripts
 
       - name: Download dist artifacts
@@ -75,5 +77,4 @@ jobs:
           publish: npm run publish
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
