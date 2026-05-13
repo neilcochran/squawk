@@ -25,6 +25,15 @@
       "dependsOn": ["build"],
       "outputs": []
     },
+    "api:check": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
+    "api:report": {
+      "dependsOn": ["build"],
+      "outputs": ["api/**"],
+      "cache": false
+    },
     "dev": {
       "cache": false,
       "persistent": true
