@@ -36,7 +36,9 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "lint": "tsc --noEmit && eslint src",
-    "lint:pack": "publint && attw --pack . --profile esm-only"
+    "lint:pack": "publint && attw --pack . --profile esm-only",
+    "api:check": "api-extractor run --verbose",
+    "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
     "@squawk/geo": "^0.4.3",
