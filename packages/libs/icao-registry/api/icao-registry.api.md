@@ -31,6 +31,4 @@ export interface IcaoRegistryOptions {
 // @public
 export function parseFaaRegistryZip(zipBuffer: Buffer): AircraftRegistration[];
 
-// (No @packageDocumentation comment for this package)
-
 ```

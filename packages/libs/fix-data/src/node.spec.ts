@@ -1,6 +1,6 @@
 import { describe, it, expect, assert } from 'vitest';
 
-import { usBundledFixes } from './index.js';
+import { usBundledFixes } from './node.js';
 
 describe('usBundledFixes', () => {
   it('loads with a reasonable number of records', () => {

@@ -65,7 +65,7 @@ function midpoint(lat1: number, lon1: number, lat2: number, lon2: number): Coord
 // @public
 function pointInBoundingBox(lon: number, lat: number, box: BoundingBox): boolean;
 
-// Warning: (ae-unresolved-link) The @link reference could not be resolved: Import paths are not supported
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: This type of declaration is not supported yet by the resolver
 //
 // @public
 function pointInBoundingBox_2(point: readonly [number, number], bbox: BoundingBox): boolean;
@@ -86,7 +86,7 @@ declare namespace polygon {
 }
 
 // Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/geo" does not have an export "pointInBoundingBox"
-// Warning: (ae-unresolved-link) The @link reference could not be resolved: Import paths are not supported
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: This type of declaration is not supported yet by the resolver
 //
 // @public
 function polygonBoundingBox(polygon: Polygon): BoundingBox;

@@ -2,7 +2,7 @@
  * GeoJSON-shape polygon helpers. These accept `geojson.Polygon` directly,
  * so callers working with maplibre/turf-style features do not have to
  * unpack rings into `number[][]` first. The raw-coordinates API in
- * {@link ./polygon.js} remains the right level for indexing-heavy paths
+ * {@link polygon} remains the right level for indexing-heavy paths
  * (e.g. `@squawk/airspace`); these helpers are for app-level rendering
  * and selection logic.
  */
@@ -106,7 +106,7 @@ export function polygonCentroid(polygon: Polygon): [number, number] | undefined 
  * `minLon = minLat = Infinity` and `maxLon = maxLat = -Infinity`.
  * Combined with {@link pointInBoundingBox}, such a box rejects every
  * query point - the same defensive behavior as
- * {@link ./polygon.js#boundingBox}.
+ * {@link polygon.boundingBox}.
  *
  * @param polygon - GeoJSON Polygon.
  * @returns The minimum bounding box enclosing every ring.
@@ -233,7 +233,7 @@ export function boundingBoxesOverlap(a: BoundingBox, b: BoundingBox): boolean {
 
 /**
  * Tests whether a point lies inside (or on the boundary of) a bounding
- * box. Tuple-shape sibling to {@link ./polygon.js#pointInBoundingBox},
+ * box. Tuple-shape sibling to {@link polygon.pointInBoundingBox},
  * which takes separate `lon, lat` arguments and is intended for hot-path
  * callers where the unpacked form avoids tuple allocation.
  *

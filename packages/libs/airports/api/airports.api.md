@@ -46,6 +46,4 @@ export interface NearestAirportResult {
     distanceNm: number;
 }
 
-// (No @packageDocumentation comment for this package)
-
 ```

@@ -19,9 +19,9 @@ TypeScript libraries for building aviation applications - airspace geometry, wea
 
 The repo splits into three top-level directories:
 
-- [`apps/`](apps/) - runnable applications built on the squawk libraries. Currently [Atlas](apps/atlas), the official chart-first viewer.
-- [`packages/libs/`](packages/libs/) - the published `@squawk/*` libraries listed below.
-- [`tools/`](tools/) - internal data-build pipelines that produce the bundled snapshots in the `*-data` libraries.
+- [`apps/`](https://github.com/neilcochran/squawk/tree/main/apps) - runnable applications built on the squawk libraries. Currently [Atlas](https://github.com/neilcochran/squawk/tree/main/apps/atlas), the official chart-first viewer.
+- [`packages/libs/`](https://github.com/neilcochran/squawk/tree/main/packages/libs) - the published `@squawk/*` libraries listed below.
+- [`tools/`](https://github.com/neilcochran/squawk/tree/main/tools) - internal data-build pipelines that produce the bundled snapshots in the `*-data` libraries.
 
 ## Packages
 
@@ -64,15 +64,15 @@ npm run docs     # generate documentation
 
 The `tools/` directory contains the build pipelines that produce the data packages from raw FAA source files. They are not published to npm but are fully usable if you want to rebuild data from a newer FAA cycle or customize the pipeline. Most tools accept a [NASR subscription](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) `.zip` or extracted directory via `--local` and write their output to the corresponding data package. The ICAO registry tool parses the [FAA ReleasableAircraft](https://registry.faa.gov/database/ReleasableAircraft.zip) database; the procedure tool parses the [FAA CIFP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/) (ARINC 424) zip. See `npm run build:data -- --help` for the orchestrator that runs them all.
 
-| Tool                                                         | Description                                                           |
-| ------------------------------------------------------------ | --------------------------------------------------------------------- |
-| [`build-airspace-data`](tools/build-airspace-data)           | Processes FAA NASR shapefiles and AIXM XML into airspace GeoJSON      |
-| [`build-icao-registry-data`](tools/build-icao-registry-data) | Processes FAA ReleasableAircraft into ICAO registry JSON              |
-| [`build-airport-data`](tools/build-airport-data)             | Processes FAA NASR airport, runway, frequency, and ILS CSVs into JSON |
-| [`build-navaid-data`](tools/build-navaid-data)               | Processes FAA NASR NAV_BASE.csv into navaid JSON                      |
-| [`build-fix-data`](tools/build-fix-data)                     | Processes FAA NASR FIX CSVs into fix/waypoint JSON                    |
-| [`build-airway-data`](tools/build-airway-data)               | Processes FAA NASR AWY.txt and ATS.txt into airway JSON               |
-| [`build-procedure-data`](tools/build-procedure-data)         | Processes FAA CIFP into SID / STAR / IAP procedure JSON               |
+| Tool                                                                                                         | Description                                                           |
+| ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| [`build-airspace-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-airspace-data)           | Processes FAA NASR shapefiles and AIXM XML into airspace GeoJSON      |
+| [`build-icao-registry-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-icao-registry-data) | Processes FAA ReleasableAircraft into ICAO registry JSON              |
+| [`build-airport-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-airport-data)             | Processes FAA NASR airport, runway, frequency, and ILS CSVs into JSON |
+| [`build-navaid-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-navaid-data)               | Processes FAA NASR NAV_BASE.csv into navaid JSON                      |
+| [`build-fix-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-fix-data)                     | Processes FAA NASR FIX CSVs into fix/waypoint JSON                    |
+| [`build-airway-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-airway-data)               | Processes FAA NASR AWY.txt and ATS.txt into airway JSON               |
+| [`build-procedure-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-procedure-data)         | Processes FAA CIFP into SID / STAR / IAP procedure JSON               |
 
 ## License
 

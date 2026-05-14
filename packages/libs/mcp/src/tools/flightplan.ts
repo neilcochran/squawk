@@ -2,8 +2,8 @@
  * @packageDocumentation
  * MCP tool module wrapping `@squawk/flightplan` route-string parsing and
  * great-circle distance computation. The flightplan resolver composes the
- * shared airport, navaid, fix, airway, and procedure resolvers from
- * {@link ../resolvers.js}.
+ * shared airport, navaid, fix, airway, and procedure resolvers from the
+ * package's `resolvers` module.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
