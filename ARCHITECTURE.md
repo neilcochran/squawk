@@ -228,13 +228,20 @@ Even though the App opens the "Version Packages" PR, the commits inside that PR 
 [2] CI runs on main
         '- On success, triggers publish.yml via workflow_run
 
-[3] publish.yml runs (squawk-release-bot)
+[3] publish.yml build job runs (no secrets)
+        |- Checks out workflow_run.head_sha
+        |- npm ci --ignore-scripts, npm run build
+        '- Uploads packages/libs/*/dist as an artifact
+
+[4] publish.yml publish job runs (squawk-release-bot, production-publish env)
+        |- Pauses for one-tap approval
         |- Mints an App installation token
         |- Checks out workflow_run.head_sha
-        |- npm ci, npm run build
+        |- npm install -g npm@11.5, npm ci --ignore-scripts
+        |- Downloads dist artifact
         '- Hands off to changesets/action
 
-[4] changesets/action behavior depends on whether pending changesets exist
+[5] changesets/action behavior depends on whether pending changesets exist
         |- Pending changesets in .changeset/?
         |    '- Open or update a "Version Packages" PR on branch
         |       changeset-release/main, consuming the changesets
@@ -244,11 +251,11 @@ Even though the App opens the "Version Packages" PR, the commits inside that PR 
         '- No pending changesets (Version Packages PR already merged)?
              '- Run `npm run publish` (`changeset publish`)
                 -> publishes every bumped package to npm with provenance
-                   (NPM_TOKEN secret + NPM_CONFIG_PROVENANCE=true env)
+                   (npm Trusted Publisher OIDC + NPM_CONFIG_PROVENANCE=true env)
 
-[5] Reviewer merges the Version Packages PR
+[6] Reviewer merges the Version Packages PR
         '- CI runs on the merge commit, publish.yml retriggers,
-           step 4 takes the publish branch this time.
+           step 5 takes the publish branch this time.
 ```
 
 The Publish workflow also has `workflow_dispatch` for manual triggering when needed.
@@ -298,6 +305,13 @@ Findings reach the repo through three channels:
 - **Manual issue tracking** - the security-finding template at [.github/ISSUE_TEMPLATE/security-finding.md](.github/ISSUE_TEMPLATE/security-finding.md).
 
 Published packages ship with npm provenance attestations: the Publish workflow sets `NPM_CONFIG_PROVENANCE: true` and grants `id-token: write`, so each tarball on npm carries a verifiable link back to the GitHub Actions run that produced it.
+
+Beyond provenance, the publish flow is hardened against supply-chain compromise:
+
+- **npm Trusted Publisher (OIDC).** No long-lived `NPM_TOKEN` exists. The publish job exchanges a short-lived GitHub OIDC token (`id-token: write` + `npm@11.5`) for a per-run publish credential scoped to packages whose Trusted Publisher config matches this repo + workflow filename. Every `@squawk/*` package additionally has "Require two-factor authentication and disallow tokens" set on npm.
+- **`--ignore-scripts` on every `npm ci`.** All four workflows (ci, codeql, docs, publish) pass `--ignore-scripts` to neutralise prepare/postinstall script vectors.
+- **Build/publish job split.** The build job (`contents: read`, no secrets) produces the dist artifact; the publish job downloads the artifact and is the only job that holds the App token + OIDC permissions.
+- **Curated Actions allowlist + SHA pinning.** Repo Actions settings allow only `actions/*` (via the GitHub-authored toggle), `changesets/action@*`, and `lycheeverse/lychee-action@*`. "Require actions to be pinned to a full-length commit SHA" is enforced; Dependabot keeps the trailing version comments in sync.
 
 The disclosure process for vulnerability reports lives in [SECURITY.md](SECURITY.md). The repo is a one-maintainer project, so response times are measured in days rather than hours.
 
