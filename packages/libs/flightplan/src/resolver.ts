@@ -14,7 +14,7 @@ import type {
 
 /**
  * Minimal airport lookup interface consumed by the flightplan resolver.
- * Structurally compatible with {@link @squawk/airports!AirportResolver}.
+ * Structurally compatible with the `AirportResolver` shape in `@squawk/airports`.
  */
 export interface FlightplanAirportLookup {
   /** Looks up an airport by FAA location identifier (e.g. "JFK"). */
@@ -25,7 +25,7 @@ export interface FlightplanAirportLookup {
 
 /**
  * Minimal navaid lookup interface consumed by the flightplan resolver.
- * Structurally compatible with {@link @squawk/navaids!NavaidResolver}.
+ * Structurally compatible with the `NavaidResolver` shape in `@squawk/navaids`.
  */
 export interface FlightplanNavaidLookup {
   /** Looks up navaids by identifier. Returns an empty array if none found. */
@@ -34,7 +34,7 @@ export interface FlightplanNavaidLookup {
 
 /**
  * Minimal fix lookup interface consumed by the flightplan resolver.
- * Structurally compatible with {@link @squawk/fixes!FixResolver}.
+ * Structurally compatible with the `FixResolver` shape in `@squawk/fixes`.
  */
 export interface FlightplanFixLookup {
   /** Looks up fixes by identifier. Returns an empty array if none found. */
@@ -43,7 +43,7 @@ export interface FlightplanFixLookup {
 
 /**
  * Minimal airway lookup interface consumed by the flightplan resolver.
- * Structurally compatible with {@link @squawk/airways!AirwayResolver}.
+ * Structurally compatible with the `AirwayResolver` shape in `@squawk/airways`.
  */
 export interface FlightplanAirwayLookup {
   /** Looks up airways by designation (e.g. "V16", "J60"). Returns an empty array if none found. */
@@ -58,7 +58,7 @@ export interface FlightplanAirwayLookup {
 
 /**
  * Minimal procedure lookup interface consumed by the flightplan resolver.
- * Structurally compatible with {@link @squawk/procedures!ProcedureResolver}.
+ * Structurally compatible with the `ProcedureResolver` shape in `@squawk/procedures`.
  */
 export interface FlightplanProcedureLookup {
   /** Looks up every procedure that publishes the given CIFP identifier across airports. */

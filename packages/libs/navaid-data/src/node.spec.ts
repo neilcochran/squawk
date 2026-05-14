@@ -1,6 +1,6 @@
 import { describe, it, expect, assert } from 'vitest';
 
-import { usBundledNavaids } from './index.js';
+import { usBundledNavaids } from './node.js';
 
 describe('usBundledNavaids', () => {
   it('loads with a reasonable number of records', () => {

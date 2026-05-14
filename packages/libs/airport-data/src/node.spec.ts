@@ -2,7 +2,7 @@ import { describe, it, expect, assert } from 'vitest';
 
 import type { IlsSystem } from '@squawk/types';
 
-import { usBundledAirports } from './index.js';
+import { usBundledAirports } from './node.js';
 
 describe('usBundledAirports', () => {
   it('loads with a reasonable number of records', () => {

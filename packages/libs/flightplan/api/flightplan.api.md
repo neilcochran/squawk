@@ -49,16 +49,12 @@ export interface DirectRouteElement {
     type: 'direct';
 }
 
-// Warning: (tsdoc-reference-missing-hash) The declaration reference appears to contain a package name or import path, but it is missing the "#" delimiter
-//
 // @public
 export interface FlightplanAirportLookup {
     byFaaId(faaId: string): Airport | undefined;
     byIcao(icao: string): Airport | undefined;
 }
 
-// Warning: (tsdoc-reference-missing-hash) The declaration reference appears to contain a package name or import path, but it is missing the "#" delimiter
-//
 // @public
 export interface FlightplanAirwayLookup {
     byDesignation(designation: string): Airway[];
@@ -68,22 +64,16 @@ export interface FlightplanAirwayLookup {
     } | undefined;
 }
 
-// Warning: (tsdoc-reference-missing-hash) The declaration reference appears to contain a package name or import path, but it is missing the "#" delimiter
-//
 // @public
 export interface FlightplanFixLookup {
     byIdent(ident: string): Fix[];
 }
 
-// Warning: (tsdoc-reference-missing-hash) The declaration reference appears to contain a package name or import path, but it is missing the "#" delimiter
-//
 // @public
 export interface FlightplanNavaidLookup {
     byIdent(ident: string): Navaid[];
 }
 
-// Warning: (tsdoc-reference-missing-hash) The declaration reference appears to contain a package name or import path, but it is missing the "#" delimiter
-//
 // @public
 export interface FlightplanProcedureLookup {
     byIdentifier(identifier: string): Procedure[];

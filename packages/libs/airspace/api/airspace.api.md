@@ -58,6 +58,4 @@ export interface AirspaceResolverOptions {
 // @public
 export function createAirspaceResolver(options: AirspaceResolverOptions): AirspaceResolver;
 
-// (No @packageDocumentation comment for this package)
-
 ```

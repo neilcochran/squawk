@@ -544,6 +544,4 @@ function trueAirspeedFromCalibratedKt(calibratedAirspeedKt: number, pressureAlti
 // @public
 function trueAirspeedFromMachKt(mach: number, oatCelsius: number): number;
 
-// (No @packageDocumentation comment for this package)
-
 ```

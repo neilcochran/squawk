@@ -78,8 +78,6 @@ export type NotamAction = 'NEW' | 'REPLACE' | 'CANCEL';
 // @public
 export type NotamConditionCode = 'AC' | 'AD' | 'AF' | 'AG' | 'AH' | 'AK' | 'AL' | 'AM' | 'AN' | 'AO' | 'AP' | 'AR' | 'AS' | 'AU' | 'AW' | 'AX' | 'CA' | 'CC' | 'CD' | 'CE' | 'CF' | 'CG' | 'CH' | 'CI' | 'CL' | 'CM' | 'CN' | 'CO' | 'CP' | 'CR' | 'CS' | 'CT' | 'HA' | 'HB' | 'HC' | 'HD' | 'HE' | 'HF' | 'HG' | 'HH' | 'HI' | 'HJ' | 'HK' | 'HL' | 'HM' | 'HN' | 'HO' | 'HP' | 'HQ' | 'HR' | 'HS' | 'HT' | 'HU' | 'HV' | 'HW' | 'HX' | 'HY' | 'HZ' | 'LA' | 'LB' | 'LC' | 'LD' | 'LE' | 'LF' | 'LG' | 'LH' | 'LI' | 'LK' | 'LL' | 'LN' | 'LP' | 'LR' | 'LS' | 'LT' | 'LV' | 'LW' | 'LX' | 'KK' | 'TT' | 'XX';
 
-// Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/notams" does not have an export "DayTime"
-//
 // @public
 export interface NotamDateTime {
     day: number;

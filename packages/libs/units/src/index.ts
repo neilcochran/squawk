@@ -1,5 +1,6 @@
 /**
- * @squawk/units - Aviation-aware unit conversion and formatting utilities.
+ * @packageDocumentation
+ * Aviation-aware unit conversion and formatting utilities.
  *
  * All exports are grouped by domain namespace. Import the namespace and call functions
  * from it to keep the call site self-documenting:

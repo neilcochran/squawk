@@ -1,6 +1,6 @@
 import { describe, it, expect, assert } from 'vitest';
 
-import { usBundledAirspace } from './index.js';
+import { usBundledAirspace } from './node.js';
 
 describe('usBundledAirspace', () => {
   it('loads with a reasonable number of features', () => {
