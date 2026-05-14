@@ -195,6 +195,7 @@ Five workflows in [.github/workflows/](.github/workflows/). Every `uses:` is a f
 A few non-obvious properties of these workflows that the YAML doesn't make immediately clear:
 
 - **Workflows gated on `workflow_run` check out `${{ github.event.workflow_run.head_sha }}`**, not the current HEAD of `main`. The deploy / publish operates on the exact commit CI validated, not a slightly later commit. For workflows that also support `workflow_dispatch`, the fallback is `github.sha`.
+- **The publish job is gated by the `production-publish` GitHub Environment.** After the build job uploads dist artifacts, the publish job pauses for one-tap manual approval from a required reviewer before running `changesets/action`. The build job is not gated, so a stuck approval does not waste a runner re-running the build later. The environment also restricts deployments to protected branches, so a `workflow_dispatch` from an unprotected branch cannot bypass the gate.
 - **Lychee is intentionally not a required check.** Broken links from upstream reorganization shouldn't block PRs. Findings are visible in the job summary.
 - **The lychee cron runs at Mon 06:37 UTC, just after CodeQL's 05:17 slot**, to avoid runner contention.
 - **Excludes for the link checker live in [lychee.toml](lychee.toml)**, not in the workflow's args, so they apply to local `lychee` runs too.
