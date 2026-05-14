@@ -1,11 +1,13 @@
 # @squawk/icao-registry-data
 
-## 0.8.4
+## 0.8.9
 
 ### Patch Changes
 
 - f7a97cd: ### Changed
   - Refreshed bundled FAA ReleasableAircraft snapshot to the 2026-05-14 release (312,706 records, up from 312,230).
+
+> Versions 0.8.4 through 0.8.8 were skipped. Those patch numbers were tombstoned by npm during cleanup of the 2026-05-11 supply-chain incident (see [pinned Announcements discussion](https://github.com/neilcochran/squawk/discussions/251)) and cannot be republished. The next clean patch after 0.8.3 is 0.8.9.
 
 ## 0.8.3
 
