@@ -742,7 +742,7 @@ export interface NotamQualifier {
 /**
  * A date-time reference in a NOTAM effective period.
  * Uses the NOTAM-specific 10-digit format (YYMMDDHHmm) which includes
- * year and month information not present in the standard {@link DayTime}.
+ * year and month information not present in the standard `DayTime` shape in `@squawk/weather`.
  */
 export interface NotamDateTime {
   /** Two-digit year (e.g. 24 for 2024, 26 for 2026). */

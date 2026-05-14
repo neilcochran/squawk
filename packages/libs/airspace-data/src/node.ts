@@ -5,7 +5,7 @@
  * exposes the result as a single eager constant. Suitable for server-side
  * Node consumers.
  *
- * Browser and edge consumers should use the {@link "./browser"} entry point
+ * Browser and edge consumers should use the `./browser` entry point
  * instead, which performs the same work asynchronously via `fetch` and
  * `DecompressionStream`.
  */

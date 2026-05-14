@@ -85,7 +85,6 @@ The factory's TSDoc block includes a usage example showing the data-package impo
 - Import paths use the `.js` extension (NodeNext module resolution).
 - Separate `export` (values) from `export type` (types).
 - Main factory function listed first, then helpers, then any re-exports from `@squawk/types`.
-- The file's top-level TSDoc block uses `@packageDocumentation` so TypeDoc picks it up as the package summary.
 
 See any existing lib's `src/index.ts` for the canonical shape.
 
@@ -95,7 +94,7 @@ See any existing lib's `src/index.ts` for the canonical shape.
 
 Each data package bundles a single gzipped snapshot under `data/<name>.{json,geojson}.gz`. The wire format depends on the dataset shape: record-array packages use `{ meta: {...}, records: FullRecord[] }`, while `@squawk/airspace-data` uses a GeoJSON `FeatureCollection` with a top-level `properties` object carrying the metadata. Either way, records are stored in their full typed shape (no compaction or expansion step), and two entry points expose the same `<Name>Dataset` shape:
 
-- **`src/node.ts`** (re-exported by `src/index.ts`): synchronous read at module load via `node:fs` + `node:zlib`, exposed as a single eager constant `usBundled<X>`. This is the default entry consumed by Node lib tests, mcp tool modules, and any Node consumer.
+- **`src/node.ts`**: synchronous read at module load via `node:fs` + `node:zlib`, exposed as a single eager constant `usBundled<X>`. This is the default entry consumed by Node lib tests, mcp tool modules, and any Node consumer.
 - **`src/browser.ts`** (exposed via the `/browser` exports subpath): async function `loadUsBundled<X>(options?)` that uses `fetch` + `DecompressionStream('gzip')`. Returns the same `<Name>Dataset` shape. Handles servers that advertise `Content-Encoding: gzip` (fetch decodes automatically) as well as servers that serve `.gz` as opaque bytes.
 
 The browser entry's `LoadOptions` accepts an explicit `url` (override the default `import.meta.url`-relative path - useful for hosting on a CDN or for test fixtures) and a `fetch` (for tests or non-standard runtimes). See `packages/libs/airport-data/src/node.ts` and `.../browser.ts` for the canonical shape.
@@ -116,7 +115,7 @@ When adding a new query library, mirror this pattern: add a `./browser` entry to
 
 ## TSDoc
 
-Every exported symbol (interface, type, function, const, enum) must have a `/** */` TSDoc comment. Every property and parameter must have its own inline `/** */` comment.
+Every exported symbol (interface, type, function, const, enum) must have a `/** */` TSDoc comment. Every property and parameter must have its own inline `/** */` comment. Every entry-point file (any `src/*.ts` listed in `package.json` `exports`) has a top-level TSDoc block tagged `@packageDocumentation` so TypeDoc picks it up as that entry's package summary.
 
 ```typescript
 /**
@@ -147,6 +146,16 @@ Factory functions include a usage example in the TSDoc block:
  * ```
  */
 ````
+
+### `{@link}` references
+
+TypeDoc 0.28 resolves `{@link}` references against the current package's symbol table only - even with `entryPointStrategy: "packages"`, names from sibling packages do not resolve. The following patterns produce warnings (or silent breakage in the rendered HTML) and should not be used:
+
+- `{@link "./browser"}`, `{@link "."}` - quoted relative paths to sibling entry points. Replace with backticks (`` `./browser` ``), or drop the link entirely if the prose already says "the default entry point".
+- `{@link ./foo.js}`, `{@link ./foo.js#symbol}` - relative-path links to another file in the same package. If the file is re-exported as a namespace (`export * as foo from './foo.js'` in `index.ts`), use `{@link foo.symbol}`. Otherwise drop the link and use backticks.
+- `{@link @scope/pkg!Symbol}`, bare `{@link Symbol}` for a symbol that lives in another `@squawk/*` package - neither cross-package form resolves under `entryPointStrategy: "packages"`. Fall back to prose: ``the `Symbol` shape in @squawk/<pkg>``.
+
+Within the same package, the bare symbol name (`{@link AirportResolver}`) and namespace-qualified form (`{@link polygon.boundingBox}`) both resolve.
 
 ---
 

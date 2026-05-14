@@ -1,6 +1,6 @@
 import { describe, it, expect, assert } from 'vitest';
 
-import { usBundledProcedures } from './index.js';
+import { usBundledProcedures } from './node.js';
 
 describe('usBundledProcedures', () => {
   it('loads with a reasonable number of records', () => {

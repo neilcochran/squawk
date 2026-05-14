@@ -5,7 +5,7 @@
  * (`DecompressionStream`) and the global `fetch`. Works in every evergreen
  * browser, Cloudflare Workers, Deno Deploy, and Node 22+.
  *
- * Node consumers should use the default {@link "."} entry point instead,
+ * Node consumers should use the default entry point instead,
  * which performs the same work synchronously at module load time.
  */
 

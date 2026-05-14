@@ -5,7 +5,7 @@
  * and the `adm-zip` package and is unsuitable for browser bundles. Pair with
  * `@squawk/icao-registry-data/browser` to consume the bundled snapshot.
  *
- * Node consumers should use the default {@link "."} entry point, which also
+ * Node consumers should use the default entry point, which also
  * exports `parseFaaRegistryZip` for parsing fresh FAA ReleasableAircraft ZIPs
  * at runtime.
  */
