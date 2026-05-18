@@ -55,7 +55,7 @@
     "@squawk/navaids": "^0.4.1",
     "@squawk/procedure-data": "^0.7.2",
     "@squawk/procedures": "^0.5.1",
-    "@types/node": "^25.8.0"
+    "@types/node": "^25.9.0"
   },
   "keywords": [
     "aviation",
