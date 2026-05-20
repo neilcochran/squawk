@@ -1,11 +1,13 @@
 # @squawk/airport-data
 
-## 0.7.4
+## 0.7.9
 
 ### Patch Changes
 
 - 0aa555c: ### Changed
   - Refreshed bundled FAA NASR snapshot to the 2026-05-14 cycle (up from 2026-04-16). New counts: 19,074 airports (-23), 6,911 airspace features (+3), 1,519 airways (unchanged), 67,527 fixes (-198), 1,628 navaids (-5).
+
+> Versions 0.7.4 through 0.7.8 were skipped. Those patch numbers were tombstoned by npm during cleanup of the 2026-05-11 supply-chain incident (see [pinned Announcements discussion](https://github.com/neilcochran/squawk/discussions/251)) and cannot be republished. The next clean patch after 0.7.3 is 0.7.9.
 
 ## 0.7.3
 
