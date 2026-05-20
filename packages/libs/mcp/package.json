@@ -72,7 +72,7 @@
   },
   "devDependencies": {
     "@squawk/icao-registry-data": "^0.8.3",
-    "@types/node": "^25.7.0"
+    "@types/node": "^25.9.1"
   },
   "keywords": [
     "aviation",
