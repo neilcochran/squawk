@@ -54,7 +54,7 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.24.0",
     "globals": "^17.6.0",
-    "knip": "^6.14.1",
+    "knip": "^6.14.2",
     "prettier": "^3.8.3",
     "publint": "^0.3.21",
     "turbo": "^2.9.14",
