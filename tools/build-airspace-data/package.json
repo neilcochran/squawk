@@ -7,7 +7,7 @@
   "author": "Neil Cochran",
   "license": "MIT",
   "engines": {
-    "node": ">=22.16"
+    "node": "^22.16.0 || >=24"
   },
   "main": "./dist/index.js",
   "scripts": {
