@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Internal build script: processes FAA NASR airway data into the airway dataset",
   "engines": {
-    "node": ">=22.16"
+    "node": "^22.16.0 || >=24"
   },
   "main": "./dist/index.js",
   "scripts": {
