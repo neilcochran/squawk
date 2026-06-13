@@ -50,6 +50,6 @@
     "access": "public"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1"
+    "@types/node": "^25.9.3"
   }
 }

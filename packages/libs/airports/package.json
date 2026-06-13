@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@squawk/airport-data": "^0.7.3",
-    "@types/node": "^25.9.1"
+    "@types/node": "^25.9.3"
   },
   "keywords": [
     "aviation",
