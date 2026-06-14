@@ -1,5 +1,13 @@
 # @squawk/units
 
+## 0.4.8
+
+### Changed
+
+- Administrative release to skip npm-tombstoned version numbers. No functional or API changes.
+
+> Versions 0.4.3 through 0.4.7 were tombstoned by npm during cleanup of the 2026-05-11 supply-chain incident (see [pinned Announcements discussion](https://github.com/neilcochran/squawk/discussions/251)) and cannot be republished. The next clean patch after 0.4.2 is 0.4.8.
+
 ## 0.4.2
 
 ### Patch Changes

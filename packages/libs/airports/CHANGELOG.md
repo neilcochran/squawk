@@ -1,5 +1,13 @@
 # @squawk/airports
 
+## 0.6.7
+
+### Changed
+
+- Administrative release to skip npm-tombstoned version numbers. No functional or API changes.
+
+> Versions 0.6.2 through 0.6.6 were tombstoned by npm during cleanup of the 2026-05-11 supply-chain incident (see [pinned Announcements discussion](https://github.com/neilcochran/squawk/discussions/251)) and cannot be republished. The next clean patch after 0.6.1 is 0.6.7.
+
 ## 0.6.1
 
 ### Patch Changes
