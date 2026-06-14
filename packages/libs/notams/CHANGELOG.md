@@ -1,5 +1,13 @@
 # @squawk/notams
 
+## 0.3.11
+
+### Changed
+
+- Administrative release to skip npm-tombstoned version numbers. No functional or API changes.
+
+> Versions 0.3.6 through 0.3.10 were tombstoned by npm during cleanup of the 2026-05-11 supply-chain incident (see [pinned Announcements discussion](https://github.com/neilcochran/squawk/discussions/251)) and cannot be republished. The next clean patch after 0.3.5 is 0.3.11.
+
 ## 0.3.5
 
 ### Patch Changes

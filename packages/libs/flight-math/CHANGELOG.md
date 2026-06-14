@@ -1,5 +1,13 @@
 # @squawk/flight-math
 
+## 0.5.9
+
+### Changed
+
+- Administrative release to skip npm-tombstoned version numbers. No functional or API changes.
+
+> Versions 0.5.4 through 0.5.8 were tombstoned by npm during cleanup of the 2026-05-11 supply-chain incident (see [pinned Announcements discussion](https://github.com/neilcochran/squawk/discussions/251)) and cannot be republished. The next clean patch after 0.5.3 is 0.5.9.
+
 ## 0.5.3
 
 ### Patch Changes
