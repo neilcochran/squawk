@@ -182,7 +182,7 @@ CodeQL runs as a separate workflow; it's a required check on `main`.
 
 ## CI/CD overview
 
-Five workflows in [.github/workflows/](.github/workflows/). Every `uses:` is a full commit SHA pinned with a trailing version comment, maintained by Dependabot.
+Six workflows in [.github/workflows/](.github/workflows/). Every `uses:` is a full commit SHA pinned with a trailing version comment, maintained by Dependabot.
 
 | Workflow                                     | Trigger                                                 | Purpose                                                                                |
 | -------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -191,6 +191,7 @@ Five workflows in [.github/workflows/](.github/workflows/). Every `uses:` is a f
 | [lychee.yml](.github/workflows/lychee.yml)   | PR (paths-filtered to `**/*.md`) + weekly cron + manual | Markdown link checker. Report-only; surfaces broken links in the job summary.          |
 | [docs.yml](.github/workflows/docs.yml)       | After CI succeeds on `main`                             | Generate TypeDoc and deploy to GitHub Pages.                                           |
 | [publish.yml](.github/workflows/publish.yml) | After CI succeeds on `main` + manual                    | Run the changesets-driven release flow (see next section).                             |
+| [mirror.yml](.github/workflows/mirror.yml)   | Every push + daily cron + manual                        | Mirror all branches and tags to the GitLab backup mirror. Uses no marketplace actions. |
 
 A few non-obvious properties of these workflows that the YAML doesn't make immediately clear:
 
