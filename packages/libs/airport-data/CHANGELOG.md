@@ -1,5 +1,13 @@
 # @squawk/airport-data
 
+## 0.7.10
+
+### Patch Changes
+
+- 3caa444: ### Changed
+
+  - Refreshed bundled FAA NASR snapshot to the 2026-06-11 cycle (up from 2026-05-14). New counts: 19,076 airports (+2), 6,911 airspace features (unchanged), 1,519 airways (unchanged), 67,542 fixes (+15), 1,629 navaids (+1).
+
 ## 0.7.9
 
 ### Patch Changes
