@@ -1,6 +1,6 @@
 # @squawk/procedure-data
 
-## 0.7.3
+## 0.7.8
 
 ### Patch Changes
 
@@ -10,6 +10,8 @@
 
   ### Removed
   - The two KEWR GLS (GBAS) approaches carried in prior cycles (`J22L`, `J22R`) were discontinued by the FAA in this cycle and are no longer present.
+
+> Versions 0.7.3 through 0.7.7 were skipped. Those patch numbers were tombstoned by npm during cleanup of the 2026-05-11 supply-chain incident (see [pinned Announcements discussion](https://github.com/neilcochran/squawk/discussions/251)) and cannot be republished. The next clean patch after 0.7.2 is 0.7.8.
 
 ## 0.7.2
 
