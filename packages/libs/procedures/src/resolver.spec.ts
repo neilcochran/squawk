@@ -314,9 +314,9 @@ describe('search', () => {
 
 describe('IAP coverage across approach types', () => {
   // Expected non-zero approach types. The remaining types (TACAN, IGS,
-  // SDF, FMS, MLS) may not be present in the current FAA CIFP publication;
-  // we assert below that byApproachType returns an empty array for those
-  // without throwing.
+  // SDF, FMS, MLS, GLS) may not be present in the current FAA CIFP
+  // publication; we assert below that byApproachType returns an empty
+  // array for those without throwing.
   const expectedNonEmpty: readonly string[] = [
     'ILS',
     'LOC',
@@ -327,7 +327,6 @@ describe('IAP coverage across approach types', () => {
     'VOR_DME',
     'NDB',
     'NDB_DME',
-    'GLS',
     'LDA',
     'GPS',
   ];
@@ -345,7 +344,7 @@ describe('IAP coverage across approach types', () => {
     });
   }
 
-  const maybeEmpty: readonly string[] = ['TACAN', 'IGS', 'SDF', 'FMS', 'MLS'];
+  const maybeEmpty: readonly string[] = ['TACAN', 'IGS', 'SDF', 'FMS', 'MLS', 'GLS'];
   for (const approachType of maybeEmpty) {
     it(`returns an array (possibly empty) for ${approachType} approaches`, () => {
       const results = resolver.byApproachType(
@@ -564,13 +563,6 @@ describe('known-approach spot checks', () => {
     // Missed approach sequence must exist and carry real fixes
     const missed = approach.missedApproach!.legs;
     assert(missed.length > 0);
-  });
-
-  it('KEWR GLS J22L is classified and has a runway', () => {
-    const approach = resolver.byAirportAndIdentifier('KEWR', 'J22L');
-    assert(approach, 'expected KEWR J22L to be present');
-    expect(approach.approachType).toBe('GLS');
-    expect(approach.runway).toBe('22L');
   });
 
   it('resolves a circling VOR-A approach with no runway', () => {

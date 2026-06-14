@@ -164,7 +164,7 @@ Pinning works the same way:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.3", "@squawk/mcp@0.9.0"]
+      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.10", "@squawk/mcp@0.9.0"]
     }
   }
 }
