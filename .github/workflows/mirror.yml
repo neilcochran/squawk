@@ -1,0 +1,38 @@
+name: Mirror to GitLab
+
+# Reflects this repo (all branches and tags) onto the GitLab backup mirror.
+# Runs on every push for immediacy, plus a daily schedule as a safety net for
+# changes made on GitHub directly (e.g. PRs merged in the web UI).
+on:
+  push:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-to-gitlab
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror-clone from GitHub
+        run: >
+          git clone --mirror
+          "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          repo.git
+
+      - name: Push to GitLab
+        working-directory: repo.git
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        # Push branches and tags only (not --mirror): GitHub exposes refs/pull/*
+        # PR refs that GitLab refuses. --prune deletes branches/tags on GitLab
+        # that no longer exist on GitHub, keeping it an exact branch + tag mirror.
+        run: |
+          git push --prune "https://oauth2:${GITLAB_TOKEN}@gitlab.com/neilcochran/squawk.git" \
+            "+refs/heads/*:refs/heads/*" "+refs/tags/*:refs/tags/*"
