@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airspace-data)](https://www.npmjs.com/package/@squawk/airspace-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed GeoJSON snapshot of US airspace geometry from the **2026-05-14** FAA NASR
+Pre-processed GeoJSON snapshot of US airspace geometry from the **2026-06-11** FAA NASR
 cycle. Data only - no query logic, no dependency on
 `@squawk/airspace`.
 
