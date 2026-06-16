@@ -288,10 +288,14 @@ Two GitHub Rulesets target `main`:
 
 ## Dependency management
 
-[Dependabot](.github/dependabot.yml) runs weekly on two ecosystems:
+[Dependabot](.github/dependabot.yml) runs daily on two ecosystems:
 
-- **npm** - one PR per package, `open-pull-requests-limit: 20` so backlog flushes (e.g. after a `dependabot.yml` edit) don't get truncated to the default cap of 5.
-- **github-actions** - all action SHA bumps grouped into one PR per week, since dribbling them out individually is noise.
+- **npm** - patch and minor updates grouped into `dev-dependencies` and `production-dependencies` PRs; majors open per package. `open-pull-requests-limit: 20` so backlog flushes (e.g. after a `dependabot.yml` edit) don't get truncated to the default cap of 5.
+- **github-actions** - all action SHA bumps grouped into one PR, since dribbling them out individually is noise.
+
+Both ecosystems carry a 7-day `cooldown`: Dependabot withholds an update until the release is at least a week old, giving a malicious publish time to be detected and yanked before it can reach a PR. Security updates are exempt from the cooldown and still open immediately.
+
+The same window is enforced at install time by `min-release-age=7` in the root [.npmrc](.npmrc): npm 11.10+ refuses to resolve onto a dependency version published less than a week ago, covering the manual `npm install` path on a developer machine that the Dependabot cooldown does not reach. It is a no-op for `npm ci` (which installs the locked tree without resolving) and is silently ignored by older npm, so CI and the publish flow are unaffected. A single install can opt out with `npm install <pkg> --min-release-age=0`.
 
 Every workflow `uses:` is a full commit SHA followed by a trailing `# v<x.y.z>` comment. Dependabot keeps both in sync; manual edits to one without the other drift the comment from the SHA.
 
@@ -302,7 +306,7 @@ Every workflow `uses:` is a full commit SHA followed by a trailing `# v<x.y.z>` 
 Findings reach the repo through three channels:
 
 - **CodeQL** - PR + push to `main` + weekly cron (`.github/workflows/codeql.yml`). Required check on `main`.
-- **Dependabot vulnerability alerts** - native GitHub feature, opens PRs for vulnerable transitive deps alongside the regular weekly update cycle.
+- **Dependabot vulnerability alerts** - native GitHub feature, opens PRs for vulnerable transitive deps alongside the regular daily update cycle.
 - **Manual issue tracking** - the security-finding template at [.github/ISSUE_TEMPLATE/security-finding.md](.github/ISSUE_TEMPLATE/security-finding.md).
 
 Published packages ship with npm provenance attestations: the Publish workflow sets `NPM_CONFIG_PROVENANCE: true` and grants `id-token: write`, so each tarball on npm carries a verifiable link back to the GitHub Actions run that produced it.
