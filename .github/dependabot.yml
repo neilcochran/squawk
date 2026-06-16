@@ -5,6 +5,8 @@ updates:
     schedule:
       interval: daily
     open-pull-requests-limit: 20
+    cooldown:
+      default-days: 7
     groups:
       dev-dependencies:
         dependency-type: development
@@ -27,6 +29,8 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:

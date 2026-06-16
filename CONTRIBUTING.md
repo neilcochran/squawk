@@ -13,6 +13,8 @@ npm run build
 
 Node `>=22` and npm `11` are required. The repo is an npm-workspaces monorepo orchestrated by Turborepo.
 
+The root [.npmrc](.npmrc) sets `min-release-age=7`, a supply-chain cooldown: npm 11.10+ will not install a dependency version published less than a week ago. If you intentionally need a freshly published version, override it for that one command with `npm install <pkg> --min-release-age=0`. Older npm ignores the setting.
+
 ## Orientation
 
 Before opening a non-trivial PR, skim:
