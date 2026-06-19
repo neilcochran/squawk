@@ -1,9 +1,7 @@
 import { layers, namedFlavor } from '@protomaps/basemaps';
 import { Map, useMap } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent, ViewStateChangeEvent } from '@vis.gl/react-maplibre';
-import maplibregl from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
 import type { ReactElement, ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -19,23 +17,24 @@ import type { ResolvedTheme } from '../styles/theme-context.ts';
  */
 const ATLAS_LAYER_ID_PREFIX = 'atlas-';
 
-maplibregl.addProtocol('pmtiles', new Protocol().tile);
+/**
+ * Protomaps Hosted API key for the basemap tile source, read from the
+ * `VITE_PROTOMAPS_API_KEY` build-time env var. Supplied per environment:
+ * a localhost-restricted key in a gitignored local env file for `npm run
+ * dev`, and a deploy-injected key in production. When unset, the basemap
+ * tile requests are rejected and the basemap renders blank - the chart
+ * overlays still draw.
+ */
+const PROTOMAPS_API_KEY = import.meta.env.VITE_PROTOMAPS_API_KEY ?? '';
 
 /**
- * Protomaps' public dev demo PMTiles bucket - no API key required, but
- * rate-limited and intended for development only. Used as a fallback
- * when {@link PMTILES_URL} is not set, so local `npm run dev` works
- * without any env configuration.
+ * TileJSON URL for the Protomaps Hosted API basemap source. MapLibre
+ * fetches this document to resolve the vector tile template, zoom range,
+ * and attribution; the key is passed as a query parameter. The hosted API
+ * serves the v4 tile schema, which matches the layer set emitted by
+ * `@protomaps/basemaps` `layers()`.
  */
-const PROTOMAPS_DEMO_PMTILES = 'pmtiles://https://demo-bucket.protomaps.com/v4.pmtiles';
-
-/**
- * Resolved PMTiles URL for the basemap source. Reads from the
- * `VITE_PMTILES_URL` build-time env var (set in the production deploy
- * to point at a self-hosted PMTiles file or Protomaps' commercial CDN)
- * and falls back to {@link PROTOMAPS_DEMO_PMTILES} when unset.
- */
-const PMTILES_URL = import.meta.env.VITE_PMTILES_URL ?? PROTOMAPS_DEMO_PMTILES;
+const PROTOMAPS_TILEJSON_URL = `https://api.protomaps.com/tiles/v4.json?key=${PROTOMAPS_API_KEY}`;
 
 const PROTOMAPS_GLYPHS =
   'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf';
@@ -84,7 +83,7 @@ function buildMapStyle(theme: ResolvedTheme): StyleSpecification {
     sources: {
       protomaps: {
         type: 'vector',
-        url: PMTILES_URL,
+        url: PROTOMAPS_TILEJSON_URL,
         attribution:
           '<a href="https://openstreetmap.org/copyright">© OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>',
       },
