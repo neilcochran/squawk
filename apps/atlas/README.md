@@ -5,7 +5,7 @@
 The official Squawk viewer - a chart-first web app for browsing aeronautical data, built on the [@squawk/\*](https://github.com/neilcochran/squawk) packages.
 
 > [!NOTE]
-> Atlas is functional but not polished. Chart mode is the first mode and currently the only one shipped. Rough edges remain (the basemap is hosted on Protomaps' public dev bucket, some camera artifacts are unsmoothed at high pitch, mobile copy is still being tuned).
+> Atlas is functional but not polished. Chart mode is the first mode and currently the only one shipped. Rough edges remain (some camera artifacts are unsmoothed at high pitch, mobile copy is still being tuned).
 
 ## Chart mode
 
@@ -43,16 +43,26 @@ Data flows through the data packages' `/browser` entries, which use `fetch` + `D
 - TanStack Router with file-based routes and zod-validated URL search params
 - Tailwind CSS v4
 - MapLibre GL via `@vis.gl/react-maplibre`
-- Protomaps + PMTiles for basemap tiles
+- Protomaps hosted vector tiles for the basemap
 - Radix UI primitives (dropdown menus)
 - Vitest + jsdom + `@testing-library/react`
 
 ## Local development
 
+The basemap tiles come from the [Protomaps Hosted API](https://protomaps.com/api), which requires an API key. Create a free key and restrict its allowed CORS origins to `http://localhost:5173` (the Vite dev server), then provide it via a `VITE_PROTOMAPS_API_KEY` environment variable. The simplest place is a local `apps/atlas/.env.local` file (gitignored):
+
+```sh
+VITE_PROTOMAPS_API_KEY=your_key_here
+```
+
+Then install dependencies and start the dev server:
+
 ```sh
 npm install
 npm run dev
 ```
+
+Without a key the app still runs and the chart overlays render, but the basemap stays blank.
 
 ## Scripts
 

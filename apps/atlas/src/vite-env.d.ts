@@ -2,12 +2,13 @@
 
 interface ImportMetaEnv {
   /**
-   * PMTiles URL for the basemap source, set in the production deploy to
-   * point at a self-hosted PMTiles file or Protomaps' commercial CDN.
-   * When unset (e.g. during `npm run dev`), the map falls back to
-   * Protomaps' public demo bucket.
+   * Protomaps Hosted API key for the basemap tile source. Supplied per
+   * environment - a localhost-restricted key in a gitignored local env
+   * file for `npm run dev`, and a deploy-injected key in production. When
+   * unset, basemap tile requests are rejected and the basemap renders
+   * blank (chart overlays are unaffected).
    */
-  readonly VITE_PMTILES_URL?: string;
+  readonly VITE_PROTOMAPS_API_KEY?: string;
 }
 
 interface ImportMeta {
