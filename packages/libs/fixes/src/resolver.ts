@@ -1,4 +1,6 @@
 import { greatCircle } from '@squawk/geo';
+import { fuzzySearch } from '@squawk/search';
+import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
 import type { Fix, FixUseCode } from '@squawk/types';
 
 /**
@@ -36,15 +38,36 @@ export interface NearestFixResult {
 }
 
 /**
- * Options for a text search query against fix identifiers.
+ * The searchable field a {@link FixSearchResult} can match on.
+ */
+export type FixSearchField = 'identifier';
+
+/**
+ * Options for a fuzzy text search query against fix identifiers.
  */
 export interface FixSearchQuery {
-  /** Case-insensitive substring to match against fix identifier. */
+  /** Search text, matched fuzzily and case-insensitively against each fix's identifier. */
   text: string;
   /** Maximum number of results to return. Defaults to 20. */
   limit?: number;
   /** Optional set of use codes to include. When omitted, all use codes are included. */
   useCodes?: ReadonlySet<FixUseCode>;
+  /** Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0, which keeps every match. Raise it to drop weak fuzzy matches. */
+  minScore?: number;
+}
+
+/**
+ * A scored fix result from a fuzzy {@link FixResolver.search}.
+ */
+export interface FixSearchResult {
+  /** The matched fix record. */
+  fix: Fix;
+  /** Match strength in `[0, 1]`, where 1 is an exact identifier match. */
+  score: number;
+  /** Which field produced the best match, identifying what {@link FixSearchResult.ranges} index into. */
+  matchedField: FixSearchField;
+  /** Matched character ranges within the best-matching field's text, for highlighting. */
+  ranges: MatchRange[];
 }
 
 /**
@@ -65,10 +88,11 @@ export interface FixResolver {
   nearest(query: NearestFixQuery): NearestFixResult[];
 
   /**
-   * Searches fixes by identifier using case-insensitive substring matching.
-   * Results are returned in alphabetical order by identifier.
+   * Fuzzy-searches fixes by identifier. Results are scored and returned
+   * best-match first, each carrying the matched field and character ranges
+   * for highlighting.
    */
-  search(query: FixSearchQuery): Fix[];
+  search(query: FixSearchQuery): FixSearchResult[];
 }
 
 /**
@@ -146,28 +170,24 @@ export function createFixResolver(options: FixResolverOptions): FixResolver {
       return results.slice(0, limit);
     },
 
-    search(query: FixSearchQuery): Fix[] {
-      const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
-      const needle = query.text.toUpperCase();
+    search(query: FixSearchQuery): FixSearchResult[] {
+      const options: FuzzySearchOptions<Fix, FixSearchField> = {
+        keys: (fix) => [{ name: 'identifier', text: fix.identifier }],
+        limit: query.limit ?? DEFAULT_SEARCH_LIMIT,
+        minScore: query.minScore ?? 0,
+      };
 
-      if (needle.length === 0) {
-        return [];
+      const useCodes = query.useCodes;
+      if (useCodes) {
+        options.filter = (fix) => useCodes.has(fix.useCode);
       }
 
-      const results: Fix[] = [];
-
-      for (const fix of fixes) {
-        if (query.useCodes && !query.useCodes.has(fix.useCode)) {
-          continue;
-        }
-
-        if (fix.identifier.toUpperCase().includes(needle)) {
-          results.push(fix);
-        }
-      }
-
-      results.sort((a, b) => a.identifier.localeCompare(b.identifier));
-      return results.slice(0, limit);
+      return fuzzySearch(fixes, query.text, options).map((match) => ({
+        fix: match.item,
+        score: match.score,
+        matchedField: match.field,
+        ranges: match.ranges,
+      }));
     },
   };
 }

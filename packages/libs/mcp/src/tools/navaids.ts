@@ -141,9 +141,12 @@ export function registerNavaidTools(server: McpServer): void {
     {
       title: 'Search navaids by name or identifier',
       description:
-        'Searches US navaids using case-insensitive substring matching against the navaid name and identifier. Results are returned in alphabetical order by name.',
+        'Fuzzy-searches US navaids across identifier and name. Matching is case-insensitive and tolerant of prefixes, substrings, subsequences, and small typos. Each result carries a match score in [0, 1] (1 is an exact match) and the matched field; results are returned best-match first.',
       inputSchema: {
-        text: z.string().min(1).describe('Substring to match against navaid name or identifier.'),
+        text: z
+          .string()
+          .min(1)
+          .describe('Search text, fuzzily matched against navaid identifier and name.'),
         navaidTypes: z
           .array(z.enum(NAVAID_TYPE_VALUES))
           .optional()
@@ -154,15 +157,26 @@ export function registerNavaidTools(server: McpServer): void {
           .positive()
           .optional()
           .describe('Maximum number of results to return. Defaults to 20.'),
+        minScore: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe(
+            'Minimum match score (exclusive) in [0, 1] a result must reach. Defaults to 0. Raise it to drop weak fuzzy matches.',
+          ),
       },
     },
-    ({ text, navaidTypes, limit }) => {
+    ({ text, navaidTypes, limit, minScore }) => {
       const query: NavaidSearchQuery = { text };
       if (navaidTypes !== undefined) {
         query.types = new Set(navaidTypes);
       }
       if (limit !== undefined) {
         query.limit = limit;
+      }
+      if (minScore !== undefined) {
+        query.minScore = minScore;
       }
       const navaids = navaidResolver.search(query);
       return {

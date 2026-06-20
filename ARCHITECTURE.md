@@ -28,7 +28,7 @@ A monorepo of focused, well-documented TypeScript libraries covering common avia
 
 Six guiding principles shape every decision in this repo:
 
-- **Focused scope per package.** Each library does one thing well. Domain libraries (airports, navaids, weather, etc.) do not depend on each other; cross-dependencies are limited to the foundational tier (`@squawk/types`, `@squawk/units`, `@squawk/geo`).
+- **Focused scope per package.** Each library does one thing well. Domain libraries (airports, navaids, weather, etc.) do not depend on each other; cross-dependencies are limited to the foundational tier (`@squawk/types`, `@squawk/units`, `@squawk/geo`, `@squawk/search`).
 - **Real-world data.** Libraries work against actual FAA datasets and live aviation weather feeds, not mocked or synthetic data.
 - **Designed for composition.** Libraries fit together naturally when building an application. Domain libraries are independent of each other - the foundational tier is the only shared substrate.
 - **Published quality from day one.** Every library ships with a README, TypeScript types, unit tests, and a changelog.

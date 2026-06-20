@@ -4,7 +4,7 @@
 
 Pure logic library for querying US airway data. Look up airways by
 designation, expand route segments between fixes, find airways through a
-specific fix, or search by designation. Contains no bundled data - accepts
+specific fix, or fuzzy-search by designation. Contains no bundled data - accepts
 an array of Airway records at initialization. For zero-config use, pair with
 `@squawk/airway-data`.
 
@@ -35,8 +35,9 @@ for (const result of throughBos) {
   console.log(result.airway.designation);
 }
 
-// Search by designation
+// Fuzzy-search by designation (scored, best match first)
 const results = resolver.search({ text: 'V1' });
+console.log(results[0]?.airway.designation, results[0]?.score);
 ```
 
 Consumers who have their own airway data can use this package standalone:
@@ -110,13 +111,27 @@ Case-insensitive. Returns `AirwayByFixResult[]`, each containing:
 
 ### `resolver.search(query)`
 
-Searches airways by designation using case-insensitive substring matching.
-Results are returned in alphabetical order by designation.
+Fuzzy-searches airways by designation. Matching is case-insensitive and tolerant
+of prefixes, substrings, subsequences, and small typos. Results are scored and
+returned best-match first.
 
-| Property | Type                      | Description                                                    |
-| -------- | ------------------------- | -------------------------------------------------------------- |
-| `text`   | string                    | Case-insensitive substring to match against airway designation |
-| `limit`  | number                    | Optional. Maximum number of results. Defaults to 20            |
-| `types`  | ReadonlySet\<AirwayType\> | Optional. When provided, only these airway types are returned  |
+| Property   | Type                      | Description                                                                              |
+| ---------- | ------------------------- | ---------------------------------------------------------------------------------------- |
+| `text`     | string                    | Search text, matched fuzzily against each airway's designation                           |
+| `limit`    | number                    | Optional. Maximum number of results. Defaults to 20                                      |
+| `types`    | ReadonlySet\<AirwayType\> | Optional. When provided, only these airway types are returned                            |
+| `minScore` | number                    | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
 
-Returns `Airway[]`.
+Returns `AirwaySearchResult[]`, sorted by descending score, each containing:
+
+- `airway` - the matched Airway record
+- `score` - match strength in `[0, 1]`, where 1 is an exact designation match
+- `matchedField` - which field produced the best match: `'designation'`
+- `ranges` - matched character ranges within the best-matching field's text, for highlighting
+
+```typescript
+const results = resolver.search({ text: 'V1', limit: 10 });
+for (const { airway, score } of results) {
+  console.log(airway.designation, score);
+}
+```

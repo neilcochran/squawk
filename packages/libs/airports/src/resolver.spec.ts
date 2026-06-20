@@ -203,21 +203,36 @@ describe('nearest', () => {
 });
 
 describe('search', () => {
+  it('ranks an exact FAA ID match first with field and ranges', () => {
+    const results = resolver.search({ text: 'JFK' });
+    assert(results.length > 0, 'expected results for JFK');
+    expect(results[0]!.airport.faaId).toBe('JFK');
+    expect(results[0]!.matchedField).toBe('faaId');
+    expect(results[0]!.score).toBe(1);
+    expect(results[0]!.ranges).toEqual([{ start: 0, end: 3 }]);
+  });
+
   it('finds airports by city name', () => {
     const results = resolver.search({ text: 'chicago' });
-    assert(results.length > 0, 'expected results for chicago');
     assert(
-      results.some((a) => a.faaId === 'ORD'),
+      results.some((r) => r.airport.faaId === 'ORD'),
       'expected ORD in chicago results',
     );
   });
 
   it('finds airports by facility name', () => {
     const results = resolver.search({ text: 'john f kennedy' });
-    assert(results.length > 0, 'expected results for john f kennedy');
     assert(
-      results.some((a) => a.faaId === 'JFK'),
+      results.some((r) => r.airport.faaId === 'JFK'),
       'expected JFK in results',
+    );
+  });
+
+  it('matches an ICAO code', () => {
+    const results = resolver.search({ text: 'KORD' });
+    assert(
+      results.some((r) => r.airport.faaId === 'ORD' && r.matchedField === 'icao'),
+      'expected ORD via its ICAO code',
     );
   });
 
@@ -227,12 +242,12 @@ describe('search', () => {
     expect(lower.length, 'case should not affect results').toBe(upper.length);
   });
 
-  it('returns results sorted alphabetically by name', () => {
+  it('returns results sorted by descending score', () => {
     const results = resolver.search({ text: 'new york' });
     for (let i = 1; i < results.length; i++) {
       assert(
-        results[i]!.name.localeCompare(results[i - 1]!.name) >= 0,
-        'results should be sorted by name',
+        results[i]!.score <= results[i - 1]!.score,
+        'results should be sorted by descending score',
       );
     }
   });
@@ -247,8 +262,19 @@ describe('search', () => {
       text: 'new york',
       types: new Set<FacilityType>(['HELIPORT']),
     });
-    for (const a of results) {
-      expect(a.facilityType, `expected HELIPORT, got ${a.facilityType}`).toBe('HELIPORT');
+    for (const r of results) {
+      expect(r.airport.facilityType, `expected HELIPORT, got ${r.airport.facilityType}`).toBe(
+        'HELIPORT',
+      );
+    }
+  });
+
+  it('keeps only matches above the minScore threshold', () => {
+    const lenient = resolver.search({ text: 'field' });
+    const strict = resolver.search({ text: 'field', minScore: 0.5 });
+    assert(strict.length <= lenient.length, 'raising minScore should not add results');
+    for (const r of strict) {
+      assert(r.score > 0.5, `expected score > 0.5, got ${r.score}`);
     }
   });
 
@@ -258,7 +284,7 @@ describe('search', () => {
   });
 
   it('returns empty array for no matches', () => {
-    const results = resolver.search({ text: 'xyznonexistent' });
+    const results = resolver.search({ text: 'zzzzqqqq' });
     expect(results.length).toBe(0);
   });
 });

@@ -250,13 +250,46 @@ describe('expand', () => {
 });
 
 describe('search', () => {
-  it('finds procedures matching a substring in name or identifier', () => {
+  it('ranks an exact identifier match first with field and ranges', () => {
+    const results = resolver.search({ text: 'AALLE4' });
+    assert(results.length > 0, 'expected results for AALLE4');
+    expect(results[0]!.procedure.identifier).toBe('AALLE4');
+    expect(results[0]!.matchedField).toBe('identifier');
+    expect(results[0]!.score).toBe(1);
+    expect(results[0]!.ranges).toEqual([{ start: 0, end: 6 }]);
+  });
+
+  it('finds procedures matching a fragment of name or identifier', () => {
     const results = resolver.search({ text: 'AALLE' });
     assert(results.length > 0);
-    for (const proc of results) {
-      const matchesCode = proc.identifier.toUpperCase().includes('AALLE');
-      const matchesName = proc.name.toUpperCase().includes('AALLE');
+    for (const { procedure } of results) {
+      const matchesCode = procedure.identifier.toUpperCase().includes('AALLE');
+      const matchesName = procedure.name.toUpperCase().includes('AALLE');
       assert(matchesCode || matchesName);
+    }
+  });
+
+  it('reports the name field for a name match', () => {
+    // IAP identifiers are terse codes (e.g. `R30`) while names are spelled
+    // out (e.g. `RNAV RWY 30`), so searching the full name matches via name.
+    const iaps = resolver.byType('IAP');
+    const target = iaps.find(
+      (p) => p.name.length >= 4 && p.name.toUpperCase() !== p.identifier.toUpperCase(),
+    );
+    assert(target !== undefined, 'expected an IAP whose name differs from its identifier');
+    const results = resolver.search({ text: target.name, limit: 10000 });
+    const hit = results.find((r) => r.procedure === target);
+    assert(hit !== undefined, `expected to find ${target.name} in results`);
+    expect(hit.matchedField).toBe('name');
+  });
+
+  it('returns results sorted by descending score', () => {
+    const results = resolver.search({ text: 'RNAV', limit: 50 });
+    for (let i = 1; i < results.length; i++) {
+      assert(
+        results[i]!.score <= results[i - 1]!.score,
+        'results should be sorted by descending score',
+      );
     }
   });
 
@@ -267,20 +300,18 @@ describe('search', () => {
 
   it('filters by procedure type when provided', () => {
     const iaps = resolver.search({ text: 'RWY', type: 'IAP', limit: 50 });
-    for (const proc of iaps) {
-      expect(proc.type).toBe('IAP');
+    assert(iaps.length > 0, 'expected IAP matches for RWY');
+    for (const { procedure } of iaps) {
+      expect(procedure.type).toBe('IAP');
     }
   });
 
   it('filters by approach type when provided', () => {
-    const ils = resolver.search({ text: 'RWY', approachType: 'ILS', limit: 50 });
-    for (const proc of ils) {
-      expect(proc.approachType).toBe('ILS');
+    const ils = resolver.search({ text: 'ILS', approachType: 'ILS', limit: 50 });
+    assert(ils.length > 0, 'expected ILS matches');
+    for (const { procedure } of ils) {
+      expect(procedure.approachType).toBe('ILS');
     }
-  });
-
-  it('returns an empty array for empty text', () => {
-    expect(resolver.search({ text: '' })).toEqual([]);
   });
 
   it('is case-insensitive', () => {
@@ -289,26 +320,17 @@ describe('search', () => {
     expect(upper.length).toBe(lower.length);
   });
 
-  it('sorts results by airport then identifier', () => {
-    const results = resolver.search({ text: 'RNAV', limit: 50 });
-    for (let i = 1; i < results.length; i++) {
-      const prev = results[i - 1]!;
-      const curr = results[i]!;
-      const prevAirport = prev.airports[0] ?? '';
-      const currAirport = curr.airports[0] ?? '';
-      const airportCmp = prevAirport.localeCompare(currAirport);
-      if (airportCmp > 0) {
-        expect.fail(
-          `expected airports in ascending order, got "${prevAirport}" before "${currAirport}"`,
-        );
-      }
-      if (airportCmp === 0) {
-        assert(
-          prev.identifier.localeCompare(curr.identifier) <= 0,
-          `expected identifiers in ascending order within same airport, got "${prev.identifier}" before "${curr.identifier}" at ${prevAirport}`,
-        );
-      }
+  it('keeps only matches above the minScore threshold', () => {
+    const lenient = resolver.search({ text: 'RNAV', limit: 500 });
+    const strict = resolver.search({ text: 'RNAV', minScore: 0.5, limit: 500 });
+    assert(strict.length <= lenient.length, 'raising minScore should not add results');
+    for (const { score } of strict) {
+      assert(score > 0.5, `expected score > 0.5, got ${score}`);
     }
+  });
+
+  it('returns an empty array for empty text', () => {
+    expect(resolver.search({ text: '' })).toEqual([]);
   });
 });
 

@@ -207,12 +207,12 @@ export function registerProcedureTools(server: McpServer): void {
     {
       title: 'Search procedures by name or identifier',
       description:
-        'Searches US instrument procedures (SIDs, STARs, IAPs) by case-insensitive substring matching against both the procedure name and identifier. Results are returned sorted by airport and identifier.',
+        'Fuzzy-searches US instrument procedures (SIDs, STARs, IAPs) across identifier and name. Matching is case-insensitive and tolerant of prefixes, substrings, subsequences, and small typos. Each result carries a match score in [0, 1] (1 is an exact match) and the matched field; results are returned best-match first.',
       inputSchema: {
         text: z
           .string()
           .min(1)
-          .describe('Substring to match against the procedure name or identifier.'),
+          .describe('Search text, fuzzily matched against the procedure identifier and name.'),
         procedureType: z
           .enum(PROCEDURE_TYPE_VALUES)
           .optional()
@@ -227,9 +227,17 @@ export function registerProcedureTools(server: McpServer): void {
           .positive()
           .optional()
           .describe('Maximum number of results to return. Defaults to 20.'),
+        minScore: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe(
+            'Minimum match score (exclusive) in [0, 1] a result must reach. Defaults to 0. Raise it to drop weak fuzzy matches.',
+          ),
       },
     },
-    ({ text, procedureType, approachType, limit }) => {
+    ({ text, procedureType, approachType, limit, minScore }) => {
       const query: ProcedureSearchQuery = { text };
       if (procedureType !== undefined) {
         query.type = procedureType;
@@ -239,6 +247,9 @@ export function registerProcedureTools(server: McpServer): void {
       }
       if (limit !== undefined) {
         query.limit = limit;
+      }
+      if (minScore !== undefined) {
+        query.minScore = minScore;
       }
       const procedures = procedureResolver.search(query);
       return {

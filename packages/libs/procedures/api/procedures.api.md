@@ -5,6 +5,7 @@
 ```ts
 
 import type { ApproachType } from '@squawk/types';
+import { MatchRange } from '@squawk/search';
 import type { Procedure } from '@squawk/types';
 import type { ProcedureLeg } from '@squawk/types';
 import type { ProcedureType } from '@squawk/types';
@@ -13,6 +14,8 @@ import type { ProcedureType } from '@squawk/types';
 //
 // @public
 export function createProcedureResolver(options: ProcedureResolverOptions): ProcedureResolver;
+
+export { MatchRange }
 
 // @public
 export interface ProcedureExpansionResult {
@@ -29,7 +32,7 @@ export interface ProcedureResolver {
     byIdentifier(identifier: string): Procedure[];
     byType(type: ProcedureType): Procedure[];
     expand(airportId: string, identifier: string, transitionName?: string): ProcedureExpansionResult | undefined;
-    search(query: ProcedureSearchQuery): Procedure[];
+    search(query: ProcedureSearchQuery): ProcedureSearchResult[];
 }
 
 // @public
@@ -39,11 +42,23 @@ export interface ProcedureResolverOptions {
 }
 
 // @public
+export type ProcedureSearchField = 'identifier' | 'name';
+
+// @public
 export interface ProcedureSearchQuery {
     approachType?: ApproachType;
     limit?: number;
+    minScore?: number;
     text: string;
     type?: ProcedureType;
+}
+
+// @public
+export interface ProcedureSearchResult {
+    matchedField: ProcedureSearchField;
+    procedure: Procedure;
+    ranges: MatchRange[];
+    score: number;
 }
 
 ```

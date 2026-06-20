@@ -1,4 +1,6 @@
 import { greatCircle } from '@squawk/geo';
+import { fuzzySearch } from '@squawk/search';
+import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
 import type { Navaid, NavaidType } from '@squawk/types';
 
 /**
@@ -48,15 +50,36 @@ export interface NavaidFrequencyQuery {
 }
 
 /**
- * Options for a text search query against navaid names and identifiers.
+ * The searchable fields a navaid {@link NavaidSearchResult} can match on.
+ */
+export type NavaidSearchField = 'identifier' | 'name';
+
+/**
+ * Options for a fuzzy text search query against navaid identifiers and names.
  */
 export interface NavaidSearchQuery {
-  /** Case-insensitive substring to match against navaid name or identifier. */
+  /** Search text, matched fuzzily and case-insensitively against each navaid's identifier and name. */
   text: string;
   /** Maximum number of results to return. Defaults to 20. */
   limit?: number;
   /** Optional set of navaid types to include. When omitted, all types are included. */
   types?: ReadonlySet<NavaidType>;
+  /** Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0, which keeps every match. Raise it to drop weak fuzzy matches. */
+  minScore?: number;
+}
+
+/**
+ * A scored navaid result from a fuzzy {@link NavaidResolver.search}.
+ */
+export interface NavaidSearchResult {
+  /** The matched navaid record. */
+  navaid: Navaid;
+  /** Match strength in `[0, 1]`, where 1 is an exact identifier or name match. */
+  score: number;
+  /** Which field produced the best match, identifying what {@link NavaidSearchResult.ranges} index into. */
+  matchedField: NavaidSearchField;
+  /** Matched character ranges within the best-matching field's text, for highlighting. */
+  ranges: MatchRange[];
 }
 
 /**
@@ -90,10 +113,11 @@ export interface NavaidResolver {
   byType(types: ReadonlySet<NavaidType>): Navaid[];
 
   /**
-   * Searches navaids by name or identifier using case-insensitive substring matching.
-   * Results are returned in alphabetical order by name.
+   * Fuzzy-searches navaids across identifier and name. Results are scored and
+   * returned best-match first, each carrying the matched field and character
+   * ranges for highlighting.
    */
-  search(query: NavaidSearchQuery): Navaid[];
+  search(query: NavaidSearchQuery): NavaidSearchResult[];
 }
 
 /**
@@ -214,31 +238,27 @@ export function createNavaidResolver(options: NavaidResolverOptions): NavaidReso
       return results;
     },
 
-    search(query: NavaidSearchQuery): Navaid[] {
-      const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
-      const needle = query.text.toLowerCase();
+    search(query: NavaidSearchQuery): NavaidSearchResult[] {
+      const options: FuzzySearchOptions<Navaid, NavaidSearchField> = {
+        keys: (navaid) => [
+          { name: 'identifier', text: navaid.identifier },
+          { name: 'name', text: navaid.name },
+        ],
+        limit: query.limit ?? DEFAULT_SEARCH_LIMIT,
+        minScore: query.minScore ?? 0,
+      };
 
-      if (needle.length === 0) {
-        return [];
+      const types = query.types;
+      if (types) {
+        options.filter = (navaid) => types.has(navaid.type);
       }
 
-      const results: Navaid[] = [];
-
-      for (const navaid of navaids) {
-        if (query.types && !query.types.has(navaid.type)) {
-          continue;
-        }
-
-        if (
-          navaid.name.toLowerCase().includes(needle) ||
-          navaid.identifier.toLowerCase().includes(needle)
-        ) {
-          results.push(navaid);
-        }
-      }
-
-      results.sort((a, b) => a.name.localeCompare(b.name));
-      return results.slice(0, limit);
+      return fuzzySearch(navaids, query.text, options).map((match) => ({
+        navaid: match.item,
+        score: match.score,
+        matchedField: match.field,
+        ranges: match.ranges,
+      }));
     },
   };
 }

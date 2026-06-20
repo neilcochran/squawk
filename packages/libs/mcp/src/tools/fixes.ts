@@ -102,9 +102,12 @@ export function registerFixTools(server: McpServer): void {
     {
       title: 'Search fixes by identifier',
       description:
-        'Searches US fixes/waypoints by case-insensitive substring matching against the fix identifier. Results are returned in alphabetical order by identifier.',
+        'Fuzzy-searches US fixes/waypoints by identifier. Matching is case-insensitive and tolerant of prefixes, substrings, subsequences, and small typos. Each result carries a match score in [0, 1] (1 is an exact match); results are returned best-match first.',
       inputSchema: {
-        text: z.string().min(1).describe('Substring to match against the fix identifier.'),
+        text: z
+          .string()
+          .min(1)
+          .describe('Search text, fuzzily matched against the fix identifier.'),
         useCodes: z
           .array(z.enum(FIX_USE_CODE_VALUES))
           .optional()
@@ -115,15 +118,26 @@ export function registerFixTools(server: McpServer): void {
           .positive()
           .optional()
           .describe('Maximum number of results to return. Defaults to 20.'),
+        minScore: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe(
+            'Minimum match score (exclusive) in [0, 1] a result must reach. Defaults to 0. Raise it to drop weak fuzzy matches.',
+          ),
       },
     },
-    ({ text, useCodes, limit }) => {
+    ({ text, useCodes, limit, minScore }) => {
       const query: FixSearchQuery = { text };
       if (useCodes !== undefined) {
         query.useCodes = new Set(useCodes);
       }
       if (limit !== undefined) {
         query.limit = limit;
+      }
+      if (minScore !== undefined) {
+        query.minScore = minScore;
       }
       const fixes = fixResolver.search(query);
       return {

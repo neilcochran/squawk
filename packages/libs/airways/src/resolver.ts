@@ -1,3 +1,5 @@
+import { fuzzySearch } from '@squawk/search';
+import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
 import type { Airway, AirwayType, AirwayWaypoint } from '@squawk/types';
 
 /**
@@ -19,15 +21,36 @@ export interface AirwayExpansionResult {
 }
 
 /**
- * Options for a text search query against airway designations.
+ * The searchable field an {@link AirwaySearchResult} can match on.
+ */
+export type AirwaySearchField = 'designation';
+
+/**
+ * Options for a fuzzy text search query against airway designations.
  */
 export interface AirwaySearchQuery {
-  /** Case-insensitive substring to match against airway designation. */
+  /** Search text, matched fuzzily and case-insensitively against each airway's designation. */
   text: string;
   /** Maximum number of results to return. Defaults to 20. */
   limit?: number;
   /** Optional set of airway types to filter by. When omitted, all types are included. */
   types?: ReadonlySet<AirwayType>;
+  /** Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0, which keeps every match. Raise it to drop weak fuzzy matches. */
+  minScore?: number;
+}
+
+/**
+ * A scored airway result from a fuzzy {@link AirwayResolver.search}.
+ */
+export interface AirwaySearchResult {
+  /** The matched airway record. */
+  airway: Airway;
+  /** Match strength in `[0, 1]`, where 1 is an exact designation match. */
+  score: number;
+  /** Which field produced the best match, identifying what {@link AirwaySearchResult.ranges} index into. */
+  matchedField: AirwaySearchField;
+  /** Matched character ranges within the best-matching field's text, for highlighting. */
+  ranges: MatchRange[];
 }
 
 /**
@@ -72,10 +95,11 @@ export interface AirwayResolver {
   byFix(ident: string): AirwayByFixResult[];
 
   /**
-   * Searches airways by designation using case-insensitive substring matching.
-   * Results are returned in alphabetical order by designation.
+   * Fuzzy-searches airways by designation. Results are scored and returned
+   * best-match first, each carrying the matched field and character ranges
+   * for highlighting.
    */
-  search(query: AirwaySearchQuery): Airway[];
+  search(query: AirwaySearchQuery): AirwaySearchResult[];
 }
 
 /**
@@ -189,28 +213,24 @@ export function createAirwayResolver(options: AirwayResolverOptions): AirwayReso
       return byFixMap.get(ident.toUpperCase()) ?? [];
     },
 
-    search(query: AirwaySearchQuery): Airway[] {
-      const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
-      const needle = query.text.toUpperCase();
+    search(query: AirwaySearchQuery): AirwaySearchResult[] {
+      const options: FuzzySearchOptions<Airway, AirwaySearchField> = {
+        keys: (airway) => [{ name: 'designation', text: airway.designation }],
+        limit: query.limit ?? DEFAULT_SEARCH_LIMIT,
+        minScore: query.minScore ?? 0,
+      };
 
-      if (needle.length === 0) {
-        return [];
+      const types = query.types;
+      if (types) {
+        options.filter = (airway) => types.has(airway.type);
       }
 
-      const results: Airway[] = [];
-
-      for (const airway of airways) {
-        if (query.types && !query.types.has(airway.type)) {
-          continue;
-        }
-
-        if (airway.designation.toUpperCase().includes(needle)) {
-          results.push(airway);
-        }
-      }
-
-      results.sort((a, b) => a.designation.localeCompare(b.designation));
-      return results.slice(0, limit);
+      return fuzzySearch(airways, query.text, options).map((match) => ({
+        airway: match.item,
+        score: match.score,
+        matchedField: match.field,
+        ranges: match.ranges,
+      }));
     },
   };
 }

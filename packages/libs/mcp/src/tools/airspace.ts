@@ -8,7 +8,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import type { AirspaceQuery } from '@squawk/airspace';
+import type { AirspaceQuery, AirspaceSearchQuery } from '@squawk/airspace';
 import type { AirspaceFeature, AirspaceType, ArtccStratum } from '@squawk/types';
 
 import { airportResolver, airspaceResolver } from '../resolvers.js';
@@ -223,6 +223,61 @@ export function registerAirspaceTools(server: McpServer): void {
       return {
         content: [{ type: 'text', text: JSON.stringify({ features }, null, 2) }],
         structuredContent: { features },
+      };
+    },
+  );
+
+  server.registerTool(
+    'search_airspace',
+    {
+      title: 'Search airspace by name or identifier',
+      description:
+        'Fuzzy-searches US airspace features across identifier and name. Matching is case-insensitive and tolerant of prefixes, substrings, subsequences, and small typos. Each result carries a match score in [0, 1] (1 is an exact match) and the matched field; results are returned best-match first. Boundary geometry is summarized as a vertex count to keep responses compact.',
+      inputSchema: {
+        text: z
+          .string()
+          .min(1)
+          .describe('Search text, fuzzily matched against airspace identifier and name.'),
+        airspaceTypes: z
+          .array(z.enum(AIRSPACE_TYPE_VALUES))
+          .optional()
+          .describe('Restrict results to these airspace types. Omit to include all types.'),
+        limit: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe('Maximum number of results to return. Defaults to 20.'),
+        minScore: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe(
+            'Minimum match score (exclusive) in [0, 1] a result must reach. Defaults to 0. Raise it to drop weak fuzzy matches.',
+          ),
+      },
+    },
+    ({ text, airspaceTypes, limit, minScore }) => {
+      const query: AirspaceSearchQuery = { text };
+      if (airspaceTypes !== undefined) {
+        query.types = new Set(airspaceTypes);
+      }
+      if (limit !== undefined) {
+        query.limit = limit;
+      }
+      if (minScore !== undefined) {
+        query.minScore = minScore;
+      }
+      const results = airspaceResolver.search(query).map((result) => ({
+        feature: summarizeFeature(result.feature),
+        score: result.score,
+        matchedField: result.matchedField,
+        ranges: result.ranges,
+      }));
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ results }, null, 2) }],
+        structuredContent: { results },
       };
     },
   );

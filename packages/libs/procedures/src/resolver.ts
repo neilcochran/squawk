@@ -1,3 +1,5 @@
+import { fuzzySearch } from '@squawk/search';
+import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
 import type {
   ApproachType,
   Procedure,
@@ -26,10 +28,15 @@ export interface ProcedureExpansionResult {
 }
 
 /**
- * Options for a text search query against procedure names and identifiers.
+ * The searchable fields a procedure {@link ProcedureSearchResult} can match on.
+ */
+export type ProcedureSearchField = 'identifier' | 'name';
+
+/**
+ * Options for a fuzzy text search query against procedure identifiers and names.
  */
 export interface ProcedureSearchQuery {
-  /** Case-insensitive substring matched against name and identifier. */
+  /** Search text, matched fuzzily and case-insensitively against each procedure's identifier and name. */
   text: string;
   /** Maximum number of results to return. Defaults to 20. */
   limit?: number;
@@ -37,6 +44,22 @@ export interface ProcedureSearchQuery {
   type?: ProcedureType;
   /** Optional approach type filter (applied only when matching IAPs). */
   approachType?: ApproachType;
+  /** Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0, which keeps every match. Raise it to drop weak fuzzy matches. */
+  minScore?: number;
+}
+
+/**
+ * A scored procedure result from a fuzzy {@link ProcedureResolver.search}.
+ */
+export interface ProcedureSearchResult {
+  /** The matched procedure record. */
+  procedure: Procedure;
+  /** Match strength in `[0, 1]`, where 1 is an exact identifier or name match. */
+  score: number;
+  /** Which field produced the best match, identifying what {@link ProcedureSearchResult.ranges} index into. */
+  matchedField: ProcedureSearchField;
+  /** Matched character ranges within the best-matching field's text, for highlighting. */
+  ranges: MatchRange[];
 }
 
 /**
@@ -107,11 +130,11 @@ export interface ProcedureResolver {
   ): ProcedureExpansionResult | undefined;
 
   /**
-   * Searches procedures by name or identifier using case-insensitive
-   * substring matching. Results are returned sorted by airport then
-   * identifier.
+   * Fuzzy-searches procedures across identifier and name. Results are scored and
+   * returned best-match first, each carrying the matched field and character
+   * ranges for highlighting.
    */
-  search(query: ProcedureSearchQuery): Procedure[];
+  search(query: ProcedureSearchQuery): ProcedureSearchResult[];
 }
 
 /**
@@ -255,37 +278,28 @@ export function createProcedureResolver(options: ProcedureResolverOptions): Proc
       return { procedure: proc, legs };
     },
 
-    search(query: ProcedureSearchQuery): Procedure[] {
-      const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
-      const needle = query.text.toUpperCase();
-      if (needle.length === 0) {
-        return [];
+    search(query: ProcedureSearchQuery): ProcedureSearchResult[] {
+      const options: FuzzySearchOptions<Procedure, ProcedureSearchField> = {
+        keys: (proc) => [
+          { name: 'identifier', text: proc.identifier },
+          { name: 'name', text: proc.name },
+        ],
+        limit: query.limit ?? DEFAULT_SEARCH_LIMIT,
+        minScore: query.minScore ?? 0,
+      };
+      const type = query.type;
+      const approachType = query.approachType;
+      if (type !== undefined || approachType !== undefined) {
+        options.filter = (proc) =>
+          (type === undefined || proc.type === type) &&
+          (approachType === undefined || proc.approachType === approachType);
       }
-
-      const results: Procedure[] = [];
-      for (const proc of procedures) {
-        if (query.type !== undefined && proc.type !== query.type) {
-          continue;
-        }
-        if (query.approachType !== undefined && proc.approachType !== query.approachType) {
-          continue;
-        }
-        if (
-          proc.identifier.toUpperCase().includes(needle) ||
-          proc.name.toUpperCase().includes(needle)
-        ) {
-          results.push(proc);
-        }
-      }
-
-      results.sort((a, b) => {
-        const airportDiff = (a.airports[0] ?? '').localeCompare(b.airports[0] ?? '');
-        if (airportDiff !== 0) {
-          return airportDiff;
-        }
-        return a.identifier.localeCompare(b.identifier);
-      });
-      return results.slice(0, limit);
+      return fuzzySearch(procedures, query.text, options).map((match) => ({
+        procedure: match.item,
+        score: match.score,
+        matchedField: match.field,
+        ranges: match.ranges,
+      }));
     },
   };
 }

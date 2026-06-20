@@ -31,15 +31,16 @@ The repo splits into three top-level directories:
 | [`@squawk/units`](packages/libs/units)                           | Aviation-aware unit conversion and formatting utilities                            |
 | [`@squawk/geo`](packages/libs/geo)                               | Geospatial utilities: great-circle distance, bearing, midpoint, point-in-polygon   |
 | [`@squawk/flight-math`](packages/libs/flight-math)               | Aviation flight computer calculations (E6B wind triangle, altitude, airspeed)      |
+| [`@squawk/search`](packages/libs/search)                         | Domain-agnostic fuzzy string matching and ranked search scoring                    |
 | [`@squawk/icao-registry`](packages/libs/icao-registry)           | ICAO hex to N-number and aircraft info lookup with FAA parsing utilities           |
 | [`@squawk/icao-registry-data`](packages/libs/icao-registry-data) | Pre-processed FAA ReleasableAircraft snapshot for use with `@squawk/icao-registry` |
 | [`@squawk/airspace`](packages/libs/airspace)                     | Point-in-airspace queries for Class B/C/D/E and Special Use Airspace               |
 | [`@squawk/airspace-data`](packages/libs/airspace-data)           | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`   |
-| [`@squawk/airports`](packages/libs/airports)                     | Airport queries by identifier, location, or name/city search                       |
+| [`@squawk/airports`](packages/libs/airports)                     | Airport queries by identifier, location, or fuzzy search                           |
 | [`@squawk/airport-data`](packages/libs/airport-data)             | Pre-processed FAA NASR airport snapshot with runways, frequencies, and ILS data    |
-| [`@squawk/navaids`](packages/libs/navaids)                       | Navaid queries by identifier, frequency, type, location, or name search            |
+| [`@squawk/navaids`](packages/libs/navaids)                       | Navaid queries by identifier, frequency, type, location, or fuzzy search           |
 | [`@squawk/navaid-data`](packages/libs/navaid-data)               | Pre-processed FAA NASR navaid snapshot for use with `@squawk/navaids`              |
-| [`@squawk/fixes`](packages/libs/fixes)                           | Fix/waypoint queries by identifier, location, or identifier search                 |
+| [`@squawk/fixes`](packages/libs/fixes)                           | Fix/waypoint queries by identifier, location, or fuzzy search                      |
 | [`@squawk/fix-data`](packages/libs/fix-data)                     | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`          |
 | [`@squawk/airways`](packages/libs/airways)                       | Airway lookup, traversal, and expansion by designation, fix, or search             |
 | [`@squawk/airway-data`](packages/libs/airway-data)               | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`              |

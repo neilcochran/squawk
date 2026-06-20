@@ -7,6 +7,7 @@
 import type { Airway } from '@squawk/types';
 import type { AirwayType } from '@squawk/types';
 import type { AirwayWaypoint } from '@squawk/types';
+import { MatchRange } from '@squawk/search';
 
 // @public
 export interface AirwayByFixResult {
@@ -25,7 +26,7 @@ export interface AirwayResolver {
     byDesignation(designation: string): Airway[];
     byFix(ident: string): AirwayByFixResult[];
     expand(designation: string, entryFix: string, exitFix: string): AirwayExpansionResult | undefined;
-    search(query: AirwaySearchQuery): Airway[];
+    search(query: AirwaySearchQuery): AirwaySearchResult[];
 }
 
 // @public
@@ -34,13 +35,27 @@ export interface AirwayResolverOptions {
 }
 
 // @public
+export type AirwaySearchField = 'designation';
+
+// @public
 export interface AirwaySearchQuery {
     limit?: number;
+    minScore?: number;
     text: string;
     types?: ReadonlySet<AirwayType>;
 }
 
 // @public
+export interface AirwaySearchResult {
+    airway: Airway;
+    matchedField: AirwaySearchField;
+    ranges: MatchRange[];
+    score: number;
+}
+
+// @public
 export function createAirwayResolver(options: AirwayResolverOptions): AirwayResolver;
+
+export { MatchRange }
 
 ```

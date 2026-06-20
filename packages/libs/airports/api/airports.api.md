@@ -6,13 +6,14 @@
 
 import type { Airport } from '@squawk/types';
 import type { FacilityType } from '@squawk/types';
+import { MatchRange } from '@squawk/search';
 
 // @public
 export interface AirportResolver {
     byFaaId(faaId: string): Airport | undefined;
     byIcao(icao: string): Airport | undefined;
     nearest(query: NearestAirportQuery): NearestAirportResult[];
-    search(query: AirportSearchQuery): Airport[];
+    search(query: AirportSearchQuery): AirportSearchResult[];
 }
 
 // @public
@@ -21,14 +22,28 @@ export interface AirportResolverOptions {
 }
 
 // @public
+export type AirportSearchField = 'faaId' | 'icao' | 'name' | 'city';
+
+// @public
 export interface AirportSearchQuery {
     limit?: number;
+    minScore?: number;
     text: string;
     types?: ReadonlySet<FacilityType>;
 }
 
 // @public
+export interface AirportSearchResult {
+    airport: Airport;
+    matchedField: AirportSearchField;
+    ranges: MatchRange[];
+    score: number;
+}
+
+// @public
 export function createAirportResolver(options: AirportResolverOptions): AirportResolver;
+
+export { MatchRange }
 
 // @public
 export interface NearestAirportQuery {

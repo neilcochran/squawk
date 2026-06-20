@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.9.6"]
+      "args": ["-y", "@squawk/mcp@0.10.0"]
     }
   }
 }
@@ -164,7 +164,7 @@ Pinning works the same way:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.10", "@squawk/mcp@0.9.6"]
+      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.10", "@squawk/mcp@0.10.0"]
     }
   }
 }
@@ -249,7 +249,7 @@ directly.
 | `get_airport_by_faa_id` | Look up an airport by FAA identifier                                                   |
 | `get_airport_by_icao`   | Look up an airport by ICAO code                                                        |
 | `find_nearest_airports` | Find airports nearest a position with optional facility-type and runway-length filters |
-| `search_airports`       | Substring search by airport name or city                                               |
+| `search_airports`       | Fuzzy search by FAA identifier, name, or city                                          |
 
 ### Airspace (`@squawk/airspace` + `@squawk/airspace-data`)
 
@@ -259,6 +259,7 @@ directly.
 | `get_airspace_for_airport`   | Class B/C/D/E2 surface-area sectors associated with an airport, with full polygon boundaries                                                    |
 | `find_artcc_for_position`    | US ARTCC features containing a given position and altitude (typically one feature; multiple for oceanic CTA+FIR overlaps or stratum boundaries) |
 | `find_artcc_by_identifier`   | All ARTCC features for a 3-letter center code (e.g. "ZNY"), optionally narrowed to a single stratum, with full polygon boundaries               |
+| `search_airspace`            | Fuzzy search by identifier or name (boundary summarized as a vertex count)                                                                      |
 
 ### Navaids (`@squawk/navaids` + `@squawk/navaid-data`)
 
@@ -267,15 +268,15 @@ directly.
 | `get_navaid_by_ident`       | Look up navaids by identifier                   |
 | `find_navaids_by_frequency` | Find navaids tuned to a given MHz/kHz frequency |
 | `find_nearest_navaids`      | Find navaids nearest a position                 |
-| `search_navaids`            | Substring search by name or identifier          |
+| `search_navaids`            | Fuzzy search by name or identifier              |
 
 ### Fixes (`@squawk/fixes` + `@squawk/fix-data`)
 
-| Tool                 | Purpose                        |
-| -------------------- | ------------------------------ |
-| `get_fix_by_ident`   | Look up fixes by identifier    |
-| `find_nearest_fixes` | Find fixes nearest a position  |
-| `search_fixes`       | Substring search by identifier |
+| Tool                 | Purpose                       |
+| -------------------- | ----------------------------- |
+| `get_fix_by_ident`   | Look up fixes by identifier   |
+| `find_nearest_fixes` | Find fixes nearest a position |
+| `search_fixes`       | Fuzzy search by identifier    |
 
 ### Airways (`@squawk/airways` + `@squawk/airway-data`)
 
@@ -284,7 +285,7 @@ directly.
 | `get_airway_by_designation` | Look up airways by designation                        |
 | `expand_airway_segment`     | Expand an airway between an entry fix and an exit fix |
 | `find_airways_by_fix`       | Reverse lookup: airways that pass through a given fix |
-| `search_airways`            | Substring search by designation                       |
+| `search_airways`            | Fuzzy search by designation                           |
 
 ### Procedures (`@squawk/procedures` + `@squawk/procedure-data`)
 
@@ -298,7 +299,7 @@ Covers SIDs, STARs, and Instrument Approach Procedures (IAPs) from FAA CIFP.
 | `find_procedures_by_airport_and_runway`   | Procedures at an airport serving a specific runway (IAP runway match or RW\* transition)    |
 | `find_approaches_by_type`                 | Every IAP of a given approach classification (ILS, RNAV, VOR, etc.)                         |
 | `expand_procedure`                        | Expand a procedure into its leg sequence (with optional transition merge)                   |
-| `search_procedures`                       | Substring search by name or identifier, optionally filtered by procedure or approach type   |
+| `search_procedures`                       | Fuzzy search by name or identifier, optionally filtered by procedure or approach type       |
 
 ### ICAO aircraft registry (`@squawk/icao-registry` + `@squawk/icao-registry-data`)
 

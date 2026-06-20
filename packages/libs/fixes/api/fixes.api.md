@@ -6,6 +6,7 @@
 
 import type { Fix } from '@squawk/types';
 import type { FixUseCode } from '@squawk/types';
+import { MatchRange } from '@squawk/search';
 
 // @public
 export function createFixResolver(options: FixResolverOptions): FixResolver;
@@ -14,7 +15,7 @@ export function createFixResolver(options: FixResolverOptions): FixResolver;
 export interface FixResolver {
     byIdent(ident: string): Fix[];
     nearest(query: NearestFixQuery): NearestFixResult[];
-    search(query: FixSearchQuery): Fix[];
+    search(query: FixSearchQuery): FixSearchResult[];
 }
 
 // @public
@@ -23,11 +24,25 @@ export interface FixResolverOptions {
 }
 
 // @public
+export type FixSearchField = 'identifier';
+
+// @public
 export interface FixSearchQuery {
     limit?: number;
+    minScore?: number;
     text: string;
     useCodes?: ReadonlySet<FixUseCode>;
 }
+
+// @public
+export interface FixSearchResult {
+    fix: Fix;
+    matchedField: FixSearchField;
+    ranges: MatchRange[];
+    score: number;
+}
+
+export { MatchRange }
 
 // @public
 export interface NearestFixQuery {
