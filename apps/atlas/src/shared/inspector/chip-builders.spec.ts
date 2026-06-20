@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 
 import type { Airway, AirspaceFeature } from '@squawk/types';
 
-import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
+import type { InspectableFeature } from '../../modes/chart/interaction/click-to-select.ts';
 import { AIRPORTS_LAYER_ID } from '../../modes/chart/layers/airports-layer.tsx';
 import { AIRSPACE_FILL_LAYER_ID } from '../../modes/chart/layers/airspace-layer.tsx';
 

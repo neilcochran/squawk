@@ -3,10 +3,21 @@ import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { Fragment, useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 
-import { FLOATING_SURFACE_CLASSES, FOCUS_RING_CLASSES } from '../../shared/styles/style-tokens.ts';
-import { MenuItemRow } from '../../shared/ui/menu-item-row.tsx';
+import {
+  FLOATING_SURFACE_CLASSES,
+  FOCUS_RING_CLASSES,
+} from '../../../shared/styles/style-tokens.ts';
+import { MenuItemRow } from '../../../shared/ui/menu-item-row.tsx';
+import { useAirspace3DAutoHidePreference } from '../airspace-3d/airspace-3d-preference.ts';
+import {
+  AIRSPACE_CLASSES,
+  AIRWAY_CATEGORIES,
+  CHART_ROUTE_PATH,
+  LAYER_IDS,
+  LAYER_MIN_ZOOM,
+} from '../url-state.ts';
+import type { AirspaceClass, AirwayCategory, LayerId } from '../url-state.ts';
 
-import { useAirspace3DAutoHidePreference } from './airspace-3d-preference.ts';
 import {
   AIRSPACE_CLASS_OPTIONS,
   AIRWAY_CATEGORY_OPTIONS,
@@ -15,14 +26,6 @@ import {
 } from './layer-options.ts';
 import { CheckIcon } from './layer-toggle-icons.tsx';
 import { ExpandableParentRow, SimpleParentRow, SubRow } from './layer-toggle-rows.tsx';
-import {
-  AIRSPACE_CLASSES,
-  AIRWAY_CATEGORIES,
-  CHART_ROUTE_PATH,
-  LAYER_IDS,
-  LAYER_MIN_ZOOM,
-} from './url-state.ts';
-import type { AirspaceClass, AirwayCategory, LayerId } from './url-state.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 

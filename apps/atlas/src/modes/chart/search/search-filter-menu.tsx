@@ -13,9 +13,13 @@ import {
   AIRWAY_CATEGORY_OPTIONS,
   EXPANDABLE_LAYERS,
   LAYER_OPTIONS,
-} from '../layer-options.ts';
-import { CheckIcon } from '../layer-toggle-icons.tsx';
-import { ExpandableParentRow, SimpleParentRow, SubRow } from '../layer-toggle-rows.tsx';
+} from '../layer-toggle/layer-options.ts';
+import { CheckIcon } from '../layer-toggle/layer-toggle-icons.tsx';
+import {
+  ExpandableParentRow,
+  SimpleParentRow,
+  SubRow,
+} from '../layer-toggle/layer-toggle-rows.tsx';
 import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_ROUTE_PATH, LAYER_IDS } from '../url-state.ts';
 import type { AirspaceClass, AirwayCategory, LayerId } from '../url-state.ts';
 

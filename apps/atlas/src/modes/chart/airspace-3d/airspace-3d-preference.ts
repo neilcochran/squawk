@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-import type { AirspaceClass } from './url-state.ts';
+import type { AirspaceClass } from '../url-state.ts';
 
 /**
  * Airspace classes auto-hidden when the user enters 3D view (pitch > 0)

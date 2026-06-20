@@ -14,7 +14,7 @@ import {
   coordsOfPolygon,
 } from '../../../shared/inspector/geometry.ts';
 import type { BoundingBox } from '../../../shared/inspector/geometry.ts';
-import { formatAirspaceLabel } from '../click-to-select.ts';
+import { formatAirspaceLabel } from '../interaction/click-to-select.ts';
 import { isDrawableNavaid } from '../layers/drawable-sets.ts';
 
 import type { LayerVisibility, SearchScope } from './search-scope.ts';

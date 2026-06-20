@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 
-import { FLOATING_SURFACE_CLASSES, FOCUS_RING_CLASSES } from '../../shared/styles/style-tokens.ts';
+import {
+  FLOATING_SURFACE_CLASSES,
+  FOCUS_RING_CLASSES,
+} from '../../../shared/styles/style-tokens.ts';
 
 /**
  * Outcome the user picks in the auto-hide dialog. Carries both the

@@ -3,8 +3,8 @@ import { useMap } from '@vis.gl/react-maplibre';
 import { useCallback, useMemo } from 'react';
 import type { ReactElement } from 'react';
 
-import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
 import { useHoveredAirwayWaypointIndex } from '../../modes/chart/highlight-context.ts';
+import type { InspectableFeature } from '../../modes/chart/interaction/click-to-select.ts';
 import { CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 
 import { buildInspectorChipList } from './chip-builders.ts';

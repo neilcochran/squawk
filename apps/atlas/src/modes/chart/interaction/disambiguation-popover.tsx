@@ -6,23 +6,23 @@ import {
   compareAirspaceByAltitudeDesc,
   formatAirspaceAltitudeRange,
   readAirspaceAltitudeKey,
-} from '../../shared/inspector/airspace-feature.ts';
-import type { AirspaceAltitudeKey } from '../../shared/inspector/airspace-feature.ts';
-import { FLOATING_SURFACE_CLASSES } from '../../shared/styles/style-tokens.ts';
-import { useCanHover } from '../../shared/styles/use-can-hover.ts';
-
-import { formatChipLabel, selectedFromFeature } from './click-to-select.ts';
-import type { InspectableFeature } from './click-to-select.ts';
-import { useSetHoveredChipSelection } from './highlight-context.ts';
-import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
+} from '../../../shared/inspector/airspace-feature.ts';
+import type { AirspaceAltitudeKey } from '../../../shared/inspector/airspace-feature.ts';
+import { FLOATING_SURFACE_CLASSES } from '../../../shared/styles/style-tokens.ts';
+import { useCanHover } from '../../../shared/styles/use-can-hover.ts';
+import { useSetHoveredChipSelection } from '../highlight-context.ts';
+import { AIRPORTS_LAYER_ID } from '../layers/airports-layer.tsx';
 import {
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
   AIRSPACE_FILL_LAYER_ID,
   AIRSPACE_LINE_LAYER_ID,
-} from './layers/airspace-layer.tsx';
-import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
-import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
-import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
+} from '../layers/airspace-layer.tsx';
+import { AIRWAYS_LAYER_ID } from '../layers/airways-layer.tsx';
+import { FIXES_LAYER_ID } from '../layers/fixes-layer.tsx';
+import { NAVAIDS_LAYER_ID } from '../layers/navaids-layer.tsx';
+
+import type { InspectableFeature } from './click-to-select.ts';
+import { formatChipLabel, selectedFromFeature } from './click-to-select.ts';
 
 /**
  * Pixel offset between the click point and the popover's top-left

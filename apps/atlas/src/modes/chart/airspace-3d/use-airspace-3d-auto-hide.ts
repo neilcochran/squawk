@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { AIRSPACE_CLASSES, LAYER_IDS } from '../url-state.ts';
+import type { AirspaceClass, LayerId } from '../url-state.ts';
+
 import type { Airspace3DDialogChoice } from './airspace-3d-dialog.tsx';
 import {
   AIRSPACE_3D_AUTO_HIDE_CLASSES,
   useAirspace3DAutoHidePreference,
 } from './airspace-3d-preference.ts';
 import type { Airspace3DAutoHidePreference } from './airspace-3d-preference.ts';
-import { AIRSPACE_CLASSES, LAYER_IDS } from './url-state.ts';
-import type { AirspaceClass, LayerId } from './url-state.ts';
 
 /** Parameters for {@link useAirspace3DAutoHide}. */
 export interface UseAirspace3DAutoHideParams {

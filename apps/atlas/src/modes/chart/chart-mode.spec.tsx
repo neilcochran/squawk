@@ -93,7 +93,7 @@ vi.mock('../../shared/map/map-canvas.tsx', async (importOriginal) => {
 vi.mock('../../shared/map/zoom-controls.tsx', () => ({ ZoomControls: () => null }));
 vi.mock('../../shared/inspector/inspector.tsx', () => ({ EntityInspector: () => null }));
 vi.mock('./chart-loading-indicator.tsx', () => ({ ChartLoadingIndicator: () => null }));
-vi.mock('./disambiguation-popover.tsx', () => ({
+vi.mock('./interaction/disambiguation-popover.tsx', () => ({
   DisambiguationPopover: (props: DisambiguationProps): ReactElement => {
     disambiguationRef.current = props;
     return <div data-testid="disambiguation" />;
@@ -102,9 +102,9 @@ vi.mock('./disambiguation-popover.tsx', () => ({
 vi.mock('./highlight-provider.tsx', () => ({
   HighlightProvider: ({ children }: { children: ReactNode }): ReactElement => <>{children}</>,
 }));
-vi.mock('./inspectable-cursor.tsx', () => ({ InspectableHoverCursor: () => null }));
+vi.mock('./interaction/inspectable-cursor.tsx', () => ({ InspectableHoverCursor: () => null }));
 vi.mock('./view-reset-listener.tsx', () => ({ ChartViewResetListener: () => null }));
-vi.mock('./layer-toggle.tsx', () => ({ LayerToggle: () => null }));
+vi.mock('./layer-toggle/layer-toggle.tsx', () => ({ LayerToggle: () => null }));
 vi.mock('./search/search-box.tsx', () => ({
   SearchBox: (props: SearchBoxMockProps): ReactElement => {
     searchBoxRef.current = props;

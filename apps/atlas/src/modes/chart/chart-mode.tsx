@@ -9,14 +9,19 @@ import { MapCanvas } from '../../shared/map/map-canvas.tsx';
 import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
 import { ZoomControls } from '../../shared/map/zoom-controls.tsx';
 
-import { Airspace3DAutoHideDialog } from './airspace-3d-dialog.tsx';
+import { Airspace3DAutoHideDialog } from './airspace-3d/airspace-3d-dialog.tsx';
+import { useAirspace3DAutoHide } from './airspace-3d/use-airspace-3d-auto-hide.ts';
 import { ChartLoadingIndicator } from './chart-loading-indicator.tsx';
-import { classifyClick, INSPECTABLE_LAYER_IDS, selectedFromFeature } from './click-to-select.ts';
-import type { InspectableFeature } from './click-to-select.ts';
-import { DisambiguationPopover } from './disambiguation-popover.tsx';
 import { HighlightProvider } from './highlight-provider.tsx';
-import { InspectableHoverCursor } from './inspectable-cursor.tsx';
-import { LayerToggle } from './layer-toggle.tsx';
+import {
+  classifyClick,
+  INSPECTABLE_LAYER_IDS,
+  selectedFromFeature,
+} from './interaction/click-to-select.ts';
+import type { InspectableFeature } from './interaction/click-to-select.ts';
+import { DisambiguationPopover } from './interaction/disambiguation-popover.tsx';
+import { InspectableHoverCursor } from './interaction/inspectable-cursor.tsx';
+import { LayerToggle } from './layer-toggle/layer-toggle.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
 import {
   AirspaceExtrusionLayer,
@@ -31,7 +36,6 @@ import { SearchBox } from './search/search-box.tsx';
 import type { ChartSearchResult } from './search/search-features.ts';
 import type { AirspaceClass, LayerId } from './url-state.ts';
 import { CHART_ROUTE_PATH } from './url-state.ts';
-import { useAirspace3DAutoHide } from './use-airspace-3d-auto-hide.ts';
 import { ChartViewResetListener } from './view-reset-listener.tsx';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
