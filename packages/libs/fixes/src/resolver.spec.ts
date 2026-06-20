@@ -43,7 +43,7 @@ describe('byIdent', () => {
     // Some fix identifiers exist in multiple ICAO regions
     const allResults = resolver.search({ text: 'A', limit: 10000 });
     const identCounts = new Map<string, number>();
-    for (const fix of allResults) {
+    for (const { fix } of allResults) {
       identCounts.set(fix.identifier, (identCounts.get(fix.identifier) ?? 0) + 1);
     }
     const duplicates = Array.from(identCounts.entries()).filter(([, count]) => count > 1);
@@ -111,13 +111,13 @@ describe('nearest', () => {
 });
 
 describe('search', () => {
-  it('finds fixes by identifier substring', () => {
+  it('ranks an exact identifier match first with field and ranges', () => {
     const results = resolver.search({ text: 'MERIT' });
     assert(results.length > 0, 'expected results for MERIT');
-    assert(
-      results.some((f) => f.identifier === 'MERIT'),
-      'expected MERIT in results',
-    );
+    expect(results[0]!.fix.identifier).toBe('MERIT');
+    expect(results[0]!.matchedField).toBe('identifier');
+    expect(results[0]!.score).toBe(1);
+    expect(results[0]!.ranges).toEqual([{ start: 0, end: 5 }]);
   });
 
   it('is case-insensitive', () => {
@@ -126,12 +126,12 @@ describe('search', () => {
     expect(lower.length, 'case should not affect results').toBe(upper.length);
   });
 
-  it('returns results sorted alphabetically by identifier', () => {
+  it('returns results sorted by descending score', () => {
     const results = resolver.search({ text: 'BO' });
     for (let i = 1; i < results.length; i++) {
       assert(
-        results[i]!.identifier.localeCompare(results[i - 1]!.identifier) >= 0,
-        'results should be sorted by identifier',
+        results[i]!.score <= results[i - 1]!.score,
+        'results should be sorted by descending score',
       );
     }
   });
@@ -146,8 +146,17 @@ describe('search', () => {
       text: 'A',
       useCodes: new Set<FixUseCode>(['VFR']),
     });
-    for (const f of results) {
-      expect(f.useCode, `expected VFR, got ${f.useCode}`).toBe('VFR');
+    for (const r of results) {
+      expect(r.fix.useCode, `expected VFR, got ${r.fix.useCode}`).toBe('VFR');
+    }
+  });
+
+  it('keeps only matches above the minScore threshold', () => {
+    const lenient = resolver.search({ text: 'MERIT' });
+    const strict = resolver.search({ text: 'MERIT', minScore: 0.5 });
+    assert(strict.length <= lenient.length, 'raising minScore should not add results');
+    for (const r of strict) {
+      assert(r.score > 0.5, `expected score > 0.5, got ${r.score}`);
     }
   });
 

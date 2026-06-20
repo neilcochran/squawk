@@ -1,6 +1,8 @@
 import type { FeatureCollection, Feature } from 'geojson';
 
 import { polygon, polygonGeoJson, type BoundingBox } from '@squawk/geo';
+import { fuzzySearch } from '@squawk/search';
+import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
 import type { AirspaceFeature, AirspaceType, AltitudeBound, ArtccStratum } from '@squawk/types';
 
 import { altitudeMatches } from './vertical-filter.js';
@@ -69,6 +71,39 @@ export interface AirspaceByIdentifierOptions {
    * inclusion list in that case.
    */
   includeArtcc?: boolean;
+}
+
+/**
+ * The searchable fields an airspace {@link AirspaceSearchResult} can match on.
+ */
+export type AirspaceSearchField = 'identifier' | 'name';
+
+/**
+ * Options for a fuzzy text search query against airspace identifiers and names.
+ */
+export interface AirspaceSearchQuery {
+  /** Search text, matched fuzzily and case-insensitively against each feature's identifier and name. */
+  text: string;
+  /** Maximum number of results to return. Defaults to 20. */
+  limit?: number;
+  /** Optional set of airspace types to include. When omitted, all types are included. */
+  types?: ReadonlySet<AirspaceType>;
+  /** Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0, which keeps every match. Raise it to drop weak fuzzy matches. */
+  minScore?: number;
+}
+
+/**
+ * A scored airspace result from a fuzzy {@link AirspaceResolver.search}.
+ */
+export interface AirspaceSearchResult {
+  /** The matched airspace feature. */
+  feature: AirspaceFeature;
+  /** Match strength in `[0, 1]`, where 1 is an exact identifier or name match. */
+  score: number;
+  /** Which field produced the best match, identifying what {@link AirspaceSearchResult.ranges} index into. */
+  matchedField: AirspaceSearchField;
+  /** Matched character ranges within the best-matching field's text, for highlighting. */
+  ranges: MatchRange[];
 }
 
 /**
@@ -173,6 +208,16 @@ export interface AirspaceResolver {
   byIdentifier(identifier: string, options?: AirspaceByIdentifierOptions): AirspaceFeature[];
 
   /**
+   * Fuzzy-searches airspace features across identifier and name. Results are
+   * scored and returned best-match first, each carrying the matched field and
+   * character ranges for highlighting.
+   *
+   * Features with an empty identifier and name (some Class E5 surfaces) never
+   * match a non-empty query and are simply absent from results.
+   */
+  search(query: AirspaceSearchQuery): AirspaceSearchResult[];
+
+  /**
    * Returns every airspace feature whose pre-indexed bounding box overlaps
    * the given bounding box. Reuses the bounding box computed once at
    * resolver creation time rather than recomputing per call, so this is
@@ -224,6 +269,11 @@ interface IndexedFeature {
   /** Axis-aligned bounding box computed from the ring. */
   boundingBox: BoundingBox;
 }
+
+/**
+ * Default maximum number of results for text search queries.
+ */
+const DEFAULT_SEARCH_LIMIT = 20;
 
 /**
  * Parses a GeoJSON Feature into an IndexedFeature, extracting the
@@ -312,6 +362,8 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
     }
   }
 
+  const searchableFeatures: AirspaceFeature[] = indexed.map((entry) => entry.feature);
+
   return {
     query(query: AirspaceQuery): AirspaceFeature[] {
       const results: AirspaceFeature[] = [];
@@ -391,6 +443,29 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
         return bucket.slice();
       }
       return bucket.filter((f) => f.type !== 'ARTCC');
+    },
+
+    search(query: AirspaceSearchQuery): AirspaceSearchResult[] {
+      const options: FuzzySearchOptions<AirspaceFeature, AirspaceSearchField> = {
+        keys: (feature) => [
+          { name: 'identifier', text: feature.identifier },
+          { name: 'name', text: feature.name },
+        ],
+        limit: query.limit ?? DEFAULT_SEARCH_LIMIT,
+        minScore: query.minScore ?? 0,
+      };
+
+      const types = query.types;
+      if (types) {
+        options.filter = (feature) => types.has(feature.type);
+      }
+
+      return fuzzySearch(searchableFeatures, query.text, options).map((match) => ({
+        feature: match.item,
+        score: match.score,
+        matchedField: match.field,
+        ranges: match.ranges,
+      }));
     },
 
     withinBbox(bbox: BoundingBox): AirspaceFeature[] {

@@ -189,21 +189,28 @@ describe('byType', () => {
 });
 
 describe('search', () => {
+  it('ranks an exact identifier match first with field and ranges', () => {
+    const results = resolver.search({ text: 'ABI' });
+    assert(results.length > 0, 'expected results for ABI');
+    expect(results[0]!.navaid.identifier).toBe('ABI');
+    expect(results[0]!.matchedField).toBe('identifier');
+    expect(results[0]!.score).toBe(1);
+    expect(results[0]!.ranges).toEqual([{ start: 0, end: 3 }]);
+  });
+
   it('finds navaids by name', () => {
     const results = resolver.search({ text: 'BOSTON' });
-    assert(results.length > 0, 'expected results for BOSTON');
     assert(
-      results.some((n) => n.name.toUpperCase().includes('BOSTON')),
+      results.some((r) => r.navaid.name.toUpperCase().includes('BOSTON')),
       'expected a navaid with BOSTON in the name',
     );
   });
 
-  it('finds navaids by identifier substring', () => {
-    const results = resolver.search({ text: 'ABI' });
-    assert(results.length > 0, 'expected results for ABI');
+  it('reports the name field for a name-only match', () => {
+    const results = resolver.search({ text: 'boston' });
     assert(
-      results.some((n) => n.identifier === 'ABI'),
-      'expected ABI in results',
+      results.some((r) => r.matchedField === 'name'),
+      'expected at least one result matched via name',
     );
   });
 
@@ -213,12 +220,12 @@ describe('search', () => {
     expect(lower.length, 'case should not affect results').toBe(upper.length);
   });
 
-  it('returns results sorted alphabetically by name', () => {
+  it('returns results sorted by descending score', () => {
     const results = resolver.search({ text: 'new' });
     for (let i = 1; i < results.length; i++) {
       assert(
-        results[i]!.name.localeCompare(results[i - 1]!.name) >= 0,
-        'results should be sorted by name',
+        results[i]!.score <= results[i - 1]!.score,
+        'results should be sorted by descending score',
       );
     }
   });
@@ -233,8 +240,17 @@ describe('search', () => {
       text: 'a',
       types: new Set<NavaidType>(['NDB']),
     });
-    for (const n of results) {
-      expect(n.type, `expected NDB, got ${n.type}`).toBe('NDB');
+    for (const r of results) {
+      expect(r.navaid.type, `expected NDB, got ${r.navaid.type}`).toBe('NDB');
+    }
+  });
+
+  it('keeps only matches above the minScore threshold', () => {
+    const lenient = resolver.search({ text: 'boston' });
+    const strict = resolver.search({ text: 'boston', minScore: 0.5 });
+    assert(strict.length <= lenient.length, 'raising minScore should not add results');
+    for (const r of strict) {
+      assert(r.score > 0.5, `expected score > 0.5, got ${r.score}`);
     }
   });
 

@@ -3,7 +3,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/fixes)](https://www.npmjs.com/package/@squawk/fixes) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US fix/waypoint data. Look up fixes by
-identifier, geographic proximity, or identifier search. Contains no bundled
+identifier, geographic proximity, or fuzzy identifier search. Contains no bundled
 data - accepts an array of Fix records at initialization. For zero-config use,
 pair with `@squawk/fix-data`.
 
@@ -26,8 +26,9 @@ for (const result of nearby) {
   console.log(result.fix.identifier, result.distanceNm, 'nm');
 }
 
-// Search by identifier
+// Fuzzy-search by identifier (scored, best match first)
 const results = resolver.search({ text: 'BOS' });
+console.log(results[0]?.fix.identifier, results[0]?.score);
 ```
 
 Consumers who have their own fix data can use this package standalone:
@@ -100,13 +101,27 @@ const nearby = resolver.nearest({
 
 ### `resolver.search(query)`
 
-Searches fixes by identifier using case-insensitive substring matching.
-Results are returned in alphabetical order by identifier.
+Fuzzy-searches fixes by identifier. Matching is case-insensitive and tolerant of
+prefixes, substrings, subsequences, and small typos. Results are scored and
+returned best-match first.
 
-| Property   | Type                     | Description                                                           |
-| ---------- | ------------------------ | --------------------------------------------------------------------- |
-| `text`     | string                   | Case-insensitive substring to match against fix identifier            |
-| `limit`    | number                   | Optional. Maximum number of results. Defaults to 20                   |
-| `useCodes` | ReadonlySet\<FixUseCode> | Optional. When provided, only fixes with these use codes are returned |
+| Property   | Type                     | Description                                                                              |
+| ---------- | ------------------------ | ---------------------------------------------------------------------------------------- |
+| `text`     | string                   | Search text, matched fuzzily against each fix's identifier                               |
+| `limit`    | number                   | Optional. Maximum number of results. Defaults to 20                                      |
+| `useCodes` | ReadonlySet\<FixUseCode> | Optional. When provided, only fixes with these use codes are returned                    |
+| `minScore` | number                   | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
 
-Returns `Fix[]`.
+Returns `FixSearchResult[]`, sorted by descending score, each containing:
+
+- `fix` - the matched Fix record
+- `score` - match strength in `[0, 1]`, where 1 is an exact identifier match
+- `matchedField` - which field produced the best match: `'identifier'`
+- `ranges` - matched character ranges within the best-matching field's text, for highlighting
+
+```typescript
+const results = resolver.search({ text: 'BOS', limit: 10 });
+for (const { fix, score } of results) {
+  console.log(fix.identifier, score);
+}
+```

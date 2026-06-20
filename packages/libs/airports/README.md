@@ -3,7 +3,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airports)](https://www.npmjs.com/package/@squawk/airports) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US airport data. Look up airports by FAA ID, ICAO code,
-geographic proximity, or name/city search. Contains no bundled data - accepts an array of
+geographic proximity, or fuzzy text search. Contains no bundled data - accepts an array of
 Airport records at initialization. For zero-config use, pair with `@squawk/airport-data`.
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
@@ -28,8 +28,9 @@ for (const result of nearby) {
   console.log(result.airport.name, result.distanceNm, 'nm');
 }
 
-// Search by name or city
+// Fuzzy-search across FAA ID, ICAO, name, and city (scored, best match first)
 const results = resolver.search({ text: 'chicago' });
+console.log(results[0]?.airport.name, results[0]?.score);
 ```
 
 Consumers who have their own airport data can use this package standalone:
@@ -112,19 +113,32 @@ const heliports = resolver.nearest({
 
 ### `resolver.search(query)`
 
-Searches airports by name or city using case-insensitive substring matching.
-Results are returned in alphabetical order by name.
+Fuzzy-searches airports across FAA ID, ICAO code, name, and city. Matching is
+case-insensitive and tolerant of prefixes, substrings, subsequences, and small typos.
+Results are scored and returned best-match first.
 
-| Property | Type                       | Description                                                          |
-| -------- | -------------------------- | -------------------------------------------------------------------- |
-| `text`   | string                     | Case-insensitive substring to match against name or city             |
-| `limit`  | number                     | Optional. Maximum number of results. Defaults to 20                  |
-| `types`  | ReadonlySet\<FacilityType> | Optional. When provided, only facilities of these types are returned |
+| Property   | Type                       | Description                                                                              |
+| ---------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| `text`     | string                     | Search text, matched fuzzily against each airport's FAA ID, ICAO code, name, and city    |
+| `limit`    | number                     | Optional. Maximum number of results. Defaults to 20                                      |
+| `types`    | ReadonlySet\<FacilityType> | Optional. When provided, only facilities of these types are returned                     |
+| `minScore` | number                     | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
 
-Returns `Airport[]`.
+Returns `AirportSearchResult[]`, sorted by descending score, each containing:
+
+- `airport` - the matched Airport record
+- `score` - match strength in `[0, 1]`, where 1 is an exact identifier or name match
+- `matchedField` - which field produced the best match: `'faaId'`, `'icao'`, `'name'`, or `'city'`
+- `ranges` - matched character ranges within the best-matching field's text, for highlighting
 
 ```typescript
 const results = resolver.search({ text: 'san francisco', limit: 10 });
+for (const { airport, score, matchedField } of results) {
+  console.log(airport.faaId, score, `(matched ${matchedField})`);
+}
+
+// Raise minScore to drop weak fuzzy matches
+const strong = resolver.search({ text: 'kennedy', minScore: 0.5 });
 ```
 
 ## Local time at an airport

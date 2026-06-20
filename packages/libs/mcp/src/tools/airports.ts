@@ -141,9 +141,12 @@ export function registerAirportTools(server: McpServer): void {
     {
       title: 'Search airports by name or city',
       description:
-        'Searches US airports using case-insensitive substring matching on airport name and city. Returns airports in alphabetical order by name. Use this when the user knows a partial name but not the identifier.',
+        'Fuzzy-searches US airports across FAA identifier, name, and city. Matching is case-insensitive and tolerant of prefixes, substrings, subsequences, and small typos. Each result carries a match score in [0, 1] (1 is an exact match) and the matched field; results are returned best-match first. Use this when the user knows a partial name but not the identifier.',
       inputSchema: {
-        text: z.string().min(1).describe('Substring to match against airport name or city.'),
+        text: z
+          .string()
+          .min(1)
+          .describe('Search text, fuzzily matched against airport FAA identifier, name, and city.'),
         limit: z
           .number()
           .int()
@@ -154,15 +157,26 @@ export function registerAirportTools(server: McpServer): void {
           .array(z.enum(FACILITY_TYPE_VALUES))
           .optional()
           .describe('Restrict results to these facility types. Omit to include all types.'),
+        minScore: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe(
+            'Minimum match score (exclusive) in [0, 1] a result must reach. Defaults to 0. Raise it to drop weak fuzzy matches.',
+          ),
       },
     },
-    ({ text, limit, facilityTypes }) => {
+    ({ text, limit, facilityTypes, minScore }) => {
       const query: AirportSearchQuery = { text };
       if (limit !== undefined) {
         query.limit = limit;
       }
       if (facilityTypes !== undefined) {
         query.types = new Set(facilityTypes);
+      }
+      if (minScore !== undefined) {
+        query.minScore = minScore;
       }
       const results = resolver.search(query);
       return {

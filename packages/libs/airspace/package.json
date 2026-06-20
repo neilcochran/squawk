@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@squawk/geo": "^0.4.3",
+    "@squawk/search": "^0.0.0",
     "@squawk/types": "^0.8.0",
     "@types/geojson": "^7946.0.16"
   },

@@ -3,7 +3,7 @@ import { describe, it, beforeAll, expect, assert } from 'vitest';
 
 import { usBundledAirspace } from '@squawk/airspace-data';
 import { polygonGeoJson, type BoundingBox } from '@squawk/geo';
-import type { AirspaceType } from '@squawk/types';
+import type { AirspaceFeature, AirspaceType } from '@squawk/types';
 
 import { createAirspaceResolver } from './resolver.js';
 import type { AirspaceResolver } from './resolver.js';
@@ -492,6 +492,10 @@ describe('createAirspaceResolver with empty dataset', () => {
     const emptyResolve = createAirspaceResolver({ data: emptyData });
     const results = emptyResolve.query({ lat: 33.9425, lon: -118.4081, altitudeFt: 3000 });
     expect(results.length).toBe(0);
+    expect(
+      emptyResolve.search({ text: 'LAX' }).length,
+      'empty dataset search returns nothing',
+    ).toBe(0);
   });
 });
 
@@ -766,5 +770,82 @@ describe('forEachIndexed', () => {
       count += 1;
     });
     expect(count, 'only the valid feature should be indexed').toBe(1);
+  });
+});
+
+describe('search', () => {
+  it('ranks an exact identifier match first with field, score, and ranges', () => {
+    const results = resolve_.search({ text: 'LAX' });
+    assert(results.length > 0, 'expected results for LAX');
+    expect(results[0]!.feature.identifier).toBe('LAX');
+    expect(results[0]!.matchedField).toBe('identifier');
+    expect(results[0]!.score).toBe(1);
+    expect(results[0]!.ranges).toEqual([{ start: 0, end: 3 }]);
+  });
+
+  it('matches on the name field when the query targets a name', () => {
+    let target: AirspaceFeature | undefined;
+    resolve_.forEachIndexed((feature) => {
+      if (target === undefined && feature.name.length >= 4 && feature.name !== feature.identifier) {
+        target = feature;
+      }
+    });
+    assert(target !== undefined, 'expected a feature with a usable name in the fixture');
+
+    const results = resolve_.search({ text: target.name, limit: 10000 });
+    const hit = results.find((r) => r.feature === target);
+    assert(hit !== undefined, 'expected the targeted feature in the results');
+    expect(hit.matchedField).toBe('name');
+  });
+
+  it('returns results sorted by descending score', () => {
+    const results = resolve_.search({ text: 'LA' });
+    for (let i = 1; i < results.length; i++) {
+      assert(
+        results[i]!.score <= results[i - 1]!.score,
+        'results should be sorted by descending score',
+      );
+    }
+  });
+
+  it('respects the limit parameter', () => {
+    const results = resolve_.search({ text: 'L', limit: 5 });
+    assert(results.length <= 5);
+  });
+
+  it('filters by airspace type when provided', () => {
+    const empty = resolve_.search({
+      text: '',
+      types: new Set<AirspaceType>(['CLASS_B']),
+    });
+    expect(empty.length, 'empty text should return empty results').toBe(0);
+
+    const classB = resolve_.search({
+      text: 'LAX',
+      types: new Set<AirspaceType>(['CLASS_B']),
+    });
+    assert(classB.length > 0, 'expected CLASS_B matches for LAX');
+    for (const r of classB) {
+      expect(r.feature.type).toBe('CLASS_B');
+    }
+  });
+
+  it('is case-insensitive', () => {
+    const upper = resolve_.search({ text: 'LAX' });
+    const lower = resolve_.search({ text: 'lax' });
+    expect(upper.length).toBe(lower.length);
+  });
+
+  it('keeps only matches above the minScore threshold', () => {
+    const lenient = resolve_.search({ text: 'LAX' });
+    const strict = resolve_.search({ text: 'LAX', minScore: 0.5 });
+    assert(strict.length <= lenient.length, 'raising minScore should not add results');
+    for (const r of strict) {
+      assert(r.score > 0.5, `expected score > 0.5, got ${r.score}`);
+    }
+  });
+
+  it('returns an empty array for empty text', () => {
+    expect(resolve_.search({ text: '' })).toEqual([]);
   });
 });

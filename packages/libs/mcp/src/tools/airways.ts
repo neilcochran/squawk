@@ -113,9 +113,12 @@ export function registerAirwayTools(server: McpServer): void {
     {
       title: 'Search airways by designation',
       description:
-        'Searches US airways by case-insensitive substring matching against the airway designation. Results are returned in alphabetical order by designation.',
+        'Fuzzy-searches US airways by designation. Matching is case-insensitive and tolerant of prefixes, substrings, subsequences, and small typos. Each result carries a match score in [0, 1] (1 is an exact match); results are returned best-match first.',
       inputSchema: {
-        text: z.string().min(1).describe('Substring to match against the airway designation.'),
+        text: z
+          .string()
+          .min(1)
+          .describe('Search text, fuzzily matched against the airway designation.'),
         airwayTypes: z
           .array(z.enum(AIRWAY_TYPE_VALUES))
           .optional()
@@ -126,15 +129,26 @@ export function registerAirwayTools(server: McpServer): void {
           .positive()
           .optional()
           .describe('Maximum number of results to return. Defaults to 20.'),
+        minScore: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe(
+            'Minimum match score (exclusive) in [0, 1] a result must reach. Defaults to 0. Raise it to drop weak fuzzy matches.',
+          ),
       },
     },
-    ({ text, airwayTypes, limit }) => {
+    ({ text, airwayTypes, limit, minScore }) => {
       const query: AirwaySearchQuery = { text };
       if (airwayTypes !== undefined) {
         query.types = new Set(airwayTypes);
       }
       if (limit !== undefined) {
         query.limit = limit;
+      }
+      if (minScore !== undefined) {
+        query.minScore = minScore;
       }
       const airways = airwayResolver.search(query);
       return {

@@ -41,6 +41,7 @@
     "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
+    "@squawk/search": "^0.0.0",
     "@squawk/types": "^0.8.0"
   },
   "devDependencies": {

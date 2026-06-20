@@ -825,6 +825,58 @@ describe('airspace tools', () => {
       await close();
     }
   });
+
+  it('search_airspace returns scored matches with summarized features', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_airspace',
+        arguments: { text: 'ZNY', airspaceTypes: ['ARTCC'], limit: 5 },
+      });
+      const parsed = z
+        .object({
+          results: z.array(
+            z
+              .object({
+                feature: z.object({ vertexCount: z.number() }).passthrough(),
+                score: z.number(),
+                matchedField: z.string(),
+                ranges: z.array(z.unknown()),
+              })
+              .passthrough(),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.results.length > 0);
+      const top = parsed.results[0];
+      assert(top !== undefined);
+      expect(top.score).toBeGreaterThan(0);
+      expect(top.feature.vertexCount).toBeGreaterThan(0);
+    } finally {
+      await close();
+    }
+  });
+
+  it('search_airspace applies the minScore threshold without a type filter', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_airspace',
+        arguments: { text: 'ZNY', minScore: 0.1 },
+      });
+      const parsed = z
+        .object({
+          results: z.array(z.object({ score: z.number() }).passthrough()),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.results.length > 0);
+      for (const res of parsed.results) {
+        expect(res.score).toBeGreaterThan(0.1);
+      }
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('navaid tools', () => {
@@ -1172,11 +1224,34 @@ describe('procedure tools', () => {
       });
       const parsed = z
         .object({
-          procedures: z.array(z.object({ type: z.string() }).passthrough()),
+          procedures: z.array(
+            z.object({ procedure: z.object({ type: z.string() }).passthrough() }).passthrough(),
+          ),
         })
         .parse(result.structuredContent);
       for (const proc of parsed.procedures) {
-        expect(proc.type).toBe('IAP');
+        expect(proc.procedure.type).toBe('IAP');
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('search_procedures applies the minScore threshold', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_procedures',
+        arguments: { text: 'AALLE', minScore: 0.1 },
+      });
+      const parsed = z
+        .object({
+          procedures: z.array(z.object({ score: z.number() }).passthrough()),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.procedures.length > 0);
+      for (const proc of parsed.procedures) {
+        expect(proc.score).toBeGreaterThan(0.1);
       }
     } finally {
       await close();

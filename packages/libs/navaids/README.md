@@ -3,7 +3,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/navaids)](https://www.npmjs.com/package/@squawk/navaids) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US navaid data. Look up navaids by identifier,
-frequency, geographic proximity, type, or name search. Contains no bundled data -
+frequency, geographic proximity, type, or fuzzy text search. Contains no bundled data -
 accepts an array of Navaid records at initialization. For zero-config use, pair
 with `@squawk/navaid-data`.
 
@@ -32,8 +32,9 @@ for (const result of nearby) {
 // Get all navaids of a type
 const vors = resolver.byType(new Set(['VOR', 'VORTAC', 'VOR/DME']));
 
-// Search by name or identifier
+// Fuzzy-search across identifier and name (scored, best match first)
 const results = resolver.search({ text: 'boston' });
+console.log(results[0]?.navaid.name, results[0]?.score);
 ```
 
 Consumers who have their own navaid data can use this package standalone:
@@ -127,13 +128,27 @@ const ndbs = resolver.byType(new Set(['NDB', 'NDB/DME']));
 
 ### `resolver.search(query)`
 
-Searches navaids by name or identifier using case-insensitive substring matching.
-Results are returned in alphabetical order by name.
+Fuzzy-searches navaids across identifier and name. Matching is case-insensitive and
+tolerant of prefixes, substrings, subsequences, and small typos. Results are scored
+and returned best-match first.
 
-| Property | Type                     | Description                                                       |
-| -------- | ------------------------ | ----------------------------------------------------------------- |
-| `text`   | string                   | Case-insensitive substring to match against name or identifier    |
-| `limit`  | number                   | Optional. Maximum number of results. Defaults to 20               |
-| `types`  | ReadonlySet\<NavaidType> | Optional. When provided, only navaids of these types are returned |
+| Property   | Type                     | Description                                                                              |
+| ---------- | ------------------------ | ---------------------------------------------------------------------------------------- |
+| `text`     | string                   | Search text, matched fuzzily against each navaid's identifier and name                   |
+| `limit`    | number                   | Optional. Maximum number of results. Defaults to 20                                      |
+| `types`    | ReadonlySet\<NavaidType> | Optional. When provided, only navaids of these types are returned                        |
+| `minScore` | number                   | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
 
-Returns `Navaid[]`.
+Returns `NavaidSearchResult[]`, sorted by descending score, each containing:
+
+- `navaid` - the matched Navaid record
+- `score` - match strength in `[0, 1]`, where 1 is an exact identifier or name match
+- `matchedField` - which field produced the best match: `'identifier'` or `'name'`
+- `ranges` - matched character ranges within the best-matching field's text, for highlighting
+
+```typescript
+const results = resolver.search({ text: 'boston', limit: 10 });
+for (const { navaid, score, matchedField } of results) {
+  console.log(navaid.identifier, score, `(matched ${matchedField})`);
+}
+```

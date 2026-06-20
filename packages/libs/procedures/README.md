@@ -6,7 +6,7 @@ Pure logic library for querying US instrument procedure data sourced from FAA
 CIFP (Coded Instrument Flight Procedures). Covers SIDs, STARs, and Instrument
 Approach Procedures (IAPs) in a unified ARINC 424 leg model. Look up by
 identifier, by airport, by runway, by approach type; expand a procedure into
-an ordered leg sequence; or search by name. Contains no bundled data - accepts
+an ordered leg sequence; or fuzzy-search by identifier and name. Contains no bundled data - accepts
 an array of `Procedure` records at initialization. For zero-config use, pair
 with `@squawk/procedure-data`.
 
@@ -48,8 +48,9 @@ if (expansion) {
 // Expand with a named transition (transition + common route merged in flying order)
 const withTransition = resolver.expand('KDEN', 'AALLE4', 'BBOTL');
 
-// Search by name or identifier
+// Fuzzy-search by identifier or name (scored, best match first)
 const results = resolver.search({ text: 'AALLE', type: 'STAR' });
+console.log(results[0]?.procedure.identifier, results[0]?.score);
 ```
 
 Consumers who have their own procedure data can use this package standalone:
@@ -144,14 +145,28 @@ Returns `ProcedureExpansionResult | undefined`, containing:
 
 ### `resolver.search(query)`
 
-Searches procedures by name or identifier using case-insensitive substring
-matching. Results are sorted by airport then identifier.
+Fuzzy-searches procedures across identifier and name. Matching is case-insensitive
+and tolerant of prefixes, substrings, subsequences, and small typos. Results are
+scored and returned best-match first.
 
-| Property       | Type          | Description                                                    |
-| -------------- | ------------- | -------------------------------------------------------------- |
-| `text`         | string        | Case-insensitive substring to match against name or identifier |
-| `limit`        | number        | Optional. Maximum number of results. Defaults to 20            |
-| `type`         | ProcedureType | Optional. Restrict to `'SID'`, `'STAR'`, or `'IAP'` only       |
-| `approachType` | ApproachType  | Optional. Restrict to IAPs of a given approach classification  |
+| Property       | Type          | Description                                                                              |
+| -------------- | ------------- | ---------------------------------------------------------------------------------------- |
+| `text`         | string        | Search text, matched fuzzily against each procedure's identifier and name                |
+| `limit`        | number        | Optional. Maximum number of results. Defaults to 20                                      |
+| `type`         | ProcedureType | Optional. Restrict to `'SID'`, `'STAR'`, or `'IAP'` only                                 |
+| `approachType` | ApproachType  | Optional. Restrict to IAPs of a given approach classification                            |
+| `minScore`     | number        | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
 
-Returns `Procedure[]`.
+Returns `ProcedureSearchResult[]`, sorted by descending score, each containing:
+
+- `procedure` - the matched Procedure record
+- `score` - match strength in `[0, 1]`, where 1 is an exact identifier or name match
+- `matchedField` - which field produced the best match: `'identifier'` or `'name'`
+- `ranges` - matched character ranges within the best-matching field's text, for highlighting
+
+```typescript
+const results = resolver.search({ text: 'AALLE', type: 'STAR' });
+for (const { procedure, score, matchedField } of results) {
+  console.log(procedure.identifier, score, `(matched ${matchedField})`);
+}
+```

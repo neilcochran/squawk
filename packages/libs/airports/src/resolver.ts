@@ -1,4 +1,6 @@
 import { greatCircle } from '@squawk/geo';
+import { fuzzySearch } from '@squawk/search';
+import type { FuzzySearchOptions, MatchRange, SearchField } from '@squawk/search';
 import type { Airport, FacilityType } from '@squawk/types';
 
 /**
@@ -38,15 +40,37 @@ export interface NearestAirportResult {
 }
 
 /**
- * Options for a text search query against airport names and cities.
+ * The searchable fields an airport {@link AirportSearchResult} can match on.
+ */
+export type AirportSearchField = 'faaId' | 'icao' | 'name' | 'city';
+
+/**
+ * Options for a fuzzy text search query against airport identifiers, names, and
+ * cities.
  */
 export interface AirportSearchQuery {
-  /** Case-insensitive substring to match against airport name or city. */
+  /** Search text, matched fuzzily and case-insensitively against each airport's FAA ID, ICAO code, name, and city. */
   text: string;
   /** Maximum number of results to return. Defaults to 20. */
   limit?: number;
   /** Optional set of facility types to include. When omitted, all types are included. */
   types?: ReadonlySet<FacilityType>;
+  /** Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0, which keeps every match. Raise it to drop weak fuzzy matches. */
+  minScore?: number;
+}
+
+/**
+ * A scored airport result from a fuzzy {@link AirportResolver.search}.
+ */
+export interface AirportSearchResult {
+  /** The matched airport record. */
+  airport: Airport;
+  /** Match strength in `[0, 1]`, where 1 is an exact identifier or name match. */
+  score: number;
+  /** Which field produced the best match, identifying what {@link AirportSearchResult.ranges} index into. */
+  matchedField: AirportSearchField;
+  /** Matched character ranges within the best-matching field's text, for highlighting. */
+  ranges: MatchRange[];
 }
 
 /**
@@ -72,10 +96,11 @@ export interface AirportResolver {
   nearest(query: NearestAirportQuery): NearestAirportResult[];
 
   /**
-   * Searches airports by name or city using case-insensitive substring matching.
-   * Results are returned in alphabetical order by name.
+   * Fuzzy-searches airports across FAA ID, ICAO code, name, and city. Results
+   * are scored and returned best-match first, each carrying the matched field
+   * and character ranges for highlighting.
    */
-  search(query: AirportSearchQuery): Airport[];
+  search(query: AirportSearchQuery): AirportSearchResult[];
 }
 
 /**
@@ -165,31 +190,34 @@ export function createAirportResolver(options: AirportResolverOptions): AirportR
       return results.slice(0, limit);
     },
 
-    search(query: AirportSearchQuery): Airport[] {
-      const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
-      const needle = query.text.toLowerCase();
+    search(query: AirportSearchQuery): AirportSearchResult[] {
+      const options: FuzzySearchOptions<Airport, AirportSearchField> = {
+        keys: (airport) => {
+          const fields: SearchField<AirportSearchField>[] = [
+            { name: 'faaId', text: airport.faaId },
+            { name: 'name', text: airport.name },
+            { name: 'city', text: airport.city },
+          ];
+          if (airport.icao) {
+            fields.push({ name: 'icao', text: airport.icao });
+          }
+          return fields;
+        },
+        limit: query.limit ?? DEFAULT_SEARCH_LIMIT,
+        minScore: query.minScore ?? 0,
+      };
 
-      if (needle.length === 0) {
-        return [];
+      const types = query.types;
+      if (types) {
+        options.filter = (airport) => types.has(airport.facilityType);
       }
 
-      const results: Airport[] = [];
-
-      for (const airport of airports) {
-        if (query.types && !query.types.has(airport.facilityType)) {
-          continue;
-        }
-
-        if (
-          airport.name.toLowerCase().includes(needle) ||
-          airport.city.toLowerCase().includes(needle)
-        ) {
-          results.push(airport);
-        }
-      }
-
-      results.sort((a, b) => a.name.localeCompare(b.name));
-      return results.slice(0, limit);
+      return fuzzySearch(airports, query.text, options).map((match) => ({
+        airport: match.item,
+        score: match.score,
+        matchedField: match.field,
+        ranges: match.ranges,
+      }));
     },
   };
 }

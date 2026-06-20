@@ -9,6 +9,7 @@ import type { AirspaceType } from '@squawk/types';
 import type { ArtccStratum } from '@squawk/types';
 import { BoundingBox } from '@squawk/geo';
 import type { FeatureCollection } from 'geojson';
+import { MatchRange } from '@squawk/search';
 
 // @public
 export interface AirspaceByIdentifierOptions {
@@ -47,6 +48,7 @@ export interface AirspaceResolver {
     byIdentifier(identifier: string, options?: AirspaceByIdentifierOptions): AirspaceFeature[];
     forEachIndexed(callback: (feature: AirspaceFeature, ring: readonly number[][], boundingBox: BoundingBox) => void): void;
     query(query: AirspaceQuery): AirspaceFeature[];
+    search(query: AirspaceSearchQuery): AirspaceSearchResult[];
     withinBbox(bbox: BoundingBox): AirspaceFeature[];
 }
 
@@ -56,6 +58,27 @@ export interface AirspaceResolverOptions {
 }
 
 // @public
+export type AirspaceSearchField = 'identifier' | 'name';
+
+// @public
+export interface AirspaceSearchQuery {
+    limit?: number;
+    minScore?: number;
+    text: string;
+    types?: ReadonlySet<AirspaceType>;
+}
+
+// @public
+export interface AirspaceSearchResult {
+    feature: AirspaceFeature;
+    matchedField: AirspaceSearchField;
+    ranges: MatchRange[];
+    score: number;
+}
+
+// @public
 export function createAirspaceResolver(options: AirspaceResolverOptions): AirspaceResolver;
+
+export { MatchRange }
 
 ```

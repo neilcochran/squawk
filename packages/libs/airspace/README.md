@@ -3,8 +3,9 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/airspace)](https://www.npmjs.com/package/@squawk/airspace) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 Pure logic library for querying US airspace geometry. Given a position and altitude,
-returns all applicable airspace designations. Contains no bundled data - accepts a
-GeoJSON dataset at initialization. For zero-config use, pair with `@squawk/airspace-data`.
+returns all applicable airspace designations, or look up and fuzzy-search features by
+identifier and name. Contains no bundled data - accepts a GeoJSON dataset at
+initialization. For zero-config use, pair with `@squawk/airspace-data`.
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
@@ -40,6 +41,10 @@ const laxShells = resolver.byAirport('LAX');
 
 // Get every ARTCC center boundary (one feature per stratum)
 const ny = resolver.byArtcc('ZNY');
+
+// Fuzzy-search features by identifier and name (scored, best match first)
+const matches = resolver.search({ text: 'LAX' });
+console.log(matches[0]?.feature.identifier, matches[0]?.score);
 ```
 
 Consumers who have their own GeoJSON airspace data can use this package standalone:
@@ -82,6 +87,9 @@ returns a resolver object with the following methods:
 - `byIdentifier(identifier, options?)` - type-agnostic identifier lookup that
   spans both partitions in one call, with an optional `types` inclusion
   filter and `includeArtcc` toggle.
+- `search(AirspaceSearchQuery)` - fuzzy-searches features by identifier and
+  name, returning scored results best-match first with the matched field and
+  highlight ranges, optionally filtered by type.
 - `byCentroid({ lon, lat, toleranceDeg? })` - returns features whose polygon
   centroid lies within tolerance of the query coordinates. Useful for
   resolving features whose `identifier` is empty (some Class E5 surfaces),
@@ -130,8 +138,8 @@ Creates a resolver from a GeoJSON dataset.
 
 **Returns:** `AirspaceResolver` - an object exposing `query(AirspaceQuery)`,
 `byAirport(identifier, types?)`, `byArtcc(identifier, stratum?)`,
-`byIdentifier(identifier, options?)`, `byCentroid(query)`, `withinBbox(bbox)`,
-and `forEachIndexed(callback)` methods.
+`byIdentifier(identifier, options?)`, `search(query)`, `byCentroid(query)`,
+`withinBbox(bbox)`, and `forEachIndexed(callback)` methods.
 
 ### `AirspaceQuery`
 
@@ -257,6 +265,36 @@ resolver.forEachIndexed((feature, ring, boundingBox) => {
   // ring is the parsed exterior ring (number[][]).
   // boundingBox is the pre-computed axis-aligned bbox.
 });
+```
+
+### `resolver.search(query)`
+
+Fuzzy-searches airspace features across identifier and name. Matching is
+case-insensitive and tolerant of prefixes, substrings, subsequences, and small
+typos. Results are scored and returned best-match first.
+
+| Property   | Type                       | Description                                                                              |
+| ---------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| `text`     | string                     | Search text, matched fuzzily against each feature's identifier and name                  |
+| `limit`    | number                     | Optional. Maximum number of results. Defaults to 20                                      |
+| `types`    | ReadonlySet\<AirspaceType> | Optional. When provided, only features of these types are returned                       |
+| `minScore` | number                     | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
+
+Returns `AirspaceSearchResult[]`, sorted by descending score, each containing:
+
+- `feature` - the matched `AirspaceFeature` record
+- `score` - match strength in `[0, 1]`, where 1 is an exact identifier or name match
+- `matchedField` - which field produced the best match: `'identifier'` or `'name'`
+- `ranges` - matched character ranges within the best-matching field's text, for highlighting
+
+Features with an empty identifier and name (some Class E5 surfaces) never match a
+non-empty query and are simply absent from results.
+
+```typescript
+const results = resolver.search({ text: 'LAX', limit: 10 });
+for (const { feature, score, matchedField } of results) {
+  console.log(feature.identifier, score, `(matched ${matchedField})`);
+}
 ```
 
 ### ARTCC altitude bounds

@@ -48,6 +48,7 @@ const EXPECTED_TOOLS: readonly string[] = [
   'get_airspace_for_airport',
   'find_artcc_for_position',
   'find_artcc_by_identifier',
+  'search_airspace',
   // navaids
   'get_navaid_by_ident',
   'find_navaids_by_frequency',
@@ -660,19 +661,23 @@ describe('createSquawkMcpServer', () => {
         .object({
           procedures: z.array(
             z.object({
-              identifier: z.string(),
-              name: z.string(),
+              procedure: z.object({
+                identifier: z.string(),
+                name: z.string(),
+              }),
+              score: z.number(),
+              matchedField: z.string(),
             }),
           ),
         })
         .parse(result.structuredContent);
       assert(parsed.procedures.length > 0);
-      for (const proc of parsed.procedures) {
-        const matches =
-          proc.identifier.toUpperCase().includes('AALLE') ||
-          proc.name.toUpperCase().includes('AALLE');
-        assert(matches);
-      }
+      const top = parsed.procedures[0];
+      assert(top !== undefined);
+      assert(
+        top.procedure.identifier.toUpperCase().includes('AALLE') ||
+          top.procedure.name.toUpperCase().includes('AALLE'),
+      );
     } finally {
       await close();
     }
@@ -783,16 +788,18 @@ describe('createSquawkMcpServer', () => {
         .object({
           procedures: z.array(
             z.object({
-              type: z.string(),
-              approachType: z.string().optional(),
+              procedure: z.object({
+                type: z.string(),
+                approachType: z.string().optional(),
+              }),
             }),
           ),
         })
         .parse(result.structuredContent);
       assert(parsed.procedures.length > 0);
       for (const proc of parsed.procedures) {
-        expect(proc.type).toBe('IAP');
-        expect(proc.approachType).toBe('ILS');
+        expect(proc.procedure.type).toBe('IAP');
+        expect(proc.procedure.approachType).toBe('ILS');
       }
     } finally {
       await close();

@@ -4,11 +4,14 @@
 
 ```ts
 
+import { MatchRange } from '@squawk/search';
 import type { Navaid } from '@squawk/types';
 import type { NavaidType } from '@squawk/types';
 
 // @public
 export function createNavaidResolver(options: NavaidResolverOptions): NavaidResolver;
+
+export { MatchRange }
 
 // @public
 export interface NavaidFrequencyQuery {
@@ -23,7 +26,7 @@ export interface NavaidResolver {
     byIdent(ident: string): Navaid[];
     byType(types: ReadonlySet<NavaidType>): Navaid[];
     nearest(query: NearestNavaidQuery): NearestNavaidResult[];
-    search(query: NavaidSearchQuery): Navaid[];
+    search(query: NavaidSearchQuery): NavaidSearchResult[];
 }
 
 // @public
@@ -32,10 +35,22 @@ export interface NavaidResolverOptions {
 }
 
 // @public
+export type NavaidSearchField = 'identifier' | 'name';
+
+// @public
 export interface NavaidSearchQuery {
     limit?: number;
+    minScore?: number;
     text: string;
     types?: ReadonlySet<NavaidType>;
+}
+
+// @public
+export interface NavaidSearchResult {
+    matchedField: NavaidSearchField;
+    navaid: Navaid;
+    ranges: MatchRange[];
+    score: number;
 }
 
 // @public

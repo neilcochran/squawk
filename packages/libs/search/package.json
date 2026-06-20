@@ -1,15 +1,15 @@
 {
-  "name": "@squawk/airways",
-  "version": "0.4.7",
+  "name": "@squawk/search",
+  "version": "0.0.0",
   "type": "module",
-  "description": "Airway lookup, traversal, and expansion by designation, fix, or search",
+  "description": "Domain-agnostic fuzzy string matching and ranked search scoring utilities",
   "author": "Neil Cochran",
   "license": "MIT",
   "homepage": "https://github.com/neilcochran/squawk",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/neilcochran/squawk.git",
-    "directory": "packages/libs/airways"
+    "directory": "packages/libs/search"
   },
   "engines": {
     "node": ">=22"
@@ -21,15 +21,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./browser": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
     }
   },
   "files": [
     "dist",
-    "!dist/**/*.spec.*"
+    "!dist/**/*.spec.*",
+    "!dist/test-utils.*"
   ],
   "scripts": {
     "build": "tsc",
@@ -40,24 +37,18 @@
     "api:check": "api-extractor run --verbose",
     "api:report": "api-extractor run --local --verbose"
   },
-  "dependencies": {
-    "@squawk/search": "^0.0.0",
-    "@squawk/types": "^0.8.0"
-  },
-  "devDependencies": {
-    "@squawk/airway-data": "^0.5.3",
-    "@types/node": "^25.9.3"
-  },
   "keywords": [
-    "aviation",
     "typescript",
-    "airway",
-    "victor",
-    "jet-route",
-    "faa",
-    "nasr"
+    "fuzzy-search",
+    "fuzzy-matching",
+    "string-matching",
+    "search",
+    "ranking"
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3"
   }
 }

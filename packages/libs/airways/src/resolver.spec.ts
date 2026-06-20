@@ -194,20 +194,21 @@ describe('byFix', () => {
 });
 
 describe('search', () => {
-  it('finds airways matching a substring', () => {
-    const results = resolver.search({ text: 'V1' });
-    assert(results.length > 0);
-    for (const airway of results) {
-      assert(airway.designation.toUpperCase().includes('V1'));
-    }
+  it('ranks an exact designation match first with field and ranges', () => {
+    const results = resolver.search({ text: 'V16' });
+    assert(results.length > 0, 'expected results for V16');
+    expect(results[0]!.airway.designation).toBe('V16');
+    expect(results[0]!.matchedField).toBe('designation');
+    expect(results[0]!.score).toBe(1);
+    expect(results[0]!.ranges).toEqual([{ start: 0, end: 3 }]);
   });
 
-  it('returns results in alphabetical order by designation', () => {
+  it('returns results sorted by descending score', () => {
     const results = resolver.search({ text: 'J' });
     for (let i = 1; i < results.length; i++) {
       assert(
-        results[i - 1]!.designation.localeCompare(results[i]!.designation) <= 0,
-        `expected ${results[i - 1]!.designation} <= ${results[i]!.designation}`,
+        results[i]!.score <= results[i - 1]!.score,
+        'results should be sorted by descending score',
       );
     }
   });
@@ -218,18 +219,18 @@ describe('search', () => {
   });
 
   it('filters by airway type when provided', () => {
-    const results = resolver.search({
+    const empty = resolver.search({
       text: '',
       types: new Set(['JET'] as const),
     });
-    expect(results.length, 'empty text should return empty results').toBe(0);
+    expect(empty.length, 'empty text should return empty results').toBe(0);
 
     const jetResults = resolver.search({
       text: 'J',
       types: new Set(['JET'] as const),
     });
-    for (const airway of jetResults) {
-      expect(airway.type).toBe('JET');
+    for (const r of jetResults) {
+      expect(r.airway.type).toBe('JET');
     }
   });
 
@@ -237,6 +238,15 @@ describe('search', () => {
     const upper = resolver.search({ text: 'V16' });
     const lower = resolver.search({ text: 'v16' });
     expect(upper.length).toBe(lower.length);
+  });
+
+  it('keeps only matches above the minScore threshold', () => {
+    const lenient = resolver.search({ text: 'V16' });
+    const strict = resolver.search({ text: 'V16', minScore: 0.5 });
+    assert(strict.length <= lenient.length, 'raising minScore should not add results');
+    for (const r of strict) {
+      assert(r.score > 0.5, `expected score > 0.5, got ${r.score}`);
+    }
   });
 
   it('returns empty array for empty text', () => {
