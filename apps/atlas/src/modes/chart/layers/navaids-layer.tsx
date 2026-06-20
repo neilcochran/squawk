@@ -12,6 +12,8 @@ import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 import { LAYER_MIN_ZOOM } from '../url-state.ts';
 
+import { isDrawableNavaid } from './drawable-sets.ts';
+
 /**
  * Properties carried on each navaid point feature in the GeoJSON source.
  * Kept narrow so the source payload stays small; richer fields are read
@@ -47,33 +49,15 @@ const MATCH_NONE_FILTER: ExpressionSpecification = [
 ];
 
 /**
- * Navaid types we render. `FAN_MARKER`, `MARINE_NDB`, and `VOT` are
- * intentionally excluded: too niche for a general chart view, and they
- * clutter at low zoom without informing typical IFR or VFR navigation.
- */
-const RENDERED_NAVAID_TYPES: ReadonlySet<NavaidType> = new Set<NavaidType>([
-  'VOR',
-  'VORTAC',
-  'VOR/DME',
-  'TACAN',
-  'DME',
-  'NDB',
-  'NDB/DME',
-]);
-
-/**
  * Projects the bundled navaid records into a GeoJSON `FeatureCollection`
- * suitable for a MapLibre `geojson` source. Filters to operational
- * navaids of types in {@link RENDERED_NAVAID_TYPES}; shutdown facilities
- * and niche types do not appear on this layer.
+ * suitable for a MapLibre `geojson` source. Includes only records the chart
+ * draws, per {@link isDrawableNavaid}: operational navaids of a rendered
+ * type. Shutdown facilities and niche types do not appear on this layer.
  */
 function toFeatureCollection(records: Navaid[]): FeatureCollection<Point, NavaidFeatureProperties> {
   const features: Feature<Point, NavaidFeatureProperties>[] = [];
   for (const navaid of records) {
-    if (navaid.status === 'SHUTDOWN') {
-      continue;
-    }
-    if (!RENDERED_NAVAID_TYPES.has(navaid.type)) {
+    if (!isDrawableNavaid(navaid)) {
       continue;
     }
     features.push({

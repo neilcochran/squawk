@@ -22,6 +22,10 @@ describe('chartSearchSchema', () => {
       layers: [...LAYER_IDS],
       airspaceClasses: [...CHART_DEFAULTS.airspaceClasses],
       airwayCategories: [...AIRWAY_CATEGORIES],
+      searchLayers: [...CHART_DEFAULTS.searchLayers],
+      searchAirspaceClasses: [...CHART_DEFAULTS.searchAirspaceClasses],
+      searchAirwayCategories: [...CHART_DEFAULTS.searchAirwayCategories],
+      searchIncludeHidden: CHART_DEFAULTS.searchIncludeHidden,
     });
   });
 

@@ -8,6 +8,12 @@ import { AIRSPACE_FILL_LAYER_ID, AIRSPACE_LINE_LAYER_ID } from './layers/airspac
 import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
 import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
 import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
+import type {
+  AirspaceChartSearchResult,
+  AirwayChartSearchResult,
+  ChartSearchResult,
+  NavaidChartSearchResult,
+} from './search/search-features.ts';
 import type { ChartSearch } from './url-state.ts';
 
 /**
@@ -31,6 +37,13 @@ interface DisambiguationProps {
   onDismiss: () => void;
 }
 const disambiguationRef: { current: DisambiguationProps | undefined } = {
+  current: undefined,
+};
+
+interface SearchBoxMockProps {
+  onSelectResult: (result: ChartSearchResult) => void;
+}
+const searchBoxRef: { current: SearchBoxMockProps | undefined } = {
   current: undefined,
 };
 
@@ -92,6 +105,12 @@ vi.mock('./highlight-provider.tsx', () => ({
 vi.mock('./inspectable-cursor.tsx', () => ({ InspectableHoverCursor: () => null }));
 vi.mock('./view-reset-listener.tsx', () => ({ ChartViewResetListener: () => null }));
 vi.mock('./layer-toggle.tsx', () => ({ LayerToggle: () => null }));
+vi.mock('./search/search-box.tsx', () => ({
+  SearchBox: (props: SearchBoxMockProps): ReactElement => {
+    searchBoxRef.current = props;
+    return <div data-testid="search-box" />;
+  },
+}));
 vi.mock('./layers/airports-layer.tsx', async (importOriginal) => {
   const actual = (await importOriginal()) as typeof import('./layers/airports-layer.tsx');
   return { ...actual, AirportsLayer: () => null };
@@ -138,6 +157,59 @@ const DEFAULT_SEARCH: ChartSearch = {
     'ARTCC',
   ],
   airwayCategories: ['LOW', 'HIGH', 'OCEANIC'],
+  searchLayers: ['airports', 'navaids', 'fixes', 'airways', 'airspace'],
+  searchAirspaceClasses: [
+    'CLASS_B',
+    'CLASS_C',
+    'CLASS_D',
+    'CLASS_E',
+    'MOA',
+    'RESTRICTED',
+    'PROHIBITED',
+    'WARNING',
+    'ALERT',
+    'NSA',
+    'ARTCC',
+  ],
+  searchAirwayCategories: ['LOW', 'HIGH', 'OCEANIC'],
+  searchIncludeHidden: false,
+};
+
+/** Shared base for the search-result fixtures; per-kind objects override the discriminant fields. */
+const searchResultBase = {
+  label: 'X',
+  sublabel: undefined,
+  matchedText: 'X',
+  ranges: [],
+  score: 1,
+  center: { lng: -71, lat: 42 },
+  hidden: true,
+};
+
+const navaidResult: NavaidChartSearchResult = {
+  ...searchResultBase,
+  kind: 'navaid',
+  subtype: 'VOR',
+  matchedField: 'identifier',
+  selection: 'navaid:BOS',
+};
+
+const airspaceResult: AirspaceChartSearchResult = {
+  ...searchResultBase,
+  kind: 'airspace',
+  subtype: 'CLASS_B',
+  matchedField: 'identifier',
+  selection: 'airspace:CLASS_B/KBOS',
+  bbox: { minLon: -71, maxLon: -70, minLat: 42, maxLat: 43 },
+};
+
+const airwayResult: AirwayChartSearchResult = {
+  ...searchResultBase,
+  kind: 'airway',
+  subtype: 'VICTOR',
+  matchedField: 'designation',
+  selection: 'airway:V16',
+  bbox: { minLon: -71, maxLon: -70, minLat: 42, maxLat: 43 },
 };
 
 /**
@@ -379,6 +451,64 @@ describe('ChartMode', () => {
     expect(navigateMock).toHaveBeenCalledTimes(1);
     const search = navigateMock.mock.calls[0]?.[0]?.search;
     expect(search({ selected: undefined }).selected).toBe('airport:BOS');
+  });
+
+  it('writes the chosen search result to the URL as the new selection', () => {
+    render(<ChartMode />);
+    const searchBox = searchBoxRef.current;
+    expect(searchBox).toBeDefined();
+    act(() => {
+      searchBox?.onSelectResult(navaidResult);
+    });
+    expect(navigateMock).toHaveBeenCalledTimes(1);
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    expect(search(DEFAULT_SEARCH).selected).toBe('navaid:BOS');
+  });
+
+  it('reveals the owning layer for a hidden search result on selection', () => {
+    render(<ChartMode />);
+    act(() => {
+      searchBoxRef.current?.onSelectResult(navaidResult);
+    });
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    const next = search({ ...DEFAULT_SEARCH, layers: ['airports'] });
+    // airports sorts before navaids in the canonical layer order.
+    expect(next.layers).toEqual(['airports', 'navaids']);
+  });
+
+  it('reveals the owning airspace class for a hidden airspace result on selection', () => {
+    render(<ChartMode />);
+    act(() => {
+      searchBoxRef.current?.onSelectResult(airspaceResult);
+    });
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    const next = search({ ...DEFAULT_SEARCH, layers: ['airports'], airspaceClasses: [] });
+    expect(next.layers).toContain('airspace');
+    expect(next.airspaceClasses).toEqual(['CLASS_B']);
+    expect(next.selected).toBe('airspace:CLASS_B/KBOS');
+  });
+
+  it('reveals the owning airway category for a hidden airway result on selection', () => {
+    render(<ChartMode />);
+    act(() => {
+      searchBoxRef.current?.onSelectResult(airwayResult);
+    });
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    const next = search({ ...DEFAULT_SEARCH, layers: ['airports'], airwayCategories: [] });
+    expect(next.layers).toContain('airways');
+    expect(next.airwayCategories).toEqual(['LOW']);
+    expect(next.selected).toBe('airway:V16');
+  });
+
+  it('leaves visible layers unchanged when selecting an already-visible result', () => {
+    render(<ChartMode />);
+    act(() => {
+      searchBoxRef.current?.onSelectResult(navaidResult);
+    });
+    const search = navigateMock.mock.calls[0]?.[0]?.search;
+    const next = search(DEFAULT_SEARCH);
+    expect(next.layers).toEqual(DEFAULT_SEARCH.layers);
+    expect(next.selected).toBe('navaid:BOS');
   });
 
   it('dismisses the disambiguation popover without changing the URL', () => {

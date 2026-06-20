@@ -65,6 +65,22 @@ function getInspectorOcclusionPx(): { x: number; y: number } {
 const PAN_DURATION_MS = 350;
 
 /**
+ * Base pixel margin left between a fitted feature's bounding box and every
+ * viewport edge in {@link fitFeatureBoundsWithInspectorOffset}, so an airway or
+ * airspace never renders flush against the canvas border. The inspector-occluded
+ * edge gets this margin plus the overlay's footprint.
+ */
+const FIT_BOUNDS_BASE_PADDING_PX = 40;
+
+/**
+ * Upper bound on the zoom {@link fitFeatureBoundsWithInspectorOffset} applies, so
+ * a tiny extent feature (a short airway segment, a small Class D) keeps some
+ * surrounding context instead of slamming to street level, and a degenerate
+ * single-point bounding box does not zoom all the way in.
+ */
+const FIT_BOUNDS_MAX_ZOOM = 11;
+
+/**
  * Minimum pixel margin from any visible-area edge before a feature is
  * considered "comfortably onscreen". Anything closer to an edge - or
  * fully offscreen - triggers the chip-hover pan so the user does not
@@ -403,10 +419,16 @@ export function isPointOutsideComfortableArea(
  * left strip rather than directly under the right-side panel; on
  * mobile the negative y-offset shifts the focal point up so the
  * target appears in the visible top strip above the bottom sheet.
+ *
+ * When `zoom` is provided the camera also eases to that zoom level; omitting it
+ * preserves the current zoom. The chip-hover, commit, and recenter callers omit
+ * it (they reframe a point without changing scale); the search box passes a
+ * logical zoom so a pick from the CONUS overview lands close enough to be useful.
  */
 export function panToFeatureWithInspectorOffset(
   lngLat: { lng: number; lat: number },
   map: MaplibreMap,
+  zoom?: number,
 ): void {
   const occlusion = getInspectorOcclusionPx();
   // Guard against negative zero on the un-occluded axis: dividing 0 by
@@ -418,8 +440,39 @@ export function panToFeatureWithInspectorOffset(
   map.easeTo({
     center: [lngLat.lng, lngLat.lat],
     offset: [offsetX, offsetY],
+    ...(zoom !== undefined && { zoom }),
     duration: PAN_DURATION_MS,
   });
+}
+
+/**
+ * Frames an extent feature (an airway or an airspace) by easing the camera so
+ * the feature's bounding box fits within the un-occluded portion of the map.
+ * Unlike {@link panToFeatureWithInspectorOffset}, which centers a point at a
+ * fixed zoom, this derives the zoom from the box so the whole feature is
+ * visible. The inspector's footprint is reserved with asymmetric padding (the
+ * right edge on desktop, the bottom edge on mobile) so the fitted feature stays
+ * clear of the overlay, and {@link FIT_BOUNDS_MAX_ZOOM} caps how far in a small
+ * box pulls the camera.
+ */
+export function fitFeatureBoundsWithInspectorOffset(bbox: BoundingBox, map: MaplibreMap): void {
+  const occlusion = getInspectorOcclusionPx();
+  map.fitBounds(
+    [
+      [bbox.minLon, bbox.minLat],
+      [bbox.maxLon, bbox.maxLat],
+    ],
+    {
+      padding: {
+        top: FIT_BOUNDS_BASE_PADDING_PX,
+        bottom: FIT_BOUNDS_BASE_PADDING_PX + occlusion.y,
+        left: FIT_BOUNDS_BASE_PADDING_PX,
+        right: FIT_BOUNDS_BASE_PADDING_PX + occlusion.x,
+      },
+      maxZoom: FIT_BOUNDS_MAX_ZOOM,
+      duration: PAN_DURATION_MS,
+    },
+  );
 }
 
 /**

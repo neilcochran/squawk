@@ -25,6 +25,8 @@ An interactive aeronautical map of the US. The data comes from the bundled `@squ
 
 **Entity inspector** opens on selection - right-side panel on desktop, bottom sheet on mobile. Per-type renderers cover airport, navaid, fix, airway, and airspace. An "Also here" chip strip lets the user switch between stacked features without re-clicking the map. Hovering a chip pans the camera so the picked feature stays visible behind the inspector.
 
+**Feature search** - a floating search box (top-left) fuzzy-matches across every visible feature type at once (airports, navaids, fixes, airways, airspace), ranking results by match score as the user types. Each result row is badged with its feature kind and emphasizes the matched characters. A filter menu narrows the search to specific types / subtypes (mirroring the Layers menu), and an include-hidden toggle widens it to features the Layers menu is currently hiding. Choosing a result frames the feature in the camera - zooming in to a useful level for a point feature, or fitting the whole bounding box for an airway or airspace - opens the inspector, and reveals whatever layer (and airway category or airspace class) is needed to actually draw it. The box is a fully keyboard-driven ARIA combobox: arrow keys move the active row, Enter selects, Escape clears.
+
 **URL-driven state** - map view (lat/lon/zoom/pitch), active layer set, airspace classes, airway categories, and the selected entity all live in the URL. Stale share-links with unknown values fall back to defaults rather than erroring.
 
 **Theme switcher** - light, dark, or follow OS, persisted in `localStorage`.

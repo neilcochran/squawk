@@ -26,6 +26,9 @@ import {
 import { AirwayLegFocusLayer, AirwaysLayer } from './layers/airways-layer.tsx';
 import { FixesLayer } from './layers/fixes-layer.tsx';
 import { NavaidsLayer } from './layers/navaids-layer.tsx';
+import { revealLayersForResult } from './search/reveal-for-result.ts';
+import { SearchBox } from './search/search-box.tsx';
+import type { ChartSearchResult } from './search/search-features.ts';
 import type { AirspaceClass, LayerId } from './url-state.ts';
 import { CHART_ROUTE_PATH } from './url-state.ts';
 import { useAirspace3DAutoHide } from './use-airspace-3d-auto-hide.ts';
@@ -254,6 +257,41 @@ export function ChartMode(): ReactElement {
     setPendingDisambiguation(undefined);
   }, []);
 
+  const handleSearchSelect = useCallback(
+    (result: ChartSearchResult): void => {
+      // Choosing a search result is a fresh selection, not a map click:
+      // drop the previous click's "Also here" chip strip and any sticky
+      // hover/disambiguation preview so the inspector reflects only the
+      // chosen feature.
+      setHoveredChipSelection(undefined);
+      setPendingDisambiguation(undefined);
+      setFeaturesAtLastClick([]);
+      // Reveal the owning layer (and category / class) when the chosen
+      // feature is currently hidden, so the inspector is not pinned to
+      // something the map never draws. Already-visible types pass through
+      // untouched. The camera pan itself lives in the search box, which can
+      // reach the MapLibre instance via `useMap()`.
+      void navigate({
+        search: (prev) => {
+          const revealed = revealLayersForResult(result, {
+            layers: prev.layers,
+            airspaceClasses: prev.airspaceClasses,
+            airwayCategories: prev.airwayCategories,
+          });
+          return {
+            ...prev,
+            layers: [...revealed.layers],
+            airspaceClasses: [...revealed.airspaceClasses],
+            airwayCategories: [...revealed.airwayCategories],
+            selected: result.selection,
+          };
+        },
+        replace: true,
+      });
+    },
+    [navigate],
+  );
+
   // `<MapProvider>` lets the loading indicator (a sibling of MapCanvas)
   // reach the underlying MapLibre instance via `useMap()`, so it can
   // subscribe to the map's `idle` event and dismiss only after the
@@ -314,6 +352,7 @@ export function ChartMode(): ReactElement {
         </MapCanvas>
         <InspectableHoverCursor />
         <ChartViewResetListener />
+        <SearchBox onSelectResult={handleSearchSelect} />
         <LayerToggle />
         <ZoomControls />
         {pendingDisambiguation !== undefined ? (

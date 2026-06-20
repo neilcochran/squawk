@@ -56,7 +56,7 @@ export function ThemeSwitcher(): ReactElement {
         <DropdownMenu.Content
           align="end"
           sideOffset={4}
-          className="min-w-[10rem] rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+          className="z-40 min-w-[10rem] rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
         >
           <DropdownMenu.RadioGroup
             value={preference}

@@ -11,6 +11,8 @@ import { useAirportDataset } from '../../../shared/data/airport-dataset.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 
+import { isDrawableAirport } from './drawable-sets.ts';
+
 /**
  * Properties carried on each airport point feature in the GeoJSON source.
  * Kept narrow so the source payload stays small; richer fields are read
@@ -61,16 +63,17 @@ function longestRunwayFt(airport: Airport): number {
 
 /**
  * Projects the bundled airport records into a GeoJSON `FeatureCollection`
- * suitable for a MapLibre `geojson` source. Filters to `facilityType ===
- * 'AIRPORT'` so heliports, seaplane bases, and other facility types do not
- * appear on this layer; they will land in their own layers later.
+ * suitable for a MapLibre `geojson` source. Includes only records the chart
+ * draws, per {@link isDrawableAirport}: `AIRPORT`-type facilities. Heliports,
+ * seaplane bases, and other facility types do not appear on this layer; they
+ * will land in their own layers later.
  */
 function toFeatureCollection(
   records: Airport[],
 ): FeatureCollection<Point, AirportFeatureProperties> {
   const features: Feature<Point, AirportFeatureProperties>[] = [];
   for (const airport of records) {
-    if (airport.facilityType !== 'AIRPORT') {
+    if (!isDrawableAirport(airport)) {
       continue;
     }
     features.push({

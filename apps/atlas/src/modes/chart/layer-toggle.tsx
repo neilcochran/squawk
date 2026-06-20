@@ -7,6 +7,12 @@ import { FLOATING_SURFACE_CLASSES, FOCUS_RING_CLASSES } from '../../shared/style
 import { MenuItemRow } from '../../shared/ui/menu-item-row.tsx';
 
 import { useAirspace3DAutoHidePreference } from './airspace-3d-preference.ts';
+import {
+  AIRSPACE_CLASS_OPTIONS,
+  AIRWAY_CATEGORY_OPTIONS,
+  EXPANDABLE_LAYERS,
+  LAYER_OPTIONS,
+} from './layer-options.ts';
 import { CheckIcon } from './layer-toggle-icons.tsx';
 import { ExpandableParentRow, SimpleParentRow, SubRow } from './layer-toggle-rows.tsx';
 import {
@@ -19,68 +25,6 @@ import {
 import type { AirspaceClass, AirwayCategory, LayerId } from './url-state.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
-
-/** A single layer option rendered in the top-level dropdown menu. */
-interface LayerOption {
-  /** Stable id matching one of {@link LAYER_IDS}. */
-  id: LayerId;
-  /** User-visible label. */
-  label: string;
-}
-
-/**
- * Top-level layer rows in display order. Order is independent of map z-stack
- * (which is controlled by JSX order in chart-mode) and of URL serialization
- * order (which follows {@link LAYER_IDS}).
- */
-const LAYER_OPTIONS: readonly LayerOption[] = [
-  { id: 'airports', label: 'Airports' },
-  { id: 'navaids', label: 'Navaids' },
-  { id: 'fixes', label: 'Fixes' },
-  { id: 'airways', label: 'Airways' },
-  { id: 'airspace', label: 'Airspace' },
-];
-
-/** Set of layer ids that have an inline-expandable sub-class list. */
-const EXPANDABLE_LAYERS = new Set<LayerId>(['airways', 'airspace']);
-
-/** A single airspace-class row rendered inside the airspace expansion. */
-interface AirspaceClassOption {
-  /** Stable id matching one of {@link AIRSPACE_CLASSES}. */
-  id: AirspaceClass;
-  /** User-visible label. */
-  label: string;
-}
-
-/** Airspace-class rows in display order: classes first, then special-use, then ARTCC. */
-const AIRSPACE_CLASS_OPTIONS: readonly AirspaceClassOption[] = [
-  { id: 'CLASS_B', label: 'Class B' },
-  { id: 'CLASS_C', label: 'Class C' },
-  { id: 'CLASS_D', label: 'Class D' },
-  { id: 'CLASS_E', label: 'Class E' },
-  { id: 'MOA', label: 'MOA' },
-  { id: 'RESTRICTED', label: 'Restricted' },
-  { id: 'PROHIBITED', label: 'Prohibited' },
-  { id: 'WARNING', label: 'Warning' },
-  { id: 'ALERT', label: 'Alert' },
-  { id: 'NSA', label: 'NSA' },
-  { id: 'ARTCC', label: 'ARTCC' },
-];
-
-/** A single airway-category row rendered inside the airways expansion. */
-interface AirwayCategoryOption {
-  /** Stable id matching one of {@link AIRWAY_CATEGORIES}. */
-  id: AirwayCategory;
-  /** User-visible label. */
-  label: string;
-}
-
-/** Airway-category rows in display order, low to high to oceanic-and-regional. */
-const AIRWAY_CATEGORY_OPTIONS: readonly AirwayCategoryOption[] = [
-  { id: 'LOW', label: 'Low altitude' },
-  { id: 'HIGH', label: 'High altitude' },
-  { id: 'OCEANIC', label: 'Oceanic & regional' },
-];
 
 /**
  * Layer-visibility dropdown for chart mode. Reads the active layer set and
@@ -247,7 +191,7 @@ export function LayerToggle(): ReactElement {
         <DropdownMenu.Content
           align="end"
           sideOffset={4}
-          className={`min-w-[14rem] rounded-md p-1 shadow-lg ${FLOATING_SURFACE_CLASSES}`}
+          className={`z-40 min-w-[14rem] rounded-md p-1 shadow-lg ${FLOATING_SURFACE_CLASSES}`}
         >
           {LAYER_OPTIONS.map((option) => {
             const isExpandable = EXPANDABLE_LAYERS.has(option.id);
