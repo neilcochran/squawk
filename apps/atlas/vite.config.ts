@@ -32,7 +32,7 @@ export default mergeConfig(
           'src/vite-env.d.ts',
           'src/routes/**',
           'src/shared/map/map-canvas.tsx',
-          'src/modes/chart/inspectable-cursor.tsx',
+          'src/modes/chart/interaction/inspectable-cursor.tsx',
           'src/modes/chart/view-reset-listener.tsx',
           'src/modes/chart/layers/airspace-hatch-pattern.ts',
           'src/modes/chart/layers/use-top-of-stack.ts',

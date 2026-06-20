@@ -2,17 +2,16 @@ import type { GeoJsonProperties, Geometry } from 'geojson';
 
 import { polygonGeoJson } from '@squawk/geo';
 
-import { AIRSPACE_MATCH_KEY_PROPERTY } from '../../shared/inspector/airspace-feature.ts';
-
-import { AIRPORTS_LAYER_ID } from './layers/airports-layer.tsx';
+import { AIRSPACE_MATCH_KEY_PROPERTY } from '../../../shared/inspector/airspace-feature.ts';
+import { AIRPORTS_LAYER_ID } from '../layers/airports-layer.tsx';
 import {
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
   AIRSPACE_FILL_LAYER_ID,
   AIRSPACE_LINE_LAYER_ID,
-} from './layers/airspace-layer.tsx';
-import { AIRWAYS_LAYER_ID } from './layers/airways-layer.tsx';
-import { FIXES_LAYER_ID } from './layers/fixes-layer.tsx';
-import { NAVAIDS_LAYER_ID } from './layers/navaids-layer.tsx';
+} from '../layers/airspace-layer.tsx';
+import { AIRWAYS_LAYER_ID } from '../layers/airways-layer.tsx';
+import { FIXES_LAYER_ID } from '../layers/fixes-layer.tsx';
+import { NAVAIDS_LAYER_ID } from '../layers/navaids-layer.tsx';
 
 /**
  * The minimal subset of a MapLibre feature `selectedFromFeature` reads:

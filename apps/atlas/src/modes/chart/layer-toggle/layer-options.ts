@@ -1,4 +1,4 @@
-import type { AirspaceClass, AirwayCategory, LayerId } from './url-state.ts';
+import type { AirspaceClass, AirwayCategory, LayerId } from '../url-state.ts';
 
 /** A single top-level layer option rendered in a layer-selection menu. */
 export interface LayerOption {

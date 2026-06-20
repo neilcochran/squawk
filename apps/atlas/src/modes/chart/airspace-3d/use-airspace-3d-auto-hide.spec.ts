@@ -1,8 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import type { AirspaceClass, LayerId } from '../url-state.ts';
+
 import { setAirspace3DAutoHidePreference } from './airspace-3d-preference.ts';
-import type { AirspaceClass, LayerId } from './url-state.ts';
 import { useAirspace3DAutoHide } from './use-airspace-3d-auto-hide.ts';
 import type { UseAirspace3DAutoHideParams } from './use-airspace-3d-auto-hide.ts';
 

@@ -6,8 +6,8 @@ import {
   formatAirspaceLabel,
   formatChipLabel,
   selectedFromFeature,
-} from '../../modes/chart/click-to-select.ts';
-import type { InspectableFeature } from '../../modes/chart/click-to-select.ts';
+} from '../../modes/chart/interaction/click-to-select.ts';
+import type { InspectableFeature } from '../../modes/chart/interaction/click-to-select.ts';
 import { AIRSPACE_CLASS_FOR_TYPE } from '../../modes/chart/url-state.ts';
 import type { AirspaceClass } from '../../modes/chart/url-state.ts';
 import { getAirspaceResolver } from '../data/airspace-dataset.ts';

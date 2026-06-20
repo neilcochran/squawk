@@ -2,9 +2,10 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, LAYER_IDS } from '../url-state.ts';
+import type { ChartSearch } from '../url-state.ts';
+
 import { LayerToggle } from './layer-toggle.tsx';
-import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, LAYER_IDS } from './url-state.ts';
-import type { ChartSearch } from './url-state.ts';
 
 /** Shape of the single argument the component passes to `navigate`. */
 interface NavigateArg {
