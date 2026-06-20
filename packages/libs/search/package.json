@@ -1,6 +1,6 @@
 {
   "name": "@squawk/search",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "Domain-agnostic fuzzy string matching and ranked search scoring utilities",
   "author": "Neil Cochran",
