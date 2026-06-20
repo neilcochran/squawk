@@ -22,6 +22,12 @@ export interface SimpleParentRowProps {
    * already above the threshold).
    */
   hintMinZoom: number | undefined;
+  /**
+   * When true, render the row in a muted style to signal it currently has no
+   * effect - used by the search filter when the feature type is hidden on the
+   * map and hidden results are excluded. The row stays fully interactive.
+   */
+  dimmed?: boolean;
 }
 
 /**
@@ -34,13 +40,14 @@ export function SimpleParentRow({
   checked,
   onCheckedChange,
   hintMinZoom,
+  dimmed = false,
 }: SimpleParentRowProps): ReactElement {
   return (
     <MenuItemRow
       checked={checked}
       onCheckedChange={onCheckedChange}
       onSelect={(event) => event.preventDefault()}
-      className="px-2 py-2.5 md:py-1.5"
+      className={`px-2 py-2.5 md:py-1.5${dimmed ? ' opacity-60' : ''}`}
     >
       <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
         <DropdownMenu.ItemIndicator>
@@ -77,6 +84,12 @@ export interface ExpandableParentRowProps {
    * already above the threshold).
    */
   hintMinZoom: number | undefined;
+  /**
+   * When true, render the row in a muted style to signal it currently has no
+   * effect - used by the search filter when the feature type is hidden on the
+   * map and hidden results are excluded. The row stays fully interactive.
+   */
+  dimmed?: boolean;
 }
 
 /**
@@ -100,6 +113,7 @@ export function ExpandableParentRow({
   enabledCount,
   totalCount,
   hintMinZoom,
+  dimmed = false,
 }: ExpandableParentRowProps): ReactElement {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (event.key === 'ArrowRight' && !expanded) {
@@ -116,7 +130,7 @@ export function ExpandableParentRow({
       onCheckedChange={onCheckedChange}
       onSelect={(event) => event.preventDefault()}
       onKeyDown={handleKeyDown}
-      className="px-2 py-2.5 md:py-1.5"
+      className={`px-2 py-2.5 md:py-1.5${dimmed ? ' opacity-60' : ''}`}
     >
       <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
         <DropdownMenu.ItemIndicator>
@@ -193,6 +207,12 @@ export interface SubRowProps {
   checked: boolean;
   /** Called with the new checked state when the user toggles the row. */
   onCheckedChange: (checked: boolean) => void;
+  /**
+   * When true, render the row in a muted style to signal it currently has no
+   * effect - used by the search filter when the sub-class is hidden on the map
+   * and hidden results are excluded. The row stays fully interactive.
+   */
+  dimmed?: boolean;
 }
 
 /**
@@ -200,13 +220,18 @@ export interface SubRowProps {
  * Radix CheckboxItem semantics as {@link SimpleParentRow} but with extra
  * left padding so the visual hierarchy reads as nested.
  */
-export function SubRow({ label, checked, onCheckedChange }: SubRowProps): ReactElement {
+export function SubRow({
+  label,
+  checked,
+  onCheckedChange,
+  dimmed = false,
+}: SubRowProps): ReactElement {
   return (
     <MenuItemRow
       checked={checked}
       onCheckedChange={onCheckedChange}
       onSelect={(event) => event.preventDefault()}
-      className="py-2.5 pr-2 pl-8 md:py-1.5"
+      className={`py-2.5 pr-2 pl-8 md:py-1.5${dimmed ? ' opacity-60' : ''}`}
     >
       <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
         <DropdownMenu.ItemIndicator>

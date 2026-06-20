@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
   INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX,
+  fitFeatureBoundsWithInspectorOffset,
   isPointOutsideComfortableArea,
   panToFeatureWithInspectorOffset,
   restoreCenter,
@@ -22,6 +23,7 @@ interface FakeMap {
   project: (lngLat: [number, number]) => { x: number; y: number };
   getCanvas: () => FakeCanvas;
   easeTo: ReturnType<typeof vi.fn>;
+  fitBounds: ReturnType<typeof vi.fn>;
 }
 
 function buildFakeMap(
@@ -33,6 +35,7 @@ function buildFakeMap(
     project: projectFn ?? (() => ({ x: 100, y: 100 })),
     getCanvas: () => ({ clientWidth: canvasWidth, clientHeight: canvasHeight }),
     easeTo: vi.fn(),
+    fitBounds: vi.fn(),
   };
 }
 
@@ -131,6 +134,59 @@ describe('panToFeatureWithInspectorOffset', () => {
     const args = map.easeTo.mock.calls[0]?.[0];
     expect(args.offset[0]).toBe(0);
     expect(args.offset[1]).toBeLessThan(0);
+  });
+
+  it('omits zoom from the ease when no zoom is supplied', () => {
+    const map = buildFakeMap(1024, 768);
+    panToFeatureWithInspectorOffset({ lng: -73, lat: 40 }, map as unknown as MaplibreMap);
+    const args = map.easeTo.mock.calls[0]?.[0];
+    expect(args.zoom).toBeUndefined();
+  });
+
+  it('eases to the supplied zoom when one is passed', () => {
+    const map = buildFakeMap(1024, 768);
+    panToFeatureWithInspectorOffset({ lng: -73, lat: 40 }, map as unknown as MaplibreMap, 10);
+    const args = map.easeTo.mock.calls[0]?.[0];
+    expect(args.zoom).toBe(10);
+  });
+});
+
+describe('fitFeatureBoundsWithInspectorOffset', () => {
+  it('fits the bounding-box corners with the right edge reserved on desktop', () => {
+    const map = buildFakeMap(1024, 768);
+    fitFeatureBoundsWithInspectorOffset(
+      { minLon: -73, maxLon: -71, minLat: 42, maxLat: 44 },
+      map as unknown as MaplibreMap,
+    );
+    expect(map.fitBounds).toHaveBeenCalledTimes(1);
+    const [corners, options] = map.fitBounds.mock.calls[0] ?? [];
+    expect(corners).toEqual([
+      [-73, 42],
+      [-71, 44],
+    ]);
+    // Desktop occludes the right edge, so its padding carries the overlay
+    // footprint on top of the base margin while the other edges stay at base.
+    expect(options.padding.left).toBe(options.padding.top);
+    expect(options.padding.right).toBeGreaterThan(options.padding.left);
+    expect(options.maxZoom).toBe(11);
+  });
+
+  it('reserves the bottom edge instead of the right edge on mobile', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 600,
+    });
+    const map = buildFakeMap(600, 1000);
+    fitFeatureBoundsWithInspectorOffset(
+      { minLon: -73, maxLon: -71, minLat: 42, maxLat: 44 },
+      map as unknown as MaplibreMap,
+    );
+    const options = map.fitBounds.mock.calls[0]?.[1];
+    // Mobile occludes the bottom sheet, so the bottom padding grows while the
+    // right edge falls back to the base margin.
+    expect(options.padding.bottom).toBeGreaterThan(options.padding.top);
+    expect(options.padding.right).toBe(options.padding.top);
   });
 });
 

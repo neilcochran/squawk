@@ -148,6 +148,24 @@ export const AIRWAY_CATEGORY_TYPES: Record<AirwayCategory, readonly AirwayType[]
 };
 
 /**
+ * Reverse of {@link AIRWAY_CATEGORY_TYPES}: maps each underlying `AirwayType`
+ * to the user-facing category that contains it. Used when we have an arbitrary
+ * `AirwayType` (e.g. on a search result) and need to ask "which category must
+ * be enabled for this airway to draw?". Computed once at module load.
+ */
+export const AIRWAY_CATEGORY_FOR_TYPE: Record<AirwayType, AirwayCategory> = (() => {
+  const map: Partial<Record<AirwayType, AirwayCategory>> = {};
+  for (const category of AIRWAY_CATEGORIES) {
+    for (const type of AIRWAY_CATEGORY_TYPES[category]) {
+      map[type] = category;
+    }
+  }
+  // Every AirwayType is covered by exactly one category above; the cast
+  // narrows the partial map to the total record.
+  return map as Record<AirwayType, AirwayCategory>;
+})();
+
+/**
  * Default chart-mode map view: continental US center at a zoom that shows the
  * full CONUS area, with every data layer enabled and most airspace classes
  * enabled. ARTCC is opted out by default because its sector boundaries cover
@@ -172,6 +190,28 @@ export const CHART_DEFAULTS = {
   airspaceClasses: AIRSPACE_CLASSES.filter((cls) => cls !== 'ARTCC'),
   /** Default active airway categories: every category visible. */
   airwayCategories: AIRWAY_CATEGORIES,
+  /**
+   * Default search-filter layer set: every layer is searchable. The search
+   * filter is the "what to search" choice, independent of what the map draws;
+   * the include-hidden toggle decides whether the corpus is then intersected
+   * with the visible layer set (see {@link CHART_DEFAULTS.searchIncludeHidden}).
+   */
+  searchLayers: LAYER_IDS,
+  /**
+   * Default searchable airspace classes: every class, including ARTCC. Unlike
+   * the map default this includes ARTCC, because the filter expresses intent
+   * to search the class; whether ARTCC results actually surface still depends
+   * on its Layers-menu visibility unless include-hidden is on.
+   */
+  searchAirspaceClasses: AIRSPACE_CLASSES,
+  /** Default searchable airway categories: every category. */
+  searchAirwayCategories: AIRWAY_CATEGORIES,
+  /**
+   * Default include-hidden toggle: off, so search surfaces only features the
+   * Layers menu currently draws. Flipping it on lets results include feature
+   * types that are toggled off on the map.
+   */
+  searchIncludeHidden: false,
 } as const;
 
 /**
@@ -228,6 +268,43 @@ export const chartSearchSchema = z.object({
     .array(z.enum(AIRWAY_CATEGORIES))
     .default([...CHART_DEFAULTS.airwayCategories])
     .catch([...CHART_DEFAULTS.airwayCategories]),
+  /**
+   * Search-filter layer set: which top-level feature types the search box
+   * queries. Independent of `layers` (what the map draws). Default is every
+   * layer; an empty array yields a search that returns nothing. Unknown ids
+   * or non-array values fall back to the default.
+   */
+  searchLayers: z
+    .array(z.enum(LAYER_IDS))
+    .default([...CHART_DEFAULTS.searchLayers])
+    .catch([...CHART_DEFAULTS.searchLayers]),
+  /**
+   * Search-filter airspace classes (consulted only when `searchLayers`
+   * includes `airspace`). Default is every class; an empty array drops
+   * airspace from search. Unknown ids or non-array values fall back to the
+   * default.
+   */
+  searchAirspaceClasses: z
+    .array(z.enum(AIRSPACE_CLASSES))
+    .default([...CHART_DEFAULTS.searchAirspaceClasses])
+    .catch([...CHART_DEFAULTS.searchAirspaceClasses]),
+  /**
+   * Search-filter airway categories (consulted only when `searchLayers`
+   * includes `airways`). Default is every category; an empty array drops
+   * airways from search. Unknown ids or non-array values fall back to the
+   * default.
+   */
+  searchAirwayCategories: z
+    .array(z.enum(AIRWAY_CATEGORIES))
+    .default([...CHART_DEFAULTS.searchAirwayCategories])
+    .catch([...CHART_DEFAULTS.searchAirwayCategories]),
+  /**
+   * Include-hidden toggle. When true, search ignores the Layers menu and
+   * returns results for feature types that are currently toggled off on the
+   * map. When false (default), the search corpus is intersected with what the
+   * map draws. Invalid values fall back to false.
+   */
+  searchIncludeHidden: z.boolean().default(CHART_DEFAULTS.searchIncludeHidden).catch(false),
   /**
    * Currently inspected entity, encoded as `{type}:{id}` (e.g. `airport:BOS`,
    * `navaid:BOS`, `airway:V16`, `airspace:CLASS_B/JFK`). Absent when no entity

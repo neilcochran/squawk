@@ -175,6 +175,10 @@ function makePrev(overrides: Partial<ChartSearch> = {}): ChartSearch {
     layers: [...LAYER_IDS],
     airspaceClasses: [...AIRSPACE_CLASSES],
     airwayCategories: [...AIRWAY_CATEGORIES],
+    searchLayers: [...LAYER_IDS],
+    searchAirspaceClasses: [...AIRSPACE_CLASSES],
+    searchAirwayCategories: [...AIRWAY_CATEGORIES],
+    searchIncludeHidden: false,
     ...overrides,
   };
 }
