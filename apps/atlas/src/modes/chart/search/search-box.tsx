@@ -225,7 +225,7 @@ export function SearchBox({ onSelectResult }: SearchBoxProps): ReactElement {
           aria-label="Search chart features"
           autoComplete="off"
           spellCheck={false}
-          placeholder="Search airports, navaids, fixes..."
+          placeholder="Search"
           value={query}
           onChange={(event): void => setQuery(event.target.value)}
           onFocus={(): void => setFocused(true)}

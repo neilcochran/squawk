@@ -46,9 +46,15 @@ const INSPECTOR_MOBILE_HEIGHT_FRACTION = 0.6;
  * inspector is a bottom sheet so the offset shifts upward (`y`
  * non-zero) instead. Read at the time of pan so the camera follows
  * resize / orientation changes without cached stale geometry.
+ *
+ * When the inspector is minimized it collapses to a header-only bar
+ * (a small top-right box on desktop, a thin bottom strip on mobile)
+ * that covers too little of the map to compensate for, so the footprint
+ * is zero on both axes and the camera treats the whole canvas as usable.
+ * `minimized` defaults to `false`, the full expanded footprint.
  */
-function getInspectorOcclusionPx(): { x: number; y: number } {
-  if (typeof window === 'undefined') {
+function getInspectorOcclusionPx(minimized = false): { x: number; y: number } {
+  if (minimized || typeof window === 'undefined') {
     return { x: 0, y: 0 };
   }
   if (window.innerWidth >= INSPECTOR_DESKTOP_BREAKPOINT_PX) {
@@ -111,6 +117,13 @@ export interface UseChipHoverPanArgs {
    * recenter handler to pan the camera to the entity's centroid.
    */
   state: ResolvedEntityState;
+  /**
+   * Whether the inspector is currently minimized. When true the panel
+   * collapses to its header, so the pan and recenter math drops the
+   * inspector's occlusion footprint and treats the whole canvas as
+   * usable.
+   */
+  minimized: boolean;
 }
 
 /**
@@ -180,7 +193,7 @@ export interface UseChipHoverPanResult {
  * highlight override, mirroring the original behavior.
  */
 export function useChipHoverPan(args: UseChipHoverPanArgs): UseChipHoverPanResult {
-  const { selected, mapRef, datasets, viewportBounds, state } = args;
+  const { selected, mapRef, datasets, viewportBounds, state, minimized } = args;
   const setHoveredChipSelection = useSetHoveredChipSelection();
 
   // Pre-pan center captured the first time a chip-hover triggers a
@@ -260,7 +273,7 @@ export function useChipHoverPan(args: UseChipHoverPanArgs): UseChipHoverPanResul
       if (target === undefined) {
         return;
       }
-      if (!isPointOutsideComfortableArea(target, map)) {
+      if (!isPointOutsideComfortableArea(target, map, minimized)) {
         return;
       }
       // Functional update keeps any existing snapshot; only the first
@@ -270,9 +283,9 @@ export function useChipHoverPan(args: UseChipHoverPanArgs): UseChipHoverPanResul
         const c = map.getCenter();
         prePanCenterRef.current = { lng: c.lng, lat: c.lat };
       }
-      panToFeatureWithInspectorOffset(target, map);
+      panToFeatureWithInspectorOffset(target, map, undefined, minimized);
     },
-    [setHoveredChipSelection, mapRef, datasets, viewportBounds],
+    [setHoveredChipSelection, mapRef, datasets, viewportBounds, minimized],
   );
 
   const handleRecenter = useCallback((): void => {
@@ -292,8 +305,8 @@ export function useChipHoverPan(args: UseChipHoverPanArgs): UseChipHoverPanResul
     // new view rather than restoring back to wherever the user was
     // before the recenter.
     resetSession();
-    panToFeatureWithInspectorOffset(target, map);
-  }, [state, mapRef, resetSession]);
+    panToFeatureWithInspectorOffset(target, map, undefined, minimized);
+  }, [state, mapRef, resetSession, minimized]);
 
   const handleChipCommit = useCallback(
     (selection: string): void => {
@@ -312,9 +325,9 @@ export function useChipHoverPan(args: UseChipHoverPanArgs): UseChipHoverPanResul
       if (target === undefined) {
         return;
       }
-      panToFeatureWithInspectorOffset(target, map);
+      panToFeatureWithInspectorOffset(target, map, undefined, minimized);
     },
-    [setHoveredChipSelection, resetSession, mapRef, datasets],
+    [setHoveredChipSelection, resetSession, mapRef, datasets, minimized],
   );
 
   const chipViewportBounds = hoverViewportFreeze ?? viewportBounds;
@@ -390,17 +403,20 @@ function chipCentroid(
  *
  * Features comfortably inside this area are skipped from panning so
  * the camera does not jolt for chip-hovers on already-visible
- * features.
+ * features. When `minimized` is true the inspector footprint drops to
+ * zero, so only the {@link PAN_EDGE_MARGIN_PX} buffer around the canvas
+ * edges still gates the pan. Defaults to `false`.
  */
 export function isPointOutsideComfortableArea(
   lngLat: { lng: number; lat: number },
   map: MaplibreMap,
+  minimized = false,
 ): boolean {
   const point = map.project([lngLat.lng, lngLat.lat]);
   const canvas = map.getCanvas();
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
-  const occlusion = getInspectorOcclusionPx();
+  const occlusion = getInspectorOcclusionPx(minimized);
   const usableRightEdge = w - occlusion.x - PAN_EDGE_MARGIN_PX;
   const usableBottomEdge = h - occlusion.y - PAN_EDGE_MARGIN_PX;
   return (
@@ -424,13 +440,17 @@ export function isPointOutsideComfortableArea(
  * preserves the current zoom. The chip-hover, commit, and recenter callers omit
  * it (they reframe a point without changing scale); the search box passes a
  * logical zoom so a pick from the CONUS overview lands close enough to be useful.
+ *
+ * When `minimized` is true the inspector footprint is zero, so the camera centers
+ * the target with no offset. Defaults to `false`.
  */
 export function panToFeatureWithInspectorOffset(
   lngLat: { lng: number; lat: number },
   map: MaplibreMap,
   zoom?: number,
+  minimized = false,
 ): void {
-  const occlusion = getInspectorOcclusionPx();
+  const occlusion = getInspectorOcclusionPx(minimized);
   // Guard against negative zero on the un-occluded axis: dividing 0 by
   // 2 and negating yields `-0`, which trips strict object-equality
   // assertions and is technically distinct from `+0` even though

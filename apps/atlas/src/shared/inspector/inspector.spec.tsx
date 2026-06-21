@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
 
@@ -216,6 +216,10 @@ describe('EntityInspector', () => {
     // the viewport filter. Tests that exercise the bbox path can override
     // this per-test if needed.
     useMapMock.mockReturnValue({});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   const airportResolution: ResolvedEntityState = {
@@ -913,5 +917,150 @@ describe('EntityInspector', () => {
       search: expect.any(Function),
       replace: true,
     });
+  });
+
+  it('exposes both a desktop button and a mobile grab handle to toggle minimize', () => {
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    render(<EntityInspector />);
+    // The desktop header chevron and the mobile sheet grab handle share
+    // the same accessible label; CSS (not exercised in jsdom) hides
+    // whichever does not match the breakpoint, so both are in the DOM.
+    expect(screen.getAllByRole('button', { name: /minimize inspector/i })).toHaveLength(2);
+  });
+
+  it('collapses the panel and relabels the controls when minimize is clicked', () => {
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    render(<EntityInspector />);
+
+    const aside = screen.getByRole('complementary', { name: /entity inspector/i });
+    expect(aside).not.toHaveClass('md:bottom-auto');
+
+    const [minimizeButton] = screen.getAllByRole('button', { name: /minimize inspector/i });
+    if (minimizeButton === undefined) {
+      throw new Error('expected a minimize control to be rendered');
+    }
+    fireEvent.click(minimizeButton);
+
+    // Collapsing drops the desktop bottom anchor and flips both controls
+    // to the expand affordance.
+    expect(aside).toHaveClass('md:bottom-auto');
+    expect(screen.queryByRole('button', { name: /minimize inspector/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /expand inspector/i }).length).toBeGreaterThan(0);
+  });
+
+  it('re-expands when the expand control is clicked', () => {
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    render(<EntityInspector />);
+
+    const aside = screen.getByRole('complementary', { name: /entity inspector/i });
+    const [minimizeButton] = screen.getAllByRole('button', { name: /minimize inspector/i });
+    if (minimizeButton === undefined) {
+      throw new Error('expected a minimize control to be rendered');
+    }
+    fireEvent.click(minimizeButton);
+    expect(aside).toHaveClass('md:bottom-auto');
+
+    const [expandButton] = screen.getAllByRole('button', { name: /expand inspector/i });
+    if (expandButton === undefined) {
+      throw new Error('expected an expand control to be rendered');
+    }
+    fireEvent.click(expandButton);
+    expect(aside).not.toHaveClass('md:bottom-auto');
+    expect(screen.getAllByRole('button', { name: /minimize inspector/i }).length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('auto-restores to expanded when the selection changes while minimized', () => {
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({
+      'airport:BOS': airportResolution,
+      'navaid:BOS': navaidResolution,
+    });
+    const { rerender } = render(<EntityInspector />);
+
+    const [minimizeButton] = screen.getAllByRole('button', { name: /minimize inspector/i });
+    if (minimizeButton === undefined) {
+      throw new Error('expected a minimize control to be rendered');
+    }
+    fireEvent.click(minimizeButton);
+    expect(screen.getByRole('complementary', { name: /entity inspector/i })).toHaveClass(
+      'md:bottom-auto',
+    );
+
+    // Selecting a different feature is an explicit "show me this", so the
+    // panel reopens even though the user had collapsed it.
+    useSearchMock.mockReturnValue(search({ selected: 'navaid:BOS' }));
+    rerender(<EntityInspector />);
+
+    expect(screen.getByRole('complementary', { name: /entity inspector/i })).not.toHaveClass(
+      'md:bottom-auto',
+    );
+  });
+
+  it('publishes the sheet occlusion and animation timing as custom properties for the map controls', () => {
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    render(<EntityInspector />);
+
+    // The zoom/tilt controls read these off documentElement to lift above
+    // the mobile bottom sheet. jsdom has no layout, so the measured
+    // occlusion is zero; the timing var reflects the no-drag (snap) state.
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue('--atlas-inspector-anim')).toBe('200ms');
+    expect(root.style.getPropertyValue('--atlas-inspector-occlusion')).toBe('0px');
+  });
+
+  it('toggles minimize from the desktop header chevron', () => {
+    // The grab handle (index 0) routes its click through the drag hook;
+    // the desktop header chevron (index 1) calls the inspector's own
+    // toggle. Clicking the chevron covers that non-drag minimize path.
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    render(<EntityInspector />);
+
+    const aside = screen.getByRole('complementary', { name: /entity inspector/i });
+    expect(aside).not.toHaveClass('md:bottom-auto');
+
+    const chevron = screen.getAllByRole('button', { name: /minimize inspector/i })[1];
+    if (chevron === undefined) {
+      throw new Error('expected the desktop header chevron to be rendered');
+    }
+    fireEvent.click(chevron);
+
+    expect(aside).toHaveClass('md:bottom-auto');
+    expect(screen.getAllByRole('button', { name: /expand inspector/i }).length).toBeGreaterThan(0);
+  });
+
+  it('observes the sheet geometry via ResizeObserver and disconnects on unmount', () => {
+    // jsdom has no ResizeObserver, so the measure effect normally
+    // early-returns. Stubbing it lets the inspector wire up the observer:
+    // it measures the peek wrapper and the aside up front, then
+    // disconnects when the panel unmounts.
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    class FakeResizeObserver {
+      observe = observe;
+      disconnect = disconnect;
+      callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+    }
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    const { unmount } = render(<EntityInspector />);
+
+    // Both the peek wrapper and the aside are observed so any height
+    // change re-runs the measure.
+    expect(observe).toHaveBeenCalledTimes(2);
+
+    unmount();
+    expect(disconnect).toHaveBeenCalledTimes(1);
   });
 });

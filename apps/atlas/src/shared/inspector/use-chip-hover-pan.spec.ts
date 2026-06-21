@@ -111,6 +111,38 @@ describe('isPointOutsideComfortableArea (mobile)', () => {
   });
 });
 
+describe('isPointOutsideComfortableArea (minimized)', () => {
+  it('treats a right-edge-occluded point as comfortable once minimized on desktop', () => {
+    // x=700 sits inside the 360 px right overlay strip (usable right edge
+    // 1024-360-50=614) but clear of the bare base margin once the overlay
+    // collapses (usable right edge 1024-0-50=974).
+    const map = buildFakeMap(1024, 768, () => ({ x: 700, y: 100 }));
+    expect(isPointOutsideComfortableArea({ lng: 0, lat: 0 }, map as unknown as MaplibreMap)).toBe(
+      true,
+    );
+    expect(
+      isPointOutsideComfortableArea({ lng: 0, lat: 0 }, map as unknown as MaplibreMap, true),
+    ).toBe(false);
+  });
+
+  it('treats a bottom-sheet-occluded point as comfortable once minimized on mobile', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 600,
+    });
+    // y=500 is under the 60vh sheet (usable bottom 1000-600-50=350) but
+    // clear once the sheet collapses (usable bottom 1000-0-50=950).
+    const map = buildFakeMap(600, 1000, () => ({ x: 300, y: 500 }));
+    expect(isPointOutsideComfortableArea({ lng: 0, lat: 0 }, map as unknown as MaplibreMap)).toBe(
+      true,
+    );
+    expect(
+      isPointOutsideComfortableArea({ lng: 0, lat: 0 }, map as unknown as MaplibreMap, true),
+    ).toBe(false);
+  });
+});
+
 describe('panToFeatureWithInspectorOffset', () => {
   it('eases to the target with negative-x offset on desktop', () => {
     const map = buildFakeMap(1024, 768);
@@ -148,6 +180,37 @@ describe('panToFeatureWithInspectorOffset', () => {
     panToFeatureWithInspectorOffset({ lng: -73, lat: 40 }, map as unknown as MaplibreMap, 10);
     const args = map.easeTo.mock.calls[0]?.[0];
     expect(args.zoom).toBe(10);
+  });
+
+  it('centers with no offset when minimized on desktop', () => {
+    const map = buildFakeMap(1024, 768);
+    panToFeatureWithInspectorOffset(
+      { lng: -73, lat: 40 },
+      map as unknown as MaplibreMap,
+      undefined,
+      true,
+    );
+    const args = map.easeTo.mock.calls[0]?.[0];
+    expect(args.offset[0]).toBe(0);
+    expect(args.offset[1]).toBe(0);
+  });
+
+  it('centers with no offset when minimized on mobile', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 600,
+    });
+    const map = buildFakeMap(600, 1000);
+    panToFeatureWithInspectorOffset(
+      { lng: -73, lat: 40 },
+      map as unknown as MaplibreMap,
+      undefined,
+      true,
+    );
+    const args = map.easeTo.mock.calls[0]?.[0];
+    expect(args.offset[0]).toBe(0);
+    expect(args.offset[1]).toBe(0);
   });
 });
 
