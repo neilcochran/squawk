@@ -53,6 +53,42 @@ export function registerNavaidTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'get_navaid_by_ident_at_position',
+    {
+      title: 'Get navaid by identifier nearest a position',
+      description:
+        'Looks up the single US navaid sharing the given identifier that lies nearest to a geographic position. Multiple navaids can publish the same identifier (a co-located NDB and VOR/DME, or two distant stations reusing a code); this disambiguates them by proximity to a known point such as a map-click location or an adjacent route waypoint. When toleranceNm is provided, matches farther than that distance are excluded and the result is null; when omitted, the nearest match wins regardless of distance. Returns null when no navaid carries the identifier.',
+      inputSchema: {
+        ident: z.string().min(1).describe('Navaid identifier (case-insensitive).'),
+        lat: z
+          .number()
+          .min(-90)
+          .max(90)
+          .describe('Latitude of the reference position in decimal degrees (WGS84).'),
+        lon: z
+          .number()
+          .min(-180)
+          .max(180)
+          .describe('Longitude of the reference position in decimal degrees (WGS84).'),
+        toleranceNm: z
+          .number()
+          .positive()
+          .optional()
+          .describe(
+            'Maximum great-circle distance in nautical miles. Omit to let the nearest match win regardless of distance.',
+          ),
+      },
+    },
+    ({ ident, lat, lon, toleranceNm }) => {
+      const navaid = navaidResolver.byIdentAtPosition(ident, lat, lon, toleranceNm) ?? null;
+      return {
+        content: [{ type: 'text', text: JSON.stringify(navaid, null, 2) }],
+        structuredContent: { navaid },
+      };
+    },
+  );
+
+  server.registerTool(
     'find_navaids_by_frequency',
     {
       title: 'Find navaids by frequency',

@@ -14,6 +14,7 @@ export function createFixResolver(options: FixResolverOptions): FixResolver;
 // @public
 export interface FixResolver {
     byIdent(ident: string): Fix[];
+    byIdentAtPosition(ident: string, lat: number, lon: number, toleranceNm?: number): Fix | undefined;
     nearest(query: NearestFixQuery): NearestFixResult[];
     search(query: FixSearchQuery): FixSearchResult[];
 }

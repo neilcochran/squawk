@@ -263,20 +263,22 @@ directly.
 
 ### Navaids (`@squawk/navaids` + `@squawk/navaid-data`)
 
-| Tool                        | Purpose                                         |
-| --------------------------- | ----------------------------------------------- |
-| `get_navaid_by_ident`       | Look up navaids by identifier                   |
-| `find_navaids_by_frequency` | Find navaids tuned to a given MHz/kHz frequency |
-| `find_nearest_navaids`      | Find navaids nearest a position                 |
-| `search_navaids`            | Fuzzy search by name or identifier              |
+| Tool                              | Purpose                                                  |
+| --------------------------------- | -------------------------------------------------------- |
+| `get_navaid_by_ident`             | Look up navaids by identifier                            |
+| `get_navaid_by_ident_at_position` | Look up the navaid sharing an identifier nearest a point |
+| `find_navaids_by_frequency`       | Find navaids tuned to a given MHz/kHz frequency          |
+| `find_nearest_navaids`            | Find navaids nearest a position                          |
+| `search_navaids`                  | Fuzzy search by name or identifier                       |
 
 ### Fixes (`@squawk/fixes` + `@squawk/fix-data`)
 
-| Tool                 | Purpose                       |
-| -------------------- | ----------------------------- |
-| `get_fix_by_ident`   | Look up fixes by identifier   |
-| `find_nearest_fixes` | Find fixes nearest a position |
-| `search_fixes`       | Fuzzy search by identifier    |
+| Tool                           | Purpose                                               |
+| ------------------------------ | ----------------------------------------------------- |
+| `get_fix_by_ident`             | Look up fixes by identifier                           |
+| `get_fix_by_ident_at_position` | Look up the fix sharing an identifier nearest a point |
+| `find_nearest_fixes`           | Find fixes nearest a position                         |
+| `search_fixes`                 | Fuzzy search by identifier                            |
 
 ### Airways (`@squawk/airways` + `@squawk/airway-data`)
 

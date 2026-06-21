@@ -51,11 +51,13 @@ const EXPECTED_TOOLS: readonly string[] = [
   'search_airspace',
   // navaids
   'get_navaid_by_ident',
+  'get_navaid_by_ident_at_position',
   'find_navaids_by_frequency',
   'find_nearest_navaids',
   'search_navaids',
   // fixes
   'get_fix_by_ident',
+  'get_fix_by_ident_at_position',
   'find_nearest_fixes',
   'search_fixes',
   // airways
