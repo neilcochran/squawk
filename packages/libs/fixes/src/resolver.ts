@@ -100,12 +100,7 @@ export interface FixResolver {
    * @param toleranceNm - Optional maximum great-circle distance in nautical miles. When omitted, the nearest match wins regardless of distance.
    * @returns The nearest matching fix, or `undefined` when none match or none fall within `toleranceNm`.
    */
-  byIdentAtPosition(
-    ident: string,
-    lat: number,
-    lon: number,
-    toleranceNm?: number,
-  ): Fix | undefined;
+  byIdentAtPosition(ident: string, lat: number, lon: number, toleranceNm?: number): Fix | undefined;
 
   /**
    * Finds fixes nearest to a geographic position, sorted by distance.

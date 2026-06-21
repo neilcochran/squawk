@@ -85,10 +85,7 @@ describe('byIdentAtPosition', () => {
 
     const nearEast = local.byIdentAtPosition('DUPE', 40.5, -74.5);
     const nearWest = local.byIdentAtPosition('DUPE', 33.5, -117.5);
-    assert(
-      nearEast !== undefined && nearWest !== undefined,
-      'expected a match near each position',
-    );
+    assert(nearEast !== undefined && nearWest !== undefined, 'expected a match near each position');
     expect(nearEast.lat).toBe(east.lat);
     expect(nearEast.lon).toBe(east.lon);
     expect(nearWest.lat).toBe(west.lat);
@@ -100,10 +97,7 @@ describe('byIdentAtPosition', () => {
     assert(match !== undefined, 'expected a MERIT fix');
     const upper = resolver.byIdentAtPosition('MERIT', match.lat, match.lon);
     const lower = resolver.byIdentAtPosition('merit', match.lat, match.lon);
-    assert(
-      upper !== undefined && lower !== undefined,
-      'expected case-insensitive MERIT match',
-    );
+    assert(upper !== undefined && lower !== undefined, 'expected case-insensitive MERIT match');
     expect(lower.identifier).toBe('MERIT');
   });
 
