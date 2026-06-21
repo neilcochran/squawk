@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
 
@@ -216,6 +216,10 @@ describe('EntityInspector', () => {
     // the viewport filter. Tests that exercise the bbox path can override
     // this per-test if needed.
     useMapMock.mockReturnValue({});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   const airportResolution: ResolvedEntityState = {
@@ -1008,5 +1012,55 @@ describe('EntityInspector', () => {
     const root = document.documentElement;
     expect(root.style.getPropertyValue('--atlas-inspector-anim')).toBe('200ms');
     expect(root.style.getPropertyValue('--atlas-inspector-occlusion')).toBe('0px');
+  });
+
+  it('toggles minimize from the desktop header chevron', () => {
+    // The grab handle (index 0) routes its click through the drag hook;
+    // the desktop header chevron (index 1) calls the inspector's own
+    // toggle. Clicking the chevron covers that non-drag minimize path.
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    render(<EntityInspector />);
+
+    const aside = screen.getByRole('complementary', { name: /entity inspector/i });
+    expect(aside).not.toHaveClass('md:bottom-auto');
+
+    const chevron = screen.getAllByRole('button', { name: /minimize inspector/i })[1];
+    if (chevron === undefined) {
+      throw new Error('expected the desktop header chevron to be rendered');
+    }
+    fireEvent.click(chevron);
+
+    expect(aside).toHaveClass('md:bottom-auto');
+    expect(screen.getAllByRole('button', { name: /expand inspector/i }).length).toBeGreaterThan(0);
+  });
+
+  it('observes the sheet geometry via ResizeObserver and disconnects on unmount', () => {
+    // jsdom has no ResizeObserver, so the measure effect normally
+    // early-returns. Stubbing it lets the inspector wire up the observer:
+    // it measures the peek wrapper and the aside up front, then
+    // disconnects when the panel unmounts.
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    class FakeResizeObserver {
+      observe = observe;
+      disconnect = disconnect;
+      callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+    }
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    const { unmount } = render(<EntityInspector />);
+
+    // Both the peek wrapper and the aside are observed so any height
+    // change re-runs the measure.
+    expect(observe).toHaveBeenCalledTimes(2);
+
+    unmount();
+    expect(disconnect).toHaveBeenCalledTimes(1);
   });
 });
