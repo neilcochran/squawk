@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { MapControlButton } from '../ui/map-control-button.tsx';
 
 import type { ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
-import { CloseIcon, RecenterIcon } from './inspector-icons.tsx';
+import { ChevronDownIcon, CloseIcon, RecenterIcon } from './inspector-icons.tsx';
 
 /**
  * Props for {@link InspectorHeader}.
@@ -19,22 +19,38 @@ export interface InspectorHeaderProps {
    * nothing to recenter on, so the button is hidden).
    */
   onRecenter?: () => void;
+  /**
+   * Whether the inspector is currently minimized. Drives the minimize
+   * button's chevron direction and its accessible label.
+   */
+  minimized: boolean;
+  /**
+   * Toggles the minimized state. Wired to the desktop minimize button in
+   * the header; touch layouts use the sheet's drag handle instead.
+   */
+  onToggleMinimized: () => void;
 }
 
 /**
- * Sticky header at the top of the inspector panel. Shows a one-line
- * summary on the left (entity type + identifier or status), and on
- * the right a recenter button (when applicable) and a close button.
- * The recenter button is only rendered when an `onRecenter` handler
- * is supplied, which the inspector ties to the resolved-entity state.
+ * Header at the top of the inspector panel. Shows a one-line summary on
+ * the left (entity type + identifier or status), and on the right a
+ * recenter button (when applicable), a minimize button, and a close
+ * button. The recenter button is only rendered when an `onRecenter`
+ * handler is supplied, which the inspector ties to the resolved-entity
+ * state. The minimize button is desktop-only (`md` and up); on touch
+ * layouts the bottom sheet exposes a drag handle instead. Stickiness is
+ * owned by the peek wrapper around this header in the inspector, not by
+ * the header element here.
  */
 export function InspectorHeader({
   state,
   onClose,
   onRecenter,
+  minimized,
+  onToggleMinimized,
 }: InspectorHeaderProps): ReactElement {
   return (
-    <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+    <header className="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
       <HeaderText state={state} />
       <div className="flex shrink-0 items-center gap-1">
         {onRecenter === undefined ? null : (
@@ -46,6 +62,16 @@ export function InspectorHeader({
             <RecenterIcon />
           </MapControlButton>
         )}
+        <span className="hidden md:contents">
+          <MapControlButton
+            onClick={onToggleMinimized}
+            aria-label={minimized ? 'Expand inspector' : 'Minimize inspector'}
+            aria-expanded={!minimized}
+            title={minimized ? 'Expand inspector' : 'Minimize inspector'}
+          >
+            <ChevronDownIcon expanded={minimized} />
+          </MapControlButton>
+        </span>
         <MapControlButton onClick={onClose} aria-label="Close inspector">
           <CloseIcon />
         </MapControlButton>

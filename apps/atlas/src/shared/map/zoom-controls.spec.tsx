@@ -79,6 +79,19 @@ describe('ZoomControls', () => {
     expect(screen.getByRole('button', { name: /tilt down/i })).toBeInTheDocument();
   });
 
+  it('lifts above the mobile inspector sheet by offsetting bottom with the occlusion variable', () => {
+    // The bottom-sheet inspector publishes --atlas-inspector-occlusion; the
+    // control stack sits a small gap above it on mobile (clamped to the
+    // attribution-clearance floor so it never drops onto the attribution
+    // when no sheet is open) and resets to a fixed offset at the md
+    // breakpoint, where the inspector is a right-edge panel and the
+    // bottom-left corner is already clear.
+    render(<ZoomControls />);
+    const panel = screen.getByRole('status').parentElement;
+    expect(panel).toHaveClass('bottom-[max(2.5rem,var(--atlas-inspector-occlusion)_+_0.5rem)]');
+    expect(panel).toHaveClass('md:bottom-10');
+  });
+
   it('renders the current zoom as a readout chip with an aria-label', () => {
     // The chip pairs with the layer-toggle dropdown's "Zoom N+" hint, so
     // it shares the same numeric language. Integer zooms drop the

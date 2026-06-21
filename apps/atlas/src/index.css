@@ -28,6 +28,21 @@
   --spacing-inspector: 22.5rem;
 }
 
+/*
+ * Live geometry the mobile bottom-sheet inspector publishes for overlay
+ * map controls to react to. The inspector overwrites these on
+ * documentElement while it is open (see EntityInspector); the defaults
+ * here keep the controls correctly placed before it mounts and after it
+ * closes. `--atlas-inspector-occlusion` is how many pixels the sheet
+ * covers up from the viewport bottom; `--atlas-inspector-anim` is the
+ * bottom-transition duration (0ms while the sheet is dragged so controls
+ * track the finger, 200ms for the snap).
+ */
+:root {
+  --atlas-inspector-occlusion: 0px;
+  --atlas-inspector-anim: 200ms;
+}
+
 html,
 body,
 #root {
