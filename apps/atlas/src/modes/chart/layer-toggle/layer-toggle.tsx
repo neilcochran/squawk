@@ -9,9 +9,11 @@ import {
 } from '../../../shared/styles/style-tokens.ts';
 import { MenuItemRow } from '../../../shared/ui/menu-item-row.tsx';
 import { useAirspace3DAutoHidePreference } from '../airspace-3d/airspace-3d-preference.ts';
+import { isDefaultLayers } from '../chart-filter-defaults.ts';
 import {
   AIRSPACE_CLASSES,
   AIRWAY_CATEGORIES,
+  CHART_DEFAULTS,
   CHART_ROUTE_PATH,
   LAYER_IDS,
   LAYER_MIN_ZOOM,
@@ -183,6 +185,23 @@ export function LayerToggle(): ReactElement {
     [airwayCategories, layers, navigate],
   );
 
+  // Reset only the Layers-menu URL fields back to their defaults. Leaves the
+  // search-filter fields and the persisted 3D auto-hide preference untouched so
+  // the two menus stay orthogonal.
+  const handleReset = useCallback((): void => {
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        layers: [...CHART_DEFAULTS.layers],
+        airspaceClasses: [...CHART_DEFAULTS.airspaceClasses],
+        airwayCategories: [...CHART_DEFAULTS.airwayCategories],
+      }),
+      replace: true,
+    });
+  }, [navigate]);
+
+  const atDefault = isDefaultLayers({ layers, airspaceClasses, airwayCategories });
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
@@ -275,6 +294,24 @@ export function LayerToggle(): ReactElement {
             </span>
             <span className="flex-1">Auto-hide Class E, Warning, ARTCC in 3D</span>
           </MenuItemRow>
+          {/*
+            Reset action at the very bottom behind its own separator. Disabled
+            (rendered inert and muted) while the menu already matches its
+            defaults, so the affordance stays discoverable without implying
+            there is anything to undo. `preventDefault` keeps the menu open on
+            reset so the user watches the rows flip back.
+          */}
+          <DropdownMenu.Separator className="my-1 h-px bg-slate-200 dark:bg-slate-700" />
+          <DropdownMenu.Item
+            disabled={atDefault}
+            onSelect={(event) => {
+              event.preventDefault();
+              handleReset();
+            }}
+            className="flex cursor-default items-center rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[disabled]:text-slate-400 data-[disabled]:opacity-60 md:py-1.5 dark:text-slate-200 dark:data-[highlighted]:bg-slate-800 dark:data-[disabled]:text-slate-500"
+          >
+            Reset to defaults
+          </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

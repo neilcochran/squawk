@@ -2,7 +2,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, LAYER_IDS } from '../url-state.ts';
+import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_DEFAULTS, LAYER_IDS } from '../url-state.ts';
 import type { ChartSearch } from '../url-state.ts';
 
 import { SearchFilterMenu } from './search-filter-menu.tsx';
@@ -114,10 +114,45 @@ vi.mock('@radix-ui/react-dropdown-menu', () => {
   function ItemIndicator({ children }: { children: ReactNode }): ReactNode {
     return <span>{children}</span>;
   }
+  function Item({
+    children,
+    onSelect,
+    disabled,
+    className,
+  }: {
+    children: ReactNode;
+    onSelect?: (event: { preventDefault: () => void }) => void;
+    disabled?: boolean;
+    className?: string;
+  }): ReactNode {
+    const activate = (): void => {
+      if (disabled === true) {
+        return;
+      }
+      onSelect?.({ preventDefault: () => undefined });
+    };
+    return (
+      <div
+        role="menuitem"
+        aria-disabled={disabled === true ? true : undefined}
+        tabIndex={disabled === true ? -1 : 0}
+        className={className}
+        onClick={activate}
+        onKeyDown={(event) => {
+          if (event.key === ' ' || event.key === 'Enter') {
+            event.preventDefault();
+            activate();
+          }
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
   function Separator({ className }: { className?: string }): ReactNode {
     return <div role="separator" className={className} />;
   }
-  return { Root, Trigger, Portal, Content, CheckboxItem, ItemIndicator, Separator };
+  return { Root, Trigger, Portal, Content, CheckboxItem, ItemIndicator, Item, Separator };
 });
 
 /**
@@ -529,6 +564,67 @@ describe('SearchFilterMenu', () => {
       expect(navigateMock).toHaveBeenCalledTimes(1);
       const next = applyLatestSearchUpdate(makePrev());
       expect(next.searchLayers).toEqual(['airports', 'fixes', 'airways', 'airspace']);
+    });
+  });
+
+  describe('reset to defaults', () => {
+    /** Resolves the reset action row. */
+    function getResetRow(): HTMLElement {
+      return screen.getByRole('menuitem', { name: /reset to defaults/i });
+    }
+
+    it('disables the reset row and ignores clicks when the filter is already at defaults', () => {
+      // The all-on `makeSearch()` default (every layer and class searchable,
+      // ARTCC included, include-hidden off) is exactly the search-filter default.
+      render(<SearchFilterMenu />);
+
+      const reset = getResetRow();
+      expect(reset).toHaveAttribute('aria-disabled', 'true');
+
+      fireEvent.click(reset);
+      expect(navigateMock).not.toHaveBeenCalled();
+    });
+
+    it('enables the reset row when the searchable layer set is narrowed', () => {
+      useSearchMock.mockReturnValue(makeSearch({ searchLayers: ['airports'] }));
+      render(<SearchFilterMenu />);
+
+      expect(getResetRow()).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('enables the reset row when include-hidden is on', () => {
+      useSearchMock.mockReturnValue(makeSearch({ searchIncludeHidden: true }));
+      render(<SearchFilterMenu />);
+
+      expect(getResetRow()).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('restores the search fields to defaults and leaves Layers fields untouched', () => {
+      useSearchMock.mockReturnValue(
+        makeSearch({
+          searchLayers: ['airports'],
+          searchAirspaceClasses: ['CLASS_B'],
+          searchAirwayCategories: ['LOW'],
+          searchIncludeHidden: true,
+        }),
+      );
+      render(<SearchFilterMenu />);
+      fireEvent.click(getResetRow());
+
+      expect(navigateMock).toHaveBeenCalledTimes(1);
+      const next = applyLatestSearchUpdate(
+        makePrev({ layers: ['navaids'], airspaceClasses: ['CLASS_C'], airwayCategories: ['HIGH'] }),
+      );
+
+      expect(next.searchLayers).toEqual([...CHART_DEFAULTS.searchLayers]);
+      expect(next.searchAirspaceClasses).toEqual([...CHART_DEFAULTS.searchAirspaceClasses]);
+      expect(next.searchAirwayCategories).toEqual([...CHART_DEFAULTS.searchAirwayCategories]);
+      expect(next.searchIncludeHidden).toBe(false);
+      // The reset only writes search-filter fields; Layers-menu fields pass
+      // through from `prev` unchanged.
+      expect(next.layers).toEqual(['navaids']);
+      expect(next.airspaceClasses).toEqual(['CLASS_C']);
+      expect(next.airwayCategories).toEqual(['HIGH']);
     });
   });
 });

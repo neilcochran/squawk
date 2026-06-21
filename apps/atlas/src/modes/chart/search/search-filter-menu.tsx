@@ -8,6 +8,7 @@ import {
   FOCUS_RING_CLASSES,
 } from '../../../shared/styles/style-tokens.ts';
 import { MenuItemRow } from '../../../shared/ui/menu-item-row.tsx';
+import { isDefaultSearchFilter } from '../chart-filter-defaults.ts';
 import {
   AIRSPACE_CLASS_OPTIONS,
   AIRWAY_CATEGORY_OPTIONS,
@@ -20,7 +21,13 @@ import {
   SimpleParentRow,
   SubRow,
 } from '../layer-toggle/layer-toggle-rows.tsx';
-import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_ROUTE_PATH, LAYER_IDS } from '../url-state.ts';
+import {
+  AIRSPACE_CLASSES,
+  AIRWAY_CATEGORIES,
+  CHART_DEFAULTS,
+  CHART_ROUTE_PATH,
+  LAYER_IDS,
+} from '../url-state.ts';
 import type { AirspaceClass, AirwayCategory, LayerId } from '../url-state.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
@@ -205,6 +212,23 @@ export function SearchFilterMenu(): ReactElement {
     [searchAirwayCategories, searchLayers, navigate],
   );
 
+  // Reset only the search-filter URL fields back to their defaults: every layer
+  // and sub-class searchable (the search default includes ARTCC, unlike the
+  // Layers-menu default) and include-hidden off. Leaves the Layers-menu fields
+  // untouched so the two menus stay orthogonal.
+  const handleReset = useCallback((): void => {
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        searchLayers: [...CHART_DEFAULTS.searchLayers],
+        searchAirspaceClasses: [...CHART_DEFAULTS.searchAirspaceClasses],
+        searchAirwayCategories: [...CHART_DEFAULTS.searchAirwayCategories],
+        searchIncludeHidden: CHART_DEFAULTS.searchIncludeHidden,
+      }),
+      replace: true,
+    });
+  }, [navigate]);
+
   // What the Layers menu currently draws, used to dim rows that have no effect
   // while hidden results are excluded. Mirrors computeLayerVisibility: a layer
   // draws nothing when it is off, and an expandable layer draws nothing when no
@@ -226,6 +250,13 @@ export function SearchFilterMenu(): ReactElement {
     searchLayers.length < LAYER_IDS.length ||
     searchAirspaceClasses.length < AIRSPACE_CLASSES.length ||
     searchAirwayCategories.length < AIRWAY_CATEGORIES.length;
+
+  const atDefault = isDefaultSearchFilter({
+    searchLayers,
+    searchAirspaceClasses,
+    searchAirwayCategories,
+    searchIncludeHidden,
+  });
 
   return (
     <DropdownMenu.Root>
@@ -332,6 +363,24 @@ export function SearchFilterMenu(): ReactElement {
               </Fragment>
             );
           })}
+          {/*
+            Reset action at the very bottom behind its own separator. Disabled
+            (rendered inert and muted) while the search filter already matches
+            its defaults, so the affordance stays discoverable without implying
+            there is anything to undo. `preventDefault` keeps the menu open on
+            reset so the user watches the rows flip back.
+          */}
+          <DropdownMenu.Separator className="my-1 h-px bg-slate-200 dark:bg-slate-700" />
+          <DropdownMenu.Item
+            disabled={atDefault}
+            onSelect={(event) => {
+              event.preventDefault();
+              handleReset();
+            }}
+            className="flex cursor-default items-center rounded px-2 py-2.5 text-sm text-slate-700 outline-none data-[highlighted]:bg-slate-100 data-[disabled]:text-slate-400 data-[disabled]:opacity-60 md:py-1.5 dark:text-slate-200 dark:data-[highlighted]:bg-slate-800 dark:data-[disabled]:text-slate-500"
+          >
+            Reset to defaults
+          </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

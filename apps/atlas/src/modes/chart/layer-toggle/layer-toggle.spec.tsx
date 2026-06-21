@@ -2,7 +2,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, LAYER_IDS } from '../url-state.ts';
+import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_DEFAULTS, LAYER_IDS } from '../url-state.ts';
 import type { ChartSearch } from '../url-state.ts';
 
 import { LayerToggle } from './layer-toggle.tsx';
@@ -105,19 +105,25 @@ vi.mock('@radix-ui/react-dropdown-menu', () => {
   function Item({
     children,
     onSelect,
+    disabled,
     className,
   }: {
     children: ReactNode;
     onSelect?: (event: { preventDefault: () => void }) => void;
+    disabled?: boolean;
     className?: string;
   }): ReactNode {
     const activate = (): void => {
+      if (disabled === true) {
+        return;
+      }
       onSelect?.({ preventDefault: () => undefined });
     };
     return (
       <div
         role="menuitem"
-        tabIndex={0}
+        aria-disabled={disabled === true ? true : undefined}
+        tabIndex={disabled === true ? -1 : 0}
         className={className}
         onClick={activate}
         onKeyDown={(event) => {
@@ -580,6 +586,80 @@ describe('LayerToggle', () => {
       expect(
         within(getParentRow('fixes')).getByLabelText('Appears at zoom 7 and above'),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('reset to defaults', () => {
+    /** Resolves the reset action row. */
+    function getResetRow(): HTMLElement {
+      return screen.getByRole('menuitem', { name: /reset to defaults/i });
+    }
+
+    it('disables the reset row and ignores clicks when the menu is already at defaults', () => {
+      // The Layers default omits ARTCC, so the all-on `makeSearch()` default is
+      // NOT at the menu default - pass the exact default airspace set instead.
+      useSearchMock.mockReturnValue(
+        makeSearch({ airspaceClasses: [...CHART_DEFAULTS.airspaceClasses] }),
+      );
+      render(<LayerToggle />);
+
+      const reset = getResetRow();
+      expect(reset).toHaveAttribute('aria-disabled', 'true');
+
+      fireEvent.click(reset);
+      expect(navigateMock).not.toHaveBeenCalled();
+    });
+
+    it('enables the reset row when a layer has been toggled off', () => {
+      useSearchMock.mockReturnValue(
+        makeSearch({
+          layers: ['airports'],
+          airspaceClasses: [...CHART_DEFAULTS.airspaceClasses],
+        }),
+      );
+      render(<LayerToggle />);
+
+      expect(getResetRow()).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('enables the reset row when ARTCC is on (the Layers default omits it)', () => {
+      // The all-on `makeSearch()` default keeps ARTCC enabled; since the Layers
+      // default drops ARTCC, this is a non-default state a length check misses.
+      render(<LayerToggle />);
+
+      expect(getResetRow()).not.toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('restores the Layers fields to defaults and leaves search fields untouched', () => {
+      useSearchMock.mockReturnValue(
+        makeSearch({
+          layers: ['airports'],
+          airspaceClasses: ['CLASS_B'],
+          airwayCategories: ['LOW'],
+        }),
+      );
+      render(<LayerToggle />);
+      fireEvent.click(getResetRow());
+
+      expect(navigateMock).toHaveBeenCalledTimes(1);
+      const next = applyLatestSearchUpdate(
+        makePrev({
+          searchLayers: ['navaids'],
+          searchAirspaceClasses: ['CLASS_C'],
+          searchAirwayCategories: ['HIGH'],
+          searchIncludeHidden: true,
+        }),
+      );
+
+      expect(next.layers).toEqual([...CHART_DEFAULTS.layers]);
+      expect(next.airspaceClasses).toEqual([...CHART_DEFAULTS.airspaceClasses]);
+      expect(next.airwayCategories).toEqual([...CHART_DEFAULTS.airwayCategories]);
+      // The reset only writes Layers-menu fields; search-filter fields pass
+      // through from `prev` unchanged.
+      expect(next.searchLayers).toEqual(['navaids']);
+      expect(next.searchAirspaceClasses).toEqual(['CLASS_C']);
+      expect(next.searchAirwayCategories).toEqual(['HIGH']);
+      expect(next.searchIncludeHidden).toBe(true);
     });
   });
 });
