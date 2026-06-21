@@ -77,6 +77,29 @@ Looks up navaids by identifier (e.g. "BOS", "JFK"). Multiple navaids can share
 the same identifier (e.g. an NDB and a VOR at different locations).
 Case-insensitive. Returns `Navaid[]`.
 
+### `resolver.byIdentAtPosition(ident, lat, lon, toleranceNm?)`
+
+Looks up the single navaid sharing the given identifier that lies nearest to a
+geographic position. Multiple navaids can publish the same identifier (a
+co-located NDB and VOR/DME, or two distant stations reusing a code); this
+disambiguates them by proximity to a known point such as a map-click location or
+an adjacent route waypoint.
+
+| Parameter     | Type   | Description                                                                                             |
+| ------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| `ident`       | string | Navaid identifier (case-insensitive)                                                                    |
+| `lat`         | number | Latitude of the reference position in decimal degrees (WGS84)                                           |
+| `lon`         | number | Longitude of the reference position in decimal degrees (WGS84)                                          |
+| `toleranceNm` | number | Optional. Maximum great-circle distance in nautical miles. Omit to let the nearest match win regardless |
+
+Returns the nearest matching `Navaid` by great-circle distance, or `undefined`
+when no navaid carries the identifier or none fall within `toleranceNm`.
+
+```typescript
+// Disambiguate a shared identifier against a map-click position
+const navaid = resolver.byIdentAtPosition('AA', 47.45, -122.31);
+```
+
 ### `resolver.byFrequency(query)`
 
 Finds navaids operating on a given frequency. For VOR-family navaids the

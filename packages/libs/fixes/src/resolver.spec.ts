@@ -55,6 +55,81 @@ describe('byIdent', () => {
   });
 });
 
+describe('byIdentAtPosition', () => {
+  /**
+   * Builds a minimal synthetic fix at a given position. US fix identifiers
+   * are unique within the bundled dataset, so a shared identifier across
+   * distinct positions has to be constructed to exercise nearest-wins
+   * disambiguation.
+   */
+  function makeFix(identifier: string, lat: number, lon: number): Fix {
+    return {
+      identifier,
+      icaoRegionCode: 'K1',
+      country: 'US',
+      lat,
+      lon,
+      useCode: 'RP',
+      pitch: false,
+      catch: false,
+      suaAtcaa: false,
+      chartTypes: [],
+      navaidAssociations: [],
+    };
+  }
+
+  it('returns the match nearest to the query position when an identifier is shared', () => {
+    const east = makeFix('DUPE', 40, -74);
+    const west = makeFix('DUPE', 34, -118);
+    const local = createFixResolver({ data: [east, west] });
+
+    const nearEast = local.byIdentAtPosition('DUPE', 40.5, -74.5);
+    const nearWest = local.byIdentAtPosition('DUPE', 33.5, -117.5);
+    assert(nearEast !== undefined && nearWest !== undefined, 'expected a match near each position');
+    expect(nearEast.lat).toBe(east.lat);
+    expect(nearEast.lon).toBe(east.lon);
+    expect(nearWest.lat).toBe(west.lat);
+    expect(nearWest.lon).toBe(west.lon);
+  });
+
+  it('is case-insensitive', () => {
+    const match = resolver.byIdent('MERIT')[0];
+    assert(match !== undefined, 'expected a MERIT fix');
+    const upper = resolver.byIdentAtPosition('MERIT', match.lat, match.lon);
+    const lower = resolver.byIdentAtPosition('merit', match.lat, match.lon);
+    assert(upper !== undefined && lower !== undefined, 'expected case-insensitive MERIT match');
+    expect(lower.identifier).toBe('MERIT');
+  });
+
+  it('returns undefined for an unknown identifier', () => {
+    expect(resolver.byIdentAtPosition('ZZZZZZZZZ', 0, 0)).toBeUndefined();
+  });
+
+  it('returns the nearest match regardless of distance when no tolerance is given', () => {
+    // Query from the mid-Pacific; the nearest MERIT record still wins.
+    const result = resolver.byIdentAtPosition('MERIT', 0, -160);
+    assert(result !== undefined, 'expected a match with no tolerance');
+    assert(
+      resolver.byIdent('MERIT').some((f) => f.lat === result.lat && f.lon === result.lon),
+      'result should be one of the MERIT records',
+    );
+  });
+
+  it('excludes matches beyond the tolerance', () => {
+    // Mid-Pacific query with a 5 nm tolerance: no MERIT record is that close.
+    expect(resolver.byIdentAtPosition('MERIT', 0, -160, 5)).toBeUndefined();
+  });
+
+  it('returns the match when it falls within the tolerance', () => {
+    const match = resolver.byIdent('MERIT')[0];
+    assert(match !== undefined, 'expected a MERIT fix');
+    const result = resolver.byIdentAtPosition('MERIT', match.lat, match.lon, 1);
+    assert(result !== undefined, 'expected a within-tolerance match');
+    expect(result.lat).toBe(match.lat);
+    expect(result.lon).toBe(match.lon);
+  });
+});
+
 describe('nearest', () => {
   it('finds fixes near a known position', () => {
     // Near JFK airport
@@ -175,6 +250,7 @@ describe('createFixResolver with empty dataset', () => {
   it('returns empty results for all lookups', () => {
     const empty = createFixResolver({ data: [] });
     expect(empty.byIdent('MERIT').length).toBe(0);
+    expect(empty.byIdentAtPosition('MERIT', 0, 0)).toBeUndefined();
     expect(empty.nearest({ lat: 0, lon: 0 }).length).toBe(0);
     expect(empty.search({ text: 'test' }).length).toBe(0);
   });

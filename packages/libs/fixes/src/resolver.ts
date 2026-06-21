@@ -82,6 +82,27 @@ export interface FixResolver {
   byIdent(ident: string): Fix[];
 
   /**
+   * Looks up the single fix sharing the given identifier that lies nearest
+   * to a geographic position. The same fix identifier can be published in
+   * more than one ICAO region; this disambiguates the collision by proximity
+   * to a known point such as a map-click location or an adjacent route
+   * waypoint.
+   *
+   * Returns the nearest matching fix by great-circle distance. When
+   * `toleranceNm` is provided, matches farther than that distance are
+   * excluded and the method returns `undefined` if none qualify. When
+   * `toleranceNm` is omitted, the nearest match is returned regardless of
+   * distance. Returns `undefined` when no fix carries the identifier.
+   *
+   * @param ident - Fix identifier (case-insensitive).
+   * @param lat - Latitude of the reference position in decimal degrees (WGS84).
+   * @param lon - Longitude of the reference position in decimal degrees (WGS84).
+   * @param toleranceNm - Optional maximum great-circle distance in nautical miles. When omitted, the nearest match wins regardless of distance.
+   * @returns The nearest matching fix, or `undefined` when none match or none fall within `toleranceNm`.
+   */
+  byIdentAtPosition(ident: string, lat: number, lon: number, toleranceNm?: number): Fix | undefined;
+
+  /**
    * Finds fixes nearest to a geographic position, sorted by distance.
    * Results are filtered by max distance and limited to the requested count.
    */
@@ -148,6 +169,33 @@ export function createFixResolver(options: FixResolverOptions): FixResolver {
   return {
     byIdent(ident: string): Fix[] {
       return byIdentMap.get(ident.toUpperCase()) ?? [];
+    },
+
+    byIdentAtPosition(
+      ident: string,
+      lat: number,
+      lon: number,
+      toleranceNm?: number,
+    ): Fix | undefined {
+      const matches = byIdentMap.get(ident.toUpperCase());
+      if (matches === undefined || matches.length === 0) {
+        return undefined;
+      }
+
+      let nearest: Fix | undefined;
+      let nearestDistNm = Infinity;
+      for (const fix of matches) {
+        const distNm = greatCircle.distanceNm(lat, lon, fix.lat, fix.lon);
+        if (distNm < nearestDistNm) {
+          nearest = fix;
+          nearestDistNm = distNm;
+        }
+      }
+
+      if (toleranceNm !== undefined && nearestDistNm > toleranceNm) {
+        return undefined;
+      }
+      return nearest;
     },
 
     nearest(query: NearestFixQuery): NearestFixResult[] {

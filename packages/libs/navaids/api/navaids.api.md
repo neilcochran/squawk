@@ -24,6 +24,7 @@ export interface NavaidFrequencyQuery {
 export interface NavaidResolver {
     byFrequency(query: NavaidFrequencyQuery): Navaid[];
     byIdent(ident: string): Navaid[];
+    byIdentAtPosition(ident: string, lat: number, lon: number, toleranceNm?: number): Navaid | undefined;
     byType(types: ReadonlySet<NavaidType>): Navaid[];
     nearest(query: NearestNavaidQuery): NearestNavaidResult[];
     search(query: NavaidSearchQuery): NavaidSearchResult[];

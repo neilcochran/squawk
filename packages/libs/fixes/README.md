@@ -71,6 +71,28 @@ Looks up fixes by identifier (e.g. "MERIT", "BOSCO"). Multiple fixes can share
 the same identifier in different ICAO regions. Case-insensitive.
 Returns `Fix[]`.
 
+### `resolver.byIdentAtPosition(ident, lat, lon, toleranceNm?)`
+
+Looks up the single fix sharing the given identifier that lies nearest to a
+geographic position. The same fix identifier can be published in more than one
+ICAO region; this disambiguates the collision by proximity to a known point such
+as a map-click location or an adjacent route waypoint.
+
+| Parameter     | Type   | Description                                                                                             |
+| ------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| `ident`       | string | Fix identifier (case-insensitive)                                                                       |
+| `lat`         | number | Latitude of the reference position in decimal degrees (WGS84)                                           |
+| `lon`         | number | Longitude of the reference position in decimal degrees (WGS84)                                          |
+| `toleranceNm` | number | Optional. Maximum great-circle distance in nautical miles. Omit to let the nearest match win regardless |
+
+Returns the nearest matching `Fix` by great-circle distance, or `undefined` when
+no fix carries the identifier or none fall within `toleranceNm`.
+
+```typescript
+// Disambiguate a shared identifier against an adjacent route waypoint
+const fix = resolver.byIdentAtPosition('BOSCO', 40.64, -73.78);
+```
+
 ### `resolver.nearest(query)`
 
 Finds fixes nearest to a geographic position, sorted by distance ascending.

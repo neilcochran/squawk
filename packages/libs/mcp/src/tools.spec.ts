@@ -997,6 +997,50 @@ describe('navaid tools', () => {
       await close();
     }
   });
+
+  it('get_navaid_by_ident_at_position returns the nearest matching navaid', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_navaid_by_ident_at_position',
+        arguments: { ident: 'ABI', lat: 32.481, lon: -99.863 },
+      });
+      const parsed = z
+        .object({ navaid: z.object({ identifier: z.string() }).passthrough() })
+        .parse(result.structuredContent);
+      expect(parsed.navaid.identifier).toBe('ABI');
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_navaid_by_ident_at_position returns null for an unknown identifier', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_navaid_by_ident_at_position',
+        arguments: { ident: 'ZZZZZ', lat: 0, lon: 0 },
+      });
+      const parsed = z.object({ navaid: z.null() }).parse(result.structuredContent);
+      expect(parsed.navaid).toBe(null);
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_navaid_by_ident_at_position excludes matches beyond toleranceNm', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_navaid_by_ident_at_position',
+        arguments: { ident: 'ABI', lat: 0, lon: -160, toleranceNm: 5 },
+      });
+      const parsed = z.object({ navaid: z.null() }).parse(result.structuredContent);
+      expect(parsed.navaid).toBe(null);
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('fix tools', () => {
@@ -1087,6 +1131,50 @@ describe('fix tools', () => {
       });
       const parsed = z.object({ fixes: z.array(z.unknown()) }).parse(result.structuredContent);
       assert(Array.isArray(parsed.fixes));
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_fix_by_ident_at_position returns the nearest matching fix', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_fix_by_ident_at_position',
+        arguments: { ident: 'MERIT', lat: 41, lon: -73 },
+      });
+      const parsed = z
+        .object({ fix: z.object({ identifier: z.string() }).passthrough() })
+        .parse(result.structuredContent);
+      expect(parsed.fix.identifier).toBe('MERIT');
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_fix_by_ident_at_position returns null for an unknown identifier', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_fix_by_ident_at_position',
+        arguments: { ident: 'ZZZZZZZZZ', lat: 0, lon: 0 },
+      });
+      const parsed = z.object({ fix: z.null() }).parse(result.structuredContent);
+      expect(parsed.fix).toBe(null);
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_fix_by_ident_at_position excludes matches beyond toleranceNm', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_fix_by_ident_at_position',
+        arguments: { ident: 'MERIT', lat: 0, lon: -160, toleranceNm: 5 },
+      });
+      const parsed = z.object({ fix: z.null() }).parse(result.structuredContent);
+      expect(parsed.fix).toBe(null);
     } finally {
       await close();
     }

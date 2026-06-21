@@ -47,6 +47,66 @@ describe('byIdent', () => {
   });
 });
 
+describe('byIdentAtPosition', () => {
+  it('returns the match nearest to the query position when an identifier is shared', () => {
+    const matches = resolver.byIdent('AA');
+    assert(matches.length >= 2, 'expected multiple AA navaids');
+    const [first, second] = matches;
+    assert(first !== undefined && second !== undefined, 'expected two AA records');
+    assert(
+      first.lat !== second.lat || first.lon !== second.lon,
+      'expected the AA records to sit at distinct positions',
+    );
+
+    const nearFirst = resolver.byIdentAtPosition('AA', first.lat, first.lon);
+    const nearSecond = resolver.byIdentAtPosition('AA', second.lat, second.lon);
+    assert(
+      nearFirst !== undefined && nearSecond !== undefined,
+      'expected a match at each record position',
+    );
+    expect(nearFirst.lat).toBe(first.lat);
+    expect(nearFirst.lon).toBe(first.lon);
+    expect(nearSecond.lat).toBe(second.lat);
+    expect(nearSecond.lon).toBe(second.lon);
+  });
+
+  it('is case-insensitive', () => {
+    const upper = resolver.byIdentAtPosition('ABI', 32.481, -99.863);
+    assert(upper !== undefined, 'expected ABI match');
+    const lower = resolver.byIdentAtPosition('abi', 32.481, -99.863);
+    assert(lower !== undefined, 'expected case-insensitive ABI match');
+    expect(lower.identifier).toBe('ABI');
+  });
+
+  it('returns undefined for an unknown identifier', () => {
+    expect(resolver.byIdentAtPosition('ZZZZZ', 32.481, -99.863)).toBeUndefined();
+  });
+
+  it('returns the nearest match regardless of distance when no tolerance is given', () => {
+    // Query from the mid-Pacific; the nearest AA record still wins.
+    const result = resolver.byIdentAtPosition('AA', 0, -160);
+    assert(result !== undefined, 'expected a match with no tolerance');
+    assert(
+      resolver.byIdent('AA').some((n) => n.lat === result.lat && n.lon === result.lon),
+      'result should be one of the AA records',
+    );
+  });
+
+  it('excludes matches beyond the tolerance', () => {
+    // Mid-Pacific query with a 5 nm tolerance: no AA record is that close.
+    expect(resolver.byIdentAtPosition('AA', 0, -160, 5)).toBeUndefined();
+  });
+
+  it('returns the match when it falls within the tolerance', () => {
+    const first = resolver.byIdent('AA')[0];
+    assert(first !== undefined, 'expected an AA record');
+    const result = resolver.byIdentAtPosition('AA', first.lat, first.lon, 1);
+    assert(result !== undefined, 'expected a within-tolerance match');
+    expect(result.lat).toBe(first.lat);
+    expect(result.lon).toBe(first.lon);
+  });
+});
+
 describe('byFrequency', () => {
   it('finds VOR-type navaids by MHz frequency', () => {
     const results = resolver.byFrequency({ frequency: 113.7 });
@@ -269,6 +329,7 @@ describe('createNavaidResolver with empty dataset', () => {
   it('returns empty results for all lookups', () => {
     const empty = createNavaidResolver({ data: [] });
     expect(empty.byIdent('BOS').length).toBe(0);
+    expect(empty.byIdentAtPosition('BOS', 0, 0)).toBeUndefined();
     expect(empty.byFrequency({ frequency: 113.7 }).length).toBe(0);
     expect(empty.nearest({ lat: 0, lon: 0 }).length).toBe(0);
     expect(empty.byType(new Set<NavaidType>(['VOR'])).length).toBe(0);

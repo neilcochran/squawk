@@ -51,6 +51,42 @@ export function registerFixTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'get_fix_by_ident_at_position',
+    {
+      title: 'Get fix by identifier nearest a position',
+      description:
+        'Looks up the single US fix/waypoint sharing the given identifier that lies nearest to a geographic position. The same fix identifier can be published in more than one ICAO region; this disambiguates the collision by proximity to a known point such as a map-click location or an adjacent route waypoint. When toleranceNm is provided, matches farther than that distance are excluded and the result is null; when omitted, the nearest match wins regardless of distance. Returns null when no fix carries the identifier.',
+      inputSchema: {
+        ident: z.string().min(1).describe('Fix identifier (case-insensitive).'),
+        lat: z
+          .number()
+          .min(-90)
+          .max(90)
+          .describe('Latitude of the reference position in decimal degrees (WGS84).'),
+        lon: z
+          .number()
+          .min(-180)
+          .max(180)
+          .describe('Longitude of the reference position in decimal degrees (WGS84).'),
+        toleranceNm: z
+          .number()
+          .positive()
+          .optional()
+          .describe(
+            'Maximum great-circle distance in nautical miles. Omit to let the nearest match win regardless of distance.',
+          ),
+      },
+    },
+    ({ ident, lat, lon, toleranceNm }) => {
+      const fix = fixResolver.byIdentAtPosition(ident, lat, lon, toleranceNm) ?? null;
+      return {
+        content: [{ type: 'text', text: JSON.stringify(fix, null, 2) }],
+        structuredContent: { fix },
+      };
+    },
+  );
+
+  server.registerTool(
     'find_nearest_fixes',
     {
       title: 'Find nearest fixes',

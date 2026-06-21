@@ -94,6 +94,32 @@ export interface NavaidResolver {
   byIdent(ident: string): Navaid[];
 
   /**
+   * Looks up the single navaid sharing the given identifier that lies
+   * nearest to a geographic position. Multiple navaids can publish the
+   * same identifier (a co-located NDB and VOR/DME, or two stations far
+   * apart that reuse a code); this disambiguates them by proximity to a
+   * known point such as a map-click location or an adjacent route waypoint.
+   *
+   * Returns the nearest matching navaid by great-circle distance. When
+   * `toleranceNm` is provided, matches farther than that distance are
+   * excluded and the method returns `undefined` if none qualify. When
+   * `toleranceNm` is omitted, the nearest match is returned regardless of
+   * distance. Returns `undefined` when no navaid carries the identifier.
+   *
+   * @param ident - Navaid identifier (case-insensitive).
+   * @param lat - Latitude of the reference position in decimal degrees (WGS84).
+   * @param lon - Longitude of the reference position in decimal degrees (WGS84).
+   * @param toleranceNm - Optional maximum great-circle distance in nautical miles. When omitted, the nearest match wins regardless of distance.
+   * @returns The nearest matching navaid, or `undefined` when none match or none fall within `toleranceNm`.
+   */
+  byIdentAtPosition(
+    ident: string,
+    lat: number,
+    lon: number,
+    toleranceNm?: number,
+  ): Navaid | undefined;
+
+  /**
    * Finds navaids operating on a given frequency.
    * For VOR-family navaids, frequency is in MHz. For NDB-family, frequency is in kHz.
    * Results are sorted alphabetically by identifier.
@@ -184,6 +210,33 @@ export function createNavaidResolver(options: NavaidResolverOptions): NavaidReso
   return {
     byIdent(ident: string): Navaid[] {
       return byIdentMap.get(ident.toUpperCase()) ?? [];
+    },
+
+    byIdentAtPosition(
+      ident: string,
+      lat: number,
+      lon: number,
+      toleranceNm?: number,
+    ): Navaid | undefined {
+      const matches = byIdentMap.get(ident.toUpperCase());
+      if (matches === undefined || matches.length === 0) {
+        return undefined;
+      }
+
+      let nearest: Navaid | undefined;
+      let nearestDistNm = Infinity;
+      for (const navaid of matches) {
+        const distNm = greatCircle.distanceNm(lat, lon, navaid.lat, navaid.lon);
+        if (distNm < nearestDistNm) {
+          nearest = navaid;
+          nearestDistNm = distNm;
+        }
+      }
+
+      if (toleranceNm !== undefined && nearestDistNm > toleranceNm) {
+        return undefined;
+      }
+      return nearest;
     },
 
     byFrequency(query: NavaidFrequencyQuery): Navaid[] {
