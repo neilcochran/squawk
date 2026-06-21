@@ -8,6 +8,7 @@ import type { Airport } from '@squawk/types';
 import type { Airway } from '@squawk/types';
 import type { AirwayWaypoint } from '@squawk/types';
 import type { Fix } from '@squawk/types';
+import type { LineString } from 'geojson';
 import type { Navaid } from '@squawk/types';
 import type { Procedure } from '@squawk/types';
 import type { ProcedureLeg } from '@squawk/types';
@@ -48,6 +49,9 @@ export interface DirectRouteElement {
     raw: string;
     type: 'direct';
 }
+
+// @public
+export function extractRoutePoints(route: ParsedRoute): RoutePoint[];
 
 // @public
 export interface FlightplanAirportLookup {
@@ -119,8 +123,22 @@ export interface RouteLeg {
     cumulativeDistanceNm: number;
     distanceNm: number;
     from: string;
+    fromLat: number;
+    fromLon: number;
     to: string;
+    toLat: number;
+    toLon: number;
 }
+
+// @public
+export interface RoutePoint {
+    label: string;
+    lat: number;
+    lon: number;
+}
+
+// @public
+export function routeToLineString(route: ParsedRoute): LineString | undefined;
 
 // @public
 export interface SidRouteElement {

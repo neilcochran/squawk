@@ -159,3 +159,58 @@ both an airport and a navaid), the resolver uses this priority order:
 3. Procedure (SID/STAR)
 4. Fix
 5. Navaid
+
+### `computeRouteDistance(route, groundSpeedKt?)`
+
+Computes the total great-circle route distance and optional estimated time
+enroute from a parsed route. Walks the same ordered point sequence as the
+geometry helpers below, so distance and geometry stay in agreement. Airway
+segments use FAA-published per-segment distances when available, falling back
+to great-circle computation.
+
+```typescript
+import { computeRouteDistance } from '@squawk/flightplan';
+
+const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+const result = computeRouteDistance(route, 450);
+console.log(result.totalDistanceNm, result.estimatedTimeEnrouteHrs);
+```
+
+**Parameters:**
+
+- `route` - a `ParsedRoute` from `resolver.parse`
+- `groundSpeedKt` - optional ground speed in knots; omit to skip ETE
+
+**Returns:** `RouteDistanceResult` with:
+
+- `legs` - ordered `RouteLeg` values, each with `from`/`to` point labels, their `fromLat`/`fromLon`/`toLat`/`toLon` coordinates in decimal degrees, `distanceNm`, and `cumulativeDistanceNm`
+- `totalDistanceNm` - total great-circle distance in nautical miles
+- `estimatedTimeEnrouteHrs` - ETE in hours, or `undefined` when no ground speed was given
+- `unresolvedElements` - route elements that could not contribute coordinates
+
+### `extractRoutePoints(route)`
+
+Extracts the ordered sequence of drawable geographic points from a parsed
+route. Expands airway and SID/STAR segments into their constituent fixes and
+suppresses consecutive duplicate points (e.g. an airway entry fix that matches
+the preceding waypoint). Elements without coordinates (DCT, speed/altitude
+groups, unresolved tokens) contribute no points.
+
+**Returns:** `RoutePoint[]`, each with `label`, `lat`, and `lon`.
+
+### `routeToLineString(route)`
+
+Builds a GeoJSON `LineString` from a parsed route, ready to render as a
+polyline on a map (e.g. MapLibre, Leaflet). Coordinates follow the GeoJSON
+`[lon, lat]` ordering. Returns `undefined` when the route yields fewer than
+two drawable points, since a `LineString` requires at least two positions.
+
+```typescript
+import { routeToLineString } from '@squawk/flightplan';
+
+const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+const line = routeToLineString(route);
+if (line) {
+  map.addSource('route', { type: 'geojson', data: line });
+}
+```

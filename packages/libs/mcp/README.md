@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.10.0"]
+      "args": ["-y", "@squawk/mcp@0.11.0"]
     }
   }
 }
@@ -164,7 +164,7 @@ Pinning works the same way:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.10", "@squawk/mcp@0.10.0"]
+      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.10", "@squawk/mcp@0.11.0"]
     }
   }
 }
@@ -343,6 +343,7 @@ lookup so sessions that never need it do not pay the cost.
 | ------------------------ | ---------------------------------------------------------- |
 | `parse_flightplan_route` | Parse an ICAO Item 15 route into structured route elements |
 | `compute_route_distance` | Total great-circle route distance with optional ETE        |
+| `get_route_geometry`     | Ordered drawable points and a GeoJSON LineString           |
 
 ### Flight computer (`@squawk/flight-math`)
 

@@ -1,12 +1,13 @@
 /**
  * Route distance and estimated time enroute computation for parsed flight
- * plan routes. Extracts the ordered geographic point sequence from a
- * {@link ParsedRoute} and sums great-circle leg distances.
+ * plan routes. Sums great-circle leg distances over the ordered geographic
+ * point sequence produced by the `route-geometry` module.
  */
 
 import { greatCircle } from '@squawk/geo';
 
 import type { ParsedRoute, RouteElement } from './resolver.js';
+import { extractGeoPoints } from './route-geometry.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -20,6 +21,14 @@ export interface RouteLeg {
   from: string;
   /** Identifier or raw token of the ending point. */
   to: string;
+  /** Latitude of the starting point in decimal degrees, positive north. */
+  fromLat: number;
+  /** Longitude of the starting point in decimal degrees, positive east. */
+  fromLon: number;
+  /** Latitude of the ending point in decimal degrees, positive north. */
+  toLat: number;
+  /** Longitude of the ending point in decimal degrees, positive east. */
+  toLon: number;
   /** Great-circle distance of this leg in nautical miles. */
   distanceNm: number;
   /** Cumulative distance from the route start through the end of this leg in nautical miles. */
@@ -43,128 +52,6 @@ export interface RouteDistanceResult {
    * so the total may be approximate.
    */
   unresolvedElements: RouteElement[];
-}
-
-// ---------------------------------------------------------------------------
-// Internal types
-// ---------------------------------------------------------------------------
-
-/** A geographic point extracted from a route element. */
-interface GeoPoint {
-  /** Display label (identifier or raw token). */
-  label: string;
-  /** Latitude in decimal degrees, positive north. */
-  lat: number;
-  /** Longitude in decimal degrees, positive east. */
-  lon: number;
-  /**
-   * Pre-computed distance to the next point along an airway segment in
-   * nautical miles, if available from the source data.
-   */
-  precomputedDistanceToNextNm?: number;
-}
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/** Epsilon for comparing coordinates to detect duplicate points. */
-const COORD_EPSILON = 1e-9;
-
-/**
- * Returns true if two points share the same coordinates (within epsilon).
- */
-function samePosition(a: GeoPoint, b: GeoPoint): boolean {
-  return Math.abs(a.lat - b.lat) < COORD_EPSILON && Math.abs(a.lon - b.lon) < COORD_EPSILON;
-}
-
-/**
- * Walks the route elements and extracts an ordered array of geographic
- * points. Duplicate consecutive points (e.g. an airway entry fix that
- * matches the preceding waypoint) are suppressed.
- *
- * Also collects all `unresolved` elements encountered during the walk.
- */
-function extractGeoPoints(elements: RouteElement[]): {
-  points: GeoPoint[];
-  unresolvedElements: RouteElement[];
-} {
-  const points: GeoPoint[] = [];
-  const unresolvedElements: RouteElement[] = [];
-
-  function emit(point: GeoPoint): void {
-    if (points.length > 0 && samePosition(points[points.length - 1]!, point)) {
-      // When the duplicate carries a precomputed distance that the existing
-      // point lacks, adopt it. This happens when an airway's entry fix
-      // overlaps the preceding waypoint -- the airway waypoint has the
-      // published segment distance that would otherwise be lost.
-      const last = points[points.length - 1]!;
-      if (
-        point.precomputedDistanceToNextNm !== undefined &&
-        last.precomputedDistanceToNextNm === undefined
-      ) {
-        last.precomputedDistanceToNextNm = point.precomputedDistanceToNextNm;
-      }
-      return;
-    }
-    points.push(point);
-  }
-
-  for (const el of elements) {
-    switch (el.type) {
-      case 'airport':
-        emit({ label: el.raw, lat: el.airport.lat, lon: el.airport.lon });
-        break;
-
-      case 'waypoint':
-        emit({ label: el.raw, lat: el.lat, lon: el.lon });
-        break;
-
-      case 'coordinate':
-        emit({ label: el.raw, lat: el.lat, lon: el.lon });
-        break;
-
-      case 'airway':
-        for (let i = 0; i < el.waypoints.length; i++) {
-          const wp = el.waypoints[i]!;
-          const isLast = i === el.waypoints.length - 1;
-          const point: GeoPoint = {
-            label: wp.identifier ?? wp.name,
-            lat: wp.lat,
-            lon: wp.lon,
-          };
-          // Only carry precomputed distance for non-last waypoints (the
-          // last waypoint's distanceToNextNm points beyond this segment).
-          if (!isLast && wp.distanceToNextNm !== undefined) {
-            point.precomputedDistanceToNextNm = wp.distanceToNextNm;
-          }
-          emit(point);
-        }
-        break;
-
-      case 'sid':
-      case 'star':
-        for (const leg of el.legs) {
-          if (leg.fixIdentifier === undefined || leg.lat === undefined || leg.lon === undefined) {
-            continue;
-          }
-          emit({ label: leg.fixIdentifier, lat: leg.lat, lon: leg.lon });
-        }
-        break;
-
-      case 'unresolved':
-        unresolvedElements.push(el);
-        break;
-
-      // 'direct' and 'speedAltitude' are expected non-geographic markers
-      // and are silently skipped.
-      case 'direct':
-      case 'speedAltitude':
-        break;
-    }
-  }
-
-  return { points, unresolvedElements };
 }
 
 // ---------------------------------------------------------------------------
@@ -223,6 +110,10 @@ export function computeRouteDistance(
     legs.push({
       from: from.label,
       to: to.label,
+      fromLat: from.lat,
+      fromLon: from.lon,
+      toLat: to.lat,
+      toLon: to.lon,
       distanceNm: legDistanceNm,
       cumulativeDistanceNm: totalDistanceNm,
     });
