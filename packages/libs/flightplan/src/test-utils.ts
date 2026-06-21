@@ -146,7 +146,11 @@ export function makeAirway(
  * @param fix - Optional fix identifier and coordinates for the leg.
  * @returns A procedure leg.
  */
-function makeProcedureLeg(fix: { fixIdentifier?: string; lat?: number; lon?: number }): ProcedureLeg {
+function makeProcedureLeg(fix: {
+  fixIdentifier?: string;
+  lat?: number;
+  lon?: number;
+}): ProcedureLeg {
   const leg: ProcedureLeg = { pathTerminator: 'TF' };
   if (fix.fixIdentifier !== undefined) {
     leg.fixIdentifier = fix.fixIdentifier;
