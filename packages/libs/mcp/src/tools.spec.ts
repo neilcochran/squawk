@@ -1360,6 +1360,34 @@ describe('flightplan tools', () => {
       await close();
     }
   });
+
+  it('get_route_geometry returns ordered points and a LineString', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_route_geometry',
+        arguments: { routeString: 'KJFK DCT KLAX' },
+      });
+      const parsed = z
+        .object({
+          points: z.array(
+            z.object({ label: z.string(), lat: z.number(), lon: z.number() }).passthrough(),
+          ),
+          lineString: z
+            .object({
+              type: z.literal('LineString'),
+              coordinates: z.array(z.array(z.number())),
+            })
+            .optional(),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.points.length >= 2);
+      assert(parsed.lineString !== undefined);
+      expect(parsed.lineString.coordinates.length).toBe(parsed.points.length);
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('weather parsing tools', () => {

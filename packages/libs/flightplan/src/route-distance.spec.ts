@@ -3,151 +3,22 @@ import assert from 'node:assert/strict';
 import { describe, it, beforeAll } from 'vitest';
 
 import { greatCircle } from '@squawk/geo';
-import type { Airport, AirwayWaypoint } from '@squawk/types';
 
-import type {
-  ParsedRoute,
-  RouteElement,
-  AirportRouteElement,
-  WaypointRouteElement,
-  CoordinateRouteElement,
-  DirectRouteElement,
-  SpeedAltitudeRouteElement,
-  AirwayRouteElement,
-  SidRouteElement,
-  StarRouteElement,
-  UnresolvedRouteElement,
-  FlightplanResolver,
-} from './resolver.js';
+import type { FlightplanResolver } from './resolver.js';
 import { computeRouteDistance } from './route-distance.js';
-
-/**
- * Returns true if two numbers are within the given delta of each other.
- */
-function close(a: number, b: number, delta = 0.01): boolean {
-  return Math.abs(a - b) <= delta;
-}
-
-// ---------------------------------------------------------------------------
-// Synthetic element helpers
-// ---------------------------------------------------------------------------
-
-function makeAirport(raw: string, lat: number, lon: number): AirportRouteElement {
-  return {
-    type: 'airport',
-    raw,
-    airport: { lat, lon, faaId: raw, name: raw } as Airport,
-  };
-}
-
-function makeWaypoint(raw: string, lat: number, lon: number): WaypointRouteElement {
-  return { type: 'waypoint', raw, lat, lon };
-}
-
-function makeCoordinate(raw: string, lat: number, lon: number): CoordinateRouteElement {
-  return { type: 'coordinate', raw, lat, lon };
-}
-
-function makeDirect(): DirectRouteElement {
-  return { type: 'direct', raw: 'DCT' };
-}
-
-function makeSpeedAltitude(): SpeedAltitudeRouteElement {
-  return { type: 'speedAltitude', raw: 'N0450F350', speedKt: 450, flightLevel: 350 };
-}
-
-function makeUnresolved(raw: string): UnresolvedRouteElement {
-  return { type: 'unresolved', raw };
-}
-
-function makeAirway(
-  raw: string,
-  waypoints: {
-    name?: string;
-    identifier?: string;
-    lat: number;
-    lon: number;
-    distanceToNextNm?: number;
-  }[],
-): AirwayRouteElement {
-  return {
-    type: 'airway',
-    raw,
-    airway: { designation: raw, type: 'JET', region: 'US', waypoints: [] } as never,
-    entryFix: waypoints[0]?.identifier ?? waypoints[0]?.name ?? '',
-    exitFix:
-      waypoints[waypoints.length - 1]?.identifier ?? waypoints[waypoints.length - 1]?.name ?? '',
-    waypoints: waypoints.map((wp) => {
-      const base: AirwayWaypoint = {
-        name: wp.name ?? wp.identifier ?? '',
-        waypointType: 'FIX',
-        lat: wp.lat,
-        lon: wp.lon,
-      };
-      if (wp.identifier !== undefined) {
-        base.identifier = wp.identifier;
-      }
-      if (wp.distanceToNextNm !== undefined) {
-        base.distanceToNextNm = wp.distanceToNextNm;
-      }
-      return base;
-    }),
-  };
-}
-
-function makeSid(
-  raw: string,
-  fixes: { fixIdentifier: string; lat: number; lon: number }[],
-): SidRouteElement {
-  return {
-    type: 'sid',
-    raw,
-    procedure: {
-      name: raw,
-      identifier: raw,
-      type: 'SID',
-      airports: [],
-      commonRoutes: [],
-      transitions: [],
-    },
-    legs: fixes.map((wp) => ({
-      pathTerminator: 'TF' as const,
-      fixIdentifier: wp.fixIdentifier,
-      category: 'FIX' as const,
-      lat: wp.lat,
-      lon: wp.lon,
-    })),
-  };
-}
-
-function makeStar(
-  raw: string,
-  fixes: { fixIdentifier: string; lat: number; lon: number }[],
-): StarRouteElement {
-  return {
-    type: 'star',
-    raw,
-    procedure: {
-      name: raw,
-      identifier: raw,
-      type: 'STAR',
-      airports: [],
-      commonRoutes: [],
-      transitions: [],
-    },
-    legs: fixes.map((wp) => ({
-      pathTerminator: 'TF' as const,
-      fixIdentifier: wp.fixIdentifier,
-      category: 'FIX' as const,
-      lat: wp.lat,
-      lon: wp.lon,
-    })),
-  };
-}
-
-function route(elements: RouteElement[]): ParsedRoute {
-  return { raw: 'test', elements };
-}
+import {
+  close,
+  makeAirport,
+  makeAirway,
+  makeCoordinate,
+  makeDirect,
+  makeSid,
+  makeSpeedAltitude,
+  makeStar,
+  makeUnresolved,
+  makeWaypoint,
+  route,
+} from './test-utils.js';
 
 // ---------------------------------------------------------------------------
 // Unit tests (synthetic data)
@@ -182,6 +53,10 @@ describe('computeRouteDistance', () => {
       assert.ok(close(result.totalDistanceNm, expected));
       assert.equal(result.legs[0]!.from, 'AAA');
       assert.equal(result.legs[0]!.to, 'BBB');
+      assert.equal(result.legs[0]!.fromLat, 40.0);
+      assert.equal(result.legs[0]!.fromLon, -74.0);
+      assert.equal(result.legs[0]!.toLat, 41.0);
+      assert.equal(result.legs[0]!.toLon, -74.0);
       assert.ok(close(result.legs[0]!.distanceNm, expected));
       assert.ok(close(result.legs[0]!.cumulativeDistanceNm, expected));
     });
