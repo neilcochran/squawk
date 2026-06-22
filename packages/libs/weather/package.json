@@ -22,6 +22,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./fetch": {
       "types": "./dist/fetch/index.d.ts",
       "import": "./dist/fetch/index.js"

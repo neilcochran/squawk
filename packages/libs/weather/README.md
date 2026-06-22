@@ -10,8 +10,10 @@ API, AVWX, local feed, file dump) and the package returns structured results.
 
 An opt-in fetch layer is available at `@squawk/weather/fetch` for consumers
 who want to pull live data directly from the Aviation Weather Center (AWC)
-text API. It uses the Node 22+ global `fetch`; pulling it in is a choice so
-the core parsing import graph stays network-free.
+text API. It uses the platform global `fetch` (Node 22+ or any modern
+browser); pulling it in is a choice so the core parsing import graph stays
+network-free. See [Browser / SPA usage](#browser--spa-usage) for the CORS
+caveat that applies when calling AWC from a browser.
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
@@ -314,6 +316,38 @@ try {
   }
 }
 ```
+
+## Browser / SPA usage
+
+The core parsers have no Node-specific imports and ship an explicit `/browser`
+subpath for SPAs and edge runtimes:
+
+```typescript
+import { parseMetar, parseTaf } from '@squawk/weather/browser';
+```
+
+The `/browser` entry is identical to the main entry; the separate subpath
+exists so browser support is an explicit, `publint`-verified part of the public
+API surface. A `node:`-dependent import added to the main entry later would
+fail that check rather than silently break browser consumers.
+
+The `/fetch` layer also runs in the browser, since it uses the global `fetch`,
+but the AWC API does not send CORS headers. A direct cross-origin request to
+`aviationweather.gov` from page JavaScript is therefore blocked by the user
+agent. To use the `fetch*` helpers in a browser, point `baseUrl` at a
+same-origin proxy you control - a reverse proxy or an edge function that
+forwards to AWC and returns the upstream body:
+
+```typescript
+import { fetchMetar } from '@squawk/weather/fetch';
+
+// Your own origin serves '/awc' and proxies it through to aviationweather.gov.
+const baseUrl = new URL('/awc', window.location.origin).toString();
+const { metars } = await fetchMetar('KJFK', { baseUrl });
+```
+
+`baseUrl` must be an absolute URL. The package does not ship a proxy; standing
+one up is a deployment concern left to the consumer.
 
 ## Types
 
