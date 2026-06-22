@@ -78,11 +78,13 @@ export interface FlightplanAirwayLookup {
 // @public
 export interface FlightplanFixLookup {
     byIdent(ident: string): Fix[];
+    byIdentAtPosition?(ident: string, lat: number, lon: number, toleranceNm?: number): Fix | undefined;
 }
 
 // @public
 export interface FlightplanNavaidLookup {
     byIdent(ident: string): Navaid[];
+    byIdentAtPosition?(ident: string, lat: number, lon: number, toleranceNm?: number): Navaid | undefined;
 }
 
 // @public
