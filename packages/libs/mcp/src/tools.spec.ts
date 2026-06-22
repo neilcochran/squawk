@@ -1345,6 +1345,55 @@ describe('procedure tools', () => {
       await close();
     }
   });
+
+  it('get_procedure_geometry returns ordered points and a LineString', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_procedure_geometry',
+        arguments: { airportId: 'KJFK', identifier: 'I13L', transitionName: 'BUZON' },
+      });
+      const parsed = z
+        .object({
+          points: z.array(
+            z.object({ label: z.string(), lat: z.number(), lon: z.number() }).passthrough(),
+          ),
+          lineString: z
+            .object({
+              type: z.literal('LineString'),
+              coordinates: z.array(z.array(z.number())),
+            })
+            .nullable()
+            .optional(),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.points.length >= 2);
+      assert(parsed.lineString !== undefined && parsed.lineString !== null);
+      expect(parsed.lineString.coordinates.length).toBe(parsed.points.length);
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_procedure_geometry returns nulls for an unknown procedure', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_procedure_geometry',
+        arguments: { airportId: 'KDEN', identifier: 'I04L' },
+      });
+      const parsed = z
+        .object({
+          points: z.null(),
+          lineString: z.null(),
+        })
+        .parse(result.structuredContent);
+      expect(parsed.points).toBeNull();
+      expect(parsed.lineString).toBeNull();
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('icao registry tools', () => {
