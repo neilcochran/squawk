@@ -6,9 +6,10 @@ import type { FixDataset } from '@squawk/fix-data';
 
 import { FIXES_HIGHLIGHT_LAYER_ID, FIXES_LAYER_ID, FixesLayer } from './fixes-layer.tsx';
 
-const { useFixDatasetMock, useActiveHighlightRefMock } = vi.hoisted(() => ({
+const { useFixDatasetMock, useActiveHighlightRefMock, layerPropsLog } = vi.hoisted(() => ({
   useFixDatasetMock: vi.fn(),
   useActiveHighlightRefMock: vi.fn(),
+  layerPropsLog: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock('../../../shared/data/fix-dataset.ts', () => ({
@@ -21,12 +22,16 @@ vi.mock('../highlight-context.ts', () => ({
 
 // Stub MapLibre primitives. `Source` renders its children inside a
 // findable container so the test can assert the layer mounted; `Layer`
-// is a no-op since real MapLibre paint props need a live map context.
+// records the props it receives so tests can assert paint / filter values
+// without a live map context.
 vi.mock('@vis.gl/react-maplibre', () => ({
   Source: ({ children }: { children?: ReactNode }): ReactElement => (
     <div data-testid="maplibre-source">{children}</div>
   ),
-  Layer: (): null => null,
+  Layer: (props: Record<string, unknown>): null => {
+    layerPropsLog.push(props);
+    return null;
+  },
 }));
 
 const EMPTY_DATASET: FixDataset = {
@@ -57,6 +62,7 @@ function buildFix(
 describe('FixesLayer', () => {
   beforeEach(() => {
     useActiveHighlightRefMock.mockReturnValue(undefined);
+    layerPropsLog.length = 0;
   });
 
   it('exports stable MapLibre layer ids consumed by chart-mode click handling', () => {
@@ -103,7 +109,24 @@ describe('FixesLayer', () => {
   it('switches the highlight filter when a fix is selected', () => {
     useActiveHighlightRefMock.mockReturnValue({ type: 'fix', id: 'MERIT' });
     useFixDatasetMock.mockReturnValue({ status: 'loaded', dataset: EMPTY_DATASET });
-    const { getByTestId } = render(<FixesLayer />);
-    expect(getByTestId('maplibre-source')).toBeInTheDocument();
+    const highlight = renderAndReadHighlightFilter();
+    expect(highlight).toEqual(['==', ['get', 'identifier'], 'MERIT']);
+  });
+
+  it('strips a position suffix from the highlight filter so it matches the bare identifier', () => {
+    useActiveHighlightRefMock.mockReturnValue({ type: 'fix', id: 'DUPE/c:-90.50000,30.12300' });
+    useFixDatasetMock.mockReturnValue({ status: 'loaded', dataset: EMPTY_DATASET });
+    const highlight = renderAndReadHighlightFilter();
+    expect(highlight).toEqual(['==', ['get', 'identifier'], 'DUPE']);
   });
 });
+
+/**
+ * Renders the layer and returns the `filter` prop of the highlight layer,
+ * read from the captured MapLibre `Layer` props.
+ */
+function renderAndReadHighlightFilter(): unknown {
+  render(<FixesLayer />);
+  const highlightLayer = layerPropsLog.find((props) => props.id === FIXES_HIGHLIGHT_LAYER_ID);
+  return highlightLayer?.filter;
+}

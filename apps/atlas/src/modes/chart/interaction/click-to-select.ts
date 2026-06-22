@@ -3,6 +3,8 @@ import type { GeoJsonProperties, Geometry } from 'geojson';
 import { polygonGeoJson } from '@squawk/geo';
 
 import { AIRSPACE_MATCH_KEY_PROPERTY } from '../../../shared/inspector/airspace-feature.ts';
+import { encodePointId } from '../../../shared/inspector/entity.ts';
+import type { AmbiguousPointIdentifiers, PointPosition } from '../../../shared/inspector/entity.ts';
 import { AIRPORTS_LAYER_ID } from '../layers/airports-layer.tsx';
 import {
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
@@ -218,14 +220,26 @@ export function classifyClick(features: readonly InspectableFeature[]): ClickCla
  * discriminating field. Used downstream of {@link pickFeatureByPriority},
  * which selects the winner among any features that hit the click point.
  *
+ * Navaid and fix features whose identifier is shared by multiple records
+ * (per `ambiguous`) gain a `/c:LON,LAT` suffix sourced from the feature's
+ * Point geometry, so the inspector resolves the clicked record rather than
+ * whichever sorts first. Unique identifiers - and every feature when
+ * `ambiguous` is omitted - encode in the bare `navaid:IDENT` / `fix:IDENT`
+ * form, keeping the common case short.
+ *
  * Pure: no map, navigation, or DOM dependencies. Tested independently of
  * the click handler.
  *
  * @param feature - The picked feature to encode.
+ * @param ambiguous - Optional shared-identifier sets; when a navaid / fix
+ *   identifier is present, a position suffix is appended for disambiguation.
  * @returns The encoded `selected` string, or undefined if the feature
  *   cannot be encoded.
  */
-export function selectedFromFeature(feature: InspectableFeature): string | undefined {
+export function selectedFromFeature(
+  feature: InspectableFeature,
+  ambiguous?: AmbiguousPointIdentifiers,
+): string | undefined {
   switch (feature.layer.id) {
     case AIRPORTS_LAYER_ID: {
       const faaId = readString(feature.properties, 'faaId');
@@ -233,11 +247,17 @@ export function selectedFromFeature(feature: InspectableFeature): string | undef
     }
     case NAVAIDS_LAYER_ID: {
       const identifier = readString(feature.properties, 'identifier');
-      return identifier === undefined ? undefined : `navaid:${identifier}`;
+      if (identifier === undefined) {
+        return undefined;
+      }
+      return `navaid:${encodePointId(identifier, disambiguatingPosition(feature, identifier, ambiguous?.navaids))}`;
     }
     case FIXES_LAYER_ID: {
       const identifier = readString(feature.properties, 'identifier');
-      return identifier === undefined ? undefined : `fix:${identifier}`;
+      if (identifier === undefined) {
+        return undefined;
+      }
+      return `fix:${encodePointId(identifier, disambiguatingPosition(feature, identifier, ambiguous?.fixes))}`;
     }
     case AIRWAYS_LAYER_ID: {
       const designation = readString(feature.properties, 'designation');
@@ -324,6 +344,53 @@ export function polygonCentroidFromGeometry(
     return undefined;
   }
   return polygonGeoJson.polygonCentroid(geometry);
+}
+
+/**
+ * Returns the position to embed in a navaid / fix selection, or undefined
+ * when no disambiguator is needed or available. A position is emitted only
+ * when the identifier is in `ambiguousSet` (shared by multiple records) AND
+ * the feature carries a Point geometry to read coordinates from; unique
+ * identifiers and geometry-less features (some test stubs) encode bare.
+ *
+ * @param feature - The feature being encoded.
+ * @param identifier - The feature's navaid / fix identifier.
+ * @param ambiguousSet - Identifiers shared by 2+ records, or undefined to disable suffixing.
+ * @returns The disambiguating position, or undefined to encode the bare identifier.
+ */
+function disambiguatingPosition(
+  feature: InspectableFeature,
+  identifier: string,
+  ambiguousSet: ReadonlySet<string> | undefined,
+): PointPosition | undefined {
+  if (ambiguousSet === undefined || !ambiguousSet.has(identifier)) {
+    return undefined;
+  }
+  const coords = pointCoordsFromGeometry(feature.geometry);
+  if (coords === undefined) {
+    return undefined;
+  }
+  return { lon: coords[0], lat: coords[1] };
+}
+
+/**
+ * Extracts `[lon, lat]` from a Point geometry, or undefined when the
+ * geometry is missing or not a Point. Sources the disambiguating position
+ * for a shared navaid / fix identifier from the clicked point feature.
+ *
+ * @param geometry - Optional GeoJSON geometry from the clicked feature.
+ * @returns The point coordinates as `[lon, lat]`, or undefined when unavailable.
+ */
+function pointCoordsFromGeometry(geometry: Geometry | undefined): [number, number] | undefined {
+  if (geometry === undefined || geometry.type !== 'Point') {
+    return undefined;
+  }
+  const lon = geometry.coordinates[0];
+  const lat = geometry.coordinates[1];
+  if (typeof lon !== 'number' || typeof lat !== 'number') {
+    return undefined;
+  }
+  return [lon, lat];
 }
 
 /**

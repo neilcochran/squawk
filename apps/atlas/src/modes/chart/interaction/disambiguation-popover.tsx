@@ -8,6 +8,7 @@ import {
   readAirspaceAltitudeKey,
 } from '../../../shared/inspector/airspace-feature.ts';
 import type { AirspaceAltitudeKey } from '../../../shared/inspector/airspace-feature.ts';
+import type { AmbiguousPointIdentifiers } from '../../../shared/inspector/entity.ts';
 import { FLOATING_SURFACE_CLASSES } from '../../../shared/styles/style-tokens.ts';
 import { useCanHover } from '../../../shared/styles/use-can-hover.ts';
 import { useSetHoveredChipSelection } from '../highlight-context.ts';
@@ -50,6 +51,13 @@ export interface DisambiguationPopoverProps {
    */
   candidates: readonly InspectableFeature[];
   /**
+   * Shared navaid / fix identifier sets. When two candidates carry the
+   * same duplicated identifier, the position suffix keeps their rows
+   * distinct (and resolving to the right record) instead of collapsing
+   * to one via the dedupe pass. Omit to encode every row bare.
+   */
+  ambiguous?: AmbiguousPointIdentifiers;
+  /**
    * Called with a chosen feature's encoded selection string when the
    * user clicks an entry. The caller is responsible for clearing the
    * pending state that drove this popover; the popover unmounts on
@@ -89,6 +97,7 @@ export interface DisambiguationPopoverProps {
 export function DisambiguationPopover({
   screen,
   candidates,
+  ambiguous,
   onSelect,
   onDismiss,
 }: DisambiguationPopoverProps): ReactElement | null {
@@ -120,7 +129,7 @@ export function DisambiguationPopover({
     const nonAirspace: PopoverEntry[] = [];
     const airspace: { entry: PopoverEntry; key: AirspaceAltitudeKey }[] = [];
     for (const feature of candidates) {
-      const selection = selectedFromFeature(feature);
+      const selection = selectedFromFeature(feature, ambiguous);
       if (selection === undefined) {
         continue;
       }
@@ -150,7 +159,7 @@ export function DisambiguationPopover({
     }
     airspace.sort((a, b) => compareAirspaceByAltitudeDesc(a.key, b.key));
     return [...nonAirspace, ...airspace.map((it) => it.entry)];
-  }, [candidates]);
+  }, [candidates, ambiguous]);
 
   useEffect((): (() => void) => {
     function handleKeyDown(event: KeyboardEvent): void {

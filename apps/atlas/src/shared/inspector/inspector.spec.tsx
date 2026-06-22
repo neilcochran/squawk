@@ -53,10 +53,14 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: useNavigateMock,
 }));
 
-vi.mock('./entity-resolver.ts', () => ({
-  useDatasetStates: useDatasetStatesMock,
-  resolveSelectionFromState: resolveMock,
-}));
+vi.mock('./entity-resolver.ts', () => {
+  const ambiguous = { navaids: new Set<string>(), fixes: new Set<string>() };
+  return {
+    useDatasetStates: useDatasetStatesMock,
+    resolveSelectionFromState: resolveMock,
+    useAmbiguousPointIdentifiers: (): typeof ambiguous => ambiguous,
+  };
+});
 
 vi.mock('../../modes/chart/highlight-context.ts', () => ({
   useSetHoveredChipSelection: () => setHoveredChipSelectionMock,

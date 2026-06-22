@@ -6,9 +6,10 @@ import type { NavaidDataset } from '@squawk/navaid-data';
 
 import { NAVAIDS_HIGHLIGHT_LAYER_ID, NAVAIDS_LAYER_ID, NavaidsLayer } from './navaids-layer.tsx';
 
-const { useNavaidDatasetMock, useActiveHighlightRefMock } = vi.hoisted(() => ({
+const { useNavaidDatasetMock, useActiveHighlightRefMock, layerPropsLog } = vi.hoisted(() => ({
   useNavaidDatasetMock: vi.fn(),
   useActiveHighlightRefMock: vi.fn(),
+  layerPropsLog: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock('../../../shared/data/navaid-dataset.ts', () => ({
@@ -21,12 +22,16 @@ vi.mock('../highlight-context.ts', () => ({
 
 // Stub MapLibre primitives. `Source` renders its children inside a
 // findable container so the test can assert the layer mounted; `Layer`
-// is a no-op since real MapLibre paint props need a live map context.
+// records the props it receives so tests can assert paint / filter values
+// without a live map context.
 vi.mock('@vis.gl/react-maplibre', () => ({
   Source: ({ children }: { children?: ReactNode }): ReactElement => (
     <div data-testid="maplibre-source">{children}</div>
   ),
-  Layer: (): null => null,
+  Layer: (props: Record<string, unknown>): null => {
+    layerPropsLog.push(props);
+    return null;
+  },
 }));
 
 const EMPTY_DATASET: NavaidDataset = {
@@ -52,6 +57,7 @@ function buildNavaid(
 describe('NavaidsLayer', () => {
   beforeEach(() => {
     useActiveHighlightRefMock.mockReturnValue(undefined);
+    layerPropsLog.length = 0;
   });
 
   it('exports stable MapLibre layer ids consumed by chart-mode click handling', () => {
@@ -97,7 +103,24 @@ describe('NavaidsLayer', () => {
   it('switches the highlight filter when a navaid is selected', () => {
     useActiveHighlightRefMock.mockReturnValue({ type: 'navaid', id: 'BOS' });
     useNavaidDatasetMock.mockReturnValue({ status: 'loaded', dataset: EMPTY_DATASET });
-    const { getByTestId } = render(<NavaidsLayer />);
-    expect(getByTestId('maplibre-source')).toBeInTheDocument();
+    const highlight = renderAndReadHighlightFilter();
+    expect(highlight).toEqual(['==', ['get', 'identifier'], 'BOS']);
+  });
+
+  it('strips a position suffix from the highlight filter so it matches the bare identifier', () => {
+    useActiveHighlightRefMock.mockReturnValue({ type: 'navaid', id: 'DUPE/c:-71.00472,42.35778' });
+    useNavaidDatasetMock.mockReturnValue({ status: 'loaded', dataset: EMPTY_DATASET });
+    const highlight = renderAndReadHighlightFilter();
+    expect(highlight).toEqual(['==', ['get', 'identifier'], 'DUPE']);
   });
 });
+
+/**
+ * Renders the layer and returns the `filter` prop of the highlight layer,
+ * read from the captured MapLibre `Layer` props.
+ */
+function renderAndReadHighlightFilter(): unknown {
+  render(<NavaidsLayer />);
+  const highlightLayer = layerPropsLog.find((props) => props.id === NAVAIDS_HIGHLIGHT_LAYER_ID);
+  return highlightLayer?.filter;
+}

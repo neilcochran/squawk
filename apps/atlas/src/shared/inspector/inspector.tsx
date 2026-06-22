@@ -9,7 +9,11 @@ import { CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
 
 import { buildInspectorChipList } from './chip-builders.ts';
 import type { Chip } from './chip-builders.ts';
-import { useDatasetStates, resolveSelectionFromState } from './entity-resolver.ts';
+import {
+  useAmbiguousPointIdentifiers,
+  useDatasetStates,
+  resolveSelectionFromState,
+} from './entity-resolver.ts';
 import type { BoundingBox } from './geometry.ts';
 import { InspectorBody } from './inspector-body.tsx';
 import { InspectorGrabHandle } from './inspector-grab-handle.tsx';
@@ -92,6 +96,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
   const { selected, lat, lon, zoom, layers, airspaceClasses } = route.useSearch();
   const navigate = useNavigate({ from: CHART_ROUTE_PATH });
   const datasets = useDatasetStates();
+  const ambiguous = useAmbiguousPointIdentifiers();
   const map = useMap();
   const mapRef = map.current ?? map.default;
   // Approximate viewport bounds, recomputed when the URL view-state
@@ -248,8 +253,9 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
         layers,
         airspaceClasses,
         viewportBounds: chipViewportBounds,
+        ambiguous,
       }),
-    [siblings, selected, datasets, state, layers, airspaceClasses, chipViewportBounds],
+    [siblings, selected, datasets, state, layers, airspaceClasses, chipViewportBounds, ambiguous],
   );
 
   // Publish the mobile sheet's live occlusion height and the matching

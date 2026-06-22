@@ -3,7 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import type { Airport, Airway, AirspaceFeature, Fix, Navaid } from '@squawk/types';
 
-import { useResolvedEntity } from './entity-resolver.ts';
+import {
+  computeAmbiguousIdentifiers,
+  useAmbiguousPointIdentifiers,
+  useResolvedEntity,
+} from './entity-resolver.ts';
 
 const { airportStateMock, navaidStateMock, fixStateMock, airwayStateMock, airspaceStateMock } =
   vi.hoisted(() => ({
@@ -177,6 +181,34 @@ describe('useResolvedEntity', () => {
     if (result.current.status === 'resolved' && result.current.entity.kind === 'airway') {
       expect(result.current.entity.record.designation).toBe('V16');
     }
+  });
+
+  it('resolves a position-suffixed navaid selection to the nearest shared-identifier record', () => {
+    const east: Navaid = { ...sampleNavaid, identifier: 'DUPE', lat: 42, lon: -71 };
+    const west: Navaid = { ...sampleNavaid, identifier: 'DUPE', lat: 40, lon: -120 };
+    navaidStateMock.mockReturnValue({ status: 'loaded', dataset: { records: [east, west] } });
+    const { result } = renderHook(() => useResolvedEntity('navaid:DUPE/c:-120.00000,40.00000'));
+    expect(result.current.status).toBe('resolved');
+    if (result.current.status === 'resolved' && result.current.entity.kind === 'navaid') {
+      expect(result.current.entity.record.lon).toBe(-120);
+    }
+  });
+
+  it('resolves a position-suffixed fix selection to the nearest shared-identifier record', () => {
+    const east: Fix = { ...sampleFix, identifier: 'DUPE', lat: 42, lon: -71 };
+    const west: Fix = { ...sampleFix, identifier: 'DUPE', lat: 40, lon: -120 };
+    fixStateMock.mockReturnValue({ status: 'loaded', dataset: { records: [east, west] } });
+    const { result } = renderHook(() => useResolvedEntity('fix:DUPE/c:-71.00000,42.00000'));
+    expect(result.current.status).toBe('resolved');
+    if (result.current.status === 'resolved' && result.current.entity.kind === 'fix') {
+      expect(result.current.entity.record.lon).toBe(-71);
+    }
+  });
+
+  it('returns not-found when a position-suffixed selection matches no identifier', () => {
+    navaidStateMock.mockReturnValue({ status: 'loaded', dataset: { records: [sampleNavaid] } });
+    const { result } = renderHook(() => useResolvedEntity('navaid:UNKNOWN/c:-71.00000,42.00000'));
+    expect(result.current.status).toBe('not-found');
   });
 
   it('resolves an airspace compound key to all matching features', () => {
@@ -395,5 +427,56 @@ describe('useResolvedEntity', () => {
       expect(ceilings).toEqual([10000, 10000, 7000]);
       expect(floors).toEqual([3000, 0, 0]);
     }
+  });
+});
+
+describe('computeAmbiguousIdentifiers', () => {
+  it('returns only identifiers that appear on two or more records', () => {
+    expect(computeAmbiguousIdentifiers(['A', 'B', 'A', 'C', 'C', 'C'])).toEqual(
+      new Set(['A', 'C']),
+    );
+  });
+
+  it('returns an empty set when every identifier is unique', () => {
+    expect(computeAmbiguousIdentifiers(['A', 'B', 'C'])).toEqual(new Set());
+  });
+
+  it('returns an empty set for no identifiers', () => {
+    expect(computeAmbiguousIdentifiers([])).toEqual(new Set());
+  });
+});
+
+describe('useAmbiguousPointIdentifiers', () => {
+  it('collects navaid and fix identifiers shared by two or more records', () => {
+    navaidStateMock.mockReturnValue({
+      status: 'loaded',
+      dataset: {
+        records: [
+          { ...sampleNavaid, identifier: 'DUPE' },
+          { ...sampleNavaid, identifier: 'DUPE' },
+          { ...sampleNavaid, identifier: 'SOLO' },
+        ],
+      },
+    });
+    fixStateMock.mockReturnValue({
+      status: 'loaded',
+      dataset: {
+        records: [
+          { ...sampleFix, identifier: 'TWIN' },
+          { ...sampleFix, identifier: 'TWIN' },
+        ],
+      },
+    });
+    const { result } = renderHook(() => useAmbiguousPointIdentifiers());
+    expect(result.current.navaids).toEqual(new Set(['DUPE']));
+    expect(result.current.fixes).toEqual(new Set(['TWIN']));
+  });
+
+  it('returns empty sets while the datasets are loading', () => {
+    navaidStateMock.mockReturnValue({ status: 'loading' });
+    fixStateMock.mockReturnValue({ status: 'loading' });
+    const { result } = renderHook(() => useAmbiguousPointIdentifiers());
+    expect(result.current.navaids.size).toBe(0);
+    expect(result.current.fixes.size).toBe(0);
   });
 });

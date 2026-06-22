@@ -7,7 +7,8 @@ import type { NavaidResolver, NavaidSearchField, NavaidSearchResult } from '@squ
 import type { MatchRange } from '@squawk/search';
 import type { Airport, AirspaceFeature, AirspaceType, AirwayType, NavaidType } from '@squawk/types';
 
-import { encodeSelected } from '../../../shared/inspector/entity.ts';
+import { encodePointId, encodeSelected } from '../../../shared/inspector/entity.ts';
+import type { AmbiguousPointIdentifiers, PointPosition } from '../../../shared/inspector/entity.ts';
 import {
   bboxFromCoords,
   bboxFromWaypoints,
@@ -172,6 +173,13 @@ export interface ChartSearchParams {
   limit?: number;
   /** Minimum match score (exclusive) forwarded to each resolver. When omitted, every match is kept. */
   minScore?: number;
+  /**
+   * Shared navaid / fix identifier sets. When a result's identifier is
+   * present, its selection gains a `/c:LON,LAT` suffix so choosing the row
+   * resolves the intended record rather than the first identifier match.
+   * Omit to encode every result bare.
+   */
+  ambiguous?: AmbiguousPointIdentifiers;
 }
 
 /**
@@ -220,16 +228,48 @@ function buildAirportResult(
 }
 
 /**
+ * Returns the disambiguating position for a shared point-feature
+ * identifier, or undefined when the identifier is unique (so the
+ * selection encodes bare). The coordinates come straight from the
+ * matched record, so unlike the click path there is no tile-quantized
+ * geometry to contend with.
+ *
+ * @param identifier - The matched record's identifier.
+ * @param lat - The record latitude in decimal degrees (WGS84).
+ * @param lon - The record longitude in decimal degrees (WGS84).
+ * @param ambiguousSet - Identifiers shared by 2+ records, or undefined to disable suffixing.
+ * @returns The disambiguating position, or undefined to encode the bare identifier.
+ */
+function positionForSharedIdentifier(
+  identifier: string,
+  lat: number,
+  lon: number,
+  ambiguousSet: ReadonlySet<string> | undefined,
+): PointPosition | undefined {
+  if (ambiguousSet === undefined || !ambiguousSet.has(identifier)) {
+    return undefined;
+  }
+  return { lat, lon };
+}
+
+/**
  * Builds a navaid result row from a resolver match.
  */
 function buildNavaidResult(
   match: NavaidSearchResult,
   visibility: LayerVisibility,
+  ambiguousNavaids: ReadonlySet<string> | undefined,
 ): NavaidChartSearchResult {
   const navaid = match.navaid;
+  const position = positionForSharedIdentifier(
+    navaid.identifier,
+    navaid.lat,
+    navaid.lon,
+    ambiguousNavaids,
+  );
   return {
     kind: 'navaid',
-    selection: encodeSelected({ type: 'navaid', id: navaid.identifier }),
+    selection: encodeSelected({ type: 'navaid', id: encodePointId(navaid.identifier, position) }),
     label: navaid.identifier,
     sublabel: navaid.name,
     subtype: navaid.type,
@@ -245,11 +285,16 @@ function buildNavaidResult(
 /**
  * Builds a fix result row from a resolver match.
  */
-function buildFixResult(match: FixSearchResult, visibility: LayerVisibility): FixChartSearchResult {
+function buildFixResult(
+  match: FixSearchResult,
+  visibility: LayerVisibility,
+  ambiguousFixes: ReadonlySet<string> | undefined,
+): FixChartSearchResult {
   const fix = match.fix;
+  const position = positionForSharedIdentifier(fix.identifier, fix.lat, fix.lon, ambiguousFixes);
   return {
     kind: 'fix',
-    selection: encodeSelected({ type: 'fix', id: fix.identifier }),
+    selection: encodeSelected({ type: 'fix', id: encodePointId(fix.identifier, position) }),
     label: fix.identifier,
     sublabel: undefined,
     matchedField: match.matchedField,
@@ -389,7 +434,7 @@ export function searchChartFeatures(params: ChartSearchParams): ChartSearchResul
       if (!isDrawableNavaid(match.navaid)) {
         continue;
       }
-      results.push(buildNavaidResult(match, visibility));
+      results.push(buildNavaidResult(match, visibility, params.ambiguous?.navaids));
     }
   }
 
@@ -400,7 +445,7 @@ export function searchChartFeatures(params: ChartSearchParams): ChartSearchResul
       ...(minScore !== undefined && { minScore }),
     });
     for (const match of matches) {
-      results.push(buildFixResult(match, visibility));
+      results.push(buildFixResult(match, visibility, params.ambiguous?.fixes));
     }
   }
 
