@@ -4,6 +4,7 @@ import type { MapLayerMouseEvent } from '@vis.gl/react-maplibre';
 import type { ReactElement } from 'react';
 import { useCallback, useState } from 'react';
 
+import { useAmbiguousPointIdentifiers } from '../../shared/inspector/entity-resolver.ts';
 import { EntityInspector } from '../../shared/inspector/inspector.tsx';
 import { MapCanvas } from '../../shared/map/map-canvas.tsx';
 import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
@@ -78,6 +79,10 @@ function clickQueryRadiusPx(zoom: number): number {
 export function ChartMode(): ReactElement {
   const { lat, lon, zoom, pitch, layers, airspaceClasses, selected } = route.useSearch();
   const navigate = useNavigate({ from: CHART_ROUTE_PATH });
+  // Shared navaid / fix identifier sets, used to decide when a click or
+  // popover selection needs a position suffix so a duplicated identifier
+  // resolves to the clicked record rather than the first dataset match.
+  const ambiguousIdentifiers = useAmbiguousPointIdentifiers();
   // Snapshot of every feature returned by the most recent map click. The
   // inspector reads this to render an "Also here" chip strip so the user
   // can switch between stacked features (e.g. Class B and ARTCC at the
@@ -221,14 +226,14 @@ export function ChartMode(): ReactElement {
       setFeaturesAtLastClick(features);
       const next =
         classification.kind === 'unambiguous'
-          ? selectedFromFeature(classification.winner)
+          ? selectedFromFeature(classification.winner, ambiguousIdentifiers)
           : undefined;
       void navigate({
         search: (prev) => ({ ...prev, selected: next }),
         replace: true,
       });
     },
-    [navigate],
+    [navigate, ambiguousIdentifiers],
   );
 
   const handleDisambiguationSelect = useCallback(
@@ -363,6 +368,7 @@ export function ChartMode(): ReactElement {
           <DisambiguationPopover
             screen={pendingDisambiguation.screen}
             candidates={pendingDisambiguation.candidates}
+            ambiguous={ambiguousIdentifiers}
             onSelect={handleDisambiguationSelect}
             onDismiss={handleDisambiguationDismiss}
           />

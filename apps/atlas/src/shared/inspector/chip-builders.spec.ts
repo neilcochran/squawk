@@ -1,11 +1,12 @@
 import type { Feature, Polygon } from 'geojson';
 import { describe, it, expect } from 'vitest';
 
-import type { Airway, AirspaceFeature } from '@squawk/types';
+import type { Airway, AirspaceFeature, Navaid } from '@squawk/types';
 
 import type { InspectableFeature } from '../../modes/chart/interaction/click-to-select.ts';
 import { AIRPORTS_LAYER_ID } from '../../modes/chart/layers/airports-layer.tsx';
 import { AIRSPACE_FILL_LAYER_ID } from '../../modes/chart/layers/airspace-layer.tsx';
+import { NAVAIDS_LAYER_ID } from '../../modes/chart/layers/navaids-layer.tsx';
 
 import { AIRSPACE_CEILING_FT_PROPERTY, AIRSPACE_FLOOR_FT_PROPERTY } from './airspace-feature.ts';
 import {
@@ -114,6 +115,7 @@ function buildDatasetStates(
     airspaceFeatures?: Feature<Polygon>[];
     airwayRecords?: Airway[];
     airportRecords?: unknown[];
+    navaidRecords?: Navaid[];
   } = {},
 ): ChartDatasetStates {
   return {
@@ -121,7 +123,7 @@ function buildDatasetStates(
       status: 'loaded',
       dataset: { records: overrides.airportRecords ?? [] },
     } as never,
-    navaid: { status: 'loaded', dataset: { records: [] } } as never,
+    navaid: { status: 'loaded', dataset: { records: overrides.navaidRecords ?? [] } } as never,
     fix: { status: 'loaded', dataset: { records: [] } } as never,
     airway: {
       status: 'loaded',
@@ -592,6 +594,38 @@ describe('buildInspectorChipList', () => {
       viewportBounds: undefined,
     });
     expect(result).toHaveLength(1);
+  });
+
+  it('encodes a shared-identifier navaid sibling with a position suffix when ambiguity sets are passed', () => {
+    const east: Navaid = {
+      identifier: 'DUPE',
+      name: 'EAST',
+      type: 'VOR',
+      status: 'OPERATIONAL_IFR',
+      lat: 42,
+      lon: -71,
+      country: 'US',
+    };
+    const west: Navaid = { ...east, name: 'WEST', lat: 40, lon: -120 };
+    const datasets = buildDatasetStates({ navaidRecords: [east, west] });
+    const navaidSibling: InspectableFeature = {
+      layer: { id: NAVAIDS_LAYER_ID },
+      properties: { identifier: 'DUPE' },
+      geometry: { type: 'Point', coordinates: [-71, 42] },
+    };
+    const result = buildInspectorChipList({
+      siblings: [navaidSibling],
+      selected: undefined,
+      datasets,
+      state: { status: 'idle' },
+      layers: ['navaids'],
+      airspaceClasses: [],
+      viewportBounds: undefined,
+      ambiguous: { navaids: new Set(['DUPE']), fixes: new Set() },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.selection).toBe('navaid:DUPE/c:-71.00000,42.00000');
+    expect(result[0]?.type).toBe('navaid');
   });
 
   it('extends the chip list with bbox-overlap airspace chips for an airspace selection', () => {

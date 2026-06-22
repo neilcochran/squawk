@@ -17,7 +17,7 @@ import type { AirspaceAltitudeKey } from './airspace-feature.ts';
 import { resolveSelectionFromState } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntityState } from './entity-resolver.ts';
 import { parseSelected } from './entity.ts';
-import type { EntityType } from './entity.ts';
+import type { AmbiguousPointIdentifiers, EntityType } from './entity.ts';
 import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.ts';
 import type { BoundingBox } from './geometry.ts';
 
@@ -292,12 +292,18 @@ export function buildInspectorChipList(input: {
   airspaceClasses: readonly AirspaceClass[];
   /** Viewport bbox snapshot used to drop offscreen overlap chips. */
   viewportBounds: BoundingBox | undefined;
+  /**
+   * Shared navaid / fix identifier sets so a sibling chip for a duplicated
+   * identifier encodes a position suffix and resolves to the clicked
+   * record. Omit to encode every sibling bare.
+   */
+  ambiguous?: AmbiguousPointIdentifiers;
 }): readonly Chip[] {
   const seen = new Set<string>();
   const result: Chip[] = [];
 
   for (const feature of input.siblings) {
-    const selection = selectedFromFeature(feature);
+    const selection = selectedFromFeature(feature, input.ambiguous);
     if (selection === undefined) {
       continue;
     }
