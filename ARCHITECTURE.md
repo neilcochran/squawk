@@ -90,7 +90,9 @@ Why: keeping `@squawk/types` focused on genuinely shared models avoids forcing a
 
 ### Browser entries on data and logic packages
 
-Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders so SPAs and edge runtimes can consume the bundled snapshots. Pure-logic query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/flightplan`, `@squawk/navaids`, `@squawk/procedures`) also expose a `/browser` subpath that aliases the main entry, since their resolver code has no Node-specific imports. The `/browser` import is the explicit, supported way for SPAs to consume these packages; the contract is enforced by `lint:pack` (publint) so a future Node-only import would have to split the surface explicitly rather than silently breaking browsers.
+Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders so SPAs and edge runtimes can consume the bundled snapshots. Pure-logic query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/flightplan`, `@squawk/navaids`, `@squawk/procedures`) and the `@squawk/weather` parser library also expose a `/browser` subpath that aliases the main entry, since their core code has no Node-specific imports. The `/browser` import is the explicit, supported way for SPAs to consume these packages; the contract is enforced by `lint:pack` (publint) so a future Node-only import would have to split the surface explicitly rather than silently breaking browsers.
+
+`@squawk/weather` additionally ships an opt-in `/fetch` subpath that calls the AWC text API over the global `fetch`. It runs in the browser, but AWC sends no CORS headers, so browser consumers point the `baseUrl` option at a same-origin proxy they control. The main `@squawk/weather` and `/browser` entries stay pure parsers with no network calls.
 
 `@squawk/icao-registry` is a hybrid: the main entry exposes a runtime `parseFaaRegistryZip` parser that depends on Node's `Buffer` and the `adm-zip` package, so the `/browser` entry is a strict subset that re-exports only `createIcaoRegistry` and the shared types.
 

@@ -14,7 +14,13 @@ export interface FetchWeatherOptions {
   signal?: AbortSignal;
   /**
    * Override the AWC base URL. Defaults to {@link DEFAULT_AWC_BASE_URL}.
-   * Useful for pointing at a mirror or a proxy during development.
+   *
+   * This is the supported seam for browser use. The AWC API does not send
+   * CORS headers, so a direct cross-origin `fetch` from a browser is blocked
+   * by the user agent. Point `baseUrl` at a same-origin proxy you control (a
+   * reverse proxy or an edge function that forwards to AWC and returns the
+   * upstream body) and the `fetch*` functions work unchanged from the browser.
+   * It is equally useful for pointing at a mirror during development.
    */
   baseUrl?: string;
 }
