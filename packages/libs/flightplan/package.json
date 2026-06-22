@@ -42,6 +42,7 @@
     "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
+    "@squawk/flight-math": "^0.5.9",
     "@squawk/geo": "^0.4.3",
     "@squawk/types": "^0.8.0",
     "@types/geojson": "^7946.0.16"

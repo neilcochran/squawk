@@ -188,6 +188,59 @@ console.log(result.totalDistanceNm, result.estimatedTimeEnrouteHrs);
 - `estimatedTimeEnrouteHrs` - ETE in hours, or `undefined` when no ground speed was given
 - `unresolvedElements` - route elements that could not contribute coordinates
 
+### `computeRouteTiming(route, options)`
+
+Layers per-leg, wind-corrected timing over the same legs as
+`computeRouteDistance`. For each leg it derives the initial great-circle true
+course, samples the wind at the leg midpoint, and solves the wind triangle for
+true heading, wind correction angle, and ground speed. Estimated time enroute
+follows from leg distance and ground speed, and fuel burn follows from the same
+ground speed.
+
+Winds are supplied through an optional `windProvider` callback, keeping this
+function independent of any weather source. The provider takes only a position;
+bake the sampling altitude into the closure. A `@squawk/weather` winds-aloft
+forecast read at a chosen cruise altitude is one way to satisfy it. When the
+provider is omitted, or returns `undefined` for a leg (no data, or light and
+variable), that leg is timed as calm: ground speed equals true airspeed and the
+wind correction angle is zero.
+
+```typescript
+import { computeRouteTiming } from '@squawk/flightplan';
+
+const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+const result = computeRouteTiming(route, {
+  trueAirspeedKt: 450,
+  windProvider: (lat, lon) => ({ directionDeg: 270, speedKt: 80 }),
+  fuelBurnPerHr: 600,
+  fuelAvailable: 2400,
+});
+console.log(result.totalEteHrs, result.totalFuelRequired, result.fuelSufficient);
+```
+
+**Parameters:**
+
+- `route` - a `ParsedRoute` from `resolver.parse`
+- `options.trueAirspeedKt` - true airspeed in knots flown on every leg
+- `options.windProvider` - optional `(lat, lon) => WindVector | undefined` callback sampling the wind at each leg midpoint
+- `options.fuelBurnPerHr` - optional fuel burn rate per hour (any consistent unit); enables per-leg and total fuel
+- `options.fuelAvailable` - optional fuel on board (same unit as `fuelBurnPerHr`); with the burn rate, enables endurance and sufficiency
+
+**Returns:** `RouteTimingResult` with:
+
+- `legs` - ordered `RouteTimingLeg` values, each carrying the distance fields above plus `trueCourseDeg`, `trueHeadingDeg`, `windCorrectionAngleDeg`, `groundSpeedKt`, the applied `wind` (or `undefined` when calm), `eteHrs`, `cumulativeEteHrs`, and `fuelRequired`
+- `totalDistanceNm` - total great-circle distance in nautical miles
+- `totalEteHrs` - total estimated time enroute in hours, or `undefined` if any leg could not be timed
+- `totalFuelRequired` - total fuel across all legs, or `undefined` without a burn rate or when any leg could not be timed
+- `enduranceHrs` - endurance in hours from `fuelAvailable` and `fuelBurnPerHr`, or `undefined`
+- `fuelSufficient` - whether endurance covers the total ETE, or `undefined`
+- `unresolvedElements` - route elements that could not contribute coordinates
+
+Ground speed comes from the wind triangle as a magnitude, so a leg is left
+untimed (`eteHrs` is `undefined`) only when ground speed is not positive, which
+occurs where a pure headwind equals true airspeed. A headwind exceeding true
+airspeed still yields a positive magnitude and is not separately flagged.
+
 ### `extractRoutePoints(route)`
 
 Extracts the ordered sequence of drawable geographic points from a parsed

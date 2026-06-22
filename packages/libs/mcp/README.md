@@ -346,6 +346,7 @@ lookup so sessions that never need it do not pay the cost.
 | `parse_flightplan_route` | Parse an ICAO Item 15 route into structured route elements |
 | `compute_route_distance` | Total great-circle route distance with optional ETE        |
 | `get_route_geometry`     | Ordered drawable points and a GeoJSON LineString           |
+| `get_route_timing`       | Per-leg wind-corrected timing, ETE, and fuel/endurance     |
 
 ### Flight computer (`@squawk/flight-math`)
 

@@ -1476,6 +1476,105 @@ describe('flightplan tools', () => {
       await close();
     }
   });
+
+  it('get_route_timing times a route as calm when wind is omitted', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_route_timing',
+        arguments: { routeString: 'KJFK DCT KLAX', trueAirspeedKt: 450 },
+      });
+      const parsed = z
+        .object({
+          result: z
+            .object({
+              legs: z.array(z.object({ groundSpeedKt: z.number() }).passthrough()),
+              totalEteHrs: z.number().nullable().optional(),
+              unresolvedElements: z.array(z.unknown()),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.result.legs.length >= 1);
+      // Calm timing leaves ground speed equal to true airspeed on every leg.
+      assert(Math.abs(parsed.result.legs[0]!.groundSpeedKt - 450) < 0.01);
+      assert(parsed.result.totalEteHrs !== undefined && parsed.result.totalEteHrs !== null);
+      assert(parsed.result.totalEteHrs > 0);
+      expect(parsed.result.unresolvedElements.length).toBe(0);
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_route_timing applies a uniform wind to every leg', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_route_timing',
+        arguments: {
+          routeString: 'KJFK DCT KLAX',
+          trueAirspeedKt: 450,
+          wind: { directionDeg: 270, speedKt: 50 },
+        },
+      });
+      const parsed = z
+        .object({
+          result: z
+            .object({
+              legs: z.array(
+                z
+                  .object({
+                    groundSpeedKt: z.number(),
+                    windCorrectionAngleDeg: z.number(),
+                    wind: z.object({ directionDeg: z.number(), speedKt: z.number() }),
+                  })
+                  .passthrough(),
+              ),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.result.legs.length >= 1);
+      const leg = parsed.result.legs[0]!;
+      expect(leg.wind.speedKt).toBe(50);
+      expect(leg.wind.directionDeg).toBe(270);
+      assert(leg.groundSpeedKt > 0);
+    } finally {
+      await close();
+    }
+  });
+
+  it('get_route_timing reports fuel and endurance when fuel inputs are given', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_route_timing',
+        arguments: {
+          routeString: 'KJFK DCT KLAX',
+          trueAirspeedKt: 450,
+          fuelBurnPerHr: 50,
+          fuelAvailable: 300,
+        },
+      });
+      const parsed = z
+        .object({
+          result: z
+            .object({
+              totalFuelRequired: z.number(),
+              enduranceHrs: z.number(),
+              fuelSufficient: z.boolean(),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.result.totalFuelRequired > 0);
+      // Endurance is fuel available divided by burn rate (300 / 50 = 6 hours).
+      assert(Math.abs(parsed.result.enduranceHrs - 6) < 0.01);
+      expect(typeof parsed.result.fuelSufficient).toBe('boolean');
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('weather parsing tools', () => {

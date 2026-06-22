@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import {
   computeRouteDistance,
+  computeRouteTiming,
   createFlightplanResolver,
   extractRoutePoints,
   routeToLineString,
@@ -113,6 +114,65 @@ export function registerFlightplanTools(server: McpServer): void {
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         structuredContent: result,
+      };
+    },
+  );
+
+  server.registerTool(
+    'get_route_timing',
+    {
+      title: 'Compute wind-corrected route timing',
+      description:
+        'Parses a flight plan route string and computes per-leg, wind-corrected timing. For each leg it solves the wind triangle from the leg true course, the given true airspeed, and a uniform wind, yielding true heading, wind correction angle, and ground speed, then estimated time enroute (and fuel burn when fuelBurnPerHr is given). Supply a uniform wind via the optional wind object (direction the wind blows FROM in degrees true, and speed in knots) applied to every leg; omit it to time the route as calm, where ground speed equals true airspeed. When fuelBurnPerHr and fuelAvailable are both given, the result also reports endurance in hours and whether fuel is sufficient for the total time enroute. A leg whose ground speed is not positive (a pure headwind equal to true airspeed) is left untimed, which makes the route ETE and fuel totals null. Use compute_route_distance for plain distance or a single constant-ground-speed ETE without wind correction.',
+      inputSchema: {
+        routeString: z
+          .string()
+          .min(1)
+          .describe('Whitespace-separated route string in ICAO Item 15 conventions.'),
+        trueAirspeedKt: z
+          .number()
+          .positive()
+          .describe('True airspeed in knots flown on every leg.'),
+        wind: z
+          .object({
+            directionDeg: z
+              .number()
+              .min(0)
+              .max(360)
+              .describe('Direction the wind blows FROM in degrees true (0-360).'),
+            speedKt: z.number().nonnegative().describe('Wind speed in knots.'),
+          })
+          .optional()
+          .describe(
+            'Uniform wind applied to every leg. Omit to time the route as calm (ground speed equals true airspeed).',
+          ),
+        fuelBurnPerHr: z
+          .number()
+          .positive()
+          .optional()
+          .describe(
+            'Optional fuel burn rate per hour in any consistent unit. When given, per-leg and total fuel are computed.',
+          ),
+        fuelAvailable: z
+          .number()
+          .positive()
+          .optional()
+          .describe(
+            'Optional fuel on board in the same unit as fuelBurnPerHr. With the burn rate, enables endurance and fuel-sufficiency reporting.',
+          ),
+      },
+    },
+    ({ routeString, trueAirspeedKt, wind, fuelBurnPerHr, fuelAvailable }) => {
+      const route = resolver.parse(routeString);
+      const result = computeRouteTiming(route, {
+        trueAirspeedKt,
+        ...(wind !== undefined ? { windProvider: () => wind } : {}),
+        ...(fuelBurnPerHr !== undefined ? { fuelBurnPerHr } : {}),
+        ...(fuelAvailable !== undefined ? { fuelAvailable } : {}),
+      });
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result },
       };
     },
   );
