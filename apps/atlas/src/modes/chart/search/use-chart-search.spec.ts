@@ -6,12 +6,14 @@ import { useChartSearch } from './use-chart-search.ts';
 const {
   useSearchMock,
   useChartSearchResolversMock,
+  useAmbiguousPointIdentifiersMock,
   computeLayerVisibilityMock,
   computeSearchScopeMock,
   searchChartFeaturesMock,
 } = vi.hoisted(() => ({
   useSearchMock: vi.fn(),
   useChartSearchResolversMock: vi.fn(),
+  useAmbiguousPointIdentifiersMock: vi.fn(),
   computeLayerVisibilityMock: vi.fn(),
   computeSearchScopeMock: vi.fn(),
   searchChartFeaturesMock: vi.fn(),
@@ -23,6 +25,9 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('./search-resolvers.ts', () => ({
   useChartSearchResolvers: useChartSearchResolversMock,
 }));
+vi.mock('../../../shared/inspector/entity-resolver.ts', () => ({
+  useAmbiguousPointIdentifiers: useAmbiguousPointIdentifiersMock,
+}));
 vi.mock('./search-scope.ts', () => ({
   computeLayerVisibility: computeLayerVisibilityMock,
   computeSearchScope: computeSearchScopeMock,
@@ -32,6 +37,7 @@ vi.mock('./search-features.ts', () => ({
 }));
 
 const resolversSentinel = { airports: { search: vi.fn() } };
+const ambiguousSentinel = { navaids: new Set<string>(), fixes: new Set<string>() };
 const visibilitySentinel = { visibility: true };
 const scopeSentinel = { scope: true };
 
@@ -51,6 +57,7 @@ describe('useChartSearch', () => {
     vi.clearAllMocks();
     useSearchMock.mockReturnValue(search);
     useChartSearchResolversMock.mockReturnValue(resolversSentinel);
+    useAmbiguousPointIdentifiersMock.mockReturnValue(ambiguousSentinel);
     computeLayerVisibilityMock.mockReturnValue(visibilitySentinel);
     computeSearchScopeMock.mockReturnValue(scopeSentinel);
     searchChartFeaturesMock.mockReturnValue([]);
@@ -93,6 +100,7 @@ describe('useChartSearch', () => {
       resolvers: resolversSentinel,
       scope: scopeSentinel,
       visibility: visibilitySentinel,
+      ambiguous: ambiguousSentinel,
     });
   });
 

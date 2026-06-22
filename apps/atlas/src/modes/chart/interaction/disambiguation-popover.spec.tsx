@@ -27,6 +27,20 @@ function buildFeature(layerId: string, properties: Record<string, unknown>): Ins
   return { layer: { id: layerId }, properties };
 }
 
+/** Builds a popover candidate carrying a Point geometry, for the navaid / fix position-suffix path. */
+function buildPointFeature(
+  layerId: string,
+  properties: Record<string, unknown>,
+  lon: number,
+  lat: number,
+): InspectableFeature {
+  return {
+    layer: { id: layerId },
+    properties,
+    geometry: { type: 'Point', coordinates: [lon, lat] },
+  };
+}
+
 /**
  * Pulls the `movestart` handler that the popover most recently
  * registered with the map. Tests fire it directly to simulate a
@@ -112,6 +126,46 @@ describe('DisambiguationPopover', () => {
 
     const items = screen.getAllByRole('menuitem');
     expect(items).toHaveLength(2);
+  });
+
+  it('keeps two same-identifier candidates distinct when ambiguity sets supply position suffixes', () => {
+    const onSelect = vi.fn();
+    const east = buildPointFeature(NAVAIDS_LAYER_ID, { identifier: 'DUPE' }, -71, 42);
+    const west = buildPointFeature(NAVAIDS_LAYER_ID, { identifier: 'DUPE' }, -120, 40);
+    render(
+      <DisambiguationPopover
+        screen={{ x: 0, y: 0 }}
+        candidates={[east, west]}
+        ambiguous={{ navaids: new Set(['DUPE']), fixes: new Set() }}
+        onSelect={onSelect}
+        onDismiss={vi.fn()}
+      />,
+      { wrapper: withProvider(vi.fn()) },
+    );
+
+    const items = screen.getAllByRole('menuitem');
+    expect(items).toHaveLength(2);
+    fireEvent.click(items[0]!);
+    expect(onSelect).toHaveBeenCalledWith('navaid:DUPE/c:-71.00000,42.00000');
+  });
+
+  it('collapses two same-identifier candidates to nothing without ambiguity sets', () => {
+    // Both encode to the bare `navaid:DUPE`, so the dedupe pass leaves one
+    // row and the <2 guard renders nothing - the regression the position
+    // suffix fixes.
+    const east = buildPointFeature(NAVAIDS_LAYER_ID, { identifier: 'DUPE' }, -71, 42);
+    const west = buildPointFeature(NAVAIDS_LAYER_ID, { identifier: 'DUPE' }, -120, 40);
+    const { container } = render(
+      <DisambiguationPopover
+        screen={{ x: 0, y: 0 }}
+        candidates={[east, west]}
+        onSelect={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+      { wrapper: withProvider(vi.fn()) },
+    );
+
+    expect(container.firstChild).toBeNull();
   });
 
   it('drops candidates whose layer is not encodeable', () => {

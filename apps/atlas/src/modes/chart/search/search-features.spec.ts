@@ -15,6 +15,7 @@ import type {
   Navaid,
 } from '@squawk/types';
 
+import type { AmbiguousPointIdentifiers } from '../../../shared/inspector/entity.ts';
 import { RENDERED_AIRPORT_FACILITY_TYPES, RENDERED_NAVAID_TYPES } from '../layers/drawable-sets.ts';
 
 import { DEFAULT_RESULT_LIMIT, searchChartFeatures } from './search-features.ts';
@@ -251,6 +252,8 @@ function run(params: {
   limit?: number;
   /** Minimum score forwarded to resolvers. */
   minScore?: number;
+  /** Shared navaid / fix identifier sets for position-suffix encoding. */
+  ambiguous?: AmbiguousPointIdentifiers;
 }): ChartSearchResult[] {
   return searchChartFeatures({
     text: params.text ?? 'bos',
@@ -259,6 +262,7 @@ function run(params: {
     visibility: params.visibility ?? makeVisibility(),
     ...(params.limit !== undefined && { limit: params.limit }),
     ...(params.minScore !== undefined && { minScore: params.minScore }),
+    ...(params.ambiguous !== undefined && { ambiguous: params.ambiguous }),
   });
 }
 
@@ -445,6 +449,53 @@ describe('searchChartFeatures', () => {
     const result = results[0];
     expect(result?.selection).toBe('airspace:CLASS_E5/c:1.60000,1.60000');
     expect(result?.label).toBe('PODUNK E5');
+  });
+
+  it('appends a position suffix to a shared-identifier navaid selection', () => {
+    const results = run({
+      resolvers: makeResolvers({
+        navaids: [
+          navaidMatch(makeNavaid({ identifier: 'DUPE', lat: 42.35778, lon: -71.00472 }), 0.9),
+        ],
+      }),
+      scope: makeScope({ navaids: { enabled: true, types: RENDERED_NAVAID_TYPES } }),
+      ambiguous: { navaids: new Set(['DUPE']), fixes: new Set() },
+    });
+    expect(results[0]?.selection).toBe('navaid:DUPE/c:-71.00472,42.35778');
+  });
+
+  it('appends a position suffix to a shared-identifier fix selection', () => {
+    const results = run({
+      resolvers: makeResolvers({
+        fixes: [fixMatch(makeFix({ identifier: 'DUPE', lat: 30.123, lon: -90.5 }), 0.9)],
+      }),
+      scope: makeScope({ fixes: { enabled: true } }),
+      ambiguous: { navaids: new Set(), fixes: new Set(['DUPE']) },
+    });
+    expect(results[0]?.selection).toBe('fix:DUPE/c:-90.50000,30.12300');
+  });
+
+  it('encodes a unique navaid selection bare even when ambiguity sets are supplied', () => {
+    const results = run({
+      resolvers: makeResolvers({ navaids: [navaidMatch(makeNavaid({ identifier: 'SOLO' }), 0.9)] }),
+      scope: makeScope({ navaids: { enabled: true, types: RENDERED_NAVAID_TYPES } }),
+      ambiguous: { navaids: new Set(['DUPE']), fixes: new Set() },
+    });
+    expect(results[0]?.selection).toBe('navaid:SOLO');
+  });
+
+  it('encodes navaid and fix selections bare when no ambiguity sets are supplied', () => {
+    const results = run({
+      resolvers: makeResolvers({
+        navaids: [navaidMatch(makeNavaid({ identifier: 'DUPE' }), 0.9)],
+        fixes: [fixMatch(makeFix({ identifier: 'DUPE' }), 0.8)],
+      }),
+      scope: makeScope({
+        navaids: { enabled: true, types: RENDERED_NAVAID_TYPES },
+        fixes: { enabled: true },
+      }),
+    });
+    expect(results.map((result) => result.selection)).toEqual(['navaid:DUPE', 'fix:DUPE']);
   });
 
   it('selects the navaid matched text by matched field', () => {

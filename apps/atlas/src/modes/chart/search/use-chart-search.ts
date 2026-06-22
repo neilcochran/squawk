@@ -1,6 +1,7 @@
 import { getRouteApi } from '@tanstack/react-router';
 import { useDeferredValue, useMemo } from 'react';
 
+import { useAmbiguousPointIdentifiers } from '../../../shared/inspector/entity-resolver.ts';
 import { CHART_ROUTE_PATH } from '../url-state.ts';
 
 import { searchChartFeatures } from './search-features.ts';
@@ -34,6 +35,7 @@ export function useChartSearch(query: string): ChartSearchResult[] {
     searchIncludeHidden,
   } = route.useSearch();
   const resolvers = useChartSearchResolvers();
+  const ambiguous = useAmbiguousPointIdentifiers();
   const deferredQuery = useDeferredValue(query);
 
   const visibility = useMemo(
@@ -64,7 +66,7 @@ export function useChartSearch(query: string): ChartSearchResult[] {
   );
 
   return useMemo(
-    () => searchChartFeatures({ text: deferredQuery, resolvers, scope, visibility }),
-    [deferredQuery, resolvers, scope, visibility],
+    () => searchChartFeatures({ text: deferredQuery, resolvers, scope, visibility, ambiguous }),
+    [deferredQuery, resolvers, scope, visibility, ambiguous],
   );
 }

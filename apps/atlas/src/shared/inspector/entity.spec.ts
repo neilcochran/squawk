@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { encodeSelected, parseSelected } from './entity.ts';
+import { decodePointId, encodePointId, encodeSelected, parseSelected } from './entity.ts';
 
 describe('parseSelected', () => {
   it('returns undefined for an undefined input', () => {
@@ -70,5 +70,51 @@ describe('encodeSelected', () => {
 
   it('encodes a compound airspace reference', () => {
     expect(encodeSelected({ type: 'airspace', id: 'CLASS_B/JFK' })).toBe('airspace:CLASS_B/JFK');
+  });
+});
+
+describe('encodePointId', () => {
+  it('returns the bare identifier when no position is given', () => {
+    expect(encodePointId('BOS')).toBe('BOS');
+  });
+
+  it('appends a c:LON,LAT suffix (longitude first) rounded to five places', () => {
+    expect(encodePointId('BOS', { lat: 42.357776, lon: -71.004722 })).toBe(
+      'BOS/c:-71.00472,42.35778',
+    );
+  });
+});
+
+describe('decodePointId', () => {
+  it('returns the bare identifier and no position for an id without a suffix', () => {
+    expect(decodePointId('BOS')).toEqual({ ident: 'BOS', position: undefined });
+  });
+
+  it('splits an identifier and its position suffix', () => {
+    expect(decodePointId('BOS/c:-71.00472,42.35778')).toEqual({
+      ident: 'BOS',
+      position: { lat: 42.35778, lon: -71.00472 },
+    });
+  });
+
+  it('ignores a suffix that does not have exactly two parts', () => {
+    expect(decodePointId('MERIT/c:1,2,3')).toEqual({ ident: 'MERIT', position: undefined });
+  });
+
+  it('ignores a suffix with a non-finite coordinate', () => {
+    expect(decodePointId('MERIT/c:-71.0,abc')).toEqual({ ident: 'MERIT', position: undefined });
+  });
+
+  it('round-trips a position through encodePointId, parseSelected, and decodePointId', () => {
+    const id = encodePointId('DUPE', { lat: 30.123, lon: -90.5 });
+    const ref = parseSelected(`navaid:${id}`);
+    expect(ref).toEqual({ type: 'navaid', id: 'DUPE/c:-90.50000,30.12300' });
+    if (ref === undefined) {
+      return;
+    }
+    expect(decodePointId(ref.id)).toEqual({
+      ident: 'DUPE',
+      position: { lat: 30.123, lon: -90.5 },
+    });
   });
 });

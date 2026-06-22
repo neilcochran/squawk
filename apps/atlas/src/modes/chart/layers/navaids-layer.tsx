@@ -8,6 +8,7 @@ import type { ReactElement } from 'react';
 import type { Navaid, NavaidType } from '@squawk/types';
 
 import { useNavaidDataset } from '../../../shared/data/navaid-dataset.ts';
+import { decodePointId } from '../../../shared/inspector/entity.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 import { LAYER_MIN_ZOOM } from '../url-state.ts';
@@ -162,7 +163,9 @@ export function NavaidsLayer(): ReactElement | null {
   const highlightLayerProps = useMemo<LayerProps>(() => {
     const filter: ExpressionSpecification =
       activeRef?.type === 'navaid'
-        ? ['==', ['get', 'identifier'], activeRef.id]
+        ? // Strip any `/c:LON,LAT` disambiguator so the highlight matches on
+          // the bare identifier carried by the feature properties.
+          ['==', ['get', 'identifier'], decodePointId(activeRef.id).ident]
         : MATCH_NONE_FILTER;
     return {
       id: NAVAIDS_HIGHLIGHT_LAYER_ID,
