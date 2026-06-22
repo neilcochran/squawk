@@ -28,9 +28,9 @@ A monorepo of focused, well-documented TypeScript libraries covering common avia
 
 Six guiding principles shape every decision in this repo:
 
-- **Focused scope per package.** Each library does one thing well. Domain libraries (airports, navaids, weather, etc.) do not depend on each other; cross-dependencies are limited to the foundational tier (`@squawk/types`, `@squawk/units`, `@squawk/geo`, `@squawk/search`).
+- **Focused scope per package.** Each library does one thing well. Pull in another `@squawk/*` library - including one domain library depending on another - when that is the clearest way to avoid duplicating logic, and keep dependencies purposeful rather than incidental. The foundational libraries (`@squawk/types`, `@squawk/units`, `@squawk/geo`, `@squawk/search`) are the shared substrate most packages build on.
 - **Real-world data.** Libraries work against actual FAA datasets and live aviation weather feeds, not mocked or synthetic data.
-- **Designed for composition.** Libraries fit together naturally when building an application. Domain libraries are independent of each other - the foundational tier is the only shared substrate.
+- **Designed for composition.** Libraries fit together naturally when building an application, and compose with each other directly when that is the cleanest design.
 - **Published quality from day one.** Every library ships with a README, TypeScript types, unit tests, and a changelog.
 - **Runtime-pure libraries.** Libraries are written to run in any modern JS runtime. Node-only surface is isolated to opt-in entries; server-only packages (`@squawk/mcp`, build tools) are explicitly Node-only.
 - **Complete data models.** Models capture all reasonable, distinct fields for a concept, even fields not currently consumed. The libraries are published for others to build on; completeness and correctness of the data model is a primary goal.

@@ -27,5 +27,13 @@ export type {
 } from './resolver.js';
 export { computeRouteDistance } from './route-distance.js';
 export type { RouteLeg, RouteDistanceResult } from './route-distance.js';
+export { computeRouteTiming } from './route-timing.js';
+export type {
+  WindProvider,
+  RouteTimingOptions,
+  RouteTimingLeg,
+  RouteTimingResult,
+} from './route-timing.js';
+export type { WindVector } from '@squawk/flight-math';
 export { extractRoutePoints, routeToLineString } from './route-geometry.js';
 export type { RoutePoint } from './route-geometry.js';

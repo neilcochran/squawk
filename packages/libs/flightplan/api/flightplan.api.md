@@ -12,6 +12,7 @@ import type { LineString } from 'geojson';
 import type { Navaid } from '@squawk/types';
 import type { Procedure } from '@squawk/types';
 import type { ProcedureLeg } from '@squawk/types';
+import { WindVector } from '@squawk/flight-math';
 
 // @public
 export interface AirportRouteElement {
@@ -32,6 +33,12 @@ export interface AirwayRouteElement {
 
 // @public
 export function computeRouteDistance(route: ParsedRoute, groundSpeedKt?: number): RouteDistanceResult;
+
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/flightplan" does not have an export "solveWindTriangle"
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/flightplan" does not have an export "solveWindTriangle"
+//
+// @public
+export function computeRouteTiming(route: ParsedRoute, options: RouteTimingOptions): RouteTimingResult;
 
 // @public
 export interface CoordinateRouteElement {
@@ -138,6 +145,45 @@ export interface RoutePoint {
 }
 
 // @public
+export interface RouteTimingLeg {
+    cumulativeDistanceNm: number;
+    cumulativeEteHrs: number | undefined;
+    distanceNm: number;
+    eteHrs: number | undefined;
+    from: string;
+    fromLat: number;
+    fromLon: number;
+    fuelRequired: number | undefined;
+    groundSpeedKt: number;
+    to: string;
+    toLat: number;
+    toLon: number;
+    trueCourseDeg: number;
+    trueHeadingDeg: number;
+    wind: WindVector | undefined;
+    windCorrectionAngleDeg: number;
+}
+
+// @public
+export interface RouteTimingOptions {
+    fuelAvailable?: number;
+    fuelBurnPerHr?: number;
+    trueAirspeedKt: number;
+    windProvider?: WindProvider;
+}
+
+// @public
+export interface RouteTimingResult {
+    enduranceHrs: number | undefined;
+    fuelSufficient: boolean | undefined;
+    legs: RouteTimingLeg[];
+    totalDistanceNm: number;
+    totalEteHrs: number | undefined;
+    totalFuelRequired: number | undefined;
+    unresolvedElements: RouteElement[];
+}
+
+// @public
 export function routeToLineString(route: ParsedRoute): LineString | undefined;
 
 // @public
@@ -182,5 +228,10 @@ export interface WaypointRouteElement {
     raw: string;
     type: 'waypoint';
 }
+
+// @public
+export type WindProvider = (lat: number, lon: number) => WindVector | undefined;
+
+export { WindVector }
 
 ```
