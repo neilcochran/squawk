@@ -95,8 +95,8 @@ Creates a resolver from optional lookup providers.
 **Parameters:**
 
 - `options.airports` - airport lookup (must provide `byFaaId` and `byIcao`)
-- `options.navaids` - navaid lookup (must provide `byIdent`)
-- `options.fixes` - fix lookup (must provide `byIdent`)
+- `options.navaids` - navaid lookup (must provide `byIdent`; may also provide `byIdentAtPosition` for proximity disambiguation)
+- `options.fixes` - fix lookup (must provide `byIdent`; may also provide `byIdentAtPosition` for proximity disambiguation)
 - `options.airways` - airway lookup (must provide `byDesignation` and `expand`)
 - `options.procedures` - procedure lookup (must provide `byIdentifier` and `expand`)
 
@@ -159,6 +159,14 @@ both an airport and a navaid), the resolver uses this priority order:
 3. Procedure (SID/STAR)
 4. Fix
 5. Navaid
+
+The same fix or navaid identifier is sometimes published in more than one
+region. When the `fixes` or `navaids` provider exposes `byIdentAtPosition`, the
+resolver disambiguates such a token by proximity to the most recently resolved
+positional element (a preceding airport, coordinate, waypoint, airway exit fix,
+or procedure terminus). The first token in a route has no such anchor, and a
+provider that exposes only `byIdent` cannot disambiguate; both cases fall back
+to the first `byIdent` match.
 
 ### `computeRouteDistance(route, groundSpeedKt?)`
 

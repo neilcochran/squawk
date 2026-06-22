@@ -30,6 +30,18 @@ export interface FlightplanAirportLookup {
 export interface FlightplanNavaidLookup {
   /** Looks up navaids by identifier. Returns an empty array if none found. */
   byIdent(ident: string): Navaid[];
+  /**
+   * Optionally looks up the single navaid sharing the identifier that lies
+   * nearest a reference position, disambiguating same-identifier collisions by
+   * proximity to the previously resolved route waypoint. When omitted, the
+   * resolver falls back to the first `byIdent` match.
+   */
+  byIdentAtPosition?(
+    ident: string,
+    lat: number,
+    lon: number,
+    toleranceNm?: number,
+  ): Navaid | undefined;
 }
 
 /**
@@ -39,6 +51,18 @@ export interface FlightplanNavaidLookup {
 export interface FlightplanFixLookup {
   /** Looks up fixes by identifier. Returns an empty array if none found. */
   byIdent(ident: string): Fix[];
+  /**
+   * Optionally looks up the single fix sharing the identifier that lies nearest
+   * a reference position, disambiguating same-identifier collisions by proximity
+   * to the previously resolved route waypoint. When omitted, the resolver falls
+   * back to the first `byIdent` match.
+   */
+  byIdentAtPosition?(
+    ident: string,
+    lat: number,
+    lon: number,
+    toleranceNm?: number,
+  ): Fix | undefined;
 }
 
 /**
@@ -370,6 +394,17 @@ function parseSpeedAltitude(token: string): SpeedAltitudeRouteElement | undefine
 // ---------------------------------------------------------------------------
 
 /**
+ * A geographic anchor used to disambiguate same-identifier waypoints by
+ * proximity to the most recently resolved positional route element.
+ */
+interface RouteAnchor {
+  /** Latitude in decimal degrees, positive north. */
+  lat: number;
+  /** Longitude in decimal degrees, positive east. */
+  lon: number;
+}
+
+/**
  * Attempts to resolve a token as an airport (ICAO or FAA ID).
  */
 function tryAirport(
@@ -446,38 +481,48 @@ function tryProcedure(
 }
 
 /**
- * Attempts to resolve a token as a fix waypoint.
+ * Attempts to resolve a token as a fix waypoint. When an anchor is supplied and
+ * the lookup provides `byIdentAtPosition`, the identifier is disambiguated by
+ * proximity to the anchor; otherwise the first `byIdent` match is used.
  */
 function tryFix(
   token: string,
   fixes: FlightplanFixLookup | undefined,
+  anchor: RouteAnchor | undefined,
 ): WaypointRouteElement | undefined {
   if (!fixes) {
     return undefined;
   }
 
-  const results = fixes.byIdent(token);
-  if (results.length > 0) {
-    const fix = results[0]!;
+  const fix =
+    anchor && fixes.byIdentAtPosition
+      ? fixes.byIdentAtPosition(token, anchor.lat, anchor.lon)
+      : fixes.byIdent(token)[0];
+  if (fix) {
     return { type: 'waypoint', raw: token, fix, lat: fix.lat, lon: fix.lon };
   }
   return undefined;
 }
 
 /**
- * Attempts to resolve a token as a navaid waypoint.
+ * Attempts to resolve a token as a navaid waypoint. When an anchor is supplied
+ * and the lookup provides `byIdentAtPosition`, the identifier is disambiguated
+ * by proximity to the anchor; otherwise the first `byIdent` match is used.
  */
 function tryNavaid(
   token: string,
   navaids: FlightplanNavaidLookup | undefined,
+  anchor: RouteAnchor | undefined,
 ): WaypointRouteElement | undefined {
   if (!navaids) {
     return undefined;
   }
 
-  const results = navaids.byIdent(token);
-  if (results.length > 0) {
-    const navaid = results[0]!;
+  const navaid =
+    anchor && navaids.byIdentAtPosition
+      ? navaids.byIdentAtPosition(token, anchor.lat, anchor.lon)
+      : navaids.byIdent(token)[0];
+  if (navaid) {
     return { type: 'waypoint', raw: token, navaid, lat: navaid.lat, lon: navaid.lon };
   }
   return undefined;
@@ -538,6 +583,7 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
       const elements: RouteElement[] = [];
       let lastWaypointIdent: string | undefined;
       let lastAirportIdent: string | undefined;
+      let lastPosition: RouteAnchor | undefined;
 
       let i = 0;
       while (i < tokens.length) {
@@ -555,6 +601,7 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
         if (coord) {
           elements.push({ type: 'coordinate', raw: token, lat: coord.lat, lon: coord.lon });
           lastWaypointIdent = undefined;
+          lastPosition = { lat: coord.lat, lon: coord.lon };
           i++;
           continue;
         }
@@ -584,6 +631,10 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
               });
               // The exit fix is consumed as part of the airway; update last waypoint
               lastWaypointIdent = exitFix;
+              const exitWaypoint = expansion.waypoints[expansion.waypoints.length - 1];
+              if (exitWaypoint) {
+                lastPosition = { lat: exitWaypoint.lat, lon: exitWaypoint.lon };
+              }
               i += 2;
               continue;
             }
@@ -617,6 +668,7 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
           // airport and a navaid on V16).
           lastWaypointIdent = token;
           lastAirportIdent = airportElement.airport.icao ?? airportElement.airport.faaId;
+          lastPosition = { lat: airportElement.airport.lat, lon: airportElement.airport.lon };
           i++;
           continue;
         }
@@ -628,9 +680,12 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
           // Update last waypoint to the last fix in the procedure expansion
           // that actually terminates at a fix (some leg types have no fix).
           for (let j = procElement.legs.length - 1; j >= 0; j--) {
-            const fixIdent = procElement.legs[j]?.fixIdentifier;
-            if (fixIdent !== undefined) {
-              lastWaypointIdent = fixIdent;
+            const leg = procElement.legs[j];
+            if (leg?.fixIdentifier !== undefined) {
+              lastWaypointIdent = leg.fixIdentifier;
+              if (leg.lat !== undefined && leg.lon !== undefined) {
+                lastPosition = { lat: leg.lat, lon: leg.lon };
+              }
               break;
             }
           }
@@ -639,19 +694,21 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
         }
 
         // Try fix
-        const fixElement = tryFix(token, fixes);
+        const fixElement = tryFix(token, fixes, lastPosition);
         if (fixElement) {
           elements.push(fixElement);
           lastWaypointIdent = token;
+          lastPosition = { lat: fixElement.lat, lon: fixElement.lon };
           i++;
           continue;
         }
 
         // Try navaid
-        const navaidElement = tryNavaid(token, navaids);
+        const navaidElement = tryNavaid(token, navaids, lastPosition);
         if (navaidElement) {
           elements.push(navaidElement);
           lastWaypointIdent = token;
+          lastPosition = { lat: navaidElement.lat, lon: navaidElement.lon };
           i++;
           continue;
         }

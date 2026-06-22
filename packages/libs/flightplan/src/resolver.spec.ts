@@ -1,5 +1,7 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
 
+import type { Airport, Fix, Navaid } from '@squawk/types';
+
 import { createFlightplanResolver } from './resolver.js';
 import type {
   FlightplanResolver,
@@ -856,5 +858,155 @@ describe('FAA Coded Departure Routes', () => {
     expect(el4.type).toBe('star');
 
     expect(result.elements[5]!.type).toBe('airport');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Same-identifier waypoint disambiguation by proximity
+// ---------------------------------------------------------------------------
+
+describe('waypoint disambiguation by proximity', () => {
+  // Two waypoints published under one identifier at opposite ends of the
+  // country. byIdent returns the eastern record first, so taking results[0]
+  // would always pick it; byIdentAtPosition should instead pick whichever is
+  // nearer the anchor inferred from the preceding route element.
+  const DUPE_EAST = { lat: 40, lon: -70 };
+  const DUPE_WEST = { lat: 34, lon: -118 };
+
+  function fixRecord(identifier: string, lat: number, lon: number): Fix {
+    return { identifier, lat, lon } as Fix;
+  }
+
+  function navaidRecord(identifier: string, lat: number, lon: number): Navaid {
+    return { identifier, lat, lon } as Navaid;
+  }
+
+  function nearest<T extends { lat: number; lon: number }>(
+    records: T[],
+    lat: number,
+    lon: number,
+  ): T | undefined {
+    let best: T | undefined;
+    let bestDistSq = Infinity;
+    for (const record of records) {
+      const distSq = (record.lat - lat) ** 2 + (record.lon - lon) ** 2;
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        best = record;
+      }
+    }
+    return best;
+  }
+
+  function fixLookup(records: Fix[], withPosition: boolean): FlightplanFixLookup {
+    const byIdent = (ident: string): Fix[] =>
+      records.filter((r) => r.identifier.toUpperCase() === ident.toUpperCase());
+    if (!withPosition) {
+      return { byIdent };
+    }
+    return {
+      byIdent,
+      byIdentAtPosition: (ident, lat, lon) => nearest(byIdent(ident), lat, lon),
+    };
+  }
+
+  function navaidLookup(records: Navaid[]): FlightplanNavaidLookup {
+    const byIdent = (ident: string): Navaid[] =>
+      records.filter((r) => r.identifier.toUpperCase() === ident.toUpperCase());
+    return {
+      byIdent,
+      byIdentAtPosition: (ident, lat, lon) => nearest(byIdent(ident), lat, lon),
+    };
+  }
+
+  function airportLookup(
+    records: { icao: string; lat: number; lon: number }[],
+  ): FlightplanAirportLookup {
+    return {
+      byIcao: (icao) => {
+        const r = records.find((rec) => rec.icao.toUpperCase() === icao.toUpperCase());
+        return r ? ({ icao: r.icao, lat: r.lat, lon: r.lon } as Airport) : undefined;
+      },
+      byFaaId: () => undefined,
+    };
+  }
+
+  const airportStub = airportLookup([
+    { icao: 'KEAST', lat: DUPE_EAST.lat, lon: DUPE_EAST.lon },
+    { icao: 'KWEST', lat: DUPE_WEST.lat, lon: DUPE_WEST.lon },
+  ]);
+  const dupeFixes = [
+    fixRecord('DUPE', DUPE_EAST.lat, DUPE_EAST.lon),
+    fixRecord('DUPE', DUPE_WEST.lat, DUPE_WEST.lon),
+  ];
+
+  it('disambiguates a shared-identifier fix by proximity to the preceding airport', () => {
+    const resolver = createFlightplanResolver({ airports: airportStub, fixes: fixLookup(dupeFixes, true) });
+
+    const west = resolver.parse('KWEST DUPE').elements[1]!;
+    assert(west.type === 'waypoint');
+    expect(west.lat).toBe(DUPE_WEST.lat);
+    expect(west.lon).toBe(DUPE_WEST.lon);
+
+    const east = resolver.parse('KEAST DUPE').elements[1]!;
+    assert(east.type === 'waypoint');
+    expect(east.lat).toBe(DUPE_EAST.lat);
+    expect(east.lon).toBe(DUPE_EAST.lon);
+  });
+
+  it('falls back to the first byIdent match when no prior element anchors the waypoint', () => {
+    const resolver = createFlightplanResolver({ airports: airportStub, fixes: fixLookup(dupeFixes, true) });
+    const el = resolver.parse('DUPE').elements[0]!;
+    assert(el.type === 'waypoint');
+    // The eastern record is returned first by byIdent and wins without an anchor.
+    expect(el.lat).toBe(DUPE_EAST.lat);
+    expect(el.lon).toBe(DUPE_EAST.lon);
+  });
+
+  it('falls back to the first byIdent match when the provider lacks byIdentAtPosition', () => {
+    const resolver = createFlightplanResolver({ airports: airportStub, fixes: fixLookup(dupeFixes, false) });
+    // KWEST anchors near the western record, but the provider cannot
+    // disambiguate, so the first byIdent match (eastern) is used.
+    const el = resolver.parse('KWEST DUPE').elements[1]!;
+    assert(el.type === 'waypoint');
+    expect(el.lat).toBe(DUPE_EAST.lat);
+    expect(el.lon).toBe(DUPE_EAST.lon);
+  });
+
+  it('disambiguates a shared-identifier navaid by proximity to the preceding airport', () => {
+    const navaidStub = navaidLookup([
+      navaidRecord('NDUP', DUPE_EAST.lat, DUPE_EAST.lon),
+      navaidRecord('NDUP', DUPE_WEST.lat, DUPE_WEST.lon),
+    ]);
+    const resolver = createFlightplanResolver({ airports: airportStub, navaids: navaidStub });
+
+    const west = resolver.parse('KWEST NDUP').elements[1]!;
+    assert(west.type === 'waypoint');
+    assert(west.navaid, 'expected NDUP to resolve as a navaid');
+    expect(west.lat).toBe(DUPE_WEST.lat);
+    expect(west.lon).toBe(DUPE_WEST.lon);
+  });
+
+  it('uses a preceding lat/lon coordinate as the disambiguation anchor', () => {
+    const resolver = createFlightplanResolver({ fixes: fixLookup(dupeFixes, true) });
+    // 34N118W sits on top of the western record.
+    const el = resolver.parse('34N118W DUPE').elements[1]!;
+    assert(el.type === 'waypoint');
+    expect(el.lat).toBe(DUPE_WEST.lat);
+    expect(el.lon).toBe(DUPE_WEST.lon);
+  });
+
+  it('advances the anchor along the route as each waypoint resolves', () => {
+    const near = fixRecord('NEAR', DUPE_WEST.lat, DUPE_WEST.lon + 1);
+    const resolver = createFlightplanResolver({
+      airports: airportStub,
+      fixes: fixLookup([...dupeFixes, near], true),
+    });
+    // KEAST anchors east, but the intermediate NEAR fix moves the anchor west,
+    // so DUPE resolves to the western record despite the eastern departure.
+    const el = resolver.parse('KEAST NEAR DUPE').elements[2]!;
+    assert(el.type === 'waypoint');
+    expect(el.lat).toBe(DUPE_WEST.lat);
+    expect(el.lon).toBe(DUPE_WEST.lon);
   });
 });
