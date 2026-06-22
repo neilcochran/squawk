@@ -301,6 +301,7 @@ Covers SIDs, STARs, and Instrument Approach Procedures (IAPs) from FAA CIFP.
 | `find_procedures_by_airport_and_runway`   | Procedures at an airport serving a specific runway (IAP runway match or RW\* transition)    |
 | `find_approaches_by_type`                 | Every IAP of a given approach classification (ILS, RNAV, VOR, etc.)                         |
 | `expand_procedure`                        | Expand a procedure into its leg sequence (with optional transition merge)                   |
+| `get_procedure_geometry`                  | Ordered drawable fix points and a GeoJSON LineString for a procedure                        |
 | `search_procedures`                       | Fuzzy search by name or identifier, optionally filtered by procedure or approach type       |
 
 ### ICAO aircraft registry (`@squawk/icao-registry` + `@squawk/icao-registry-data`)

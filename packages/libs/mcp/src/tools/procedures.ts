@@ -8,6 +8,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
+import { expansionToLineString, extractLegPoints } from '@squawk/procedures';
 import type { ProcedureSearchQuery } from '@squawk/procedures';
 import type { ApproachType, ProcedureType } from '@squawk/types';
 
@@ -171,7 +172,7 @@ export function registerProcedureTools(server: McpServer): void {
     {
       title: 'Expand a procedure into an ordered leg sequence',
       description:
-        "Expands a procedure at an airport into an ordered leg sequence. Without a transition name, returns the procedure's common route. With a transition name, merges the named transition's legs with the common route in flying order (SID: common then transition for enroute exits, transition then common for runway transitions; STAR: transition then common for enroute entries; IAP: approach transition then final approach segment). Returns null when the airport, procedure, or transition is not found.",
+        "Expands a procedure at an airport into an ordered leg sequence. Without a transition name, returns the procedure's common route. With a transition name, merges the named transition's legs with the common route in flying order (SID: common then transition for enroute exits, transition then common for runway transitions; STAR: transition then common for enroute entries; IAP: approach transition then final approach segment). Returns null when the airport, procedure, or transition is not found. To get just the drawable point sequence or a GeoJSON LineString for map rendering, use get_procedure_geometry instead.",
       inputSchema: {
         airportId: z.string().min(1).describe('Airport identifier (case-insensitive).'),
         identifier: z.string().min(1).describe('CIFP procedure identifier (case-insensitive).'),
@@ -198,6 +199,48 @@ export function registerProcedureTools(server: McpServer): void {
       return {
         content: [{ type: 'text', text: JSON.stringify(expansion, null, 2) }],
         structuredContent: { expansion },
+      };
+    },
+  );
+
+  server.registerTool(
+    'get_procedure_geometry',
+    {
+      title: 'Get drawable procedure geometry',
+      description:
+        'Expands a procedure at an airport (optionally merging a named transition, exactly like expand_procedure) and returns its drawable geometry: the ordered sequence of fix points (each with a label and latitude/longitude in decimal degrees) and a GeoJSON LineString ready to render as a polyline on a map. Only legs that terminate at a known fix contribute a point; ARINC 424 legs that end at an altitude, DME distance, radial, intercept, or manual event (CA, FA, VA, CD, FD, VD, CR, VR, CI, VI, FM, VM, and the HA/HM holds) carry no coordinate and are skipped, so the line breaks across them and is an approximation rather than a precise flyable track. Consecutive duplicate points are suppressed. LineString coordinates follow the GeoJSON [lon, lat] ordering. The lineString field is omitted when fewer than two fix points are drawable. Returns null when the airport, procedure, or transition is not found. Use expand_procedure instead when you need the full leg fields (constraints, courses, path terminators) rather than just geometry.',
+      inputSchema: {
+        airportId: z
+          .string()
+          .min(1)
+          .describe('Airport identifier (ICAO or FAA, case-insensitive).'),
+        identifier: z.string().min(1).describe('CIFP procedure identifier (case-insensitive).'),
+        transitionName: z
+          .string()
+          .min(1)
+          .optional()
+          .describe('Optional transition name. Omit to use just the common route.'),
+      },
+    },
+    ({ airportId, identifier, transitionName }) => {
+      const expansion = procedureResolver.expand(airportId, identifier, transitionName);
+      if (expansion === undefined) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Could not expand procedure "${identifier}" at "${airportId}"${transitionName ? ` with transition "${transitionName}"` : ''}.`,
+            },
+          ],
+          structuredContent: { points: null, lineString: null },
+        };
+      }
+      const points = extractLegPoints(expansion.legs);
+      const lineString = expansionToLineString(expansion.legs);
+      const result = { points, lineString };
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        structuredContent: result,
       };
     },
   );

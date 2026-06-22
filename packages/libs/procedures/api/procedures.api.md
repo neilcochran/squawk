@@ -5,6 +5,7 @@
 ```ts
 
 import type { ApproachType } from '@squawk/types';
+import type { LineString } from 'geojson';
 import { MatchRange } from '@squawk/search';
 import type { Procedure } from '@squawk/types';
 import type { ProcedureLeg } from '@squawk/types';
@@ -15,12 +16,25 @@ import type { ProcedureType } from '@squawk/types';
 // @public
 export function createProcedureResolver(options: ProcedureResolverOptions): ProcedureResolver;
 
+// @public
+export function expansionToLineString(legs: ProcedureLeg[]): LineString | undefined;
+
+// @public
+export function extractLegPoints(legs: ProcedureLeg[]): ProcedureLegPoint[];
+
 export { MatchRange }
 
 // @public
 export interface ProcedureExpansionResult {
     legs: ProcedureLeg[];
     procedure: Procedure;
+}
+
+// @public
+export interface ProcedureLegPoint {
+    label: string;
+    lat: number;
+    lon: number;
 }
 
 // @public

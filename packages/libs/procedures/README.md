@@ -16,7 +16,11 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 
 ```typescript
 import { usBundledProcedures } from '@squawk/procedure-data';
-import { createProcedureResolver } from '@squawk/procedures';
+import {
+  createProcedureResolver,
+  expansionToLineString,
+  extractLegPoints,
+} from '@squawk/procedures';
 
 const resolver = createProcedureResolver({ data: usBundledProcedures.records });
 
@@ -51,6 +55,13 @@ const withTransition = resolver.expand('KDEN', 'AALLE4', 'BBOTL');
 // Fuzzy-search by identifier or name (scored, best match first)
 const results = resolver.search({ text: 'AALLE', type: 'STAR' });
 console.log(results[0]?.procedure.identifier, results[0]?.score);
+
+// Turn an expansion into renderable map geometry (non-positional legs are skipped)
+if (withTransition) {
+  const points = extractLegPoints(withTransition.legs);
+  const line = expansionToLineString(withTransition.legs);
+  // `line` is a GeoJSON LineString, or undefined when fewer than two fixes are drawable
+}
 ```
 
 Consumers who have their own procedure data can use this package standalone:
@@ -170,3 +181,24 @@ for (const { procedure, score, matchedField } of results) {
   console.log(procedure.identifier, score, `(matched ${matchedField})`);
 }
 ```
+
+### `extractLegPoints(legs)`
+
+Extracts the ordered drawable points from an expanded leg sequence (the `legs`
+array of a `ProcedureExpansionResult`). Only legs that terminate at a known fix
+contribute a point; legs whose ARINC 424 path terminator ends at an altitude,
+DME distance, radial, intercept, or manual event (`CA`, `FA`, `VA`, `CD`, `FD`,
+`VD`, `CR`, `VR`, `CI`, `VI`, `FM`, `VM`, and the `HA`/`HM` holds) carry no
+coordinate and are skipped, so a non-positional leg in the middle of a sequence
+leaves a gap. Consecutive duplicate points are suppressed. Returns
+`ProcedureLegPoint[]`, each with `label`, `lat`, and `lon`.
+
+### `expansionToLineString(legs)`
+
+Builds a GeoJSON `LineString` from an expanded leg sequence, ready to render as a
+polyline on a map (for example MapLibre or Leaflet). Coordinates follow the
+GeoJSON `[lon, lat]` ordering. Because non-positional legs are skipped (see
+`extractLegPoints`), the line connects only the fix-terminated legs and is an
+approximation that omits the non-drawable segments rather than a precise flyable
+track. Returns `LineString | undefined` - `undefined` when the legs yield fewer
+than two drawable points, since a `LineString` requires at least two positions.

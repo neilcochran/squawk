@@ -13,3 +13,5 @@ export type {
   ProcedureSearchQuery,
   ProcedureSearchResult,
 } from './resolver.js';
+export { extractLegPoints, expansionToLineString } from './leg-geometry.js';
+export type { ProcedureLegPoint } from './leg-geometry.js';
