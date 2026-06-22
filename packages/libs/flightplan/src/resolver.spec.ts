@@ -941,7 +941,10 @@ describe('waypoint disambiguation by proximity', () => {
   ];
 
   it('disambiguates a shared-identifier fix by proximity to the preceding airport', () => {
-    const resolver = createFlightplanResolver({ airports: airportStub, fixes: fixLookup(dupeFixes, true) });
+    const resolver = createFlightplanResolver({
+      airports: airportStub,
+      fixes: fixLookup(dupeFixes, true),
+    });
 
     const west = resolver.parse('KWEST DUPE').elements[1]!;
     assert(west.type === 'waypoint');
@@ -955,7 +958,10 @@ describe('waypoint disambiguation by proximity', () => {
   });
 
   it('falls back to the first byIdent match when no prior element anchors the waypoint', () => {
-    const resolver = createFlightplanResolver({ airports: airportStub, fixes: fixLookup(dupeFixes, true) });
+    const resolver = createFlightplanResolver({
+      airports: airportStub,
+      fixes: fixLookup(dupeFixes, true),
+    });
     const el = resolver.parse('DUPE').elements[0]!;
     assert(el.type === 'waypoint');
     // The eastern record is returned first by byIdent and wins without an anchor.
@@ -964,7 +970,10 @@ describe('waypoint disambiguation by proximity', () => {
   });
 
   it('falls back to the first byIdent match when the provider lacks byIdentAtPosition', () => {
-    const resolver = createFlightplanResolver({ airports: airportStub, fixes: fixLookup(dupeFixes, false) });
+    const resolver = createFlightplanResolver({
+      airports: airportStub,
+      fixes: fixLookup(dupeFixes, false),
+    });
     // KWEST anchors near the western record, but the provider cannot
     // disambiguate, so the first byIdent match (eastern) is used.
     const el = resolver.parse('KWEST DUPE').elements[1]!;
