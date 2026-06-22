@@ -14,8 +14,8 @@ import { getNavaidResolver, useNavaidDataset } from '../data/navaid-dataset.ts';
 import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
 
 import { compareAirspaceByAltitudeDesc } from './airspace-feature.ts';
-import { parseSelected } from './entity.ts';
-import type { EntityRef } from './entity.ts';
+import { decodePointId, parseSelected } from './entity.ts';
+import type { AmbiguousPointIdentifiers, EntityRef } from './entity.ts';
 
 /**
  * A successfully resolved entity. The discriminator `kind` mirrors the URL
@@ -147,6 +147,64 @@ export function useDatasetStates(): ChartDatasetStates {
 }
 
 /**
+ * Stable empty set reused while a dataset is loading or errored, so the
+ * ambiguity hook's memoized value only changes on a real data transition.
+ */
+const EMPTY_IDENTIFIER_SET: ReadonlySet<string> = new Set<string>();
+
+/**
+ * Computes the set of identifiers that appear on two or more records via a
+ * single linear pass: an identifier seen a second time is promoted to the
+ * ambiguous set. Pure and dataset-agnostic so it is unit-testable with
+ * plain string inputs; {@link useAmbiguousPointIdentifiers} feeds it the
+ * navaid and fix record identifiers.
+ *
+ * @param identifiers - Every record identifier in a dataset, duplicates included.
+ * @returns The identifiers shared by two or more records.
+ */
+export function computeAmbiguousIdentifiers(identifiers: Iterable<string>): Set<string> {
+  const seen = new Set<string>();
+  const ambiguous = new Set<string>();
+  for (const identifier of identifiers) {
+    if (seen.has(identifier)) {
+      ambiguous.add(identifier);
+    } else {
+      seen.add(identifier);
+    }
+  }
+  return ambiguous;
+}
+
+/**
+ * Subscribes to the navaid and fix datasets and returns the identifiers
+ * each publishes on more than one record. Memoized on the two dataset
+ * states so the linear ambiguity scan runs once per load rather than per
+ * render. Consumed by the selection-encode paths (map click, sibling
+ * chips, disambiguation popover, feature search) to decide when a navaid /
+ * fix URL value needs a `/c:LON,LAT` disambiguator; an identifier absent
+ * from these sets encodes bare.
+ *
+ * @returns The ambiguous navaid and fix identifier sets (empty while a dataset is loading or errored).
+ */
+export function useAmbiguousPointIdentifiers(): AmbiguousPointIdentifiers {
+  const navaid = useNavaidDataset();
+  const fix = useFixDataset();
+  return useMemo(
+    () => ({
+      navaids:
+        navaid.status === 'loaded'
+          ? computeAmbiguousIdentifiers(navaid.dataset.records.map((record) => record.identifier))
+          : EMPTY_IDENTIFIER_SET,
+      fixes:
+        fix.status === 'loaded'
+          ? computeAmbiguousIdentifiers(fix.dataset.records.map((record) => record.identifier))
+          : EMPTY_IDENTIFIER_SET,
+    }),
+    [navaid, fix],
+  );
+}
+
+/**
  * Pure resolver: looks up a `selected` URL value against pre-fetched
  * dataset states. No React hooks; safe to call in a loop. The chip-strip
  * filtering in `inspector.tsx` calls this once per sibling so chips that
@@ -187,7 +245,16 @@ export function resolveSelectionFromState(
       if (states.navaid.status === 'error') {
         return { status: 'not-found', ref };
       }
-      const record = getNavaidResolver(states.navaid.dataset).byIdent(ref.id)[0];
+      const { ident, position } = decodePointId(ref.id);
+      const resolver = getNavaidResolver(states.navaid.dataset);
+      // A position suffix means the identifier is shared by multiple
+      // records; resolve to the one nearest the encoded point. A bare id
+      // keeps the first-match behavior, so unchanged and stale share-links
+      // resolve exactly as before.
+      const record =
+        position === undefined
+          ? resolver.byIdent(ident)[0]
+          : resolver.byIdentAtPosition(ident, position.lat, position.lon);
       if (record === undefined) {
         return { status: 'not-found', ref };
       }
@@ -200,7 +267,12 @@ export function resolveSelectionFromState(
       if (states.fix.status === 'error') {
         return { status: 'not-found', ref };
       }
-      const record = getFixResolver(states.fix.dataset).byIdent(ref.id)[0];
+      const { ident, position } = decodePointId(ref.id);
+      const resolver = getFixResolver(states.fix.dataset);
+      const record =
+        position === undefined
+          ? resolver.byIdent(ident)[0]
+          : resolver.byIdentAtPosition(ident, position.lat, position.lon);
       if (record === undefined) {
         return { status: 'not-found', ref };
       }

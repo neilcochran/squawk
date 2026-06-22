@@ -28,6 +28,24 @@ function buildFeature(layerId: string, properties: Record<string, unknown>): Ins
   return { layer: { id: layerId }, properties };
 }
 
+/**
+ * Builds an `InspectableFeature` carrying a Point geometry, used to
+ * exercise the navaid / fix position-suffix encoding which sources its
+ * coordinates from `feature.geometry`.
+ */
+function buildPointFeature(
+  layerId: string,
+  properties: Record<string, unknown>,
+  lon: number,
+  lat: number,
+): InspectableFeature {
+  return {
+    layer: { id: layerId },
+    properties,
+    geometry: { type: 'Point', coordinates: [lon, lat] },
+  };
+}
+
 describe('selectedFromFeature', () => {
   it('encodes an airport feature using its faaId', () => {
     expect(selectedFromFeature(buildFeature(AIRPORTS_LAYER_ID, { faaId: 'BOS' }))).toBe(
@@ -44,6 +62,41 @@ describe('selectedFromFeature', () => {
   it('encodes a fix feature using its identifier', () => {
     expect(selectedFromFeature(buildFeature(FIXES_LAYER_ID, { identifier: 'MERIT' }))).toBe(
       'fix:MERIT',
+    );
+  });
+
+  it('appends a position suffix for a shared-identifier navaid, sourced from its geometry', () => {
+    const feature = buildPointFeature(
+      NAVAIDS_LAYER_ID,
+      { identifier: 'DUPE' },
+      -71.00472,
+      42.35778,
+    );
+    expect(selectedFromFeature(feature, { navaids: new Set(['DUPE']), fixes: new Set() })).toBe(
+      'navaid:DUPE/c:-71.00472,42.35778',
+    );
+  });
+
+  it('appends a position suffix for a shared-identifier fix, sourced from its geometry', () => {
+    const feature = buildPointFeature(FIXES_LAYER_ID, { identifier: 'DUPE' }, -90.5, 30.123);
+    expect(selectedFromFeature(feature, { navaids: new Set(), fixes: new Set(['DUPE']) })).toBe(
+      'fix:DUPE/c:-90.50000,30.12300',
+    );
+  });
+
+  it('encodes a unique navaid bare even when ambiguity sets are supplied', () => {
+    const feature = buildPointFeature(NAVAIDS_LAYER_ID, { identifier: 'SOLO' }, -71, 42);
+    expect(selectedFromFeature(feature, { navaids: new Set(['DUPE']), fixes: new Set() })).toBe(
+      'navaid:SOLO',
+    );
+  });
+
+  it('encodes a shared-identifier navaid bare when the feature has no geometry', () => {
+    // A hand-built or stub feature without geometry cannot supply a
+    // position; the bare identifier remains the only stable handle.
+    const feature = buildFeature(NAVAIDS_LAYER_ID, { identifier: 'DUPE' });
+    expect(selectedFromFeature(feature, { navaids: new Set(['DUPE']), fixes: new Set() })).toBe(
+      'navaid:DUPE',
     );
   });
 

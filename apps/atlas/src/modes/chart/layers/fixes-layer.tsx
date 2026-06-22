@@ -8,6 +8,7 @@ import type { ReactElement } from 'react';
 import type { Fix, FixUseCode } from '@squawk/types';
 
 import { useFixDataset } from '../../../shared/data/fix-dataset.ts';
+import { decodePointId } from '../../../shared/inspector/entity.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef } from '../highlight-context.ts';
 import { LAYER_MIN_ZOOM } from '../url-state.ts';
@@ -166,7 +167,11 @@ export function FixesLayer(): ReactElement | null {
   // empty viewport when the user is zoomed out below the threshold.
   const highlightLayerProps = useMemo<LayerProps>(() => {
     const filter: ExpressionSpecification =
-      activeRef?.type === 'fix' ? ['==', ['get', 'identifier'], activeRef.id] : MATCH_NONE_FILTER;
+      activeRef?.type === 'fix'
+        ? // Strip any `/c:LON,LAT` disambiguator so the highlight matches on
+          // the bare identifier carried by the feature properties.
+          ['==', ['get', 'identifier'], decodePointId(activeRef.id).ident]
+        : MATCH_NONE_FILTER;
     return {
       id: FIXES_HIGHLIGHT_LAYER_ID,
       source: FIXES_SOURCE_ID,
