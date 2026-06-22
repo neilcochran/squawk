@@ -1,5 +1,72 @@
 # @squawk/mcp
 
+## 0.11.0
+
+### Minor Changes
+
+- acffa15: ### Added
+
+  - `@squawk/flightplan` exposes the parsed route's drawable geometry:
+    - `routeToLineString(route)` builds a GeoJSON `LineString` (GeoJSON `[lon, lat]` ordering) ready to render as a map polyline, or `undefined` when the route yields fewer than two drawable points.
+    - `extractRoutePoints(route)` returns the ordered `RoutePoint[]` of drawable points, expanding airway and SID/STAR segments into their constituent fixes and suppressing consecutive duplicates. Coordinate-less elements (DCT, speed/altitude, unresolved) contribute no points.
+    - `RouteLeg` (from `computeRouteDistance`) now carries `fromLat`/`fromLon`/`toLat`/`toLon` for each leg's endpoints, alongside the existing `from`/`to` labels.
+  - `@squawk/mcp` adds a `get_route_geometry` tool returning the ordered drawable points and GeoJSON `LineString` for a route string, and its `compute_route_distance` tool now reports the per-leg endpoint coordinates.
+
+- 581f8b1: ### Added
+
+  - **@squawk/navaids** `byIdentAtPosition(ident, lat, lon, toleranceNm?)` resolver method returns the single navaid sharing an identifier that lies nearest a geographic position. The same identifier can be published by more than one station (a co-located NDB and VOR/DME, or two distant stations reusing a code); this disambiguates the collision by proximity to a known point such as a map-click location or an adjacent route waypoint. Pass `toleranceNm` to reject matches beyond a maximum great-circle distance, or omit it to let the nearest match win regardless.
+  - **@squawk/fixes** `byIdentAtPosition(ident, lat, lon, toleranceNm?)` resolver method returns the single fix sharing an identifier that lies nearest a geographic position. The same identifier can be published in more than one ICAO region; this disambiguates the collision by proximity to a known point. Pass `toleranceNm` to bound the match by great-circle distance, or omit it to let the nearest match win.
+  - **@squawk/mcp** adds `get_navaid_by_ident_at_position` and `get_fix_by_ident_at_position` tools wrapping the new resolver methods, each returning the nearest matching record (or null) for a shared identifier near a given position.
+
+- 6bc07cf: ### Added
+
+  - `@squawk/procedures` exposes an expanded procedure's drawable geometry:
+    - `expansionToLineString(legs)` builds a GeoJSON `LineString` (GeoJSON `[lon, lat]` ordering) ready to render as a map polyline, or `undefined` when the leg sequence yields fewer than two drawable points.
+    - `extractLegPoints(legs)` returns the ordered `ProcedureLegPoint[]` of drawable fix points (each with `label`, `lat`, `lon`), skipping non-positional legs (course/heading-to-altitude, DME, radial, intercept, manual, and the HA/HM holds) and suppressing consecutive duplicate points.
+  - `@squawk/mcp` adds a `get_procedure_geometry` tool returning the ordered drawable fix points and GeoJSON `LineString` for an expanded procedure (optionally merging a named transition).
+
+- 4d7838f: ### Added
+
+  - `@squawk/flightplan` adds `computeRouteTiming(route, options)` for per-leg, wind-corrected timing:
+    - Solves the wind triangle on each leg from its true course, a given true airspeed, and a wind to produce true heading, wind correction angle, ground speed, and estimated time enroute.
+    - Winds are supplied through an optional `WindProvider` callback (`(lat, lon) => WindVector | undefined`) evaluated at each leg's midpoint, so the package stays agnostic of altitude and weather source. Legs with no wind are timed as calm (ground speed equals true airspeed).
+    - Adds per-leg and total fuel burn when `fuelBurnPerHr` is given, plus endurance and fuel sufficiency when `fuelAvailable` is also given.
+    - Exposes `WindProvider`, `RouteTimingOptions`, `RouteTimingLeg`, and `RouteTimingResult`, and re-exports `WindVector`.
+  - `@squawk/mcp` adds a `get_route_timing` tool that times a route under a single uniform wind, with optional fuel-burn and endurance reporting.
+
+### Patch Changes
+
+- f8ec291: ### Added
+
+  - **@squawk/flightplan** `FlightplanFixLookup` and `FlightplanNavaidLookup` gain an
+    optional `byIdentAtPosition(ident, lat, lon, toleranceNm?)` method. When a provider
+    implements it, `createFlightplanResolver(...).parse()` resolves a fix or navaid token
+    whose identifier is published in more than one region to the candidate nearest the most
+    recently resolved positional element (a preceding airport, coordinate, waypoint, airway
+    exit fix, or procedure terminus) rather than taking the first `byIdent` match. The first
+    token in a route has no anchor, and providers exposing only `byIdent` are unaffected;
+    both fall back to the first match.
+
+  ### Changed
+  - **@squawk/mcp** the flightplan route tools (`parse_flightplan_route`,
+    `compute_route_distance`, `get_route_geometry`, `get_route_timing`) now disambiguate
+    shared-identifier route waypoints by proximity, because the bundled fix and navaid
+    resolvers implement `byIdentAtPosition`. The tool surface is unchanged; a shared
+    identifier that previously resolved to whichever record sorted first now resolves to the
+    one nearest the surrounding route.
+
+- Updated dependencies [acffa15]
+- Updated dependencies [f8ec291]
+- Updated dependencies [581f8b1]
+- Updated dependencies [6bc07cf]
+- Updated dependencies [4d7838f]
+- Updated dependencies [ac7a834]
+  - @squawk/flightplan@0.6.0
+  - @squawk/navaids@0.6.0
+  - @squawk/fixes@0.5.0
+  - @squawk/procedures@0.7.0
+  - @squawk/weather@0.6.0
+
 ## 0.10.0
 
 ### Minor Changes

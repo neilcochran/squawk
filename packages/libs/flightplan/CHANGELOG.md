@@ -1,5 +1,45 @@
 # @squawk/flightplan
 
+## 0.6.0
+
+### Minor Changes
+
+- acffa15: ### Added
+
+  - `@squawk/flightplan` exposes the parsed route's drawable geometry:
+    - `routeToLineString(route)` builds a GeoJSON `LineString` (GeoJSON `[lon, lat]` ordering) ready to render as a map polyline, or `undefined` when the route yields fewer than two drawable points.
+    - `extractRoutePoints(route)` returns the ordered `RoutePoint[]` of drawable points, expanding airway and SID/STAR segments into their constituent fixes and suppressing consecutive duplicates. Coordinate-less elements (DCT, speed/altitude, unresolved) contribute no points.
+    - `RouteLeg` (from `computeRouteDistance`) now carries `fromLat`/`fromLon`/`toLat`/`toLon` for each leg's endpoints, alongside the existing `from`/`to` labels.
+  - `@squawk/mcp` adds a `get_route_geometry` tool returning the ordered drawable points and GeoJSON `LineString` for a route string, and its `compute_route_distance` tool now reports the per-leg endpoint coordinates.
+
+- f8ec291: ### Added
+
+  - **@squawk/flightplan** `FlightplanFixLookup` and `FlightplanNavaidLookup` gain an
+    optional `byIdentAtPosition(ident, lat, lon, toleranceNm?)` method. When a provider
+    implements it, `createFlightplanResolver(...).parse()` resolves a fix or navaid token
+    whose identifier is published in more than one region to the candidate nearest the most
+    recently resolved positional element (a preceding airport, coordinate, waypoint, airway
+    exit fix, or procedure terminus) rather than taking the first `byIdent` match. The first
+    token in a route has no anchor, and providers exposing only `byIdent` are unaffected;
+    both fall back to the first match.
+
+  ### Changed
+  - **@squawk/mcp** the flightplan route tools (`parse_flightplan_route`,
+    `compute_route_distance`, `get_route_geometry`, `get_route_timing`) now disambiguate
+    shared-identifier route waypoints by proximity, because the bundled fix and navaid
+    resolvers implement `byIdentAtPosition`. The tool surface is unchanged; a shared
+    identifier that previously resolved to whichever record sorted first now resolves to the
+    one nearest the surrounding route.
+
+- 4d7838f: ### Added
+
+  - `@squawk/flightplan` adds `computeRouteTiming(route, options)` for per-leg, wind-corrected timing:
+    - Solves the wind triangle on each leg from its true course, a given true airspeed, and a wind to produce true heading, wind correction angle, ground speed, and estimated time enroute.
+    - Winds are supplied through an optional `WindProvider` callback (`(lat, lon) => WindVector | undefined`) evaluated at each leg's midpoint, so the package stays agnostic of altitude and weather source. Legs with no wind are timed as calm (ground speed equals true airspeed).
+    - Adds per-leg and total fuel burn when `fuelBurnPerHr` is given, plus endurance and fuel sufficiency when `fuelAvailable` is also given.
+    - Exposes `WindProvider`, `RouteTimingOptions`, `RouteTimingLeg`, and `RouteTimingResult`, and re-exports `WindVector`.
+  - `@squawk/mcp` adds a `get_route_timing` tool that times a route under a single uniform wind, with optional fuel-burn and endurance reporting.
+
 ## 0.5.7
 
 ### Changed
