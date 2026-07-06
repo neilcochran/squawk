@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "@squawk/types": "^0.8.0",
-    "adm-zip": "^0.5.17"
+    "adm-zip": "^0.5.18"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.5",
