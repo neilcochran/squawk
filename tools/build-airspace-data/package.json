@@ -22,8 +22,8 @@
   "dependencies": {
     "@squawk/build-shared": "*",
     "@squawk/types": "*",
-    "adm-zip": "^0.5.17",
-    "fast-xml-parser": "^5.9.0",
+    "adm-zip": "^0.6.0",
+    "fast-xml-parser": "^5.10.1",
     "shapefile": "^0.6.6"
   },
   "devDependencies": {
