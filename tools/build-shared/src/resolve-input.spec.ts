@@ -1,8 +1,8 @@
-import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import AdmZip from 'adm-zip';
 import { describe, it, beforeEach, afterEach, expect, assert } from 'vitest';
 
 import { resolveInput } from './resolve-input.js';
@@ -35,7 +35,9 @@ describe('resolveInput', () => {
     writeFileSync(join(innerDir, 'marker.txt'), 'hello', 'utf-8');
 
     const zipPath = join(sandbox, '28DaySubscription_Effective_2026-04-16.zip');
-    execSync(`cd "${sandbox}" && zip -qr "${zipPath}" 28DaySubscription_Effective_2026-04-16`);
+    const zip = new AdmZip();
+    zip.addLocalFolder(innerDir);
+    zip.writeZip(zipPath);
 
     const result = resolveInput(zipPath);
 
@@ -52,7 +54,9 @@ describe('resolveInput', () => {
     writeFileSync(join(innerDir, 'a.txt'), 'data', 'utf-8');
 
     const zipPath = join(sandbox, 'payload.zip');
-    execSync(`cd "${sandbox}" && zip -qr "${zipPath}" payload`);
+    const zip = new AdmZip();
+    zip.addLocalFolder(innerDir);
+    zip.writeZip(zipPath);
 
     const result = resolveInput(zipPath);
     assert(existsSync(result.subscriptionDir));
