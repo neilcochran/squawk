@@ -191,13 +191,13 @@ describe('parse', () => {
   });
 
   it('resolves a SID with a dotted transition', () => {
-    const result = resolver.parse('NUBLE4.JJIMY');
+    const result = resolver.parse('RBELA1.JJIMY');
     expect(result.elements.length).toBe(1);
     const el = result.elements[0]!;
     expect(el.type).toBe('sid');
     if (el.type === 'sid') {
-      expect(el.raw).toBe('NUBLE4.JJIMY');
-      expect(el.procedure.identifier).toBe('NUBLE4');
+      expect(el.raw).toBe('RBELA1.JJIMY');
+      expect(el.procedure.identifier).toBe('RBELA1');
       const identifiers = el.legs.map((leg) => leg.fixIdentifier);
       expect(
         identifiers[identifiers.length - 1],
@@ -224,12 +224,12 @@ describe('parse', () => {
   });
 
   it('marks a dotted procedure with an unknown transition as resolved with empty waypoints', () => {
-    const result = resolver.parse('NUBLE4.NOTAREALXFER');
+    const result = resolver.parse('RBELA1.NOTAREALXFER');
     expect(result.elements.length).toBe(1);
     const el = result.elements[0]!;
     expect(el.type).toBe('sid');
     if (el.type === 'sid') {
-      expect(el.procedure.identifier).toBe('NUBLE4');
+      expect(el.procedure.identifier).toBe('RBELA1');
       expect(el.legs.length).toBe(0);
     }
   });
@@ -733,8 +733,8 @@ describe('FAA Coded Departure Routes', () => {
 
   // CDR: ABECLTHV - Allentown to Charlotte via J64 and many waypoints
   // Exercises: J-route mid-route, many fix/navaid waypoints between airways, STAR
-  it('parses KABE ETX RAV J64 BURNI TYROO QUARM AIR HVQ LNDIZ PARQR5 KCLT', () => {
-    const result = resolver.parse('KABE ETX RAV J64 BURNI TYROO QUARM AIR HVQ LNDIZ PARQR5 KCLT');
+  it('parses KABE ETX RAV J64 BURNI TYROO QUARM AIR HVQ LNDIZ PARQR7 KCLT', () => {
+    const result = resolver.parse('KABE ETX RAV J64 BURNI TYROO QUARM AIR HVQ LNDIZ PARQR7 KCLT');
     expect(result.elements.length).toBe(11);
 
     // KABE - departure
@@ -762,11 +762,11 @@ describe('FAA Coded Departure Routes', () => {
     expect(result.elements[7]!.type).toBe('waypoint');
     expect(result.elements[8]!.type).toBe('waypoint');
 
-    // PARQR5 - STAR
+    // PARQR7 - STAR
     const el9 = result.elements[9]!;
     expect(el9.type).toBe('star');
     if (el9.type === 'star') {
-      expect(el9.procedure.identifier).toBe('PARQR5');
+      expect(el9.procedure.identifier).toBe('PARQR7');
     }
 
     // KCLT - arrival
