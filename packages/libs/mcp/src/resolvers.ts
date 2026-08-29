@@ -208,7 +208,6 @@ export function isIcaoRegistryLoaded(): boolean {
  * @returns The registry metadata if loaded, otherwise `undefined`.
  */
 export function getIcaoRegistryMetadata():
-  | { generatedAt: string; recordCount: number }
-  | undefined {
+  { generatedAt: string; recordCount: number } | undefined {
   return icaoRegistryMetadata;
 }

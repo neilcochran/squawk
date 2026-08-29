@@ -2,12 +2,7 @@
  * Type of aviation facility as classified by the FAA.
  */
 export type FacilityType =
-  | 'AIRPORT'
-  | 'HELIPORT'
-  | 'SEAPLANE_BASE'
-  | 'GLIDERPORT'
-  | 'ULTRALIGHT'
-  | 'BALLOONPORT';
+  'AIRPORT' | 'HELIPORT' | 'SEAPLANE_BASE' | 'GLIDERPORT' | 'ULTRALIGHT' | 'BALLOONPORT';
 
 /**
  * The full set of {@link FacilityType} values, in declaration order.
@@ -135,15 +130,7 @@ export const ILS_CATEGORY_MAP: Record<string, IlsCategory> = {
  * ILS system type describing the combination of components installed.
  */
 export type IlsSystemType =
-  | 'ILS'
-  | 'ILS/DME'
-  | 'LOCALIZER'
-  | 'LOC/DME'
-  | 'LOC/GS'
-  | 'LDA'
-  | 'LDA/DME'
-  | 'SDF'
-  | 'SDF/DME';
+  'ILS' | 'ILS/DME' | 'LOCALIZER' | 'LOC/DME' | 'LOC/GS' | 'LDA' | 'LDA/DME' | 'SDF' | 'SDF/DME';
 
 /**
  * Maps FAA NASR SYSTEM_TYPE_CODE values to IlsSystemType.
