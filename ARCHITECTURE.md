@@ -218,7 +218,7 @@ Two reasons the publish flow uses `squawk-release-bot` instead of the default `G
 
 The App's credentials are split between a repo variable and a repo secret: `RELEASE_APP_CLIENT_ID` (variable, since the Client ID is the public half of the OAuth pair) and `RELEASE_APP_PRIVATE_KEY` (secret). The Publish workflow mints a short-lived installation token from them via [actions/create-github-app-token](https://github.com/actions/create-github-app-token).
 
-Even though the App opens the "Version Packages" PR, the commits inside that PR show `github-actions[bot]` as author. The changesets/action library hardcodes the commit author independent of the token used; this is cosmetic.
+Commits inside the "Version Packages" PR, and the release commits and tags changesets/action pushes after publish, are attributed to the App: changesets/action pushes via the GitHub API by default (`push-with-git-cli: false`), signing with GitHub's GPG key and attributing to whichever identity owns the `github-token` input passed to it - the App's installation token, not the default `GITHUB_TOKEN`.
 
 ### End-to-end flow
 

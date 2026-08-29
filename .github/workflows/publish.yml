@@ -72,10 +72,10 @@ jobs:
           name: dist
           path: packages/libs
 
-      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+      - uses: changesets/action@fdf536a68c4154480c89b42547f8102cf0d8bc47 # v2.1.1
         with:
-          version: npm run version-packages
-          publish: npm run publish
+          version-script: npm run version-packages
+          publish-script: npm run publish
+          github-token: ${{ steps.app-token.outputs.token }}
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_CONFIG_PROVENANCE: true
