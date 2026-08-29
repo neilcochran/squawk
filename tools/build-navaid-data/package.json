@@ -18,10 +18,9 @@
   "dependencies": {
     "@squawk/build-shared": "*",
     "@squawk/types": "*",
-    "adm-zip": "^0.5.17"
+    "adm-zip": "^0.6.0"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.5.5",
     "@types/node": "^25.9.3"
   }
 }
