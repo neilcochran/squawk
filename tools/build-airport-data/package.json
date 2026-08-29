@@ -24,7 +24,6 @@
     "geo-tz": "^8.1.7"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.5.5",
     "@types/node": "^25.9.3"
   }
 }
