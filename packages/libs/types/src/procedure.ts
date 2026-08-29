@@ -125,18 +125,7 @@ export type ProcedureLegPathTerminator =
  * - `Y` - At or above altitude with step-down constraints applied.
  */
 export type AltitudeConstraintDescriptor =
-  | '@'
-  | '+'
-  | '-'
-  | 'B'
-  | 'C'
-  | 'G'
-  | 'H'
-  | 'I'
-  | 'J'
-  | 'V'
-  | 'X'
-  | 'Y';
+  '@' | '+' | '-' | 'B' | 'C' | 'G' | 'H' | 'I' | 'J' | 'V' | 'X' | 'Y';
 
 /**
  * Altitude constraint applied at the termination of a procedure leg.

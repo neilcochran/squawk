@@ -70,10 +70,7 @@ export const NAVAID_TYPE_MAP: Record<string, NavaidType> = {
  * Operational status of a navaid facility.
  */
 export type NavaidStatus =
-  | 'OPERATIONAL_IFR'
-  | 'OPERATIONAL_RESTRICTED'
-  | 'OPERATIONAL_VFR'
-  | 'SHUTDOWN';
+  'OPERATIONAL_IFR' | 'OPERATIONAL_RESTRICTED' | 'OPERATIONAL_VFR' | 'SHUTDOWN';
 
 /**
  * Maps FAA NAV_STATUS values from NASR data to NavaidStatus.
