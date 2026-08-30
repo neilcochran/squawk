@@ -91,3 +91,48 @@ describe('parseSbsLine', () => {
     expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '1', 4: 'a0b1c2' }))?.icaoHex).toBe('A0B1C2');
   });
 });
+
+// Lines below are verbatim from a live dump1090-fa SBS/BaseStation capture,
+// not hand-built, so field presence and formatting reflect what the wire
+// format actually produces rather than what a synthetic test assumes.
+describe('parseSbsLine - real dump1090-fa capture', () => {
+  it('parses a real transmission type 1 (ident) line', () => {
+    const update = parseSbsLine(
+      'MSG,1,1,1,A03F84,1,2026/08/30,19:14:44.547,2026/08/30,19:14:44.621,RPA4500 ,,,,,,,,,,,0',
+    );
+    expect(update).toEqual({ icaoHex: 'A03F84', callsign: 'RPA4500', onGround: false });
+  });
+
+  it('parses a real transmission type 3 (airborne position) line', () => {
+    const update = parseSbsLine(
+      'MSG,3,1,1,89639D,1,2026/08/30,19:14:44.248,2026/08/30,19:14:44.300,,40000,,,43.12637,-70.59115,,,0,,0,0',
+    );
+    expect(update).toEqual({
+      icaoHex: '89639D',
+      baroAltitudeFt: 40000,
+      lat: 43.12637,
+      lon: -70.59115,
+      onGround: false,
+    });
+  });
+
+  it('parses a real transmission type 4 (airborne velocity) line', () => {
+    const update = parseSbsLine(
+      'MSG,4,1,1,4075C1,1,2026/08/30,19:14:44.382,2026/08/30,19:14:44.452,,,441,205,,,64,,,,,0',
+    );
+    expect(update).toEqual({
+      icaoHex: '4075C1',
+      groundSpeedKt: 441,
+      trueTrackDeg: 205,
+      verticalRateFtPerMin: 64,
+      onGround: false,
+    });
+  });
+
+  it('parses a real transmission type 6 (surveillance ID / squawk) line', () => {
+    const update = parseSbsLine(
+      'MSG,6,1,1,A262D4,1,2026/08/30,19:14:49.850,2026/08/30,19:14:49.912,,,,,,,,3543,0,0,0,',
+    );
+    expect(update).toEqual({ icaoHex: 'A262D4', squawk: '3543' });
+  });
+});
