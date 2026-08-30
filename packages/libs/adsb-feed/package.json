@@ -1,6 +1,6 @@
 {
   "name": "@squawk/adsb-feed",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "description": "Live ADS-B aircraft feed from a local dump1090-fa station, normalized into a typed event stream",
   "author": "Neil Cochran",
