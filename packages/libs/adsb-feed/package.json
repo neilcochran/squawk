@@ -1,0 +1,60 @@
+{
+  "name": "@squawk/adsb-feed",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Live ADS-B aircraft feed from a local dump1090-fa station, normalized into a typed event stream",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/libs/adsb-feed"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only",
+    "api:check": "api-extractor run --verbose && api-extractor run --verbose -c api-extractor.browser.json",
+    "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.browser.json"
+  },
+  "dependencies": {
+    "@squawk/types": "^0.8.6"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "adsb",
+    "ads-b",
+    "dump1090",
+    "aircraft-tracking"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3"
+  }
+}

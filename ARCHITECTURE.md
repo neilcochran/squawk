@@ -65,6 +65,14 @@ Why: aircraft registration data changes daily (registrations are created, transf
 
 Other library shapes (utility libraries like `@squawk/units` / `@squawk/geo` / `@squawk/flight-math`, parser libraries like `@squawk/weather` / `@squawk/notams`, and `@squawk/types`) aren't data-querying and don't follow this pattern.
 
+### Stateful, event-driven packages (for live data sources)
+
+Every pattern in this document otherwise assumes a stateless package: a resolver queries an in-memory dataset, a parser transforms one string into one object, `@squawk/weather`'s `/fetch` layer issues one request and returns one result. [`@squawk/adsb-feed`](packages/libs/adsb-feed/) is the first package that has to stay alive, hold state, and push updates out over time rather than answer one call at a time.
+
+The shape: a `create*Feed`-style factory returns an object that `extends EventTarget`, built by attaching plain methods directly onto a `new EventTarget()` instance (`Object.assign(new EventTarget(), { start, stop, ... })`) rather than subclassing - keeping the factory-function convention used everywhere else in the repo instead of introducing classes. Internal per-item state lives in `Map`s closed over by the factory; a periodic sweep (a plain `setInterval`) detects staleness for sources whose wire format has no explicit "removed" signal, emitting a dedicated lost/expired event rather than requiring consumers to diff snapshots themselves.
+
+Why `EventTarget`/`CustomEvent` and not Node's `events.EventEmitter`: `EventTarget` is a global in both Node and browsers, unlike `EventEmitter`, which is Node-only. Building the engine on `EventTarget` lets a live-feed package's core logic stay browser-safe and earn a `/browser` entry like any other logic package; `EventEmitter` would quietly make the whole package Node-only. Reach for this pattern only when a package genuinely needs to represent an ongoing stream of updates over time, not for anything expressible as a one-shot call.
+
 ### Resolver / factory pattern (for query libraries)
 
 Libraries that expose data querying or lookup operations follow a uniform shape: a `create*Resolver({ data })` factory that accepts the raw record array, builds internal `Map` indexes once at creation time, and returns a stateless query object. No network calls or filesystem access at query time. The factory shape is uniform across every query library, so once you know one resolver you know them all.
@@ -94,7 +102,7 @@ Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders 
 
 `@squawk/weather` additionally ships an opt-in `/fetch` subpath that calls the AWC text API over the global `fetch`. It runs in the browser, but AWC sends no CORS headers, so browser consumers point the `baseUrl` option at a same-origin proxy they control. The main `@squawk/weather` and `/browser` entries stay pure parsers with no network calls.
 
-`@squawk/icao-registry` is a hybrid: the main entry exposes a runtime `parseFaaRegistryZip` parser that depends on Node's `Buffer` and the `adm-zip` package, so the `/browser` entry is a strict subset that re-exports only `createIcaoRegistry` and the shared types.
+`@squawk/icao-registry` is a hybrid: the main entry exposes a runtime `parseFaaRegistryZip` parser that depends on Node's `Buffer` and the `adm-zip` package, so the `/browser` entry is a strict subset that re-exports only `createIcaoRegistry` and the shared types. `@squawk/adsb-feed` follows the same hybrid shape for a different reason: its SBS source depends on Node's `net` module (raw TCP sockets have no browser API), so the `/browser` entry omits `createSbsAircraftFeed` and exposes only the HTTP-polling `createJsonAircraftFeed`.
 
 `@squawk/mcp` and the build tools under `tools/` remain Node-only.
 
