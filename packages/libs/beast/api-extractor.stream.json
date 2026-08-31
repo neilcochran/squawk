@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+  "extends": "../../../config/api-extractor.base.json",
+  "mainEntryPointFilePath": "<projectFolder>/dist/stream/index.d.ts",
+  "apiReport": {
+    "reportFileName": "<unscopedPackageName>.stream.api.md"
+  }
+}

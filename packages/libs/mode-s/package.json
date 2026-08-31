@@ -1,0 +1,61 @@
+{
+  "name": "@squawk/mode-s",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Decode raw Mode-S/ADS-B messages: DF/CRC parsing, CPR position, velocity, identification, and altitude",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/libs/mode-s"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only",
+    "api:check": "api-extractor run --verbose",
+    "api:report": "api-extractor run --local --verbose"
+  },
+  "dependencies": {
+    "@squawk/types": "^0.8.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "mode-s",
+    "adsb",
+    "ads-b",
+    "transponder",
+    "decoder"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
