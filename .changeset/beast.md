@@ -1,5 +1,0 @@
----
-'@squawk/beast': minor
----
-
-**@squawk/beast** parses the Beast binary format - the framing dump1090-fa, readsb, and other decoders use to carry raw Mode-S/Mode-A/C messages. Decoding of the messages themselves is delegated to `@squawk/mode-s`; this package's own job is the wire framing (escape/unescape byte-stuffing, the three Beast message types). An opt-in `@squawk/beast/stream` subpath adds a ready-made Node TCP client for connecting to a live Beast feed.

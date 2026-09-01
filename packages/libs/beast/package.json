@@ -1,6 +1,6 @@
 {
   "name": "@squawk/beast",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "description": "Parse dump1090-fa's Beast binary format into decoded Mode-S messages, with an opt-in live-stream client",
   "author": "Neil Cochran",
@@ -45,7 +45,7 @@
     "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.stream.json"
   },
   "dependencies": {
-    "@squawk/mode-s": "^0.0.1"
+    "@squawk/mode-s": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.3"
