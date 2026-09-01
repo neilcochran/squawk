@@ -89,7 +89,7 @@ describe('decodeAirborneCprPair', () => {
     expect(result?.lon).toBeCloseTo(lon, 2);
   });
 
-  it('reports the position in the odd frame\'s zone when the odd frame is newer', () => {
+  it("reports the position in the odd frame's zone when the odd frame is newer", () => {
     const even = encodeAirborneCpr(43.54, -70.74, 'even');
     const odd = encodeAirborneCpr(43.54, -70.74, 'odd');
     const result = decodeAirborneCprPair(even, odd, 'odd');

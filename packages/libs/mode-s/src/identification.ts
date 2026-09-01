@@ -65,6 +65,7 @@ export function decodeIdentification(me: Uint8Array): AircraftIdentification {
   const categoryBits = extractBits(me, 5, 3);
   const callsign = decodeCallsign(me);
   const key = categoryKeyFor(typeCode, categoryBits);
-  const category = key !== undefined && isAircraftCategoryCode(key) ? AircraftCategory[key] : undefined;
+  const category =
+    key !== undefined && isAircraftCategoryCode(key) ? AircraftCategory[key] : undefined;
   return { callsign, category };
 }

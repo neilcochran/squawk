@@ -63,13 +63,17 @@ export function createBeastStream(options: BeastStreamOptions): BeastStream {
     }
     for (const error of result.errors) {
       const detail: BeastFrameErrorEventDetail = { error };
-      target.dispatchEvent(new CustomEvent<BeastFrameErrorEventDetail>('beast:frameError', { detail }));
+      target.dispatchEvent(
+        new CustomEvent<BeastFrameErrorEventDetail>('beast:frameError', { detail }),
+      );
     }
   }
 
   function scheduleReconnect(): void {
     const detail: BeastDisconnectEventDetail = { host: options.host, port, reconnectDelayMs };
-    target.dispatchEvent(new CustomEvent<BeastDisconnectEventDetail>('beast:disconnect', { detail }));
+    target.dispatchEvent(
+      new CustomEvent<BeastDisconnectEventDetail>('beast:disconnect', { detail }),
+    );
     reconnectHandle = setTimeout(() => {
       reconnectHandle = undefined;
       connectSocket();

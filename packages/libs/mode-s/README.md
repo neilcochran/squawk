@@ -145,7 +145,10 @@ which autopilot modes are engaged - not the aircraft's actual state:
 ```typescript
 const decoded = decodeModeSMessage(rawMessageBytes);
 if (decoded?.kind === 'extendedSquitterTargetStateAndStatus') {
-  console.log(decoded.targetStateAndStatus.selectedAltitudeFt, decoded.targetStateAndStatus.selectedHeadingDeg);
+  console.log(
+    decoded.targetStateAndStatus.selectedAltitudeFt,
+    decoded.targetStateAndStatus.selectedHeadingDeg,
+  );
 }
 ```
 
@@ -165,7 +168,10 @@ its position or state:
 ```typescript
 const decoded = decodeModeSMessage(rawMessageBytes);
 if (decoded?.kind === 'extendedSquitterOperationalStatus') {
-  console.log(decoded.operationalStatus.adsbVersion, decoded.operationalStatus.navAccuracyCategoryPosition);
+  console.log(
+    decoded.operationalStatus.adsbVersion,
+    decoded.operationalStatus.navAccuracyCategoryPosition,
+  );
 }
 ```
 

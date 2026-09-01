@@ -4,7 +4,12 @@ import type { Server, Socket } from 'node:net';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { createBeastStream } from './stream.js';
-import type { BeastConnectEventDetail, BeastDisconnectEventDetail, BeastFrameErrorEventDetail, BeastMessageEventDetail } from './types.js';
+import type {
+  BeastConnectEventDetail,
+  BeastDisconnectEventDetail,
+  BeastFrameErrorEventDetail,
+  BeastMessageEventDetail,
+} from './types.js';
 
 /** Collects the `detail` payload of every event of `type` dispatched on `target`, in dispatch order. */
 function collectEventDetails<T>(target: EventTarget, type: string): T[] {

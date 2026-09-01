@@ -23,7 +23,9 @@ function frameBytes(typeByte: number, message: number[]): number[] {
 describe('deframeBeastBytes - single frames', () => {
   it('parses a long Mode-S frame (0x33)', () => {
     // Real DF17 position message, hand-verified CRC=0 in mode-s's own tests.
-    const message = [0x8d, 0xab, 0x09, 0x69, 0x58, 0xc9, 0x01, 0x06, 0xe9, 0x19, 0x9e, 0x88, 0xd1, 0xa5];
+    const message = [
+      0x8d, 0xab, 0x09, 0x69, 0x58, 0xc9, 0x01, 0x06, 0xe9, 0x19, 0x9e, 0x88, 0xd1, 0xa5,
+    ];
     const buffer = Uint8Array.from(frameBytes(0x33, message));
     const result = deframeBeastBytes(buffer);
     expect(result.frames).toHaveLength(1);
@@ -54,7 +56,10 @@ describe('deframeBeastBytes - single frames', () => {
   });
 
   it('parses multiple consecutive frames', () => {
-    const df17 = frameBytes(0x33, [0x8d, 0xab, 0x09, 0x69, 0x58, 0xc9, 0x01, 0x06, 0xe9, 0x19, 0x9e, 0x88, 0xd1, 0xa5]);
+    const df17 = frameBytes(
+      0x33,
+      [0x8d, 0xab, 0x09, 0x69, 0x58, 0xc9, 0x01, 0x06, 0xe9, 0x19, 0x9e, 0x88, 0xd1, 0xa5],
+    );
     const df11 = frameBytes(0x32, [0x5d, 0xab, 0x09, 0x69, 0x30, 0xe6, 0x68]);
     const buffer = Uint8Array.from([...df17, ...df11]);
     const result = deframeBeastBytes(buffer);
@@ -129,12 +134,19 @@ describe('deframeBeastBytes - malformed framing', () => {
     const validFrame = frameBytes(0x32, [0x5d, 0xab, 0x09, 0x69, 0x30, 0xe6, 0x68]);
     const buffer = Uint8Array.from([...garbage, ...validFrame]);
     const result = deframeBeastBytes(buffer);
-    expect(result.errors).toContainEqual({ reason: 'malformedFraming', bytes: Uint8Array.from(garbage) });
+    expect(result.errors).toContainEqual({
+      reason: 'malformedFraming',
+      bytes: Uint8Array.from(garbage),
+    });
     expect(result.frames).toHaveLength(1);
   });
 
   it('reports an unrecognized type byte as malformed and keeps scanning', () => {
-    const buffer = Uint8Array.from([0x1a, 0xff, ...frameBytes(0x32, [0x5d, 0xab, 0x09, 0x69, 0x30, 0xe6, 0x68])]);
+    const buffer = Uint8Array.from([
+      0x1a,
+      0xff,
+      ...frameBytes(0x32, [0x5d, 0xab, 0x09, 0x69, 0x30, 0xe6, 0x68]),
+    ]);
     const result = deframeBeastBytes(buffer);
     expect(result.errors.some((error) => error.reason === 'malformedFraming')).toBe(true);
     expect(result.frames).toHaveLength(1);
@@ -172,13 +184,18 @@ describe('deframeBeastBytes - malformed framing', () => {
 
 describe('deframeBeastBytes - undecoded messages', () => {
   it('reports a Mode-S message with a bad CRC as undecoded, keeping the raw bytes', () => {
-    const message = [0x8d, 0xab, 0x09, 0x69, 0x58, 0xc9, 0x01, 0x06, 0xe9, 0x19, 0x9e, 0x88, 0xd1, 0x00]; // corrupted CRC
+    const message = [
+      0x8d, 0xab, 0x09, 0x69, 0x58, 0xc9, 0x01, 0x06, 0xe9, 0x19, 0x9e, 0x88, 0xd1, 0x00,
+    ]; // corrupted CRC
     const buffer = Uint8Array.from(frameBytes(0x33, message));
     const result = deframeBeastBytes(buffer);
     expect(result.frames).toHaveLength(1);
     expect(result.frames[0]?.decoded).toBeUndefined();
     expect(result.frames[0]?.rawMessage).toEqual(Uint8Array.from(message));
-    expect(result.errors).toContainEqual({ reason: 'undecodedMessage', bytes: Uint8Array.from(message) });
+    expect(result.errors).toContainEqual({
+      reason: 'undecodedMessage',
+      bytes: Uint8Array.from(message),
+    });
   });
 });
 
@@ -190,10 +207,68 @@ describe('deframeBeastBytes - undecoded messages', () => {
 describe('deframeBeastBytes - real dump1090-fa Beast capture', () => {
   it('deframes three consecutive real frames', () => {
     const bytes = Uint8Array.of(
-      0x1a, 0x33, 0x01, 0x09, 0x5c, 0x83, 0xd3, 0xbd, 0x27, 0x8d, 0xab, 0x09, 0x69, 0x58, 0xc7, 0xf4,
-      0x8a, 0x99, 0x77, 0x3d, 0xf5, 0x01, 0x91, 0x1a, 0x33, 0x01, 0x09, 0x5c, 0x83, 0xe0, 0x6b, 0x26,
-      0x8d, 0xab, 0x09, 0x69, 0x99, 0x0a, 0x55, 0x02, 0x80, 0x08, 0x35, 0xa7, 0x73, 0x9c, 0x1a, 0x32,
-      0x01, 0x09, 0x5c, 0xa8, 0x72, 0x41, 0x28, 0x5d, 0xab, 0x09, 0x69, 0x30, 0xe6, 0x68,
+      0x1a,
+      0x33,
+      0x01,
+      0x09,
+      0x5c,
+      0x83,
+      0xd3,
+      0xbd,
+      0x27,
+      0x8d,
+      0xab,
+      0x09,
+      0x69,
+      0x58,
+      0xc7,
+      0xf4,
+      0x8a,
+      0x99,
+      0x77,
+      0x3d,
+      0xf5,
+      0x01,
+      0x91,
+      0x1a,
+      0x33,
+      0x01,
+      0x09,
+      0x5c,
+      0x83,
+      0xe0,
+      0x6b,
+      0x26,
+      0x8d,
+      0xab,
+      0x09,
+      0x69,
+      0x99,
+      0x0a,
+      0x55,
+      0x02,
+      0x80,
+      0x08,
+      0x35,
+      0xa7,
+      0x73,
+      0x9c,
+      0x1a,
+      0x32,
+      0x01,
+      0x09,
+      0x5c,
+      0xa8,
+      0x72,
+      0x41,
+      0x28,
+      0x5d,
+      0xab,
+      0x09,
+      0x69,
+      0x30,
+      0xe6,
+      0x68,
     );
     const result = deframeBeastBytes(bytes);
     expect(result.errors).toHaveLength(0);
@@ -206,7 +281,8 @@ describe('deframeBeastBytes - real dump1090-fa Beast capture', () => {
       'allCallReply',
     ]);
     for (const frame of result.frames) {
-      const icaoHex = frame.decoded && 'icaoHex' in frame.decoded ? frame.decoded.icaoHex : undefined;
+      const icaoHex =
+        frame.decoded && 'icaoHex' in frame.decoded ? frame.decoded.icaoHex : undefined;
       expect(icaoHex).toBe('AB0969');
     }
   });
@@ -222,7 +298,9 @@ describe('deframeBeastBytes - real dump1090-fa Beast capture', () => {
 // deframe is a strong regression signal that the smaller hand-picked
 // samples above can't provide on their own.
 describe('deframeBeastBytes - real dump1090-fa Beast capture (full session)', () => {
-  const fixtureBytes = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'beast-capture.bin'));
+  const fixtureBytes = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'beast-capture.bin'),
+  );
   const result = deframeBeastBytes(new Uint8Array(fixtureBytes));
 
   it('deframes an entire real capture session cleanly', () => {
@@ -254,7 +332,9 @@ describe('deframeBeastBytes - real dump1090-fa Beast capture (full session)', ()
   });
 
   it('decodes a real DF16 long air-air surveillance reply with no active Resolution Advisory', () => {
-    const df16 = result.frames.find((frame) => frame.decoded?.kind === 'longAirAirSurveillanceReply');
+    const df16 = result.frames.find(
+      (frame) => frame.decoded?.kind === 'longAirAirSurveillanceReply',
+    );
     expect(df16).toBeDefined();
     if (df16?.decoded?.kind !== 'longAirAirSurveillanceReply') {
       return;
@@ -264,13 +344,18 @@ describe('deframeBeastBytes - real dump1090-fa Beast capture (full session)', ()
 
   it('decodes a real BDS 4,0/5,0/6,0 Comm-B register of each kind from DF20 replies', () => {
     const allRegisters = result.frames
-      .filter((frame) => frame.decoded?.kind === 'commBAltitudeReply' || frame.decoded?.kind === 'commBIdentityReply')
+      .filter(
+        (frame) =>
+          frame.decoded?.kind === 'commBAltitudeReply' ||
+          frame.decoded?.kind === 'commBIdentityReply',
+      )
       .flatMap((frame) =>
         frame.decoded?.kind === 'commBAltitudeReply' || frame.decoded?.kind === 'commBIdentityReply'
           ? frame.decoded.commBRegisters
           : [],
       );
-    const findByBdsCode = (bdsCode: string) => allRegisters.find((register) => register.bdsCode === bdsCode);
+    const findByBdsCode = (bdsCode: string) =>
+      allRegisters.find((register) => register.bdsCode === bdsCode);
 
     expect(findByBdsCode('4,0')).toMatchObject({
       mcpFcuSelectedAltitudeFt: 36000,

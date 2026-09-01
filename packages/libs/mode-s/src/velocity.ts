@@ -11,7 +11,8 @@ import type {
  * fields shared by both airborne velocity subtypes.
  */
 function decodeCommonTrailer(me: Uint8Array): AirborneVelocityCommon {
-  const verticalRateSource: 'gnss' | 'barometric' = extractBits(me, 35, 1) === 1 ? 'barometric' : 'gnss';
+  const verticalRateSource: 'gnss' | 'barometric' =
+    extractBits(me, 35, 1) === 1 ? 'barometric' : 'gnss';
   const verticalRateSign = extractBits(me, 36, 1);
   const verticalRateMagnitude = extractBits(me, 37, 9);
   const verticalRateFtPerMin =

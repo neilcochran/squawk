@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
-import { decodeAdsbGnssAltitude, decodeAdsbPositionAltitude, decodeAltitudeCode } from './altitude.js';
+import {
+  decodeAdsbGnssAltitude,
+  decodeAdsbPositionAltitude,
+  decodeAltitudeCode,
+} from './altitude.js';
 
 describe('decodeAltitudeCode', () => {
   it('returns undefined for an all-zero field (altitude unknown)', () => {

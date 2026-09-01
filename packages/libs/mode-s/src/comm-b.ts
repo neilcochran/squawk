@@ -1,5 +1,10 @@
 import { extractBits } from './bits.js';
-import type { CommBRegister, HeadingAndSpeedReport, SelectedVerticalIntention, TrackAndTurnReport } from './types/index.js';
+import type {
+  CommBRegister,
+  HeadingAndSpeedReport,
+  SelectedVerticalIntention,
+  TrackAndTurnReport,
+} from './types/index.js';
 
 /**
  * Combines an unsigned magnitude and a separate sign bit into a signed
@@ -23,14 +28,21 @@ function normalizeAngleDeg(deg: number): number {
  * indicates either a corrupt message or a different BDS register's payload
  * accidentally passing this one's checks.
  */
-function wrongStatus(mb: Uint8Array, statusBit: number, valueStart: number, valueWidth: number): boolean {
+function wrongStatus(
+  mb: Uint8Array,
+  statusBit: number,
+  valueStart: number,
+  valueWidth: number,
+): boolean {
   if (extractBits(mb, statusBit, 1) !== 0) {
     return false;
   }
   return extractBits(mb, valueStart, valueWidth) !== 0;
 }
 
-function decodeTargetAltitudeSource(raw: number): 'unknown' | 'aircraftAltitude' | 'mcpFcu' | 'fms' {
+function decodeTargetAltitudeSource(
+  raw: number,
+): 'unknown' | 'aircraftAltitude' | 'mcpFcu' | 'fms' {
   switch (raw) {
     case 1:
       return 'aircraftAltitude';
@@ -90,7 +102,8 @@ export function decodeSelectedVerticalIntention(mb: Uint8Array): SelectedVertica
     vnavModeActive: modeStatus === 1 ? extractBits(mb, 48, 1) === 1 : undefined,
     altitudeHoldModeActive: modeStatus === 1 ? extractBits(mb, 49, 1) === 1 : undefined,
     approachModeActive: modeStatus === 1 ? extractBits(mb, 50, 1) === 1 : undefined,
-    targetAltitudeSource: sourceStatus === 1 ? decodeTargetAltitudeSource(extractBits(mb, 54, 2)) : undefined,
+    targetAltitudeSource:
+      sourceStatus === 1 ? decodeTargetAltitudeSource(extractBits(mb, 54, 2)) : undefined,
   };
 }
 
@@ -153,14 +166,20 @@ export function decodeTrackAndTurnReport(mb: Uint8Array): TrackAndTurnReport {
   return {
     bdsCode: '5,0',
     rollAngleDeg:
-      rollStatus === 1 ? (signed(extractBits(mb, 2, 9), 9, extractBits(mb, 1, 1)) * 45) / 256 : undefined,
+      rollStatus === 1
+        ? (signed(extractBits(mb, 2, 9), 9, extractBits(mb, 1, 1)) * 45) / 256
+        : undefined,
     trueTrackDeg:
       trackStatus === 1
-        ? normalizeAngleDeg((signed(extractBits(mb, 13, 10), 10, extractBits(mb, 12, 1)) * 90) / 512)
+        ? normalizeAngleDeg(
+            (signed(extractBits(mb, 13, 10), 10, extractBits(mb, 12, 1)) * 90) / 512,
+          )
         : undefined,
     groundSpeedKt: gsStatus === 1 ? extractBits(mb, 24, 10) * 2 : undefined,
     trackAngleRateDegPerSec:
-      trackRateStatus === 1 ? (signed(extractBits(mb, 36, 9), 9, extractBits(mb, 35, 1)) * 8) / 256 : undefined,
+      trackRateStatus === 1
+        ? (signed(extractBits(mb, 36, 9), 9, extractBits(mb, 35, 1)) * 8) / 256
+        : undefined,
     trueAirspeedKt: tasStatus === 1 ? extractBits(mb, 46, 10) * 2 : undefined,
   };
 }

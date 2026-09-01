@@ -236,7 +236,9 @@ describe('inferCommBRegisters', () => {
       (_field, valueStart, valueWidth) => {
         const mb = new Uint8Array(7);
         setBits(mb, valueStart, valueWidth, 1);
-        expect(inferCommBRegisters(mb).some((candidate) => candidate.bdsCode === '4,0')).toBe(false);
+        expect(inferCommBRegisters(mb).some((candidate) => candidate.bdsCode === '4,0')).toBe(
+          false,
+        );
       },
     );
 
@@ -251,7 +253,9 @@ describe('inferCommBRegisters', () => {
       (_field, valueStart, valueWidth) => {
         const mb = new Uint8Array(7);
         setBits(mb, valueStart, valueWidth, 1);
-        expect(inferCommBRegisters(mb).some((candidate) => candidate.bdsCode === '5,0')).toBe(false);
+        expect(inferCommBRegisters(mb).some((candidate) => candidate.bdsCode === '5,0')).toBe(
+          false,
+        );
       },
     );
 
@@ -266,7 +270,9 @@ describe('inferCommBRegisters', () => {
       (_field, valueStart, valueWidth) => {
         const mb = new Uint8Array(7);
         setBits(mb, valueStart, valueWidth, 1);
-        expect(inferCommBRegisters(mb).some((candidate) => candidate.bdsCode === '6,0')).toBe(false);
+        expect(inferCommBRegisters(mb).some((candidate) => candidate.bdsCode === '6,0')).toBe(
+          false,
+        );
       },
     );
   });

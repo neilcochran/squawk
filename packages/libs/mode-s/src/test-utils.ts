@@ -3,7 +3,12 @@
  * `value` into `bytes` starting at `bitOffset` (0-indexed from the MSB),
  * for building synthetic ME fields in specs.
  */
-export function setBits(bytes: Uint8Array, bitOffset: number, bitLength: number, value: number): void {
+export function setBits(
+  bytes: Uint8Array,
+  bitOffset: number,
+  bitLength: number,
+  value: number,
+): void {
   for (let i = 0; i < bitLength; i++) {
     const bitPos = bitOffset + i;
     const byteIndex = bitPos >> 3;

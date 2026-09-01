@@ -34,14 +34,44 @@ describe('computeCrc24', () => {
   });
 
   it('is deterministic for the same input', () => {
-    const bytes = Uint8Array.of(0x8d, 0xab, 0x09, 0x69, 0x58, 0xc7, 0xf4, 0x8a, 0x99, 0x77, 0x3d, 0xf5, 0x01, 0x91);
+    const bytes = Uint8Array.of(
+      0x8d,
+      0xab,
+      0x09,
+      0x69,
+      0x58,
+      0xc7,
+      0xf4,
+      0x8a,
+      0x99,
+      0x77,
+      0x3d,
+      0xf5,
+      0x01,
+      0x91,
+    );
     expect(computeCrc24(bytes)).toBe(computeCrc24(bytes));
   });
 });
 
 describe('parseModeSFrame', () => {
   it('combines downlink format and CRC extraction into one envelope', () => {
-    const bytes = Uint8Array.of(0x8d, 0xab, 0x09, 0x69, 0x58, 0xc7, 0xf4, 0x8a, 0x99, 0x77, 0x3d, 0xf5, 0x01, 0x91);
+    const bytes = Uint8Array.of(
+      0x8d,
+      0xab,
+      0x09,
+      0x69,
+      0x58,
+      0xc7,
+      0xf4,
+      0x8a,
+      0x99,
+      0x77,
+      0x3d,
+      0xf5,
+      0x01,
+      0x91,
+    );
     const envelope = parseModeSFrame(bytes);
     expect(envelope.bytes).toBe(bytes);
     expect(envelope.downlinkFormat).toBe(extractDownlinkFormat(bytes));
@@ -58,7 +88,20 @@ describe('parseModeSFrame', () => {
 describe('parseModeSFrame - real dump1090-fa Beast capture', () => {
   it('parses a real DF17 airborne position message with a valid CRC', () => {
     const bytes = Uint8Array.of(
-      0x8d, 0xab, 0x09, 0x69, 0x58, 0xc7, 0xf4, 0x8a, 0x99, 0x77, 0x3d, 0xf5, 0x01, 0x91,
+      0x8d,
+      0xab,
+      0x09,
+      0x69,
+      0x58,
+      0xc7,
+      0xf4,
+      0x8a,
+      0x99,
+      0x77,
+      0x3d,
+      0xf5,
+      0x01,
+      0x91,
     );
     const envelope = parseModeSFrame(bytes);
     expect(envelope.downlinkFormat).toBe(17);
@@ -67,7 +110,20 @@ describe('parseModeSFrame - real dump1090-fa Beast capture', () => {
 
   it('parses a real DF17 airborne velocity message with a valid CRC', () => {
     const bytes = Uint8Array.of(
-      0x8d, 0xab, 0x09, 0x69, 0x99, 0x0a, 0x55, 0x02, 0x80, 0x08, 0x35, 0xa7, 0x73, 0x9c,
+      0x8d,
+      0xab,
+      0x09,
+      0x69,
+      0x99,
+      0x0a,
+      0x55,
+      0x02,
+      0x80,
+      0x08,
+      0x35,
+      0xa7,
+      0x73,
+      0x9c,
     );
     const envelope = parseModeSFrame(bytes);
     expect(envelope.downlinkFormat).toBe(17);
