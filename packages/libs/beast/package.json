@@ -1,0 +1,65 @@
+{
+  "name": "@squawk/beast",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Parse dump1090-fa's Beast binary format into decoded Mode-S messages, with an opt-in live-stream client",
+  "author": "Neil Cochran",
+  "license": "MIT",
+  "homepage": "https://github.com/neilcochran/squawk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neilcochran/squawk.git",
+    "directory": "packages/libs/beast"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "typedocMain": "src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./stream": {
+      "types": "./dist/stream/index.d.ts",
+      "import": "./dist/stream/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit && eslint src",
+    "lint:pack": "publint && attw --pack . --profile esm-only",
+    "api:check": "api-extractor run --verbose && api-extractor run --verbose -c api-extractor.stream.json",
+    "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.stream.json"
+  },
+  "dependencies": {
+    "@squawk/mode-s": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3"
+  },
+  "keywords": [
+    "aviation",
+    "typescript",
+    "beast",
+    "adsb",
+    "ads-b",
+    "dump1090",
+    "mode-s"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
