@@ -5,11 +5,14 @@ import {
   decodeAltitudeCode,
 } from './altitude.js';
 import { extractBits, formatHexAddress } from './bits.js';
+import { inferCommBRegisters } from './comm-b.js';
 import { decodeEmergencyState } from './emergency-status.js';
 import { parseModeSFrame } from './frame.js';
 import { decodeIdentification } from './identification.js';
 import { decodeIdentityCode } from './identity.js';
+import { decodeAircraftOperationalStatus } from './operational-status.js';
 import { decodeSurfaceMovement } from './surface-movement.js';
+import { decodeTargetStateAndStatus } from './target-state-status.js';
 import type {
   DecodedModeSMessage,
   ExtendedSquitterPosition,
@@ -34,6 +37,8 @@ type TypeCodeCategory =
   | 'airborneBaroPosition'
   | 'velocity'
   | 'airborneGnssPosition'
+  | 'targetStateAndStatus'
+  | 'operationalStatus'
   | 'aircraftStatus';
 
 const TYPE_CODE_CATEGORIES: readonly { min: number; max: number; category: TypeCodeCategory }[] = [
@@ -44,6 +49,8 @@ const TYPE_CODE_CATEGORIES: readonly { min: number; max: number; category: TypeC
   { min: 19, max: 19, category: 'velocity' },
   { min: 20, max: 22, category: 'airborneGnssPosition' },
   { min: 28, max: 28, category: 'aircraftStatus' },
+  { min: 29, max: 29, category: 'targetStateAndStatus' },
+  { min: 31, max: 31, category: 'operationalStatus' },
 ];
 
 function categorizeTypeCode(typeCode: number): TypeCodeCategory | undefined {
@@ -174,6 +181,22 @@ function decodeExtendedSquitter(
         : { kind: 'extendedSquitterVelocity', icaoHex, messageSource, velocity };
     }
 
+    case 'targetStateAndStatus':
+      return {
+        kind: 'extendedSquitterTargetStateAndStatus',
+        icaoHex,
+        messageSource,
+        targetStateAndStatus: decodeTargetStateAndStatus(me),
+      };
+
+    case 'operationalStatus':
+      return {
+        kind: 'extendedSquitterOperationalStatus',
+        icaoHex,
+        messageSource,
+        operationalStatus: decodeAircraftOperationalStatus(me),
+      };
+
     case 'aircraftStatus': {
       const subtype = extractBits(me, 5, 3);
       if (subtype === 1) {
@@ -289,7 +312,7 @@ export function decodeModeSMessage(bytes: Uint8Array): DecodedModeSMessage | und
     };
   }
 
-  if (envelope.downlinkFormat === 4 || envelope.downlinkFormat === 20) {
+  if (envelope.downlinkFormat === 4) {
     const acField = extractBits(bytes, 19, 13);
     return {
       kind: 'surveillanceAltitudeReply',
@@ -298,12 +321,32 @@ export function decodeModeSMessage(bytes: Uint8Array): DecodedModeSMessage | und
     };
   }
 
-  if (envelope.downlinkFormat === 5 || envelope.downlinkFormat === 21) {
+  if (envelope.downlinkFormat === 20) {
+    const acField = extractBits(bytes, 19, 13);
+    return {
+      kind: 'commBAltitudeReply',
+      candidateIcaoHex: formatHexAddress(envelope.crcRemainder),
+      altitudeFt: decodeAltitudeCode(acField),
+      commBRegisters: inferCommBRegisters(bytes.slice(4, 11)),
+    };
+  }
+
+  if (envelope.downlinkFormat === 5) {
     const idField = extractBits(bytes, 19, 13);
     return {
       kind: 'surveillanceIdentityReply',
       candidateIcaoHex: formatHexAddress(envelope.crcRemainder),
       squawk: decodeIdentityCode(idField),
+    };
+  }
+
+  if (envelope.downlinkFormat === 21) {
+    const idField = extractBits(bytes, 19, 13);
+    return {
+      kind: 'commBIdentityReply',
+      candidateIcaoHex: formatHexAddress(envelope.crcRemainder),
+      squawk: decodeIdentityCode(idField),
+      commBRegisters: inferCommBRegisters(bytes.slice(4, 11)),
     };
   }
 

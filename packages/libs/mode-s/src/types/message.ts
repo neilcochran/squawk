@@ -1,6 +1,9 @@
 import type { AcasResolutionAdvisoryReport } from './acas.js';
+import type { CommBRegister } from './comm-b.js';
 import type { EmergencyState } from './emergency-status.js';
 import type { AircraftIdentification } from './identification.js';
+import type { AircraftOperationalStatus } from './operational-status.js';
+import type { TargetStateAndStatus } from './target-state-status.js';
 import type { AirborneVelocity } from './velocity.js';
 
 /**
@@ -72,6 +75,22 @@ export interface ExtendedSquitterIdentification extends ExtendedSquitterCommon {
   identification: AircraftIdentification;
 }
 
+/** A DF17/18 extended squitter Target State and Status message (type code 29). */
+export interface ExtendedSquitterTargetStateAndStatus extends ExtendedSquitterCommon {
+  /** Discriminant tag identifying this as a decoded Target State and Status message. */
+  kind: 'extendedSquitterTargetStateAndStatus';
+  /** The decoded target state and status. */
+  targetStateAndStatus: TargetStateAndStatus;
+}
+
+/** A DF17/18 extended squitter Aircraft Operational Status message (type code 31). */
+export interface ExtendedSquitterOperationalStatus extends ExtendedSquitterCommon {
+  /** Discriminant tag identifying this as a decoded Aircraft Operational Status message. */
+  kind: 'extendedSquitterOperationalStatus';
+  /** The decoded operational status. */
+  operationalStatus: AircraftOperationalStatus;
+}
+
 /** A DF11 all-call reply - confirms an aircraft's ICAO address, carries no other data. */
 export interface AllCallReply {
   /** Discriminant tag identifying this as a decoded DF11 all-call reply. */
@@ -130,12 +149,32 @@ export interface LongAirAirSurveillanceReply {
  * perform that cross-check itself; see {@link ModeSMessageEnvelope.crcRemainder}).
  */
 export interface SurveillanceAltitudeReply {
-  /** Discriminant tag identifying this as a decoded DF4/20 surveillance altitude reply. */
+  /** Discriminant tag identifying this as a decoded DF4 surveillance altitude reply. */
   kind: 'surveillanceAltitudeReply';
   /** Candidate 24-bit ICAO hex address, recovered from the CRC field - verify against known traffic before trusting it. */
   candidateIcaoHex: string;
   /** Decoded altitude in feet, or undefined if the AC field is empty or invalid. */
   altitudeFt: number | undefined;
+}
+
+/**
+ * A DF20 Comm-B altitude reply - the same altitude payload as
+ * {@link SurveillanceAltitudeReply} (DF4), extended with a 56-bit MB field
+ * carrying an Enhanced Surveillance Comm-B register. Like
+ * {@link SurveillanceAltitudeReply}, this is a targeted response whose CRC
+ * is XORed with the responding aircraft's ICAO address rather than being a
+ * plain checksum - `candidateIcaoHex` needs cross-checking against known
+ * traffic before it can be trusted.
+ */
+export interface CommBAltitudeReply {
+  /** Discriminant tag identifying this as a decoded DF20 Comm-B altitude reply. */
+  kind: 'commBAltitudeReply';
+  /** Candidate 24-bit ICAO hex address, recovered from the CRC field - verify against known traffic before trusting it. */
+  candidateIcaoHex: string;
+  /** Decoded altitude in feet, or undefined if the AC field is empty or invalid. */
+  altitudeFt: number | undefined;
+  /** Every Enhanced Surveillance Comm-B register the MB field plausibly holds - see {@link inferCommBRegisters}. Empty if none matched. */
+  commBRegisters: CommBRegister[];
 }
 
 /**
@@ -146,12 +185,32 @@ export interface SurveillanceAltitudeReply {
  * traffic before it can be trusted.
  */
 export interface SurveillanceIdentityReply {
-  /** Discriminant tag identifying this as a decoded DF5/21 surveillance identity reply. */
+  /** Discriminant tag identifying this as a decoded DF5 surveillance identity reply. */
   kind: 'surveillanceIdentityReply';
   /** Candidate 24-bit ICAO hex address, recovered from the CRC field - verify against known traffic before trusting it. */
   candidateIcaoHex: string;
   /** The decoded 4-digit octal squawk code. */
   squawk: string;
+}
+
+/**
+ * A DF21 Comm-B identity reply - the same squawk payload as
+ * {@link SurveillanceIdentityReply} (DF5), extended with a 56-bit MB field
+ * carrying an Enhanced Surveillance Comm-B register. Like
+ * {@link SurveillanceAltitudeReply}, this is a targeted response whose CRC
+ * is XORed with the responding aircraft's ICAO address rather than being a
+ * plain checksum - `candidateIcaoHex` needs cross-checking against known
+ * traffic before it can be trusted.
+ */
+export interface CommBIdentityReply {
+  /** Discriminant tag identifying this as a decoded DF21 Comm-B identity reply. */
+  kind: 'commBIdentityReply';
+  /** Candidate 24-bit ICAO hex address, recovered from the CRC field - verify against known traffic before trusting it. */
+  candidateIcaoHex: string;
+  /** The decoded 4-digit octal squawk code. */
+  squawk: string;
+  /** Every Enhanced Surveillance Comm-B register the MB field plausibly holds - see {@link inferCommBRegisters}. Empty if none matched. */
+  commBRegisters: CommBRegister[];
 }
 
 /**
@@ -194,10 +253,14 @@ export type DecodedModeSMessage =
   | ExtendedSquitterPosition
   | ExtendedSquitterVelocity
   | ExtendedSquitterIdentification
+  | ExtendedSquitterTargetStateAndStatus
+  | ExtendedSquitterOperationalStatus
   | ExtendedSquitterEmergencyStatus
   | ExtendedSquitterAcasRaBroadcast
   | AllCallReply
   | ShortAirAirSurveillanceReply
   | LongAirAirSurveillanceReply
   | SurveillanceAltitudeReply
-  | SurveillanceIdentityReply;
+  | CommBAltitudeReply
+  | SurveillanceIdentityReply
+  | CommBIdentityReply;

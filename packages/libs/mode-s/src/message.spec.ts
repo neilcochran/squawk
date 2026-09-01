@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import { decodeAltitudeCode } from './altitude.js';
 import { computeCrc24 } from './frame.js';
+import { decodeIdentityCode } from './identity.js';
 import { decodeModeSMessage } from './message.js';
 import { setBits } from './test-utils.js';
 
@@ -64,6 +65,34 @@ function buildDf16(
   return bytes;
 }
 
+/** Builds a DF20 message with the given altitude code and 7-byte MB field. */
+function buildDf20(
+  altitudeCode: number,
+  mb: Uint8Array,
+  icaoHexBytes: [number, number, number],
+): Uint8Array {
+  const bytes = new Uint8Array(14);
+  setBits(bytes, 0, 5, 20); // DF20
+  setBits(bytes, 19, 13, altitudeCode);
+  bytes.set(mb, 4);
+  writeAddressParityCrc(bytes, icaoHexBytes);
+  return bytes;
+}
+
+/** Builds a DF21 message with the given identity (squawk) code and 7-byte MB field. */
+function buildDf21(
+  idCode: number,
+  mb: Uint8Array,
+  icaoHexBytes: [number, number, number],
+): Uint8Array {
+  const bytes = new Uint8Array(14);
+  setBits(bytes, 0, 5, 21); // DF21
+  setBits(bytes, 19, 13, idCode);
+  bytes.set(mb, 4);
+  writeAddressParityCrc(bytes, icaoHexBytes);
+  return bytes;
+}
+
 function hexBytes(hex: string): Uint8Array {
   return Uint8Array.from(Buffer.from(hex, 'hex'));
 }
@@ -84,10 +113,9 @@ describe('decodeModeSMessage - unrecognized downlink formats', () => {
   });
 
   it('returns undefined for a DF17 message with an unrecognized ADS-B type code', () => {
-    // Type code 29 (target state and status) is a real, valid ADS-B type
-    // this package deliberately does not decode.
+    // Type code 23 is reserved (per DO-260B) and not decoded by this package.
     const me = new Uint8Array(7);
-    me[0] = 29 << 3; // type code 29 in the top 5 bits
+    me[0] = 23 << 3; // type code 23 in the top 5 bits
     const bytes = buildValidDf17([0xab, 0x09, 0x69], me);
     expect(decodeModeSMessage(bytes)).toBeUndefined();
   });
@@ -245,6 +273,48 @@ describe('decodeModeSMessage - real dump1090-fa Beast capture', () => {
     expect(result.squawk).toBe('1470');
   });
 
+  it('decodes a synthetic DF20 Comm-B altitude reply, including its BDS 4,0 register', () => {
+    const acField = 6335;
+    const mb = new Uint8Array(7);
+    setBits(mb, 0, 1, 1); // MCP/FCU altitude status
+    setBits(mb, 1, 12, 300); // 300*16 = 4800 ft
+
+    const bytes = buildDf20(acField, mb, [0xab, 0x09, 0x69]);
+    const result = decodeModeSMessage(bytes);
+    expect(result?.kind).toBe('commBAltitudeReply');
+    if (result?.kind !== 'commBAltitudeReply') {
+      return;
+    }
+    expect(result.candidateIcaoHex).toBe('AB0969');
+    expect(result.altitudeFt).toBe(decodeAltitudeCode(acField));
+    expect(
+      result.commBRegisters.some(
+        (register) => register.bdsCode === '4,0' && register.mcpFcuSelectedAltitudeFt === 4800,
+      ),
+    ).toBe(true);
+  });
+
+  it('decodes a synthetic DF21 Comm-B identity reply, including its BDS 4,0 register', () => {
+    const idField = 0b0_001_0100_0111_0;
+    const mb = new Uint8Array(7);
+    setBits(mb, 0, 1, 1); // MCP/FCU altitude status
+    setBits(mb, 1, 12, 300); // 300*16 = 4800 ft
+
+    const bytes = buildDf21(idField, mb, [0xab, 0x09, 0x69]);
+    const result = decodeModeSMessage(bytes);
+    expect(result?.kind).toBe('commBIdentityReply');
+    if (result?.kind !== 'commBIdentityReply') {
+      return;
+    }
+    expect(result.candidateIcaoHex).toBe('AB0969');
+    expect(result.squawk).toBe(decodeIdentityCode(idField));
+    expect(
+      result.commBRegisters.some(
+        (register) => register.bdsCode === '4,0' && register.mcpFcuSelectedAltitudeFt === 4800,
+      ),
+    ).toBe(true);
+  });
+
   it('decodes a real DF17 type-28 subtype-1 emergency status message', () => {
     // From the original beast-capture.bin, not the live station - a
     // routine (non-emergency) status broadcast, which subtype 1 aircraft
@@ -320,6 +390,46 @@ describe('decodeModeSMessage - airborne velocity with an unrecognized subtype (s
 
     const bytes = buildValidDf17([0xab, 0x09, 0x69], me);
     expect(decodeModeSMessage(bytes)).toBeUndefined();
+  });
+});
+
+describe('decodeModeSMessage - target state and status (synthetic)', () => {
+  it('dispatches a type-code-29 message to extendedSquitterTargetStateAndStatus', () => {
+    const me = new Uint8Array(7);
+    setBits(me, 0, 5, 29); // type code
+    setBits(me, 9, 11, 101); // (101-1)*32 = 3200 ft
+    setBits(me, 39, 4, 9); // NAC_p
+
+    const bytes = buildValidDf17([0xab, 0x09, 0x69], me);
+    const result = decodeModeSMessage(bytes);
+    expect(result?.kind).toBe('extendedSquitterTargetStateAndStatus');
+    if (result?.kind !== 'extendedSquitterTargetStateAndStatus') {
+      return;
+    }
+    expect(result.icaoHex).toBe('AB0969');
+    expect(result.messageSource).toBe('icaoDirect');
+    expect(result.targetStateAndStatus.selectedAltitudeFt).toBe(3200);
+    expect(result.targetStateAndStatus.navAccuracyCategoryPosition).toBe(9);
+  });
+});
+
+describe('decodeModeSMessage - operational status (synthetic)', () => {
+  it('dispatches a type-code-31 message to extendedSquitterOperationalStatus', () => {
+    const me = new Uint8Array(7);
+    setBits(me, 0, 5, 31); // type code
+    setBits(me, 5, 3, 0); // subtype: airborne
+    setBits(me, 40, 3, 2); // ADS-B version 2
+
+    const bytes = buildValidDf17([0xab, 0x09, 0x69], me);
+    const result = decodeModeSMessage(bytes);
+    expect(result?.kind).toBe('extendedSquitterOperationalStatus');
+    if (result?.kind !== 'extendedSquitterOperationalStatus') {
+      return;
+    }
+    expect(result.icaoHex).toBe('AB0969');
+    expect(result.messageSource).toBe('icaoDirect');
+    expect(result.operationalStatus.surface).toBe(false);
+    expect(result.operationalStatus.adsbVersion).toBe(2);
   });
 });
 

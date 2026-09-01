@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, it, expect } from 'vitest';
 
 import { deframeBeastBytes } from './frame.js';
@@ -205,5 +209,81 @@ describe('deframeBeastBytes - real dump1090-fa Beast capture', () => {
       const icaoHex = frame.decoded && 'icaoHex' in frame.decoded ? frame.decoded.icaoHex : undefined;
       expect(icaoHex).toBe('AB0969');
     }
+  });
+});
+
+// `fixtures/beast-capture.bin` is a longer, unedited real Beast-binary
+// capture from the same reference dump1090-fa station - a full 300-second
+// session, 14 distinct aircraft, every frame type and (as of this decode
+// surface) every decode kind this package currently supports, including a
+// DF16 long air-air surveillance reply (no active Resolution Advisory - a
+// genuine RA is a rare safety event, not something ambient traffic is
+// expected to produce). A whole-session, zero-error, zero-undecoded
+// deframe is a strong regression signal that the smaller hand-picked
+// samples above can't provide on their own.
+describe('deframeBeastBytes - real dump1090-fa Beast capture (full session)', () => {
+  const fixtureBytes = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'beast-capture.bin'));
+  const result = deframeBeastBytes(new Uint8Array(fixtureBytes));
+
+  it('deframes an entire real capture session cleanly', () => {
+    expect(result.errors).toHaveLength(0);
+    expect(result.remainder).toHaveLength(0);
+    expect(result.frames).toHaveLength(6903);
+    expect(result.frames.every((frame) => frame.decoded !== undefined)).toBe(true);
+  });
+
+  it('decodes every DF16/17/18 and surveillance-reply kind this package currently supports at least once', () => {
+    const kinds = new Set(result.frames.map((frame) => frame.decoded?.kind));
+    for (const kind of [
+      'extendedSquitterPosition',
+      'extendedSquitterVelocity',
+      'extendedSquitterIdentification',
+      'extendedSquitterTargetStateAndStatus',
+      'extendedSquitterOperationalStatus',
+      'extendedSquitterEmergencyStatus',
+      'allCallReply',
+      'shortAirAirSurveillanceReply',
+      'longAirAirSurveillanceReply',
+      'surveillanceAltitudeReply',
+      'surveillanceIdentityReply',
+      'commBAltitudeReply',
+      'commBIdentityReply',
+    ] as const) {
+      expect(kinds.has(kind)).toBe(true);
+    }
+  });
+
+  it('decodes a real DF16 long air-air surveillance reply with no active Resolution Advisory', () => {
+    const df16 = result.frames.find((frame) => frame.decoded?.kind === 'longAirAirSurveillanceReply');
+    expect(df16).toBeDefined();
+    if (df16?.decoded?.kind !== 'longAirAirSurveillanceReply') {
+      return;
+    }
+    expect(df16.decoded.resolutionAdvisory?.active).toBe(false);
+  });
+
+  it('decodes a real BDS 4,0/5,0/6,0 Comm-B register of each kind from DF20 replies', () => {
+    const allRegisters = result.frames
+      .filter((frame) => frame.decoded?.kind === 'commBAltitudeReply' || frame.decoded?.kind === 'commBIdentityReply')
+      .flatMap((frame) =>
+        frame.decoded?.kind === 'commBAltitudeReply' || frame.decoded?.kind === 'commBIdentityReply'
+          ? frame.decoded.commBRegisters
+          : [],
+      );
+    const findByBdsCode = (bdsCode: string) => allRegisters.find((register) => register.bdsCode === bdsCode);
+
+    expect(findByBdsCode('4,0')).toMatchObject({
+      mcpFcuSelectedAltitudeFt: 36000,
+      fmsSelectedAltitudeFt: 36000,
+      baroPressureSettingMb: 1013.3,
+    });
+    expect(findByBdsCode('5,0')).toMatchObject({
+      groundSpeedKt: 478,
+      trueAirspeedKt: 476,
+    });
+    expect(findByBdsCode('6,0')).toMatchObject({
+      indicatedAirspeedKt: 274,
+      baroVerticalRateFtPerMin: -64,
+    });
   });
 });

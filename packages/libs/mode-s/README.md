@@ -5,11 +5,13 @@
 Decodes raw Mode-S/ADS-B messages: downlink format and CRC extraction, CPR
 position, airborne velocity, aircraft identification, altitude (both the
 ADS-B position-message field and legacy Gillham-coded surveillance replies),
-squawk identity, emergency status, and ACAS/TCAS Resolution Advisories.
-Transport-agnostic - it operates on already-framed message bytes and has no
-opinion about where they came from (a live Beast feed, a logged capture, or
-any other source). For a Beast binary parser and live TCP client built on
-top of this package, see [`@squawk/beast`](../beast).
+squawk identity, emergency status, ACAS/TCAS Resolution Advisories, target
+state and status, aircraft operational status, and Enhanced Surveillance
+Comm-B registers (selected vertical intention, track and turn, heading and
+speed). Transport-agnostic - it operates on already-framed message bytes and
+has no opinion about where they came from (a live Beast feed, a logged
+capture, or any other source). For a Beast binary parser and live TCP client
+built on top of this package, see [`@squawk/beast`](../beast).
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
@@ -63,7 +65,10 @@ DF0/4/5/20/21 (Mode-S surveillance replies) are targeted responses whose CRC
 is XORed with the responding aircraft's ICAO address rather than being a
 plain checksum, so their `candidateIcaoHex` needs cross-checking against an
 address already known from squitter traffic before it can be trusted - this
-package doesn't perform that cross-check itself.
+package doesn't perform that cross-check itself. DF20/21 (`'commBAltitudeReply'`/`'commBIdentityReply'`)
+carry the same altitude/squawk payload as DF4/5 plus a 56-bit MB field,
+decoded into `commBRegisters` - see
+[Enhanced Surveillance Comm-B registers](#enhanced-surveillance-comm-b-registers).
 
 ### Resolving CPR position
 
@@ -131,6 +136,71 @@ if (decoded.resolutionAdvisory?.threat.threatType === 'icaoAddress') {
 `'altitudeRangeBearing'` carries `threatAltitudeFt`/`threatRangeNm`/`threatBearingDeg`
 (each independently undefined if that specific field is unavailable).
 
+### Target state and status
+
+A type-code-29 ADS-B message reports what the aircraft's flight management
+system is currently targeting - selected altitude, selected heading, and
+which autopilot modes are engaged - not the aircraft's actual state:
+
+```typescript
+const decoded = decodeModeSMessage(rawMessageBytes);
+if (decoded?.kind === 'extendedSquitterTargetStateAndStatus') {
+  console.log(decoded.targetStateAndStatus.selectedAltitudeFt, decoded.targetStateAndStatus.selectedHeadingDeg);
+}
+```
+
+Each field is independently undefined when its source data isn't available -
+`selectedAltitudeSource` further distinguishes an MCP/FCU-selected altitude
+from an FMS-selected one. `autopilotEngaged`/`vnavModeActive`/`altitudeHoldModeActive`/`approachModeActive`/`lnavModeActive`
+are reported together (all defined or all undefined) since they share a
+single status bit; `tcasOperational` has its own independent status.
+
+### Aircraft operational status
+
+A type-code-31 ADS-B message reports the transmitting aircraft's ADS-B
+version, surveillance integrity/accuracy figures, and heading reference -
+metadata about the quality of the aircraft's other broadcasts rather than
+its position or state:
+
+```typescript
+const decoded = decodeModeSMessage(rawMessageBytes);
+if (decoded?.kind === 'extendedSquitterOperationalStatus') {
+  console.log(decoded.operationalStatus.adsbVersion, decoded.operationalStatus.navAccuracyCategoryPosition);
+}
+```
+
+`capabilityClassCode`/`operationalModeCode` are exposed as their raw 16-bit
+values rather than individually decoded sub-fields. `nicBaro` is only
+populated for an airborne report on ADS-B version 1+; `silSupplementPerHour`
+is only populated on version 2, where SIL changes from "per sample" to a
+choice between per-sample and per-hour.
+
+### Enhanced Surveillance Comm-B registers
+
+DF20/21's 56-bit MB field can carry any of several "Enhanced Surveillance"
+Comm-B registers (BDS 4,0 selected vertical intention, BDS 5,0 track and
+turn report, BDS 6,0 heading and speed report), but unlike a DF17/18 ME
+field's type code, nothing in the message itself declares which one. This
+package validates the MB field's bytes against each register's expected
+structure (status-bit consistency, reserved bits, physically-plausible
+ranges) and returns every register that plausibly matches - usually exactly
+one, occasionally none, and occasionally more than one when the bytes are
+genuinely ambiguous (BDS 5,0 and 6,0 are the pair most likely to overlap):
+
+```typescript
+const decoded = decodeModeSMessage(rawMessageBytes);
+if (decoded?.kind === 'commBAltitudeReply') {
+  for (const register of decoded.commBRegisters) {
+    if (register.bdsCode === '5,0') {
+      console.log(register.rollAngleDeg, register.trueTrackDeg, register.groundSpeedKt);
+    }
+  }
+}
+```
+
+`inferCommBRegisters(mb)` is also exported directly for callers working with
+a raw MB field outside of `decodeModeSMessage`'s DF20/21 dispatch.
+
 ### Mode A/C
 
 Mode A/C predates Mode-S and carries no ICAO address, so it has no natural
@@ -157,6 +227,10 @@ console.log(reply.squawk, reply.identActive, reply.altitudeFt);
 - `decodeSurfaceMovement(field)` - ground speed from a surface position message's movement field.
 - `decodeEmergencyState(rawState)` - emergency/priority state from an ADS-B aircraft status message.
 - `decodeAcasResolutionAdvisory(payload)` - ACAS/TCAS Resolution Advisory report from a DF16 MV field or a type-code-28 subtype-2 ME field.
+- `decodeTargetStateAndStatus(me)` - target state and status from a type-29 ME field.
+- `decodeAircraftOperationalStatus(me)` - operational status from a type-31 ME field.
+- `inferCommBRegisters(mb)` - every Enhanced Surveillance Comm-B register (BDS 4,0/5,0/6,0) a DF20/21 MB field plausibly holds.
+- `decodeSelectedVerticalIntention(mb)`, `decodeTrackAndTurnReport(mb)`, `decodeHeadingAndSpeedReport(mb)` - decode a single Comm-B register directly, given its BDS code is already known.
 
 Every decoder that can fail to produce a result returns `undefined` rather
 than throwing - a message that doesn't decode cleanly (unsupported type,

@@ -13,6 +13,12 @@ export {
   decodeAltitudeCode,
 } from './altitude.js';
 export {
+  decodeHeadingAndSpeedReport,
+  decodeSelectedVerticalIntention,
+  decodeTrackAndTurnReport,
+  inferCommBRegisters,
+} from './comm-b.js';
+export {
   cprNumLongitudeZones,
   decodeAirborneCprPair,
   decodeAirborneCprWithReference,
@@ -24,22 +30,36 @@ export { extractDownlinkFormat, computeCrc24, parseModeSFrame } from './frame.js
 export { decodeIdentification } from './identification.js';
 export { decodeIdentityCode } from './identity.js';
 export { decodeModeAc } from './mode-ac.js';
+export { decodeAircraftOperationalStatus } from './operational-status.js';
 export { decodeSurfaceMovement } from './surface-movement.js';
+export { decodeTargetStateAndStatus } from './target-state-status.js';
 export { decodeAirborneVelocity } from './velocity.js';
 export type {
   AllCallReply,
+  CommBAltitudeReply,
+  CommBIdentityReply,
   DecodedModeSMessage,
   ExtendedSquitterAcasRaBroadcast,
   ExtendedSquitterCommon,
   ExtendedSquitterEmergencyStatus,
   ExtendedSquitterIdentification,
+  ExtendedSquitterOperationalStatus,
   ExtendedSquitterPosition,
+  ExtendedSquitterTargetStateAndStatus,
   ExtendedSquitterVelocity,
   LongAirAirSurveillanceReply,
   MessageSource,
   ShortAirAirSurveillanceReply,
   SurveillanceAltitudeReply,
   SurveillanceIdentityReply,
+} from './types/index.js';
+export type { AircraftOperationalStatus } from './types/index.js';
+export type { TargetStateAndStatus } from './types/index.js';
+export type {
+  CommBRegister,
+  HeadingAndSpeedReport,
+  SelectedVerticalIntention,
+  TrackAndTurnReport,
 } from './types/index.js';
 export type {
   AcasResolutionAdvisoryReport,

@@ -68,6 +68,20 @@ export interface AircraftIdentification {
 }
 
 // @public
+export interface AircraftOperationalStatus {
+    adsbVersion: number;
+    capabilityClassCode: number;
+    headingReference: 'true' | 'magnetic';
+    navAccuracyCategoryPosition: number;
+    nicBaro: boolean | undefined;
+    nicSupplementA: boolean;
+    operationalModeCode: number;
+    silSupplementPerHour: boolean | undefined;
+    sourceIntegrityLevel: number;
+    surface: boolean;
+}
+
+// @public
 export interface AirSpeedVelocity extends AirborneVelocityCommon {
     indicatedAirspeedKt: number | undefined;
     magneticHeadingDeg: number | undefined;
@@ -81,6 +95,25 @@ export interface AllCallReply {
     icaoHex: string;
     kind: 'allCallReply';
 }
+
+// @public
+export interface CommBAltitudeReply {
+    altitudeFt: number | undefined;
+    candidateIcaoHex: string;
+    commBRegisters: CommBRegister[];
+    kind: 'commBAltitudeReply';
+}
+
+// @public
+export interface CommBIdentityReply {
+    candidateIcaoHex: string;
+    commBRegisters: CommBRegister[];
+    kind: 'commBIdentityReply';
+    squawk: string;
+}
+
+// @public
+export type CommBRegister = SelectedVerticalIntention | TrackAndTurnReport | HeadingAndSpeedReport;
 
 // @public
 export function computeCrc24(bytes: Uint8Array): number;
@@ -116,13 +149,19 @@ export function decodeAirborneCprWithReference(format: 'even' | 'odd', frame: Cp
 export function decodeAirborneVelocity(me: Uint8Array): AirborneVelocity | undefined;
 
 // @public
+export function decodeAircraftOperationalStatus(me: Uint8Array): AircraftOperationalStatus;
+
+// @public
 export function decodeAltitudeCode(altitudeCode: number): number | undefined;
 
 // @public
-export type DecodedModeSMessage = ExtendedSquitterPosition | ExtendedSquitterVelocity | ExtendedSquitterIdentification | ExtendedSquitterEmergencyStatus | ExtendedSquitterAcasRaBroadcast | AllCallReply | ShortAirAirSurveillanceReply | LongAirAirSurveillanceReply | SurveillanceAltitudeReply | SurveillanceIdentityReply;
+export type DecodedModeSMessage = ExtendedSquitterPosition | ExtendedSquitterVelocity | ExtendedSquitterIdentification | ExtendedSquitterTargetStateAndStatus | ExtendedSquitterOperationalStatus | ExtendedSquitterEmergencyStatus | ExtendedSquitterAcasRaBroadcast | AllCallReply | ShortAirAirSurveillanceReply | LongAirAirSurveillanceReply | SurveillanceAltitudeReply | CommBAltitudeReply | SurveillanceIdentityReply | CommBIdentityReply;
 
 // @public
 export function decodeEmergencyState(rawState: number): EmergencyState;
+
+// @public
+export function decodeHeadingAndSpeedReport(mb: Uint8Array): HeadingAndSpeedReport;
 
 // @public
 export function decodeIdentification(me: Uint8Array): AircraftIdentification;
@@ -137,6 +176,9 @@ export function decodeModeAc(bytes: Uint8Array): ModeAcReply;
 export function decodeModeSMessage(bytes: Uint8Array): DecodedModeSMessage | undefined;
 
 // @public
+export function decodeSelectedVerticalIntention(mb: Uint8Array): SelectedVerticalIntention;
+
+// @public
 export function decodeSurfaceCprPair(even: CprPosition, odd: CprPosition, newerFormat: 'even' | 'odd', reference: CprReference): Position | undefined;
 
 // @public
@@ -146,6 +188,12 @@ export function decodeSurfaceCprWithReference(format: 'even' | 'odd', frame: Cpr
 //
 // @public
 export function decodeSurfaceMovement(movementField: number): number | undefined;
+
+// @public
+export function decodeTargetStateAndStatus(me: Uint8Array): TargetStateAndStatus;
+
+// @public
+export function decodeTrackAndTurnReport(mb: Uint8Array): TrackAndTurnReport;
 
 // @public
 export type EmergencyState = 'none' | 'general' | 'lifeguardMedical' | 'minimumFuel' | 'noCommunications' | 'unlawfulInterference' | 'downed' | 'reserved';
@@ -176,6 +224,12 @@ export interface ExtendedSquitterIdentification extends ExtendedSquitterCommon {
 }
 
 // @public
+export interface ExtendedSquitterOperationalStatus extends ExtendedSquitterCommon {
+    kind: 'extendedSquitterOperationalStatus';
+    operationalStatus: AircraftOperationalStatus;
+}
+
+// @public
 export interface ExtendedSquitterPosition extends ExtendedSquitterCommon {
     altitudeFt: number | undefined;
     cprFormat: 'even' | 'odd';
@@ -185,6 +239,12 @@ export interface ExtendedSquitterPosition extends ExtendedSquitterCommon {
     lonCpr: number | undefined;
     surface: boolean;
     trueTrackDeg: number | undefined;
+}
+
+// @public
+export interface ExtendedSquitterTargetStateAndStatus extends ExtendedSquitterCommon {
+    kind: 'extendedSquitterTargetStateAndStatus';
+    targetStateAndStatus: TargetStateAndStatus;
 }
 
 // @public
@@ -203,6 +263,19 @@ export interface GroundSpeedVelocity extends AirborneVelocityCommon {
     subtype: 'groundSpeed';
     trueTrackDeg: number | undefined;
 }
+
+// @public
+export interface HeadingAndSpeedReport {
+    baroVerticalRateFtPerMin: number | undefined;
+    bdsCode: '6,0';
+    indicatedAirspeedKt: number | undefined;
+    inertialVerticalRateFtPerMin: number | undefined;
+    mach: number | undefined;
+    magneticHeadingDeg: number | undefined;
+}
+
+// @public
+export function inferCommBRegisters(mb: Uint8Array): CommBRegister[];
 
 // @public
 export interface LongAirAirSurveillanceReply {
@@ -240,6 +313,18 @@ export function parseModeSFrame(bytes: Uint8Array): ModeSMessageEnvelope;
 export type ResolutionAdvisoryType = 'climb' | 'descend' | 'crossingClimb' | 'crossingDescend' | 'increaseClimb' | 'increaseDescent' | 'reduceClimb' | 'reduceDescent' | 'doNotClimb' | 'doNotDescend' | 'reversalToClimb' | 'reversalToDescend';
 
 // @public
+export interface SelectedVerticalIntention {
+    altitudeHoldModeActive: boolean | undefined;
+    approachModeActive: boolean | undefined;
+    baroPressureSettingMb: number | undefined;
+    bdsCode: '4,0';
+    fmsSelectedAltitudeFt: number | undefined;
+    mcpFcuSelectedAltitudeFt: number | undefined;
+    targetAltitudeSource: 'unknown' | 'aircraftAltitude' | 'mcpFcu' | 'fms' | undefined;
+    vnavModeActive: boolean | undefined;
+}
+
+// @public
 export interface ShortAirAirSurveillanceReply {
     altitudeFt: number | undefined;
     candidateIcaoHex: string;
@@ -259,6 +344,33 @@ export interface SurveillanceIdentityReply {
     candidateIcaoHex: string;
     kind: 'surveillanceIdentityReply';
     squawk: string;
+}
+
+// @public
+export interface TargetStateAndStatus {
+    altitudeHoldModeActive: boolean | undefined;
+    approachModeActive: boolean | undefined;
+    autopilotEngaged: boolean | undefined;
+    baroPressureSettingMb: number | undefined;
+    lnavModeActive: boolean | undefined;
+    navAccuracyCategoryPosition: number;
+    nicBaro: boolean;
+    selectedAltitudeFt: number | undefined;
+    selectedAltitudeSource: 'mcpFcu' | 'fms' | undefined;
+    selectedHeadingDeg: number | undefined;
+    sourceIntegrityLevel: number;
+    tcasOperational: boolean;
+    vnavModeActive: boolean | undefined;
+}
+
+// @public
+export interface TrackAndTurnReport {
+    bdsCode: '5,0';
+    groundSpeedKt: number | undefined;
+    rollAngleDeg: number | undefined;
+    trackAngleRateDegPerSec: number | undefined;
+    trueAirspeedKt: number | undefined;
+    trueTrackDeg: number | undefined;
 }
 
 ```
