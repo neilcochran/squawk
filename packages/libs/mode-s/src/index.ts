@@ -6,6 +6,7 @@
  * of where they came from (Beast, a logged capture, or any other source).
  */
 export { decodeModeSMessage } from './message.js';
+export { decodeAcasResolutionAdvisory } from './acas.js';
 export {
   decodeAdsbGnssAltitude,
   decodeAdsbPositionAltitude,
@@ -28,12 +29,26 @@ export { decodeAirborneVelocity } from './velocity.js';
 export type {
   AllCallReply,
   DecodedModeSMessage,
+  ExtendedSquitterAcasRaBroadcast,
+  ExtendedSquitterCommon,
   ExtendedSquitterEmergencyStatus,
   ExtendedSquitterIdentification,
   ExtendedSquitterPosition,
   ExtendedSquitterVelocity,
+  LongAirAirSurveillanceReply,
+  MessageSource,
+  ShortAirAirSurveillanceReply,
   SurveillanceAltitudeReply,
   SurveillanceIdentityReply,
+} from './types/index.js';
+export type {
+  AcasResolutionAdvisoryReport,
+  AcasThreat,
+  AcasThreatAltitudeRangeBearing,
+  AcasThreatIcaoAddress,
+  AcasThreatNone,
+  AcasThreatType,
+  ResolutionAdvisoryType,
 } from './types/index.js';
 export type { EmergencyState } from './types/index.js';
 export type { AircraftIdentification } from './types/index.js';

@@ -5,11 +5,11 @@
 Decodes raw Mode-S/ADS-B messages: downlink format and CRC extraction, CPR
 position, airborne velocity, aircraft identification, altitude (both the
 ADS-B position-message field and legacy Gillham-coded surveillance replies),
-squawk identity, and emergency status. Transport-agnostic - it operates on
-already-framed message bytes and has no opinion about where they came from
-(a live Beast feed, a logged capture, or any other source). For a Beast
-binary parser and live TCP client built on top of this package, see
-[`@squawk/beast`](../beast).
+squawk identity, emergency status, and ACAS/TCAS Resolution Advisories.
+Transport-agnostic - it operates on already-framed message bytes and has no
+opinion about where they came from (a live Beast feed, a logged capture, or
+any other source). For a Beast binary parser and live TCP client built on
+top of this package, see [`@squawk/beast`](../beast).
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
@@ -36,14 +36,34 @@ if (decoded?.kind === 'extendedSquitterPosition') {
 }
 ```
 
+`bytes`' length must match what its downlink format implies (7 bytes for a
+short message, 14 for long) or the message is rejected outright - a length
+mismatch means the buffer is truncated or corrupted, not a genuine message
+of that format.
+
 DF17/18 (extended squitter) messages are only decoded when their CRC checks
 out exactly - a corrupted squitter reports as undecodable rather than
-returning plausible-looking wrong data. DF4/5/20/21 (Mode-S surveillance
-replies) are targeted responses whose CRC is XORed with the responding
-aircraft's ICAO address rather than being a plain checksum, so their
-`candidateIcaoHex` needs cross-checking against an address already known
-from squitter traffic before it can be trusted - this package doesn't
-perform that cross-check itself.
+returning plausible-looking wrong data. DF18 is further gated on its control
+field: CF=0/1/2/5/6 share DF17's type-code-coded ME layout and decode the
+same way; CF=3 (TIS-B coarse format) uses a different field layout this
+package does not decode, and CF=4/7 carry no per-aircraft state. Every
+decoded DF17/18 message carries `messageSource`, so a consumer can tell a
+real, direct ICAO address from an anonymous or ground-derived one rather
+than losing that distinction after the gate:
+
+```typescript
+const decoded = decodeModeSMessage(rawMessageBytes);
+if (decoded?.kind === 'extendedSquitterPosition' && decoded.messageSource !== 'icaoDirect') {
+  // decoded.icaoHex may not be a registered ICAO address (anonymousDirect/anonymousTisb),
+  // or the position may be ground-derived rather than heard directly (icaoTisb/adsr)
+}
+```
+
+DF0/4/5/20/21 (Mode-S surveillance replies) are targeted responses whose CRC
+is XORed with the responding aircraft's ICAO address rather than being a
+plain checksum, so their `candidateIcaoHex` needs cross-checking against an
+address already known from squitter traffic before it can be trusted - this
+package doesn't perform that cross-check itself.
 
 ### Resolving CPR position
 
@@ -67,6 +87,49 @@ const position2 = decodeAirborneCprWithReference('even', frame, referencePositio
 `decodeSurfaceCprPair` / `decodeSurfaceCprWithReference` are the equivalents
 for on-ground traffic (type codes 5-8), which additionally need a reference
 position to resolve the correct hemisphere and longitude quadrant.
+
+An airborne position message with type code 0 signals that no position fix
+is currently available - `latCpr`/`lonCpr` are undefined in that case even
+though `altitudeFt` may still be populated.
+
+### ACAS / TCAS Resolution Advisories
+
+An active Resolution Advisory reaches `decodeModeSMessage` two ways: DF16
+(a targeted air-air surveillance reply, replacing DF0 while an RA is active)
+and a DF17/18 type-code-28 subtype-2 message (the same report broadcast over
+ADS-B so aircraft without interrogation capability can still see it).
+
+```typescript
+const decoded = decodeModeSMessage(rawMessageBytes);
+if (decoded?.kind === 'longAirAirSurveillanceReply' && decoded.resolutionAdvisory?.active) {
+  console.log(decoded.resolutionAdvisory.advisoryType); // e.g. 'climb', 'crossingDescend', 'increaseClimb'
+}
+```
+
+`advisoryType` names the RA per RTCA DO-185B Table 2-16 (`climb`, `descend`,
+`crossingClimb`, `crossingDescend`, `increaseClimb`, `increaseDescent`,
+`reduceClimb`, `reduceDescent`, `doNotClimb`, `doNotDescend`,
+`reversalToClimb`, `reversalToDescend`), derived from the report's
+corrective/sense/rate/crossing/reversal flags - all of which are also
+exposed individually on `AcasResolutionAdvisoryReport`, along with the
+Resolution Advisory Complement flags (`doNotPassBelow`/`doNotPassAbove`;
+`doNotTurnLeft`/`doNotTurnRight` are decoded for completeness but TCAS II
+issues vertical RAs only, so they are expected to always be false). `advisoryType`
+is undefined when no RA is currently active, or for the one flag combination
+DO-185B leaves undefined (positive + preventive).
+
+`threat` identifies what the RA is responding to, discriminated by
+`threat.threatType`:
+
+```typescript
+if (decoded.resolutionAdvisory?.threat.threatType === 'icaoAddress') {
+  console.log(decoded.resolutionAdvisory.threat.threatIcaoHex);
+}
+```
+
+`'none'` carries no further fields; `'icaoAddress'` carries `threatIcaoHex`;
+`'altitudeRangeBearing'` carries `threatAltitudeFt`/`threatRangeNm`/`threatBearingDeg`
+(each independently undefined if that specific field is unavailable).
 
 ### Mode A/C
 
@@ -93,6 +156,7 @@ console.log(reply.squawk, reply.identActive, reply.altitudeFt);
 - `decodeAltitudeCode(altitudeCode)`, `decodeAdsbPositionAltitude(field)`, `decodeAdsbGnssAltitude(field)` - altitude decoding.
 - `decodeSurfaceMovement(field)` - ground speed from a surface position message's movement field.
 - `decodeEmergencyState(rawState)` - emergency/priority state from an ADS-B aircraft status message.
+- `decodeAcasResolutionAdvisory(payload)` - ACAS/TCAS Resolution Advisory report from a DF16 MV field or a type-code-28 subtype-2 ME field.
 
 Every decoder that can fail to produce a result returns `undefined` rather
 than throwing - a message that doesn't decode cleanly (unsupported type,

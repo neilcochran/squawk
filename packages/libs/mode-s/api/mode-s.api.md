@@ -8,6 +8,50 @@ import type { AircraftCategory } from '@squawk/types';
 import type { Position } from '@squawk/types';
 
 // @public
+export interface AcasResolutionAdvisoryReport {
+    active: boolean;
+    advisoryType: ResolutionAdvisoryType | undefined;
+    altitudeCrossing: boolean;
+    corrective: boolean;
+    doNotPassAbove: boolean;
+    doNotPassBelow: boolean;
+    doNotTurnLeft: boolean;
+    doNotTurnRight: boolean;
+    downwardSense: boolean;
+    increasedRate: boolean;
+    multipleThreat: boolean;
+    positive: boolean;
+    senseReversal: boolean;
+    terminated: boolean;
+    threat: AcasThreat;
+}
+
+// @public
+export type AcasThreat = AcasThreatNone | AcasThreatIcaoAddress | AcasThreatAltitudeRangeBearing;
+
+// @public
+export interface AcasThreatAltitudeRangeBearing {
+    threatAltitudeFt: number | undefined;
+    threatBearingDeg: number | undefined;
+    threatRangeNm: number | undefined;
+    threatType: 'altitudeRangeBearing';
+}
+
+// @public
+export interface AcasThreatIcaoAddress {
+    threatIcaoHex: string;
+    threatType: 'icaoAddress';
+}
+
+// @public
+export interface AcasThreatNone {
+    threatType: 'none';
+}
+
+// @public
+export type AcasThreatType = AcasThreat['threatType'];
+
+// @public
 export type AirborneVelocity = GroundSpeedVelocity | AirSpeedVelocity;
 
 // @public
@@ -35,7 +79,6 @@ export interface AirSpeedVelocity extends AirborneVelocityCommon {
 // @public
 export interface AllCallReply {
     icaoHex: string;
-    // (undocumented)
     kind: 'allCallReply';
 }
 
@@ -53,6 +96,9 @@ export interface CprPosition {
 
 // @public
 export type CprReference = Pick<Position, 'lat' | 'lon'>;
+
+// @public
+export function decodeAcasResolutionAdvisory(payload: Uint8Array): AcasResolutionAdvisoryReport | undefined;
 
 // @public
 export function decodeAdsbGnssAltitude(gnssAltitudeField: number): number;
@@ -73,7 +119,7 @@ export function decodeAirborneVelocity(me: Uint8Array): AirborneVelocity | undef
 export function decodeAltitudeCode(altitudeCode: number): number | undefined;
 
 // @public
-export type DecodedModeSMessage = ExtendedSquitterPosition | ExtendedSquitterVelocity | ExtendedSquitterIdentification | ExtendedSquitterEmergencyStatus | AllCallReply | SurveillanceAltitudeReply | SurveillanceIdentityReply;
+export type DecodedModeSMessage = ExtendedSquitterPosition | ExtendedSquitterVelocity | ExtendedSquitterIdentification | ExtendedSquitterEmergencyStatus | ExtendedSquitterAcasRaBroadcast | AllCallReply | ShortAirAirSurveillanceReply | LongAirAirSurveillanceReply | SurveillanceAltitudeReply | SurveillanceIdentityReply;
 
 // @public
 export function decodeEmergencyState(rawState: number): EmergencyState;
@@ -105,40 +151,44 @@ export function decodeSurfaceMovement(movementField: number): number | undefined
 export type EmergencyState = 'none' | 'general' | 'lifeguardMedical' | 'minimumFuel' | 'noCommunications' | 'unlawfulInterference' | 'downed' | 'reserved';
 
 // @public
-export interface ExtendedSquitterEmergencyStatus {
-    emergencyState: EmergencyState;
+export interface ExtendedSquitterAcasRaBroadcast extends ExtendedSquitterCommon {
+    kind: 'extendedSquitterAcasRaBroadcast';
+    resolutionAdvisory: AcasResolutionAdvisoryReport;
+}
+
+// @public
+export interface ExtendedSquitterCommon {
     icaoHex: string;
-    // (undocumented)
+    messageSource: MessageSource;
+}
+
+// @public
+export interface ExtendedSquitterEmergencyStatus extends ExtendedSquitterCommon {
+    emergencyState: EmergencyState;
     kind: 'extendedSquitterEmergencyStatus';
     squawk: string;
 }
 
 // @public
-export interface ExtendedSquitterIdentification {
-    icaoHex: string;
+export interface ExtendedSquitterIdentification extends ExtendedSquitterCommon {
     identification: AircraftIdentification;
-    // (undocumented)
     kind: 'extendedSquitterIdentification';
 }
 
 // @public
-export interface ExtendedSquitterPosition {
+export interface ExtendedSquitterPosition extends ExtendedSquitterCommon {
     altitudeFt: number | undefined;
     cprFormat: 'even' | 'odd';
     groundSpeedKt: number | undefined;
-    icaoHex: string;
-    // (undocumented)
     kind: 'extendedSquitterPosition';
-    latCpr: number;
-    lonCpr: number;
+    latCpr: number | undefined;
+    lonCpr: number | undefined;
     surface: boolean;
     trueTrackDeg: number | undefined;
 }
 
 // @public
-export interface ExtendedSquitterVelocity {
-    icaoHex: string;
-    // (undocumented)
+export interface ExtendedSquitterVelocity extends ExtendedSquitterCommon {
     kind: 'extendedSquitterVelocity';
     velocity: AirborneVelocity;
 }
@@ -153,6 +203,18 @@ export interface GroundSpeedVelocity extends AirborneVelocityCommon {
     subtype: 'groundSpeed';
     trueTrackDeg: number | undefined;
 }
+
+// @public
+export interface LongAirAirSurveillanceReply {
+    altitudeFt: number | undefined;
+    candidateIcaoHex: string;
+    kind: 'longAirAirSurveillanceReply';
+    resolutionAdvisory: AcasResolutionAdvisoryReport | undefined;
+    surface: boolean;
+}
+
+// @public
+export type MessageSource = 'icaoDirect' | 'anonymousDirect' | 'icaoTisb' | 'anonymousTisb' | 'adsr';
 
 // @public
 export interface ModeAcReply {
@@ -175,17 +237,26 @@ export interface ModeSMessageEnvelope {
 export function parseModeSFrame(bytes: Uint8Array): ModeSMessageEnvelope;
 
 // @public
+export type ResolutionAdvisoryType = 'climb' | 'descend' | 'crossingClimb' | 'crossingDescend' | 'increaseClimb' | 'increaseDescent' | 'reduceClimb' | 'reduceDescent' | 'doNotClimb' | 'doNotDescend' | 'reversalToClimb' | 'reversalToDescend';
+
+// @public
+export interface ShortAirAirSurveillanceReply {
+    altitudeFt: number | undefined;
+    candidateIcaoHex: string;
+    kind: 'shortAirAirSurveillanceReply';
+    surface: boolean;
+}
+
+// @public
 export interface SurveillanceAltitudeReply {
     altitudeFt: number | undefined;
     candidateIcaoHex: string;
-    // (undocumented)
     kind: 'surveillanceAltitudeReply';
 }
 
 // @public
 export interface SurveillanceIdentityReply {
     candidateIcaoHex: string;
-    // (undocumented)
     kind: 'surveillanceIdentityReply';
     squawk: string;
 }

@@ -43,3 +43,15 @@ export function extractBits(bytes: Uint8Array, bitOffset: number, bitLength: num
 export function bitAt(value: number, bitPosition: number, fieldWidth: number): number {
   return (value >> (fieldWidth - 1 - bitPosition)) & 1;
 }
+
+/**
+ * Formats a 24-bit value (an ICAO address, a recovered CRC-XOR address, or
+ * any other 24-bit identifier this package handles) as 6 uppercase hex
+ * digits, zero-padded.
+ *
+ * @param value - The 24-bit value, 0-16777215.
+ * @returns The value as 6 uppercase hex digits.
+ */
+export function formatHexAddress(value: number): string {
+  return value.toString(16).padStart(6, '0').toUpperCase();
+}
