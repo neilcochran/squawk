@@ -1,5 +1,12 @@
 # @squawk/beast
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [65a8c9b]
+  - @squawk/mode-s@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
