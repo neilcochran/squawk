@@ -41,6 +41,8 @@
     "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.browser.json"
   },
   "dependencies": {
+    "@squawk/beast": "^0.1.0",
+    "@squawk/mode-s": "^0.1.0",
     "@squawk/types": "^0.8.6"
   },
   "keywords": [

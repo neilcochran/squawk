@@ -48,7 +48,7 @@ The repo splits into three top-level directories:
 | [`@squawk/notams`](packages/libs/notams)                         | Parse raw ICAO-format and FAA domestic NOTAM strings into structured objects       |
 | [`@squawk/mode-s`](packages/libs/mode-s)                         | Decode raw Mode-S/ADS-B messages: CRC, CPR position, velocity, altitude, identity  |
 | [`@squawk/beast`](packages/libs/beast)                           | Parse the Beast binary format into decoded Mode-S messages, with live streaming    |
-| [`@squawk/adsb-feed`](packages/libs/adsb-feed)                   | Live ADS-B aircraft feed from a local dump1090-fa station (JSON polling or SBS)    |
+| [`@squawk/adsb-feed`](packages/libs/adsb-feed)                   | Live ADS-B aircraft feed from a local dump1090-fa station (JSON, SBS, or Beast)    |
 | [`@squawk/mcp`](packages/libs/mcp)                               | Model Context Protocol server exposing the squawk libraries as tools for LLMs      |
 
 ## Development

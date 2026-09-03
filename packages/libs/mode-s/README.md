@@ -34,7 +34,8 @@ import { decodeModeSMessage } from '@squawk/mode-s';
 
 const decoded = decodeModeSMessage(rawMessageBytes); // 7 or 14 raw bytes
 if (decoded?.kind === 'extendedSquitterPosition') {
-  console.log(decoded.icaoHex, decoded.latCpr, decoded.lonCpr, decoded.altitudeFt);
+  console.log(decoded.icaoHex, decoded.latCpr, decoded.lonCpr);
+  console.log(decoded.baroAltitudeFt, decoded.geoAltitudeFt); // exactly one is populated, or neither for a type-code-0 no-fix / surface message
 }
 ```
 
@@ -95,7 +96,8 @@ position to resolve the correct hemisphere and longitude quadrant.
 
 An airborne position message with type code 0 signals that no position fix
 is currently available - `latCpr`/`lonCpr` are undefined in that case even
-though `altitudeFt` may still be populated.
+though `baroAltitudeFt` may still be populated (type code 0 shares its
+altitude field layout with the barometric type codes 9-18, never GNSS-height).
 
 ### ACAS / TCAS Resolution Advisories
 

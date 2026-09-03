@@ -231,8 +231,9 @@ export interface ExtendedSquitterOperationalStatus extends ExtendedSquitterCommo
 
 // @public
 export interface ExtendedSquitterPosition extends ExtendedSquitterCommon {
-    altitudeFt: number | undefined;
+    baroAltitudeFt: number | undefined;
     cprFormat: 'even' | 'odd';
+    geoAltitudeFt: number | undefined;
     groundSpeedKt: number | undefined;
     kind: 'extendedSquitterPosition';
     latCpr: number | undefined;

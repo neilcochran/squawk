@@ -102,7 +102,7 @@ Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders 
 
 `@squawk/weather` additionally ships an opt-in `/fetch` subpath that calls the AWC text API over the global `fetch`. It runs in the browser, but AWC sends no CORS headers, so browser consumers point the `baseUrl` option at a same-origin proxy they control. The main `@squawk/weather` and `/browser` entries stay pure parsers with no network calls.
 
-`@squawk/icao-registry` is a hybrid: the main entry exposes a runtime `parseFaaRegistryZip` parser that depends on Node's `Buffer` and the `adm-zip` package, so the `/browser` entry is a strict subset that re-exports only `createIcaoRegistry` and the shared types. `@squawk/adsb-feed` follows the same hybrid shape for a different reason: its SBS source depends on Node's `net` module (raw TCP sockets have no browser API), so the `/browser` entry omits `createSbsAircraftFeed` and exposes only the HTTP-polling `createJsonAircraftFeed`.
+`@squawk/icao-registry` is a hybrid: the main entry exposes a runtime `parseFaaRegistryZip` parser that depends on Node's `Buffer` and the `adm-zip` package, so the `/browser` entry is a strict subset that re-exports only `createIcaoRegistry` and the shared types. `@squawk/adsb-feed` follows the same hybrid shape for a different reason: its SBS and Beast sources depend on Node's `net` module (raw TCP sockets have no browser API), so the `/browser` entry omits `createSbsAircraftFeed` and `createBeastAircraftFeed`, exposing only the HTTP-polling `createJsonAircraftFeed`.
 
 `@squawk/mcp` and the build tools under `tools/` remain Node-only.
 

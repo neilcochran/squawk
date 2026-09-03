@@ -121,7 +121,8 @@ function decodePositionMessage(
   const latCpr = hasPosition ? extractBits(me, 22, 17) : undefined;
   const lonCpr = hasPosition ? extractBits(me, 39, 17) : undefined;
 
-  let altitudeFt: number | undefined;
+  let baroAltitudeFt: number | undefined;
+  let geoAltitudeFt: number | undefined;
   let groundSpeedKt: number | undefined;
   let trueTrackDeg: number | undefined;
 
@@ -136,10 +137,11 @@ function decodePositionMessage(
     trueTrackDeg = trackStatus === 1 ? (trackRaw * 360) / 128 : undefined;
   } else {
     const altitudeField = extractBits(me, 8, 12);
-    altitudeFt =
-      category === 'airborneBaroPosition'
-        ? decodeAdsbPositionAltitude(altitudeField)
-        : decodeAdsbGnssAltitude(altitudeField);
+    if (category === 'airborneBaroPosition') {
+      baroAltitudeFt = decodeAdsbPositionAltitude(altitudeField);
+    } else {
+      geoAltitudeFt = decodeAdsbGnssAltitude(altitudeField);
+    }
   }
 
   return {
@@ -150,7 +152,8 @@ function decodePositionMessage(
     cprFormat,
     latCpr,
     lonCpr,
-    altitudeFt,
+    baroAltitudeFt,
+    geoAltitudeFt,
     groundSpeedKt,
     trueTrackDeg,
   };

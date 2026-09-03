@@ -34,6 +34,17 @@ export interface AircraftUpdateEventDetail {
 }
 
 // @public
+export interface BeastFeedOptions extends AircraftFeedOptions {
+    host: string;
+    port?: number;
+    receiverPosition?: Pick<Position, 'lat' | 'lon'>;
+    reconnectDelayMs?: number;
+}
+
+// @public
+export function createBeastAircraftFeed(options: BeastFeedOptions): AircraftFeed;
+
+// @public
 export function createJsonAircraftFeed(options: JsonFeedOptions): AircraftFeed;
 
 // @public

@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/adsb-feed)](https://www.npmjs.com/package/@squawk/adsb-feed) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Live ADS-B aircraft feed from a local [dump1090-fa](https://github.com/flightaware/dump1090) station, normalized into the shared `Aircraft` type and emitted as `aircraft:new` / `aircraft:update` / `aircraft:lost` events. Two sources are provided against the same station: polling its `aircraft.json` HTTP output, or a persistent connection to its SBS/BaseStation output.
+Live ADS-B aircraft feed from a local [dump1090-fa](https://github.com/flightaware/dump1090) station, normalized into the shared `Aircraft` type and emitted as `aircraft:new` / `aircraft:update` / `aircraft:lost` events. Three sources are provided against the same station: polling its `aircraft.json` HTTP output, a persistent connection to its SBS/BaseStation output, or a persistent connection to its raw Beast binary output.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_adsb-feed.html)**
 
@@ -54,11 +54,38 @@ feed.addEventListener('aircraft:update', (event) => {
 feed.start();
 ```
 
-Both factories return the same `AircraftFeed` shape, so switching sources for a given consumer is a one-line change - `getAircraft`, `getAllAircraft`, `getPositionHistory`, and the event names are identical either way.
+### Beast source (raw binary stream)
+
+Connects to dump1090-fa's Beast binary output (default port 30005) and decodes the raw Mode-S/ADS-B messages itself via [`@squawk/beast`](../beast)/[`@squawk/mode-s`](../mode-s) - unlike the JSON and SBS sources, dump1090-fa has not done any decode work on this output. Node-only; reconnects automatically if the connection drops.
+
+```typescript
+import { createBeastAircraftFeed } from '@squawk/adsb-feed';
+
+const feed = createBeastAircraftFeed({ host: '192.168.1.50' }); // port defaults to 30005
+
+feed.addEventListener('aircraft:update', (event) => {
+  console.log((event as CustomEvent).detail.aircraft);
+});
+
+feed.start();
+```
+
+Beast frames carry raw CPR-encoded positions rather than decoded coordinates. An airborne position resolves on its own once a paired even/odd frame has arrived (typically within a couple of seconds), but on-ground/surface position messages can only be decoded against a known-nearby reference position - there is no pair-only path for surface CPR. Pass `receiverPosition` (your station's own lat/lon) to enable surface position decoding and to speed up a new aircraft's first airborne fix; without it, surface aircraft are still tracked (squawk, callsign, ground speed, etc.) but carry no position:
+
+```typescript
+const feed = createBeastAircraftFeed({
+  host: '192.168.1.50',
+  receiverPosition: { lat: 40.6413, lon: -73.7781 },
+});
+```
+
+DF0/4/5/16/20/21 replies (ACAS/TCAS and Mode-S surveillance replies) carry an ICAO address recovered from a CRC-XOR rather than a direct field, so this source only accepts them for aircraft already known from a squitter - an unmatched candidate address is dropped rather than risking a phantom or misattributed aircraft. Mode A/C replies are also dropped; they carry no ICAO address at all.
+
+All three factories return the same `AircraftFeed` shape, so switching sources for a given consumer is a one-line change - `getAircraft`, `getAllAircraft`, `getPositionHistory`, and the event names are identical either way.
 
 ## Browser / SPA usage
 
-Import `createJsonAircraftFeed` from the `/browser` subpath. `createSbsAircraftFeed` depends on Node's `net` module (raw TCP sockets have no browser API) and is not exported there.
+Import `createJsonAircraftFeed` from the `/browser` subpath. `createSbsAircraftFeed` and `createBeastAircraftFeed` depend on Node's `net` module (raw TCP sockets have no browser API) and are not exported there.
 
 ```typescript
 import { createJsonAircraftFeed } from '@squawk/adsb-feed/browser';
@@ -70,6 +97,7 @@ dump1090-fa does not send CORS headers, so a browser fetching `aircraft.json` di
 
 - `createJsonAircraftFeed({ url, pollIntervalMs?, fetch?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by HTTP-polled `aircraft.json`.
 - `createSbsAircraftFeed({ host, port?, reconnectDelayMs?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by a persistent SBS/BaseStation socket connection. Node-only.
+- `createBeastAircraftFeed({ host, port?, reconnectDelayMs?, receiverPosition?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by a persistent Beast binary socket connection, decoding raw Mode-S/ADS-B messages itself. Node-only.
 - `feed.start()` / `feed.stop()` - begin or end polling/connecting. `stop()` clears all tracked state.
 - `feed.getAircraft(icaoHex)` / `feed.getAllAircraft()` - current normalized `Aircraft` state.
 - `feed.getPositionHistory(icaoHex)` - retained position samples for one aircraft, oldest first.
