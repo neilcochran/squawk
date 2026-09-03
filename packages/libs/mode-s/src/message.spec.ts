@@ -201,7 +201,8 @@ describe('decodeModeSMessage - real dump1090-fa Beast capture', () => {
       cprFormat: 'even',
       latCpr: 33652,
       lonCpr: 72094,
-      altitudeFt: 39000,
+      baroAltitudeFt: 39000,
+      geoAltitudeFt: undefined,
       groundSpeedKt: undefined,
       trueTrackDeg: undefined,
     });
@@ -217,7 +218,8 @@ describe('decodeModeSMessage - real dump1090-fa Beast capture', () => {
       cprFormat: 'odd',
       latCpr: 17800,
       lonCpr: 97880,
-      altitudeFt: 38975,
+      baroAltitudeFt: 38975,
+      geoAltitudeFt: undefined,
       groundSpeedKt: undefined,
       trueTrackDeg: undefined,
     });
@@ -344,7 +346,8 @@ describe('decodeModeSMessage - surface position (synthetic)', () => {
       return;
     }
     expect(result.surface).toBe(true);
-    expect(result.altitudeFt).toBeUndefined();
+    expect(result.baroAltitudeFt).toBeUndefined();
+    expect(result.geoAltitudeFt).toBeUndefined();
     expect(result.groundSpeedKt).toBe(15);
     expect(result.trueTrackDeg).toBe(180);
   });
@@ -378,7 +381,8 @@ describe('decodeModeSMessage - airborne GNSS position (synthetic)', () => {
       return;
     }
     expect(result.surface).toBe(false);
-    expect(result.altitudeFt).toBe(Math.round(1000 * 3.28084));
+    expect(result.geoAltitudeFt).toBe(Math.round(1000 * 3.28084));
+    expect(result.baroAltitudeFt).toBeUndefined();
   });
 });
 
@@ -622,6 +626,7 @@ describe('decodeModeSMessage - type code 0 airborne position, no position inform
     }
     expect(result.latCpr).toBeUndefined();
     expect(result.lonCpr).toBeUndefined();
-    expect(result.altitudeFt).toBeDefined();
+    expect(result.baroAltitudeFt).toBeDefined();
+    expect(result.geoAltitudeFt).toBeUndefined();
   });
 });

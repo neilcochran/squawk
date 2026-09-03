@@ -51,8 +51,10 @@ export interface ExtendedSquitterPosition extends ExtendedSquitterCommon {
   latCpr: number | undefined;
   /** Raw 17-bit CPR-encoded longitude field, or undefined for a type-code-0 airborne position message (no position information available - altitude may still be valid). */
   lonCpr: number | undefined;
-  /** Decoded altitude in feet. Always undefined for a surface position - surface messages carry ground movement/track in place of altitude. */
-  altitudeFt: number | undefined;
+  /** Barometric altitude in feet, decoded from a type-code 9-18 (or type-code-0, no-fix) airborne position message. Always undefined for a surface position and for a type-code 20-22 GNSS-height position message (see `geoAltitudeFt`). */
+  baroAltitudeFt: number | undefined;
+  /** Geometric (GNSS-height) altitude in feet, decoded from a type-code 20-22 airborne position message. Always undefined for a surface position and for any barometric (type-code 9-18 or 0) position message (see `baroAltitudeFt`). */
+  geoAltitudeFt: number | undefined;
   /** Ground speed in knots, decoded from the movement field. Always undefined for an airborne position - airborne messages carry altitude in the same bits instead. */
   groundSpeedKt: number | undefined;
   /** Track over ground in degrees true. Always undefined for an airborne position, and for a surface position whose track status bit is unset (no valid track available). */
