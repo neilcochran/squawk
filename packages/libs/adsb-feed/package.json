@@ -1,6 +1,6 @@
 {
   "name": "@squawk/adsb-feed",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Live ADS-B aircraft feed from a local dump1090-fa station, normalized into a typed event stream",
   "author": "Neil Cochran",
@@ -41,8 +41,8 @@
     "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.browser.json"
   },
   "dependencies": {
-    "@squawk/beast": "^0.1.0",
-    "@squawk/mode-s": "^0.1.0",
+    "@squawk/beast": "^0.1.1",
+    "@squawk/mode-s": "^0.2.0",
     "@squawk/types": "^0.8.6"
   },
   "keywords": [
