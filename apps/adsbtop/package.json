@@ -17,7 +17,10 @@
   "bin": {
     "adsbtop": "./dist/cli.js"
   },
-  "files": ["dist", "!dist/**/*.spec.*"],
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*"
+  ],
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('dist/cli.js', 0o755)\"",
     "test": "vitest run",
@@ -25,16 +28,27 @@
     "lint": "tsc --noEmit && eslint src"
   },
   "dependencies": {
+    "@squawk/adsb-feed": "^0.2.0",
+    "@squawk/types": "^0.8.6",
     "ink": "^7.1.1",
     "react": "^19.2.8"
   },
-  "keywords": ["aviation", "adsb", "ads-b", "aircraft-tracking", "terminal", "tui", "cli"],
+  "keywords": [
+    "aviation",
+    "adsb",
+    "ads-b",
+    "aircraft-tracking",
+    "terminal",
+    "tui",
+    "cli"
+  ],
   "publishConfig": {
     "access": "public"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.18",
-    "eslint-plugin-react-hooks": "^7.1.1"
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "ink-testing-library": "^4.0.0"
   }
 }

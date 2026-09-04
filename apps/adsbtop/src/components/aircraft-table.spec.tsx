@@ -1,0 +1,96 @@
+import { render } from 'ink-testing-library';
+import { describe, expect, it } from 'vitest';
+
+import type { Aircraft } from '@squawk/types';
+
+import { visibleColumns } from '../columns.js';
+
+import { AircraftTable } from './aircraft-table.js';
+
+function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
+  return { icaoHex: 'A0B1C2', lastSeenAt: 0, ...overrides };
+}
+
+describe('AircraftTable', () => {
+  it('renders column headers', () => {
+    const { lastFrame } = render(
+      <AircraftTable aircraft={[]} columns={visibleColumns(false)} nowMs={0} sortKey="icaoHex" />,
+    );
+
+    const frame = lastFrame();
+    expect(frame).toContain('ICAO');
+    expect(frame).toContain('Callsign');
+    expect(frame).toContain('Alt');
+  });
+
+  it('shows a placeholder message when no aircraft are tracked', () => {
+    const { lastFrame } = render(
+      <AircraftTable aircraft={[]} columns={visibleColumns(false)} nowMs={0} sortKey="icaoHex" />,
+    );
+
+    expect(lastFrame()).toContain('No aircraft tracked yet.');
+  });
+
+  it('renders one row per tracked aircraft', () => {
+    const aircraft = [
+      makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }),
+      makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL456' }),
+    ];
+    const { lastFrame } = render(
+      <AircraftTable
+        aircraft={aircraft}
+        columns={visibleColumns(false)}
+        nowMs={0}
+        sortKey="icaoHex"
+      />,
+    );
+
+    const frame = lastFrame();
+    expect(frame).toContain('A0B1C2');
+    expect(frame).toContain('UAL123');
+    expect(frame).toContain('D3E4F5');
+    expect(frame).toContain('DAL456');
+  });
+
+  it('renders only the compact columns when given a compact column set', () => {
+    const { lastFrame } = render(
+      <AircraftTable aircraft={[]} columns={visibleColumns(true)} nowMs={0} sortKey="icaoHex" />,
+    );
+
+    const frame = lastFrame();
+    expect(frame).toContain('ICAO');
+    expect(frame).not.toContain('Grnd');
+  });
+
+  it('renders an emergency-squawking aircraft callsign in the output', () => {
+    const aircraft = [makeAircraft({ callsign: 'UAL911', squawk: '7700' })];
+    const { lastFrame } = render(
+      <AircraftTable
+        aircraft={aircraft}
+        columns={visibleColumns(false)}
+        nowMs={0}
+        sortKey="icaoHex"
+      />,
+    );
+
+    expect(lastFrame()).toContain('UAL911');
+  });
+
+  it('renders every header regardless of which column is the active sort key', () => {
+    // ink-testing-library strips ANSI codes from lastFrame(), so the color
+    // highlight itself isn't assertable here - this covers that switching
+    // sortKey doesn't drop or duplicate a header, which is the part that
+    // could actually regress.
+    for (const sortKey of ['icaoHex', 'callsign', 'altitude', 'age'] as const) {
+      const { lastFrame } = render(
+        <AircraftTable aircraft={[]} columns={visibleColumns(false)} nowMs={0} sortKey={sortKey} />,
+      );
+      const frame = lastFrame();
+      expect(frame).toContain('ICAO');
+      expect(frame).toContain('Callsign');
+      expect(frame).toContain('Squawk');
+      expect(frame).toContain('Alt');
+      expect(frame).toContain('Age');
+    }
+  });
+});
