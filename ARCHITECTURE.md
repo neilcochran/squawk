@@ -24,7 +24,7 @@ Big-picture orientation: the principles, conventions, and processes that shape t
 
 ## Vision
 
-A monorepo of focused, well-documented TypeScript libraries covering common aviation data problems - airspace geometry, weather parsing, flight planning, and more - plus the apps that compose them. Libraries publish to npm under `@squawk/*`; apps are private.
+A monorepo of focused, well-documented TypeScript libraries covering common aviation data problems - airspace geometry, weather parsing, flight planning, and more - plus the apps that compose them. Libraries publish to npm under `@squawk/*`; each app independently decides whether it publishes too, based on its own audience.
 
 Six guiding principles shape every decision in this repo:
 
@@ -41,7 +41,7 @@ Six guiding principles shape every decision in this repo:
 
 Three top-level buckets:
 
-- [`apps/`](apps/) - private applications built on the libraries (currently just [`apps/atlas/`](apps/atlas/)).
+- [`apps/`](apps/) - applications built on the libraries ([`apps/atlas/`](apps/atlas/), [`apps/adsbtop/`](apps/adsbtop/)); each is independently private or published to npm.
 - [`packages/libs/`](packages/libs/) - the published `@squawk/*` libraries. See the [README](README.md) for the full list.
 - [`tools/`](tools/) - private workspaces that produce the FAA-data snapshots shipped inside the `*-data` libraries.
 
@@ -52,6 +52,12 @@ The workspaces themselves are declared in the root [`package.json`](package.json
 ## Architectural principles
 
 The decisions below explain _why_ the codebase looks the way it does. They're load-bearing - changing them affects every package.
+
+### Publish status is a per-package decision, not a per-directory one
+
+Whether a workspace publishes to npm is decided by that package's own `package.json` (`private: true` or omitted, plus `publishConfig`), never by whether it lives under `apps/` or `packages/libs/`. Changesets skips private packages automatically; the `ignore` list in [.changeset/config.json](.changeset/config.json) is reserved for workspaces that are never publish candidates (the `tools/build-*` data builders). Turbo runs whatever scripts a package defines for itself, so quality gates like `lint:pack` and `api:check` apply only to packages that opt into them by defining those scripts.
+
+Why: `apps/` groups applications built on the libraries together for discoverability, but an app's audience - and therefore whether it ships to npm - is a property of that specific app, not of the directory. [`apps/atlas/`](apps/atlas/) is a private SPA meant to be run locally or self-deployed; other apps under `apps/` may publish to npm as standalone installable tools when that better serves their audience.
 
 ### Logic / data separation (for dataset-backed query libraries)
 
