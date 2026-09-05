@@ -17,6 +17,11 @@ function dispatchNew(feed: FakeAircraftFeed, aircraft: Aircraft): void {
   feed.dispatchEvent(new CustomEvent('aircraft:new', { detail }));
 }
 
+function dispatchUpdate(feed: FakeAircraftFeed, aircraft: Aircraft): void {
+  const detail: AircraftUpdateEventDetail = { aircraft };
+  feed.dispatchEvent(new CustomEvent('aircraft:update', { detail }));
+}
+
 function flush(ms = 20): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -113,5 +118,238 @@ describe('App', () => {
     stdin.write('p');
     await flush();
     expect(lastFrame()).toContain('D3E4F5');
+  });
+
+  describe('row cursor and detail view', () => {
+    it('defaults the cursor to the first row and opens its detail with Enter', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      stdin.write('\r');
+      await flush();
+
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('A0B1C2 detail');
+      expect(frame).not.toContain('D3E4F5 detail');
+    });
+
+    it('moves the cursor down with the arrow key before opening detail', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      stdin.write('[B');
+      await flush();
+      stdin.write('d');
+      await flush();
+
+      expect(lastFrame()).toContain('D3E4F5 detail');
+    });
+
+    it('closes the detail view with Escape', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      await flush();
+
+      stdin.write('d');
+      await flush();
+      expect(lastFrame()).toContain('A0B1C2 detail');
+
+      stdin.write(String.fromCharCode(27));
+      await flush();
+      expect(lastFrame()).not.toContain('A0B1C2 detail');
+    });
+
+    it('moves the cursor back up with the up arrow key', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      stdin.write(`${String.fromCharCode(27)}[B`);
+      await flush();
+      stdin.write(`${String.fromCharCode(27)}[A`);
+      await flush();
+      stdin.write('d');
+      await flush();
+
+      expect(lastFrame()).toContain('A0B1C2 detail');
+    });
+
+    it('does nothing on Enter/D when no aircraft is tracked', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      await flush();
+
+      stdin.write('\r');
+      await flush();
+      stdin.write('d');
+      await flush();
+
+      expect(lastFrame()).toContain('No aircraft tracked yet.');
+    });
+
+    it('does nothing on Escape when the table is already showing', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      await flush();
+
+      stdin.write(String.fromCharCode(27));
+      await flush();
+
+      expect(lastFrame()).toContain('A0B1C2');
+    });
+  });
+
+  describe('search', () => {
+    it('opens a search prompt with S, jumps to the match on submit, and reveals [N]', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      stdin.write('s');
+      await flush();
+      expect(lastFrame()).toContain('Search:');
+
+      stdin.write('dal');
+      await flush();
+      stdin.write('\r');
+      await flush();
+
+      expect(lastFrame()).not.toContain('Search:');
+      expect(lastFrame()).toContain('[N]');
+
+      stdin.write('d');
+      await flush();
+      expect(lastFrame()).toContain('D3E4F5 detail');
+    });
+
+    it('cancels the search prompt with Escape without changing the selection', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5' }));
+      await flush();
+
+      stdin.write('s');
+      await flush();
+      stdin.write('zzz');
+      await flush();
+      stdin.write(String.fromCharCode(27));
+      await flush();
+
+      expect(lastFrame()).not.toContain('Search:');
+
+      stdin.write('d');
+      await flush();
+      expect(lastFrame()).toContain('A0B1C2 detail');
+    });
+
+    it('cycles forward through matches with N and back with Shift+N', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'F6A7B8', callsign: 'UAL333' }));
+      await flush();
+
+      // Cursor defaults to A0B1C2 (first row); submitting "ual" searches
+      // forward from there and skips it, landing on the next match, F6A7B8.
+      stdin.write('s');
+      await flush();
+      stdin.write('ual');
+      await flush();
+      stdin.write('\r');
+      await flush();
+      stdin.write('d');
+      await flush();
+      expect(lastFrame()).toContain('F6A7B8 detail');
+
+      // [N]ext wraps around past the end back to the first match, A0B1C2.
+      stdin.write(String.fromCharCode(27));
+      await flush();
+      stdin.write('n');
+      await flush();
+      stdin.write('d');
+      await flush();
+      expect(lastFrame()).toContain('A0B1C2 detail');
+
+      // Shift+N (previous) wraps back around to the last match, F6A7B8.
+      stdin.write(String.fromCharCode(27));
+      await flush();
+      stdin.write('N');
+      await flush();
+      stdin.write('d');
+      await flush();
+      expect(lastFrame()).toContain('F6A7B8 detail');
+    });
+
+    it('does nothing on n/N before any search has been submitted', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      await flush();
+
+      stdin.write('n');
+      await flush();
+      stdin.write('N');
+      await flush();
+      stdin.write('d');
+      await flush();
+
+      expect(lastFrame()).toContain('A0B1C2 detail');
+    });
+  });
+
+  describe('messages panel', () => {
+    it('toggles the messages panel with M and logs new/lost events', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+
+      stdin.write('m');
+      await flush();
+      expect(lastFrame()).toContain('No messages yet.');
+
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }));
+      await flush();
+      expect(lastFrame()).toContain('UAL123');
+    });
+
+    it('filters update events by default and reveals them with V', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }));
+      await flush();
+
+      stdin.write('m');
+      await flush();
+      dispatchUpdate(
+        feed,
+        makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123', groundSpeedKt: 200 }),
+      );
+      await flush();
+      expect(lastFrame()).toContain('(new/lost)');
+      expect(lastFrame()).not.toContain('UPD');
+
+      stdin.write('v');
+      await flush();
+      dispatchUpdate(
+        feed,
+        makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123', groundSpeedKt: 210 }),
+      );
+      await flush();
+      expect(lastFrame()).toContain('(all)');
+      expect(lastFrame()).toContain('UPD');
+    });
   });
 });

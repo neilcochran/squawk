@@ -14,4 +14,14 @@ describe('HelpOverlay', () => {
     expect(frame).toContain('[Q]');
     expect(frame).toContain('Quit adsbtop');
   });
+
+  it('describes the phase 2 hotkeys: search, messages, verbosity, and detail', () => {
+    const frame = render(<HelpOverlay />).lastFrame();
+
+    expect(frame).toContain('Search by ICAO hex, callsign, or squawk');
+    expect(frame).toContain('Jump to the next/previous search match');
+    expect(frame).toContain('Toggle the messages panel');
+    expect(frame).toContain('Toggle messages panel verbosity');
+    expect(frame).toContain("Show the cursor row's full detail view");
+  });
 });

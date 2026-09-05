@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { Aircraft } from '@squawk/types';
 
+import type { MessageLogEntry } from './aircraft-state.js';
 import {
   formatAge,
   formatAltitude,
   formatGroundSpeed,
   formatHeading,
+  formatMessageLogLine,
   formatOnGround,
   formatVerticalRate,
   isEmergencySquawk,
@@ -121,5 +123,30 @@ describe('formatAge', () => {
 
   it('clamps a negative elapsed time to zero', () => {
     expect(formatAge(10_000, 0)).toBe('0s');
+  });
+});
+
+describe('formatMessageLogLine', () => {
+  function makeEntry(overrides: Partial<MessageLogEntry> = {}): MessageLogEntry {
+    return { id: 0, type: 'new', icaoHex: 'A0B1C2', callsign: undefined, at: 0, ...overrides };
+  }
+
+  it('renders a UTC HH:MM:SS clock, the type label, hex, and callsign', () => {
+    const entry = makeEntry({
+      type: 'new',
+      icaoHex: 'A0B1C2',
+      callsign: 'UAL123',
+      at: Date.UTC(2026, 0, 1, 14, 23, 5),
+    });
+    expect(formatMessageLogLine(entry)).toBe('14:23:05  NEW   A0B1C2  UAL123');
+  });
+
+  it('labels update and lost events distinctly', () => {
+    expect(formatMessageLogLine(makeEntry({ type: 'update' }))).toContain('UPD ');
+    expect(formatMessageLogLine(makeEntry({ type: 'lost' }))).toContain('LOST');
+  });
+
+  it('shows a placeholder when the callsign is unknown', () => {
+    expect(formatMessageLogLine(makeEntry({ callsign: undefined }))).toContain('  -');
   });
 });

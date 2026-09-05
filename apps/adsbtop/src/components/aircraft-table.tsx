@@ -28,6 +28,8 @@ export interface AircraftTableProps {
   nowMs: number;
   /** The column `aircraft` is currently sorted by - highlighted in the header row so the active sort is visible while cycling with `[O]`. */
   sortKey: SortKey;
+  /** ICAO hex of the cursor row, moved with the arrow keys - highlighted with its own background. Undefined selects nothing. */
+  selectedIcaoHex: string | undefined;
 }
 
 /**
@@ -113,29 +115,42 @@ function AircraftCell({
   );
 }
 
-/** Renders one aircraft's full row. */
+/**
+ * Renders one aircraft's full row. The cursor row gets its own cyan
+ * background (full width, like the header bars) - a separate branch rather
+ * than a conditional `backgroundColor` prop, matching {@link AircraftCell}'s
+ * established convention of never passing Ink style props as `undefined`.
+ * Cyan stays legible against emergency rows' bold red text, so the two
+ * indicators don't fight each other when a selected row is also squawking
+ * an emergency code.
+ */
 function AircraftRow({
   aircraft,
   columns,
   nowMs,
+  selected,
 }: {
   aircraft: Aircraft;
   columns: readonly ColumnDef[];
   nowMs: number;
+  selected: boolean;
 }): ReactElement {
   const emergency = isEmergencySquawk(aircraft.squawk);
-  return (
-    <Box>
-      {columns.map((column) => (
-        <AircraftCell
-          key={column.key}
-          column={column}
-          aircraft={aircraft}
-          nowMs={nowMs}
-          emergency={emergency}
-        />
-      ))}
+  const cells = columns.map((column) => (
+    <AircraftCell
+      key={column.key}
+      column={column}
+      aircraft={aircraft}
+      nowMs={nowMs}
+      emergency={emergency}
+    />
+  ));
+  return selected ? (
+    <Box width="100%" backgroundColor="cyan">
+      {cells}
     </Box>
+  ) : (
+    <Box width="100%">{cells}</Box>
   );
 }
 
@@ -143,9 +158,10 @@ function AircraftRow({
  * The live-updating aircraft table: a header row followed by one row per
  * tracked aircraft. Rows squawking a declared emergency code render in bold
  * red - see {@link isEmergencySquawk}. The active sort column's header is
- * highlighted - see {@link AircraftTableProps.sortKey}.
+ * highlighted - see {@link AircraftTableProps.sortKey}. The cursor row is
+ * highlighted separately - see {@link AircraftTableProps.selectedIcaoHex}.
  *
- * @param props - The aircraft, columns, active sort key, and current time to render.
+ * @param props - The aircraft, columns, active sort key, selected row, and current time to render.
  */
 export function AircraftTable(props: AircraftTableProps): ReactElement {
   return (
@@ -176,6 +192,7 @@ export function AircraftTable(props: AircraftTableProps): ReactElement {
             aircraft={aircraft}
             columns={props.columns}
             nowMs={props.nowMs}
+            selected={aircraft.icaoHex === props.selectedIcaoHex}
           />
         ))
       )}

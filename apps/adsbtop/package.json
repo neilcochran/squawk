@@ -31,6 +31,7 @@
     "@squawk/adsb-feed": "^0.2.0",
     "@squawk/types": "^0.8.6",
     "ink": "^7.1.1",
+    "ink-text-input": "^6.0.0",
     "react": "^19.2.8"
   },
   "keywords": [

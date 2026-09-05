@@ -1,5 +1,7 @@
 import type { Aircraft } from '@squawk/types';
 
+import type { MessageLogEntry } from './aircraft-state.js';
+
 /** Squawk codes that always indicate a declared emergency, regardless of source. */
 const EMERGENCY_SQUAWKS: ReadonlySet<string> = new Set(['7500', '7600', '7700']);
 
@@ -103,4 +105,29 @@ export function formatAge(lastSeenAt: number, nowMs: number): string {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   return `${hours}h${remainingMinutes.toString().padStart(2, '0')}m`;
+}
+
+/** Fixed-width label per {@link MessageLogEntry.type}, for column alignment in the messages panel. */
+const MESSAGE_LOG_LABELS: Record<MessageLogEntry['type'], string> = {
+  new: 'NEW ',
+  update: 'UPD ',
+  lost: 'LOST',
+};
+
+/**
+ * Formats one {@link MessageLogEntry} for the `[M]essages` panel.
+ *
+ * The clock is rendered in UTC (`HH:MM:SS`) rather than local time so log
+ * output is deterministic in tests regardless of the runner's timezone -
+ * for a live-scrolling log the UTC/local distinction isn't meaningful to a
+ * user watching it update in real time.
+ *
+ * @param entry - The log entry to format.
+ * @returns A single display line, e.g. `"14:23:05  NEW   A0B1C2  UAL123"`.
+ */
+export function formatMessageLogLine(entry: MessageLogEntry): string {
+  const time = new Date(entry.at).toISOString().slice(11, 19);
+  const label = MESSAGE_LOG_LABELS[entry.type];
+  const callsign = entry.callsign ?? '-';
+  return `${time}  ${label}  ${entry.icaoHex}  ${callsign}`;
 }

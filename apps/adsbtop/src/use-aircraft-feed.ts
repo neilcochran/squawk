@@ -8,6 +8,7 @@ import type {
 import type { Aircraft } from '@squawk/types';
 
 import { aircraftStateReducer, initialAircraftState } from './aircraft-state.js';
+import type { MessageLogEntry } from './aircraft-state.js';
 
 /** How often {@link useAircraftFeed} recomputes `messageRatePerSec`. */
 const RATE_SAMPLE_INTERVAL_MS = 1000;
@@ -22,6 +23,8 @@ export interface AircraftFeedView {
   lastMessageAt: number | undefined;
   /** Update events observed in roughly the last second. */
   messageRatePerSec: number;
+  /** Recent `aircraft:new`/`aircraft:update`/`aircraft:lost` events, oldest first, for the `[M]essages` panel. */
+  messageLog: MessageLogEntry[];
 }
 
 /**
@@ -42,22 +45,26 @@ export function useAircraftFeed(feed: AircraftFeed): AircraftFeedView {
   }, [state.messageCount]);
 
   useEffect(() => {
+    function handleNew(event: Event): void {
+      const { aircraft } = (event as CustomEvent<AircraftUpdateEventDetail>).detail;
+      dispatch({ type: 'message', kind: 'new', aircraft, at: Date.now() });
+    }
     function handleUpdate(event: Event): void {
       const { aircraft } = (event as CustomEvent<AircraftUpdateEventDetail>).detail;
-      dispatch({ type: 'message', aircraft, at: Date.now() });
+      dispatch({ type: 'message', kind: 'update', aircraft, at: Date.now() });
     }
     function handleLost(event: Event): void {
-      const { icaoHex } = (event as CustomEvent<AircraftLostEventDetail>).detail;
-      dispatch({ type: 'lost', icaoHex });
+      const { icaoHex, lastAircraft } = (event as CustomEvent<AircraftLostEventDetail>).detail;
+      dispatch({ type: 'lost', icaoHex, callsign: lastAircraft.callsign, at: Date.now() });
     }
 
-    feed.addEventListener('aircraft:new', handleUpdate);
+    feed.addEventListener('aircraft:new', handleNew);
     feed.addEventListener('aircraft:update', handleUpdate);
     feed.addEventListener('aircraft:lost', handleLost);
     feed.start();
 
     return () => {
-      feed.removeEventListener('aircraft:new', handleUpdate);
+      feed.removeEventListener('aircraft:new', handleNew);
       feed.removeEventListener('aircraft:update', handleUpdate);
       feed.removeEventListener('aircraft:lost', handleLost);
       feed.stop();
@@ -87,5 +94,6 @@ export function useAircraftFeed(feed: AircraftFeed): AircraftFeedView {
     messageCount: state.messageCount,
     lastMessageAt: state.lastMessageAt,
     messageRatePerSec,
+    messageLog: state.messageLog,
   };
 }

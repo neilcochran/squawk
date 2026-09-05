@@ -14,7 +14,13 @@ function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
 describe('AircraftTable', () => {
   it('renders column headers', () => {
     const { lastFrame } = render(
-      <AircraftTable aircraft={[]} columns={visibleColumns(false)} nowMs={0} sortKey="icaoHex" />,
+      <AircraftTable
+        aircraft={[]}
+        columns={visibleColumns(false)}
+        nowMs={0}
+        sortKey="icaoHex"
+        selectedIcaoHex={undefined}
+      />,
     );
 
     const frame = lastFrame();
@@ -25,7 +31,13 @@ describe('AircraftTable', () => {
 
   it('shows a placeholder message when no aircraft are tracked', () => {
     const { lastFrame } = render(
-      <AircraftTable aircraft={[]} columns={visibleColumns(false)} nowMs={0} sortKey="icaoHex" />,
+      <AircraftTable
+        aircraft={[]}
+        columns={visibleColumns(false)}
+        nowMs={0}
+        sortKey="icaoHex"
+        selectedIcaoHex={undefined}
+      />,
     );
 
     expect(lastFrame()).toContain('No aircraft tracked yet.');
@@ -42,6 +54,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(false)}
         nowMs={0}
         sortKey="icaoHex"
+        selectedIcaoHex={undefined}
       />,
     );
 
@@ -54,7 +67,13 @@ describe('AircraftTable', () => {
 
   it('renders only the compact columns when given a compact column set', () => {
     const { lastFrame } = render(
-      <AircraftTable aircraft={[]} columns={visibleColumns(true)} nowMs={0} sortKey="icaoHex" />,
+      <AircraftTable
+        aircraft={[]}
+        columns={visibleColumns(true)}
+        nowMs={0}
+        sortKey="icaoHex"
+        selectedIcaoHex={undefined}
+      />,
     );
 
     const frame = lastFrame();
@@ -70,6 +89,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(false)}
         nowMs={0}
         sortKey="icaoHex"
+        selectedIcaoHex={undefined}
       />,
     );
 
@@ -83,7 +103,13 @@ describe('AircraftTable', () => {
     // could actually regress.
     for (const sortKey of ['icaoHex', 'callsign', 'altitude', 'age'] as const) {
       const { lastFrame } = render(
-        <AircraftTable aircraft={[]} columns={visibleColumns(false)} nowMs={0} sortKey={sortKey} />,
+        <AircraftTable
+          aircraft={[]}
+          columns={visibleColumns(false)}
+          nowMs={0}
+          sortKey={sortKey}
+          selectedIcaoHex={undefined}
+        />,
       );
       const frame = lastFrame();
       expect(frame).toContain('ICAO');
@@ -91,6 +117,31 @@ describe('AircraftTable', () => {
       expect(frame).toContain('Squawk');
       expect(frame).toContain('Alt');
       expect(frame).toContain('Age');
+    }
+  });
+
+  it('renders every row regardless of which one is selected', () => {
+    // Same ANSI-stripping limitation as the sort-key test above: the cursor
+    // row's cyan background isn't assertable here, so this covers that
+    // selecting a row doesn't drop content, including for an icaoHex not
+    // currently present in `aircraft`.
+    const aircraft = [
+      makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }),
+      makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL456' }),
+    ];
+    for (const selectedIcaoHex of ['A0B1C2', 'D3E4F5', 'FFFFFF', undefined]) {
+      const { lastFrame } = render(
+        <AircraftTable
+          aircraft={aircraft}
+          columns={visibleColumns(false)}
+          nowMs={0}
+          sortKey="icaoHex"
+          selectedIcaoHex={selectedIcaoHex}
+        />,
+      );
+      const frame = lastFrame();
+      expect(frame).toContain('UAL123');
+      expect(frame).toContain('DAL456');
     }
   });
 });
