@@ -1,5 +1,23 @@
 # @squawk/adsb-feed
 
+## 0.3.0
+
+### Minor Changes
+
+- 9015223: ### Added
+
+  - The JSON source populates `Aircraft.emergencyState` from `aircraft.json`'s `emergency` field.
+  - The SBS source populates `Aircraft.identActive`/`squawkAlert` from the BaseStation `SPI`/`Alert` fields.
+  - The Beast source populates `Aircraft.emergencyState`, `identActive`, `squawkAlert`, `resolutionAdvisory` (from either a DF16 reply or an ADS-B broadcast), and `targetState` - all previously decoded by `@squawk/mode-s` but discarded by the mapper.
+
+### Patch Changes
+
+- Updated dependencies [9015223]
+- Updated dependencies [9015223]
+  - @squawk/mode-s@0.3.0
+  - @squawk/types@0.9.0
+  - @squawk/beast@0.1.2
+
 ## 0.2.0
 
 ### Minor Changes

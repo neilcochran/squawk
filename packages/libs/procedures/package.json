@@ -1,6 +1,6 @@
 {
   "name": "@squawk/procedures",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "module",
   "description": "Instrument procedure lookup and expansion for SIDs, STARs, and Instrument Approach Procedures (IAPs)",
   "author": "Neil Cochran",
@@ -42,11 +42,11 @@
   },
   "dependencies": {
     "@squawk/search": "^0.1.0",
-    "@squawk/types": "^0.8.0",
+    "@squawk/types": "^0.9.0",
     "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {
-    "@squawk/procedure-data": "^0.7.2",
+    "@squawk/procedure-data": "^0.7.10",
     "@types/node": "^26.4.0"
   },
   "keywords": [

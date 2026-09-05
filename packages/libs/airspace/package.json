@@ -1,6 +1,6 @@
 {
   "name": "@squawk/airspace",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "type": "module",
   "description": "Pure logic library for querying US airspace geometry by position and altitude",
   "author": "Neil Cochran",
@@ -41,9 +41,9 @@
     "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
-    "@squawk/geo": "^0.4.3",
+    "@squawk/geo": "^0.4.10",
     "@squawk/search": "^0.1.0",
-    "@squawk/types": "^0.8.0",
+    "@squawk/types": "^0.9.0",
     "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {

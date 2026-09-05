@@ -1,5 +1,13 @@
 # @squawk/navaids
 
+## 0.6.1
+
+### Patch Changes
+
+- Updated dependencies [9015223]
+  - @squawk/types@0.9.0
+  - @squawk/geo@0.4.10
+
 ## 0.6.0
 
 ### Minor Changes

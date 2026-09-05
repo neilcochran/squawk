@@ -1,6 +1,6 @@
 {
   "name": "@squawk/procedure-data",
-  "version": "0.7.9",
+  "version": "0.7.10",
   "type": "module",
   "description": "Pre-processed FAA CIFP procedure snapshot (SIDs, STARs, IAPs) for use with @squawk/procedures",
   "author": "Neil Cochran",
@@ -44,7 +44,7 @@
     "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.browser.json"
   },
   "dependencies": {
-    "@squawk/types": "^0.8.0"
+    "@squawk/types": "^0.9.0"
   },
   "keywords": [
     "aviation",

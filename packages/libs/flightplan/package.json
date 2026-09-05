@@ -1,6 +1,6 @@
 {
   "name": "@squawk/flightplan",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "description": "Flight plan route string parsing and resolution using composed navigation resolvers",
   "author": "Neil Cochran",
@@ -43,21 +43,21 @@
   },
   "dependencies": {
     "@squawk/flight-math": "^0.5.9",
-    "@squawk/geo": "^0.4.3",
-    "@squawk/types": "^0.8.0",
+    "@squawk/geo": "^0.4.10",
+    "@squawk/types": "^0.9.0",
     "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {
-    "@squawk/airport-data": "^0.7.3",
-    "@squawk/airports": "^0.7.0",
-    "@squawk/airway-data": "^0.5.3",
-    "@squawk/airways": "^0.5.0",
-    "@squawk/fix-data": "^0.6.3",
-    "@squawk/fixes": "^0.5.0",
-    "@squawk/navaid-data": "^0.6.3",
-    "@squawk/navaids": "^0.6.0",
-    "@squawk/procedure-data": "^0.7.2",
-    "@squawk/procedures": "^0.7.0",
+    "@squawk/airport-data": "^0.7.12",
+    "@squawk/airports": "^0.7.1",
+    "@squawk/airway-data": "^0.5.12",
+    "@squawk/airways": "^0.5.1",
+    "@squawk/fix-data": "^0.6.12",
+    "@squawk/fixes": "^0.5.1",
+    "@squawk/navaid-data": "^0.6.12",
+    "@squawk/navaids": "^0.6.1",
+    "@squawk/procedure-data": "^0.7.10",
+    "@squawk/procedures": "^0.7.1",
     "@types/node": "^26.4.0"
   },
   "keywords": [
