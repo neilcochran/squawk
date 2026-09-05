@@ -16,9 +16,13 @@ import { MessagesPanel } from './components/messages-panel.js';
 import type { MessageVerbosity } from './components/messages-panel.js';
 import { SearchBar } from './components/search-bar.js';
 import { StatusHeader } from './components/status-header.js';
+import { enrichAircraftList } from './registration-cache.js';
+import type { RegistrationCache } from './registration-cache.js';
 import { findMatchIcaoHex } from './search.js';
 import { moveSelection } from './selection.js';
 import { useAircraftFeed } from './use-aircraft-feed.js';
+import { useIcaoRegistry } from './use-icao-registry.js';
+import type { RegistryDataLoader } from './use-icao-registry.js';
 
 /** How often the age column and status-header "last update" text refresh. */
 const CLOCK_TICK_MS = 1000;
@@ -38,6 +42,8 @@ export interface AppProps {
   host: string;
   /** Station port, for the status header. */
   port: number;
+  /** Loader for the bundled registry dataset used for registration enrichment. Defaults to a real dynamic import of `@squawk/icao-registry-data`; overridable in tests. */
+  registryDataLoader?: RegistryDataLoader;
 }
 
 /**
@@ -62,13 +68,19 @@ export interface AppProps {
 export function App(props: AppProps): ReactElement {
   const { exit } = useApp();
   const view = useAircraftFeed(props.feed);
+  const registry = useIcaoRegistry(props.registryDataLoader);
+  const [registrationCache] = useState<RegistrationCache>(() => new Map());
+  const enrichedAircraft = useMemo(
+    () => enrichAircraftList(view.aircraft, registry, registrationCache),
+    [view.aircraft, registry, registrationCache],
+  );
 
   const [paused, setPaused] = useState(false);
   const [compact, setCompact] = useState(false);
   const [panel, setPanel] = useState<Panel>('table');
   const [sortKey, setSortKey] = useState<SortKey>(INITIAL_SORT_KEY);
   const [now, setNow] = useState(() => Date.now());
-  const [displayedAircraft, setDisplayedAircraft] = useState<Aircraft[]>(view.aircraft);
+  const [displayedAircraft, setDisplayedAircraft] = useState<Aircraft[]>(enrichedAircraft);
   const [selectedIcaoHex, setSelectedIcaoHex] = useState<string | undefined>(undefined);
   const [showMessages, setShowMessages] = useState(false);
   const [messageVerbosity, setMessageVerbosity] = useState<MessageVerbosity>('newAndLost');
@@ -81,8 +93,8 @@ export function App(props: AppProps): ReactElement {
     return () => clearInterval(handle);
   }, []);
 
-  if (!paused && view.aircraft !== displayedAircraft) {
-    setDisplayedAircraft(view.aircraft);
+  if (!paused && enrichedAircraft !== displayedAircraft) {
+    setDisplayedAircraft(enrichedAircraft);
   }
 
   const sortedAircraft = useMemo(
@@ -234,7 +246,10 @@ export function App(props: AppProps): ReactElement {
         />
       )}
       {showMessages ? (
-        <MessagesPanel entries={view.messageLog} verbosity={messageVerbosity} />
+        <MessagesPanel
+          entries={messageVerbosity === 'newAndLost' ? view.newAndLostLog : view.messageLog}
+          verbosity={messageVerbosity}
+        />
       ) : undefined}
       {searching ? (
         <SearchBar query={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} />

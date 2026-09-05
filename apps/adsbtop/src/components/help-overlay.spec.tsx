@@ -18,7 +18,7 @@ describe('HelpOverlay', () => {
   it('describes the phase 2 hotkeys: search, messages, verbosity, and detail', () => {
     const frame = render(<HelpOverlay />).lastFrame();
 
-    expect(frame).toContain('Search by ICAO hex, callsign, or squawk');
+    expect(frame).toContain('Search by ICAO hex, callsign, squawk, or N-number');
     expect(frame).toContain('Jump to the next/previous search match');
     expect(frame).toContain('Toggle the messages panel');
     expect(frame).toContain('Toggle messages panel verbosity');

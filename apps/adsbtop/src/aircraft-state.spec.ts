@@ -70,6 +70,8 @@ describe('aircraftStateReducer', () => {
     expect(lost.aircraftByHex.size).toBe(0);
     expect(lost.messageLog).toHaveLength(1);
     expect(lost.messageLog[0]?.type).toBe('lost');
+    expect(lost.newAndLostLog).toHaveLength(1);
+    expect(lost.newAndLostLog[0]?.type).toBe('lost');
   });
 
   it('does not mutate the previous state object', () => {
@@ -133,6 +135,77 @@ describe('aircraftStateReducer', () => {
       expect(state.messageLog[0]?.id).toBe(5);
       expect(state.messageLog[199]?.id).toBe(204);
       expect(state.nextLogId).toBe(205);
+    });
+  });
+
+  describe('newAndLostLog', () => {
+    it('records new and lost events but not updates', () => {
+      const afterNew = aircraftStateReducer(initialAircraftState, {
+        type: 'message',
+        kind: 'new',
+        aircraft: makeAircraft('A0B1C2', { callsign: 'UAL123' }),
+        at: 1000,
+      });
+      const afterUpdate = aircraftStateReducer(afterNew, {
+        type: 'message',
+        kind: 'update',
+        aircraft: makeAircraft('A0B1C2', { callsign: 'UAL123' }),
+        at: 2000,
+      });
+      const afterLost = aircraftStateReducer(afterUpdate, {
+        type: 'lost',
+        icaoHex: 'A0B1C2',
+        callsign: 'UAL123',
+        at: 3000,
+      });
+
+      expect(afterLost.newAndLostLog).toEqual([
+        { id: 0, type: 'new', icaoHex: 'A0B1C2', callsign: 'UAL123', at: 1000 },
+        { id: 2, type: 'lost', icaoHex: 'A0B1C2', callsign: 'UAL123', at: 3000 },
+      ]);
+    });
+
+    it('is not evicted by high-frequency updates the way a shared log would be', () => {
+      // Regression test: a single combined log capped at 200 entries would
+      // have this original "new" event pushed out by the 250 updates that
+      // follow, even though a new/lost-only view of the same feed activity
+      // would consider that "new" event still the most recent one worth
+      // showing. Keeping newAndLostLog separate is the fix.
+      let state = aircraftStateReducer(initialAircraftState, {
+        type: 'message',
+        kind: 'new',
+        aircraft: makeAircraft('A0B1C2'),
+        at: 0,
+      });
+      for (let i = 0; i < 250; i += 1) {
+        state = aircraftStateReducer(state, {
+          type: 'message',
+          kind: 'update',
+          aircraft: makeAircraft('A0B1C2'),
+          at: i + 1,
+        });
+      }
+
+      expect(state.messageLog.some((entry) => entry.type === 'new')).toBe(false);
+      expect(state.newAndLostLog).toEqual([
+        { id: 0, type: 'new', icaoHex: 'A0B1C2', callsign: undefined, at: 0 },
+      ]);
+    });
+
+    it('caps independently of messageLog, keeping ids stable once trimmed', () => {
+      let state = initialAircraftState;
+      for (let i = 0; i < 205; i += 1) {
+        state = aircraftStateReducer(state, {
+          type: 'lost',
+          icaoHex: 'A0B1C2',
+          callsign: undefined,
+          at: i,
+        });
+      }
+
+      expect(state.newAndLostLog).toHaveLength(200);
+      expect(state.newAndLostLog[0]?.id).toBe(5);
+      expect(state.newAndLostLog[199]?.id).toBe(204);
     });
   });
 });

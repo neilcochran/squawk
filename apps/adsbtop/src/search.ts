@@ -2,12 +2,13 @@ import type { Aircraft } from '@squawk/types';
 
 /**
  * Whether `aircraft` matches `query` (case-insensitive substring match
- * against ICAO hex, callsign, or squawk). An empty or all-whitespace query
- * never matches, so an unsubmitted search box selects nothing.
+ * against ICAO hex, callsign, squawk, or N-number/registration). An empty or
+ * all-whitespace query never matches, so an unsubmitted search box selects
+ * nothing.
  *
  * @param aircraft - The aircraft to test.
  * @param query - The search text.
- * @returns True if `query` is a substring of the aircraft's hex, callsign, or squawk.
+ * @returns True if `query` is a substring of the aircraft's hex, callsign, squawk, or registration.
  */
 export function matchesSearch(aircraft: Aircraft, query: string): boolean {
   const normalized = query.trim().toLowerCase();
@@ -17,7 +18,8 @@ export function matchesSearch(aircraft: Aircraft, query: string): boolean {
   return (
     aircraft.icaoHex.toLowerCase().includes(normalized) ||
     (aircraft.callsign?.toLowerCase().includes(normalized) ?? false) ||
-    (aircraft.squawk?.toLowerCase().includes(normalized) ?? false)
+    (aircraft.squawk?.toLowerCase().includes(normalized) ?? false) ||
+    (aircraft.registration?.registration.toLowerCase().includes(normalized) ?? false)
   );
 }
 

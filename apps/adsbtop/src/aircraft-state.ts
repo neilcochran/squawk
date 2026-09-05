@@ -26,9 +26,9 @@ const MAX_MESSAGE_LOG_ENTRIES = 200;
 
 /**
  * Accumulated view of a live `@squawk/adsb-feed` `AircraftFeed`'s event
- * stream: currently tracked aircraft, a bounded log of recent events for the
- * `[M]essages` panel, plus lightweight message-activity bookkeeping for the
- * status header.
+ * stream: currently tracked aircraft, two bounded logs of recent events for
+ * the `[M]essages` panel, plus lightweight message-activity bookkeeping for
+ * the status header.
  */
 export interface AircraftTableState {
   /** Currently tracked aircraft, keyed by 24-bit ICAO hex address. */
@@ -37,9 +37,22 @@ export interface AircraftTableState {
   messageCount: number;
   /** Unix epoch ms of the most recent `aircraft:new`/`aircraft:update` event, or undefined if none has arrived yet. */
   lastMessageAt: number | undefined;
-  /** Recent `aircraft:new`/`aircraft:update`/`aircraft:lost` events, oldest first, capped at {@link MAX_MESSAGE_LOG_ENTRIES}. */
+  /** Every event type, oldest first, capped at {@link MAX_MESSAGE_LOG_ENTRIES} - backs the `[M]essages` panel's `all` verbosity. */
   messageLog: MessageLogEntry[];
-  /** Next {@link MessageLogEntry.id} to assign - kept separate from `messageLog.length` so ids stay stable once old entries are trimmed off the front. */
+  /**
+   * `new`/`lost` events only, oldest first, capped independently at
+   * {@link MAX_MESSAGE_LOG_ENTRIES} - backs the panel's default `newAndLost`
+   * verbosity. Kept as its own log rather than derived by filtering
+   * `messageLog`: `update` events fire far more often than `new`/`lost`, so
+   * a shared cap gets dominated by update volume and evicts a still-relevant
+   * new/lost entry within seconds of real traffic, even though nothing
+   * about it changed - toggling verbosity back to `newAndLost` would then
+   * show fewer entries than a moment before, for no reason visible to the
+   * user. A separate cap means `update` volume can never evict a
+   * `new`/`lost` entry.
+   */
+  newAndLostLog: MessageLogEntry[];
+  /** Next {@link MessageLogEntry.id} to assign - kept separate from either log's length so ids stay stable once old entries are trimmed off the front. */
   nextLogId: number;
 }
 
@@ -54,6 +67,7 @@ export const initialAircraftState: AircraftTableState = {
   messageCount: 0,
   lastMessageAt: undefined,
   messageLog: [],
+  newAndLostLog: [],
   nextLogId: 0,
 };
 
@@ -101,11 +115,14 @@ export function aircraftStateReducer(
         callsign: action.aircraft.callsign,
         at: action.at,
       };
+      const newAndLostLog =
+        action.kind === 'new' ? appendLogEntry(state.newAndLostLog, logEntry) : state.newAndLostLog;
       return {
         aircraftByHex,
         messageCount: state.messageCount + 1,
         lastMessageAt: action.at,
         messageLog: appendLogEntry(state.messageLog, logEntry),
+        newAndLostLog,
         nextLogId: state.nextLogId + 1,
       };
     }
@@ -118,13 +135,14 @@ export function aircraftStateReducer(
         at: action.at,
       };
       const messageLog = appendLogEntry(state.messageLog, logEntry);
+      const newAndLostLog = appendLogEntry(state.newAndLostLog, logEntry);
       const nextLogId = state.nextLogId + 1;
       if (!state.aircraftByHex.has(action.icaoHex)) {
-        return { ...state, messageLog, nextLogId };
+        return { ...state, messageLog, newAndLostLog, nextLogId };
       }
       const aircraftByHex = new Map(state.aircraftByHex);
       aircraftByHex.delete(action.icaoHex);
-      return { ...state, aircraftByHex, messageLog, nextLogId };
+      return { ...state, aircraftByHex, messageLog, newAndLostLog, nextLogId };
     }
     default:
       return state;

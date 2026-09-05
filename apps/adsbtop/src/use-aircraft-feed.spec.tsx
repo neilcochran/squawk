@@ -23,6 +23,7 @@ function Harness({ feed }: { feed: FakeAircraftFeed }): ReactElement {
         messageCount: view.messageCount,
         logLength: view.messageLog.length,
         lastLogType: view.messageLog.at(-1)?.type,
+        newAndLostLogLength: view.newAndLostLog.length,
       })}
     </Text>
   );
@@ -122,10 +123,13 @@ describe('useAircraftFeed', () => {
     await flush();
     expect(lastFrame()).toContain('"logLength":2');
     expect(lastFrame()).toContain('"lastLogType":"update"');
+    // The update above must not appear in newAndLostLog.
+    expect(lastFrame()).toContain('"newAndLostLogLength":1');
 
     dispatchLost(feed, 'A0B1C2');
     await flush();
     expect(lastFrame()).toContain('"logLength":3');
     expect(lastFrame()).toContain('"lastLogType":"lost"');
+    expect(lastFrame()).toContain('"newAndLostLogLength":2');
   });
 });

@@ -9,6 +9,23 @@ function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
   return { icaoHex: 'A0B1C2', lastSeenAt: 0, ...overrides };
 }
 
+describe('COLUMNS registration column', () => {
+  const registrationColumn = COLUMNS.find((column) => column.key === 'registration');
+
+  it('is part of the full column set but not the compact set', () => {
+    expect(registrationColumn?.compact).toBe(false);
+  });
+
+  it('renders the N-number when present', () => {
+    const aircraft = makeAircraft({ registration: { icaoHex: 'A0B1C2', registration: 'N12345' } });
+    expect(registrationColumn?.render(aircraft, 0)).toBe('N12345');
+  });
+
+  it('renders a placeholder when unresolved', () => {
+    expect(registrationColumn?.render(makeAircraft(), 0)).toBe('-');
+  });
+});
+
 describe('visibleColumns', () => {
   it('returns every column when not compact', () => {
     expect(visibleColumns(false)).toHaveLength(COLUMNS.length);
@@ -26,12 +43,12 @@ describe('nextSortKey', () => {
     const start: SortKey = 'icaoHex';
     let current: SortKey = start;
     const seen: SortKey[] = [current];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       current = nextSortKey(current);
       seen.push(current);
     }
     expect(nextSortKey(current)).toBe(start);
-    expect(new Set(seen).size).toBe(4);
+    expect(new Set(seen).size).toBe(5);
   });
 });
 
@@ -68,6 +85,18 @@ describe('compareAircraft', () => {
     const known = makeAircraft({ position: { lat: 0, lon: 0, baroAltitudeFt: 1000 } });
     const unknown = makeAircraft({ icaoHex: 'D3E4F5' });
     expect(compareAircraft(known, unknown, 'altitude')).toBeLessThan(0);
+  });
+
+  it('sorts by ground speed, slowest first', () => {
+    const slow = makeAircraft({ groundSpeedKt: 120 });
+    const fast = makeAircraft({ icaoHex: 'D3E4F5', groundSpeedKt: 450 });
+    expect(compareAircraft(slow, fast, 'groundSpeed')).toBeLessThan(0);
+  });
+
+  it('sorts aircraft with a known ground speed before those without one', () => {
+    const known = makeAircraft({ groundSpeedKt: 120 });
+    const unknown = makeAircraft({ icaoHex: 'D3E4F5' });
+    expect(compareAircraft(known, unknown, 'groundSpeed')).toBeLessThan(0);
   });
 
   it('sorts by age with the most recently seen first', () => {

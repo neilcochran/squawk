@@ -11,10 +11,13 @@ interface HelpEntry {
 
 const HELP_ENTRIES: readonly HelpEntry[] = [
   { key: 'Up/Down', description: 'Move the row cursor' },
-  { key: 'O', description: 'Cycle sort column (ICAO, callsign, altitude, age)' },
+  { key: 'O', description: 'Cycle sort column (ICAO, callsign, altitude, ground speed, age)' },
   { key: 'C', description: 'Toggle compact columns for narrow terminals' },
   { key: 'P', description: 'Pause/resume the table - the feed keeps running underneath' },
-  { key: 'S', description: 'Search by ICAO hex, callsign, or squawk - jumps to the first match' },
+  {
+    key: 'S',
+    description: 'Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match',
+  },
   { key: 'N / Shift+N', description: 'Jump to the next/previous search match' },
   { key: 'M', description: 'Toggle the messages panel (recent new/update/lost events)' },
   { key: 'V', description: 'Toggle messages panel verbosity (new/lost only vs. every update)' },

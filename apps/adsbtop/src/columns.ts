@@ -49,6 +49,13 @@ export const COLUMNS: readonly ColumnDef[] = [
     render: (aircraft) => aircraft.callsign ?? '-',
   },
   {
+    key: 'registration',
+    header: 'Reg',
+    width: 7,
+    compact: false,
+    render: (aircraft) => aircraft.registration?.registration ?? '-',
+  },
+  {
     key: 'squawk',
     header: 'Squawk',
     width: 6,
@@ -110,13 +117,14 @@ export function visibleColumns(compact: boolean): readonly ColumnDef[] {
 }
 
 /** Table sort keys, in the order `[O]` cycles through them. */
-export type SortKey = 'icaoHex' | 'callsign' | 'altitude' | 'age';
+export type SortKey = 'icaoHex' | 'callsign' | 'altitude' | 'groundSpeed' | 'age';
 
 /** The sort key `[O]` switches to next, from the current one. */
 const NEXT_SORT_KEY: Record<SortKey, SortKey> = {
   icaoHex: 'callsign',
   callsign: 'altitude',
-  altitude: 'age',
+  altitude: 'groundSpeed',
+  groundSpeed: 'age',
   age: 'icaoHex',
 };
 
@@ -163,6 +171,12 @@ export function compareAircraft(a: Aircraft, b: Aircraft, sortKey: SortKey): num
         return (altitudeA === undefined ? 1 : 0) - (altitudeB === undefined ? 1 : 0);
       }
       return altitudeA - altitudeB;
+    }
+    case 'groundSpeed': {
+      if (a.groundSpeedKt === undefined || b.groundSpeedKt === undefined) {
+        return (a.groundSpeedKt === undefined ? 1 : 0) - (b.groundSpeedKt === undefined ? 1 : 0);
+      }
+      return a.groundSpeedKt - b.groundSpeedKt;
     }
     case 'age':
       // Most-recently-seen (smallest age) first - equivalent to descending lastSeenAt.

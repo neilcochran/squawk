@@ -142,7 +142,7 @@ describe('formatMessageLogLine', () => {
   });
 
   it('labels update and lost events distinctly', () => {
-    expect(formatMessageLogLine(makeEntry({ type: 'update' }))).toContain('UPD ');
+    expect(formatMessageLogLine(makeEntry({ type: 'update' }))).toContain('UPDT');
     expect(formatMessageLogLine(makeEntry({ type: 'lost' }))).toContain('LOST');
   });
 

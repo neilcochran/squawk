@@ -5,8 +5,9 @@ import type { AircraftUpdateEventDetail } from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
 import { App } from './app.js';
-import { createFakeAircraftFeed } from './test-utils.js';
+import { createFakeAircraftFeed, createFakeRegistryDataLoader } from './test-utils.js';
 import type { FakeAircraftFeed } from './test-utils.js';
+import type { RegistryDataLoader } from './use-icao-registry.js';
 
 function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
   return { icaoHex: 'A0B1C2', lastSeenAt: Date.now(), ...overrides };
@@ -39,8 +40,19 @@ afterEach(() => {
   activeUnmount = undefined;
 });
 
-function renderApp(feed: FakeAircraftFeed): ReturnType<typeof render> {
-  const instance = render(<App feed={feed} source="sbs" host="localhost" port={30003} />);
+function renderApp(
+  feed: FakeAircraftFeed,
+  registryDataLoader: RegistryDataLoader = createFakeRegistryDataLoader(),
+): ReturnType<typeof render> {
+  const instance = render(
+    <App
+      feed={feed}
+      source="sbs"
+      host="localhost"
+      port={30003}
+      registryDataLoader={registryDataLoader}
+    />,
+  );
   activeUnmount = instance.unmount;
   return instance;
 }
@@ -339,7 +351,7 @@ describe('App', () => {
       );
       await flush();
       expect(lastFrame()).toContain('(new/lost)');
-      expect(lastFrame()).not.toContain('UPD');
+      expect(lastFrame()).not.toContain('UPDT');
 
       stdin.write('v');
       await flush();
@@ -349,7 +361,82 @@ describe('App', () => {
       );
       await flush();
       expect(lastFrame()).toContain('(all)');
-      expect(lastFrame()).toContain('UPD');
+      expect(lastFrame()).toContain('UPDT');
+    });
+
+    it('keeps showing a new/lost entry after switching to verbose and back, even with updates in between', async () => {
+      // Regression test for a real bug: filtering one shared capped log at
+      // render time meant switching verbosity could make a still-relevant
+      // new/lost entry vanish, since enough intervening `update` traffic
+      // could have already evicted it from the shared cap. newAndLostLog is
+      // now a separate log update volume can't touch.
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }));
+      await flush();
+
+      stdin.write('m');
+      await flush();
+      expect(lastFrame()).toContain('UAL123');
+
+      stdin.write('v');
+      await flush();
+      for (let i = 0; i < 20; i += 1) {
+        dispatchUpdate(
+          feed,
+          makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123', groundSpeedKt: 200 + i }),
+        );
+      }
+      await flush();
+      expect(lastFrame()).toContain('(all)');
+
+      stdin.write('v');
+      await flush();
+      expect(lastFrame()).toContain('(new/lost)');
+      expect(lastFrame()).toContain('UAL123');
+    });
+  });
+
+  describe('registration enrichment', () => {
+    it('populates the Reg column once the registry loads and finds a match', async () => {
+      const feed = createFakeAircraftFeed();
+      const loader = createFakeRegistryDataLoader([{ icaoHex: 'A0B1C2', registration: 'N12345' }]);
+      const { lastFrame } = renderApp(feed, loader);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }));
+      await flush();
+
+      expect(lastFrame()).toContain('UAL123');
+      expect(lastFrame()).toContain('N12345');
+    });
+
+    it('leaves the Reg column at "-" for an aircraft with no registry match', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame } = renderApp(feed, createFakeRegistryDataLoader([]));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }));
+      await flush();
+
+      expect(lastFrame()).toContain('UAL123');
+      expect(lastFrame()).not.toContain('N12345');
+    });
+
+    it('finds an aircraft by N-number with Search', async () => {
+      const feed = createFakeAircraftFeed();
+      const loader = createFakeRegistryDataLoader([{ icaoHex: 'A0B1C2', registration: 'N12345' }]);
+      const { lastFrame, stdin } = renderApp(feed, loader);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5' }));
+      await flush();
+
+      stdin.write('s');
+      await flush();
+      stdin.write('n12345');
+      await flush();
+      stdin.write('\r');
+      await flush();
+      stdin.write('d');
+      await flush();
+
+      expect(lastFrame()).toContain('A0B1C2 detail');
     });
   });
 });

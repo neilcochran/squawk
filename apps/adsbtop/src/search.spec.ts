@@ -21,6 +21,11 @@ describe('matchesSearch', () => {
     expect(matchesSearch(makeAircraft({ squawk: '7700' }), '770')).toBe(true);
   });
 
+  it('matches a substring of the registration (N-number), case-insensitively', () => {
+    const aircraft = makeAircraft({ registration: { icaoHex: 'A0B1C2', registration: 'N12345' } });
+    expect(matchesSearch(aircraft, 'n123')).toBe(true);
+  });
+
   it('does not match when the query appears in none of the fields', () => {
     expect(matchesSearch(makeAircraft({ callsign: 'UAL123', squawk: '1200' }), 'dal')).toBe(false);
   });
@@ -30,7 +35,7 @@ describe('matchesSearch', () => {
     expect(matchesSearch(makeAircraft(), '   ')).toBe(false);
   });
 
-  it('does not match against an unset callsign or squawk', () => {
+  it('does not match against an unset callsign, squawk, or registration', () => {
     expect(matchesSearch(makeAircraft(), 'ual')).toBe(false);
   });
 });

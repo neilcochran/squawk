@@ -101,7 +101,7 @@ describe('AircraftTable', () => {
     // highlight itself isn't assertable here - this covers that switching
     // sortKey doesn't drop or duplicate a header, which is the part that
     // could actually regress.
-    for (const sortKey of ['icaoHex', 'callsign', 'altitude', 'age'] as const) {
+    for (const sortKey of ['icaoHex', 'callsign', 'altitude', 'groundSpeed', 'age'] as const) {
       const { lastFrame } = render(
         <AircraftTable
           aircraft={[]}

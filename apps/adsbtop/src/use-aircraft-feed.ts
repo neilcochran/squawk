@@ -23,8 +23,10 @@ export interface AircraftFeedView {
   lastMessageAt: number | undefined;
   /** Update events observed in roughly the last second. */
   messageRatePerSec: number;
-  /** Recent `aircraft:new`/`aircraft:update`/`aircraft:lost` events, oldest first, for the `[M]essages` panel. */
+  /** Every event type, oldest first, for the `[M]essages` panel's `all` verbosity. */
   messageLog: MessageLogEntry[];
+  /** `aircraft:new`/`aircraft:lost` events only, oldest first, for the panel's default `newAndLost` verbosity - capped independently of `messageLog` so update volume can't evict a still-relevant entry. */
+  newAndLostLog: MessageLogEntry[];
 }
 
 /**
@@ -95,5 +97,6 @@ export function useAircraftFeed(feed: AircraftFeed): AircraftFeedView {
     lastMessageAt: state.lastMessageAt,
     messageRatePerSec,
     messageLog: state.messageLog,
+    newAndLostLog: state.newAndLostLog,
   };
 }

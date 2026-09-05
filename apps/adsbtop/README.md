@@ -28,19 +28,19 @@ adsbtop --source sbs --host 192.168.1.50
 
 ### Hotkeys
 
-| Key             | Action                                                             |
-| --------------- | ------------------------------------------------------------------ |
-| `Up` / `Down`   | Move the row cursor                                                |
-| `O`             | Cycle the sort column (ICAO, callsign, altitude, age)              |
-| `C`             | Toggle compact columns, for narrow terminals                       |
-| `P`             | Pause/resume the table - the feed keeps running underneath         |
-| `S`             | Search by ICAO hex, callsign, or squawk - jumps to the first match |
-| `N` / `Shift+N` | Jump to the next/previous search match                             |
-| `M`             | Toggle the messages panel (recent new/update/lost events)          |
-| `V`             | Toggle messages panel verbosity (new/lost only vs. every update)   |
-| `Enter` / `D`   | Show the cursor row's full detail view                             |
-| `H`             | Toggle the help overlay                                            |
-| `Q`             | Quit                                                               |
+| Key             | Action                                                                       |
+| --------------- | ---------------------------------------------------------------------------- |
+| `Up` / `Down`   | Move the row cursor                                                          |
+| `O`             | Cycle the sort column (ICAO, callsign, altitude, ground speed, age)          |
+| `C`             | Toggle compact columns, for narrow terminals                                 |
+| `P`             | Pause/resume the table - the feed keeps running underneath                   |
+| `S`             | Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match |
+| `N` / `Shift+N` | Jump to the next/previous search match                                       |
+| `M`             | Toggle the messages panel (recent new/update/lost events)                    |
+| `V`             | Toggle messages panel verbosity (new/lost only vs. every update)             |
+| `Enter` / `D`   | Show the cursor row's full detail view                                       |
+| `H`             | Toggle the help overlay                                                      |
+| `Q`             | Quit                                                                         |
 
 Aircraft squawking an emergency code (7500/7600/7700) render in bold red.
 
@@ -51,3 +51,7 @@ Selecting a row and pressing `Enter` or `D` opens a full field dump for that air
 ### Messages panel
 
 `M` toggles a live log of `aircraft:new`/`aircraft:update`/`aircraft:lost` events in a panel below the table. Defaults to showing only new/lost events, since `aircraft:update` fires far more often; `V` reveals every update too.
+
+### Registration lookup
+
+The `Reg` column and the detail view's `Registration` field resolve each aircraft's ICAO hex to its N-number (and make/model/operator in the detail view) using the bundled FAA registry. `S`earch also matches against the N-number. The registry loads in the background after startup - rows show `-` for a few seconds until it's ready, then populate automatically as matches are found.

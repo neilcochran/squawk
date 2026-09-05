@@ -12,24 +12,28 @@ export type MessageVerbosity = 'newAndLost' | 'all';
 
 /** Props for {@link MessagesPanel}. */
 export interface MessagesPanelProps {
-  /** The full message log, oldest first. */
+  /**
+   * The log to render, oldest first - already scoped to the active
+   * verbosity by the caller (`view.newAndLostLog` or `view.messageLog`),
+   * not filtered here. The two are separately-maintained logs, not one log
+   * filtered two ways - see {@link MessageVerbosity} and
+   * `AircraftTableState.newAndLostLog`'s doc comment for why.
+   */
   entries: readonly MessageLogEntry[];
-  /** Which events to show - `'newAndLost'` filters out the high-frequency `update` events. */
+  /** Which verbosity `entries` was scoped to - used only for the header label here. */
   verbosity: MessageVerbosity;
 }
 
 /**
  * Split-view panel below the aircraft table, toggled by `[M]`, showing the
  * most recent decoded feed events. Always shows the last {@link VISIBLE_ROWS}
- * matching entries - there is no scroll-back, matching a live `tail -f`-style
- * log rather than a browsable history.
+ * entries - there is no scroll-back, matching a live `tail -f`-style log
+ * rather than a browsable history.
  *
- * @param props - The message log and active verbosity filter.
+ * @param props - The already-verbosity-scoped log to render, and which verbosity it is.
  */
 export function MessagesPanel({ entries, verbosity }: MessagesPanelProps): ReactElement {
-  const filtered =
-    verbosity === 'newAndLost' ? entries.filter((entry) => entry.type !== 'update') : entries;
-  const visible = filtered.slice(-VISIBLE_ROWS);
+  const visible = entries.slice(-VISIBLE_ROWS);
 
   return (
     <Box flexDirection="column" borderStyle="single" borderColor="cyan" paddingX={1}>

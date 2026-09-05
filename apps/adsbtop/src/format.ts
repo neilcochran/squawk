@@ -110,7 +110,7 @@ export function formatAge(lastSeenAt: number, nowMs: number): string {
 /** Fixed-width label per {@link MessageLogEntry.type}, for column alignment in the messages panel. */
 const MESSAGE_LOG_LABELS: Record<MessageLogEntry['type'], string> = {
   new: 'NEW ',
-  update: 'UPD ',
+  update: 'UPDT',
   lost: 'LOST',
 };
 
