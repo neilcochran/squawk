@@ -1,6 +1,6 @@
 {
   "name": "@squawk/adsbtop",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "description": "Terminal dashboard for live ADS-B aircraft tracking, built on @squawk/adsb-feed",
   "license": "MIT",
