@@ -1,5 +1,12 @@
 # @squawk/icao-registry-data
 
+## 0.8.12
+
+### Patch Changes
+
+- Updated dependencies [9015223]
+  - @squawk/types@0.9.0
+
 ## 0.8.11
 
 ### Patch Changes

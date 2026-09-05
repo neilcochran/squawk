@@ -1,5 +1,21 @@
 # @squawk/mode-s
 
+## 0.3.0
+
+### Minor Changes
+
+- 9015223: ### Added
+
+  - `decodeFlightStatus(fsField)` decodes a DF4/5/20/21 surveillance reply's 3-bit Flight Status field into Alert and Ident flags. `SurveillanceAltitudeReply`, `CommBAltitudeReply`, `SurveillanceIdentityReply`, and `CommBIdentityReply` now carry the results as `identActive`/`squawkAlert`.
+
+  ### Changed
+  - `TargetStateAndStatus`, `AcasResolutionAdvisoryReport`, `ResolutionAdvisoryType`, `AcasThreat` (and its member types `AcasThreatType`/`AcasThreatNone`/`AcasThreatIcaoAddress`/`AcasThreatAltitudeRangeBearing`), and `EmergencyState` now live in `@squawk/types` and are re-exported here - existing imports from `@squawk/mode-s` are unaffected.
+
+### Patch Changes
+
+- Updated dependencies [9015223]
+  - @squawk/types@0.9.0
+
 ## 0.2.0
 
 ### Minor Changes

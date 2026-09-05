@@ -1,6 +1,6 @@
 {
   "name": "@squawk/airways",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "description": "Airway lookup, traversal, and expansion by designation, fix, or search",
   "author": "Neil Cochran",
@@ -42,10 +42,10 @@
   },
   "dependencies": {
     "@squawk/search": "^0.1.0",
-    "@squawk/types": "^0.8.0"
+    "@squawk/types": "^0.9.0"
   },
   "devDependencies": {
-    "@squawk/airway-data": "^0.5.3",
+    "@squawk/airway-data": "^0.5.12",
     "@types/node": "^26.4.0"
   },
   "keywords": [

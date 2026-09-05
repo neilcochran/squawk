@@ -1,6 +1,6 @@
 {
   "name": "@squawk/mode-s",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Decode raw Mode-S/ADS-B messages: DF/CRC parsing, CPR position, velocity, identification, and altitude",
   "author": "Neil Cochran",
@@ -41,7 +41,7 @@
     "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
-    "@squawk/types": "^0.8.6"
+    "@squawk/types": "^0.9.0"
   },
   "devDependencies": {
     "@types/node": "^26.4.0"

@@ -1,6 +1,6 @@
 {
   "name": "@squawk/geo",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "type": "module",
   "description": "Geospatial utilities: great-circle distance, bearing, midpoint, destination point, and polygon containment",
   "author": "Neil Cochran",
@@ -49,7 +49,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@squawk/types": "^0.8.0",
+    "@squawk/types": "^0.9.0",
     "@squawk/units": "^0.4.2",
     "@types/geojson": "^7946.0.16"
   },

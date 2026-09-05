@@ -1,5 +1,14 @@
 # @squawk/types
 
+## 0.9.0
+
+### Minor Changes
+
+- 9015223: ### Added
+
+  - `Aircraft` gains five new optional fields for previously-undecodable ADS-B/Mode-S data: `emergencyState`, `resolutionAdvisory`, `targetState`, `identActive`, `squawkAlert`.
+  - `EmergencyState`, `TargetStateAndStatus`, `AcasResolutionAdvisoryReport`, `ResolutionAdvisoryType`, and the `AcasThreat` union (`AcasThreatType`, `AcasThreatNone`, `AcasThreatIcaoAddress`, `AcasThreatAltitudeRangeBearing`) - promoted from `@squawk/mode-s`, which re-exports them for backward compatibility.
+
 ## 0.8.6
 
 ### Changed

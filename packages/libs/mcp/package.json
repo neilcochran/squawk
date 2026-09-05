@@ -1,6 +1,6 @@
 {
   "name": "@squawk/mcp",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "type": "module",
   "description": "Model Context Protocol server exposing squawk's aviation libraries as tools for LLM clients",
   "author": "Neil Cochran",
@@ -41,29 +41,29 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@squawk/airport-data": "^0.7.3",
-    "@squawk/airports": "^0.7.0",
-    "@squawk/airspace": "^0.9.0",
+    "@squawk/airport-data": "^0.7.12",
+    "@squawk/airports": "^0.7.1",
+    "@squawk/airspace": "^0.9.1",
     "@squawk/airspace-data": "^0.5.2",
-    "@squawk/airway-data": "^0.5.3",
-    "@squawk/airways": "^0.5.0",
-    "@squawk/fix-data": "^0.6.3",
-    "@squawk/fixes": "^0.5.0",
+    "@squawk/airway-data": "^0.5.12",
+    "@squawk/airways": "^0.5.1",
+    "@squawk/fix-data": "^0.6.12",
+    "@squawk/fixes": "^0.5.1",
     "@squawk/flight-math": "^0.5.3",
-    "@squawk/flightplan": "^0.6.0",
-    "@squawk/geo": "^0.4.3",
-    "@squawk/icao-registry": "^0.5.1",
-    "@squawk/navaid-data": "^0.6.3",
-    "@squawk/navaids": "^0.6.0",
-    "@squawk/notams": "^0.3.5",
-    "@squawk/procedure-data": "^0.7.2",
-    "@squawk/procedures": "^0.7.0",
-    "@squawk/types": "^0.8.0",
-    "@squawk/weather": "^0.6.0",
+    "@squawk/flightplan": "^0.6.1",
+    "@squawk/geo": "^0.4.10",
+    "@squawk/icao-registry": "^0.5.8",
+    "@squawk/navaid-data": "^0.6.12",
+    "@squawk/navaids": "^0.6.1",
+    "@squawk/notams": "^0.3.12",
+    "@squawk/procedure-data": "^0.7.10",
+    "@squawk/procedures": "^0.7.1",
+    "@squawk/types": "^0.9.0",
+    "@squawk/weather": "^0.6.1",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@squawk/icao-registry-data": "^0.8.3"
+    "@squawk/icao-registry-data": "^0.8.12"
   },
   "peerDependenciesMeta": {
     "@squawk/icao-registry-data": {
@@ -71,7 +71,7 @@
     }
   },
   "devDependencies": {
-    "@squawk/icao-registry-data": "^0.8.3",
+    "@squawk/icao-registry-data": "^0.8.12",
     "@types/node": "^26.4.0"
   },
   "keywords": [

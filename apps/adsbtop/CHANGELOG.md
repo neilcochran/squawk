@@ -1,5 +1,17 @@
 # @squawk/adsbtop
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [9015223]
+- Updated dependencies [9015223]
+  - @squawk/adsb-feed@0.3.0
+  - @squawk/types@0.9.0
+  - @squawk/geo@0.4.10
+  - @squawk/icao-registry@0.5.8
+  - @squawk/icao-registry-data@0.8.12
+
 ## 0.2.0
 
 ### Minor Changes

@@ -1,5 +1,12 @@
 # @squawk/geo
 
+## 0.4.10
+
+### Patch Changes
+
+- Updated dependencies [9015223]
+  - @squawk/types@0.9.0
+
 ## 0.4.9
 
 ### Changed
