@@ -5,7 +5,7 @@ import type { ReactElement } from 'react';
 import type { Aircraft } from '@squawk/types';
 
 import type { ColumnDef, SortKey } from '../columns.js';
-import { isEmergencySquawk } from '../format.js';
+import { isEmergencyAircraft } from '../format.js';
 
 /**
  * Width of the header row's `|` column separator (a space, the pipe, and
@@ -85,10 +85,12 @@ function HeaderSeparator({
 }
 
 /**
- * Renders one aircraft's cell for `column`. A declared emergency squawk
- * (7500/7600/7700) renders in bold red - this is a full separate `<Text>`
- * branch rather than a conditionally-`undefined` `color` prop, since Ink's
- * `color`/`bold` props are only ever fully present or fully omitted here.
+ * Renders one aircraft's cell for `column`. An emergency aircraft (declared
+ * squawk code, declared emergency state, or an active Resolution Advisory -
+ * see {@link isEmergencyAircraft}) renders in bold red - this is a full
+ * separate `<Text>` branch rather than a conditionally-`undefined` `color`
+ * prop, since Ink's `color`/`bold` props are only ever fully present or
+ * fully omitted here.
  */
 function AircraftCell({
   column,
@@ -135,7 +137,7 @@ function AircraftRow({
   nowMs: number;
   selected: boolean;
 }): ReactElement {
-  const emergency = isEmergencySquawk(aircraft.squawk);
+  const emergency = isEmergencyAircraft(aircraft);
   const cells = columns.map((column) => (
     <AircraftCell
       key={column.key}
@@ -156,8 +158,8 @@ function AircraftRow({
 
 /**
  * The live-updating aircraft table: a header row followed by one row per
- * tracked aircraft. Rows squawking a declared emergency code render in bold
- * red - see {@link isEmergencySquawk}. The active sort column's header is
+ * tracked aircraft. Emergency aircraft render in bold red - see
+ * {@link isEmergencyAircraft}. The active sort column's header is
  * highlighted - see {@link AircraftTableProps.sortKey}. The cursor row is
  * highlighted separately - see {@link AircraftTableProps.selectedIcaoHex}.
  *

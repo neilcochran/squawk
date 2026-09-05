@@ -24,4 +24,11 @@ describe('HelpOverlay', () => {
     expect(frame).toContain('Toggle messages panel verbosity');
     expect(frame).toContain("Show the cursor row's full detail view");
   });
+
+  it('notes that detail-view field coverage varies by source', () => {
+    const frame = render(<HelpOverlay />).lastFrame();
+
+    expect(frame).toContain('coverage varies by');
+    expect(frame).toContain('--source');
+  });
 });
