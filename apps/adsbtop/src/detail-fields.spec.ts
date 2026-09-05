@@ -1,11 +1,58 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Aircraft, Coordinates } from '@squawk/types';
+import type {
+  AcasResolutionAdvisoryReport,
+  Aircraft,
+  Coordinates,
+  TargetStateAndStatus,
+} from '@squawk/types';
 
 import { buildDetailFields } from './detail-fields.js';
 
 function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
   return { icaoHex: 'A0B1C2', lastSeenAt: 0, ...overrides };
+}
+
+function makeResolutionAdvisory(
+  overrides: Partial<AcasResolutionAdvisoryReport> = {},
+): AcasResolutionAdvisoryReport {
+  return {
+    active: true,
+    advisoryType: 'climb',
+    corrective: true,
+    downwardSense: false,
+    increasedRate: false,
+    senseReversal: false,
+    altitudeCrossing: false,
+    positive: true,
+    doNotPassBelow: false,
+    doNotPassAbove: false,
+    doNotTurnLeft: false,
+    doNotTurnRight: false,
+    terminated: false,
+    multipleThreat: false,
+    threat: { threatType: 'none' },
+    ...overrides,
+  };
+}
+
+function makeTargetState(overrides: Partial<TargetStateAndStatus> = {}): TargetStateAndStatus {
+  return {
+    selectedAltitudeSource: undefined,
+    selectedAltitudeFt: undefined,
+    baroPressureSettingMb: undefined,
+    selectedHeadingDeg: undefined,
+    navAccuracyCategoryPosition: 0,
+    nicBaro: false,
+    sourceIntegrityLevel: 0,
+    autopilotEngaged: undefined,
+    vnavModeActive: undefined,
+    altitudeHoldModeActive: undefined,
+    approachModeActive: undefined,
+    lnavModeActive: undefined,
+    tcasOperational: true,
+    ...overrides,
+  };
 }
 
 function fieldValue(
@@ -21,6 +68,11 @@ describe('buildDetailFields', () => {
 
     expect(fieldValue(fields, 'Callsign')).toBe('-');
     expect(fieldValue(fields, 'Squawk')).toBe('-');
+    expect(fieldValue(fields, 'Squawk alert')).toBe('-');
+    expect(fieldValue(fields, 'Ident active')).toBe('-');
+    expect(fieldValue(fields, 'Emergency state')).toBe('-');
+    expect(fieldValue(fields, 'Resolution advisory')).toBe('-');
+    expect(fieldValue(fields, 'Target state')).toBe('-');
     expect(fieldValue(fields, 'Registration')).toBe('-');
     expect(fieldValue(fields, 'Position')).toBe('-');
     expect(fieldValue(fields, 'Baro altitude')).toBe('-');
@@ -122,5 +174,131 @@ describe('buildDetailFields', () => {
 
     expect(fieldValue(fields, 'Distance')).toBe('-');
     expect(fieldValue(fields, 'Bearing')).toBe('-');
+  });
+
+  it('shows Yes for squawk alert and ident active when true', () => {
+    const fields = buildDetailFields(
+      makeAircraft({ squawkAlert: true, identActive: true }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Squawk alert')).toBe('Yes');
+    expect(fieldValue(fields, 'Ident active')).toBe('Yes');
+  });
+
+  it('shows a placeholder for squawk alert and ident active when false', () => {
+    const fields = buildDetailFields(
+      makeAircraft({ squawkAlert: false, identActive: false }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Squawk alert')).toBe('-');
+    expect(fieldValue(fields, 'Ident active')).toBe('-');
+  });
+
+  it('formats a declared emergency state as its human-readable label', () => {
+    const fields = buildDetailFields(
+      makeAircraft({ emergencyState: 'lifeguardMedical' }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Emergency state')).toBe('Lifeguard/medical');
+  });
+
+  it('formats "none" emergency state distinctly from an unpopulated field', () => {
+    const fields = buildDetailFields(makeAircraft({ emergencyState: 'none' }), 0, undefined);
+
+    expect(fieldValue(fields, 'Emergency state')).toBe('None');
+  });
+
+  it('formats an active, corrective resolution advisory as its advisory type', () => {
+    const fields = buildDetailFields(
+      makeAircraft({ resolutionAdvisory: makeResolutionAdvisory({ advisoryType: 'climb' }) }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Resolution advisory')).toBe('Climb');
+  });
+
+  it('marks a non-corrective resolution advisory as preventive', () => {
+    const fields = buildDetailFields(
+      makeAircraft({
+        resolutionAdvisory: makeResolutionAdvisory({ advisoryType: 'descend', corrective: false }),
+      }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Resolution advisory')).toBe('Descend (preventive)');
+  });
+
+  it('formats an inactive resolution advisory report as None', () => {
+    const fields = buildDetailFields(
+      makeAircraft({ resolutionAdvisory: makeResolutionAdvisory({ active: false }) }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Resolution advisory')).toBe('None');
+  });
+
+  it('formats an active multi-threat advisory with no single advisory type', () => {
+    const fields = buildDetailFields(
+      makeAircraft({
+        resolutionAdvisory: makeResolutionAdvisory({
+          advisoryType: undefined,
+          multipleThreat: true,
+        }),
+      }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Resolution advisory')).toBe('Active (multi-threat)');
+  });
+
+  it('formats an active advisory with no single type and no multi-threat flag as plain Active', () => {
+    const fields = buildDetailFields(
+      makeAircraft({
+        resolutionAdvisory: makeResolutionAdvisory({
+          advisoryType: undefined,
+          multipleThreat: false,
+        }),
+      }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Resolution advisory')).toBe('Active');
+  });
+
+  it('summarizes target state with selected altitude, heading, and autopilot status', () => {
+    const fields = buildDetailFields(
+      makeAircraft({
+        targetState: makeTargetState({
+          selectedAltitudeFt: 35000,
+          selectedHeadingDeg: 270,
+          autopilotEngaged: true,
+        }),
+      }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Target state')).toBe('35000ft sel, 270° sel, AP on');
+  });
+
+  it('shows a placeholder for target state when no sub-fields are populated', () => {
+    const fields = buildDetailFields(
+      makeAircraft({ targetState: makeTargetState() }),
+      0,
+      undefined,
+    );
+
+    expect(fieldValue(fields, 'Target state')).toBe('-');
   });
 });

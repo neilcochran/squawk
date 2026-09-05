@@ -44,11 +44,23 @@ adsbtop --source sbs --host 192.168.1.50
 | `H`             | Toggle the help overlay                                                      |
 | `Q`             | Quit                                                                         |
 
-Aircraft squawking an emergency code (7500/7600/7700) render in bold red.
+Aircraft render in bold red when they carry any of: an emergency squawk code (7500/7600/7700), a declared emergency state, or an active ACAS/TCAS Resolution Advisory.
 
 ### Detail view
 
-Selecting a row and pressing `Enter` or `D` opens a full field dump for that aircraft, including barometric and geometric altitude, true track and magnetic heading, and indicated/true airspeed. Fields the active source doesn't populate show as `-`.
+Selecting a row and pressing `Enter` or `D` opens a full field dump for that aircraft, including barometric and geometric altitude, true track and magnetic heading, indicated/true airspeed, squawk alert/ident status, declared emergency state, active Resolution Advisory, and pilot-selected target state (altitude/heading/autopilot). Fields the active source doesn't populate show as `-`.
+
+#### Field population by source
+
+Five detail-view fields have meaningfully different coverage depending on `--source` - see [`@squawk/adsb-feed`'s README](../../packages/libs/adsb-feed/README.md#field-population-by-source) for the decode details behind each:
+
+| Field               | JSON | SBS | Beast |
+| ------------------- | ---- | --- | ----- |
+| Squawk alert        | -    | Yes | Yes   |
+| Ident active        | -    | Yes | Yes   |
+| Emergency state     | Yes  | -   | Yes   |
+| Resolution advisory | -    | -   | Yes   |
+| Target state        | -    | -   | Yes   |
 
 ### Messages panel
 

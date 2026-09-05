@@ -38,6 +38,10 @@ export function HelpOverlay(): ReactElement {
           <Text bold>[{entry.key}]</Text> {entry.description}
         </Text>
       ))}
+      <Text dimColor>
+        Detail view: squawk alert/ident/emergency state/RA/target state coverage varies by --source
+        - see README
+      </Text>
     </Box>
   );
 }

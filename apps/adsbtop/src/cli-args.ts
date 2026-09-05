@@ -81,7 +81,7 @@ function normalizeNegativeLocationArgs(argv: string[]): string[] {
 export const USAGE = `Usage: adsbtop [options]
 
 Options:
-  --source <json|sbs|beast>  Feed to connect to (default: ${DEFAULT_SOURCE})
+  --source <json|sbs|beast>  Feed to connect to (default: ${DEFAULT_SOURCE}) - detail-view field coverage differs by source, see README
   --host <host>              dump1090-fa station hostname/IP (default: ${DEFAULT_HOST})
   --port <port>              Port to connect to (default: 8080 json, 30003 sbs, 30005 beast)
   --url <url>                Full aircraft.json URL, overriding --host/--port (source=json only)
