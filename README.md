@@ -16,7 +16,7 @@ TypeScript libraries for building aviation applications - airspace geometry, wea
 
 The repo splits into three top-level directories:
 
-- [`apps/`](https://github.com/neilcochran/squawk/tree/main/apps) - runnable applications built on the squawk libraries. Currently [Atlas](https://github.com/neilcochran/squawk/tree/main/apps/atlas), the official chart-first viewer.
+- [`apps/`](https://github.com/neilcochran/squawk/tree/main/apps) - runnable applications built on the squawk libraries: [Atlas](https://github.com/neilcochran/squawk/tree/main/apps/atlas), the official chart-first viewer, and [adsbtop](https://github.com/neilcochran/squawk/tree/main/apps/adsbtop), a terminal dashboard for live aircraft tracking.
 - [`packages/libs/`](https://github.com/neilcochran/squawk/tree/main/packages/libs) - the published `@squawk/*` libraries listed below.
 - [`tools/`](https://github.com/neilcochran/squawk/tree/main/tools) - internal data-build pipelines that produce the bundled snapshots in the `*-data` libraries.
 
