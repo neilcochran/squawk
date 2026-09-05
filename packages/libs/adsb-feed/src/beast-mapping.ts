@@ -208,10 +208,16 @@ export function createBeastMapper(options: BeastMapperOptions = {}): BeastMapper
           return update;
         }
         case 'extendedSquitterEmergencyStatus':
-          return { icaoHex: decoded.icaoHex, squawk: decoded.squawk };
+          return {
+            icaoHex: decoded.icaoHex,
+            squawk: decoded.squawk,
+            emergencyState: decoded.emergencyState,
+          };
         case 'extendedSquitterTargetStateAndStatus':
-        case 'extendedSquitterOperationalStatus':
+          return { icaoHex: decoded.icaoHex, targetState: decoded.targetStateAndStatus };
         case 'extendedSquitterAcasRaBroadcast':
+          return { icaoHex: decoded.icaoHex, resolutionAdvisory: decoded.resolutionAdvisory };
+        case 'extendedSquitterOperationalStatus':
         case 'allCallReply':
           return { icaoHex: decoded.icaoHex };
         case 'shortAirAirSurveillanceReply':
@@ -229,6 +235,17 @@ export function createBeastMapper(options: BeastMapperOptions = {}): BeastMapper
           }
           if ('squawk' in decoded) {
             update.squawk = decoded.squawk;
+          }
+          if ('resolutionAdvisory' in decoded && decoded.resolutionAdvisory !== undefined) {
+            update.resolutionAdvisory = decoded.resolutionAdvisory;
+          }
+          if ('identActive' in decoded) {
+            if (decoded.identActive !== undefined) {
+              update.identActive = decoded.identActive;
+            }
+            if (decoded.squawkAlert !== undefined) {
+              update.squawkAlert = decoded.squawkAlert;
+            }
           }
           return update;
         }

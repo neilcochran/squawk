@@ -26,6 +26,7 @@ export {
   decodeSurfaceCprWithReference,
 } from './cpr.js';
 export { decodeEmergencyState } from './emergency-status.js';
+export { decodeFlightStatus } from './flight-status.js';
 export { extractDownlinkFormat, computeCrc24, parseModeSFrame } from './frame.js';
 export { decodeIdentification } from './identification.js';
 export { decodeIdentityCode } from './identity.js';
@@ -71,6 +72,7 @@ export type {
   ResolutionAdvisoryType,
 } from './types/index.js';
 export type { EmergencyState } from './types/index.js';
+export type { FlightStatus } from './types/index.js';
 export type { AircraftIdentification } from './types/index.js';
 export type {
   AirborneVelocity,

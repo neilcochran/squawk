@@ -7,12 +7,58 @@
 import type { Polygon } from 'geojson';
 
 // @public
+export interface AcasResolutionAdvisoryReport {
+    active: boolean;
+    advisoryType: ResolutionAdvisoryType | undefined;
+    altitudeCrossing: boolean;
+    corrective: boolean;
+    doNotPassAbove: boolean;
+    doNotPassBelow: boolean;
+    doNotTurnLeft: boolean;
+    doNotTurnRight: boolean;
+    downwardSense: boolean;
+    increasedRate: boolean;
+    multipleThreat: boolean;
+    positive: boolean;
+    senseReversal: boolean;
+    terminated: boolean;
+    threat: AcasThreat;
+}
+
+// @public
+export type AcasThreat = AcasThreatNone | AcasThreatIcaoAddress | AcasThreatAltitudeRangeBearing;
+
+// @public
+export interface AcasThreatAltitudeRangeBearing {
+    threatAltitudeFt: number | undefined;
+    threatBearingDeg: number | undefined;
+    threatRangeNm: number | undefined;
+    threatType: 'altitudeRangeBearing';
+}
+
+// @public
+export interface AcasThreatIcaoAddress {
+    threatIcaoHex: string;
+    threatType: 'icaoAddress';
+}
+
+// @public
+export interface AcasThreatNone {
+    threatType: 'none';
+}
+
+// @public
+export type AcasThreatType = AcasThreat['threatType'];
+
+// @public
 export interface Aircraft {
     callsign?: string;
     category?: AircraftCategory;
     destination?: Airport;
+    emergencyState?: EmergencyState;
     groundSpeedKt?: number;
     icaoHex: string;
+    identActive?: boolean;
     indicatedAirspeedKt?: number;
     lastSeenAt: number;
     magneticHeadingDeg?: number;
@@ -20,7 +66,10 @@ export interface Aircraft {
     origin?: Airport;
     position?: Position;
     registration?: AircraftRegistration;
+    resolutionAdvisory?: AcasResolutionAdvisoryReport;
     squawk?: string;
+    squawkAlert?: boolean;
+    targetState?: TargetStateAndStatus;
     trueAirspeedKt?: number;
     trueTrackDeg?: number;
     verticalRateFtPerMin?: number;
@@ -233,6 +282,9 @@ export interface Coordinates {
     lat: number;
     lon: number;
 }
+
+// @public
+export type EmergencyState = 'none' | 'general' | 'lifeguardMedical' | 'minimumFuel' | 'noCommunications' | 'unlawfulInterference' | 'downed' | 'reserved';
 
 // @public
 export type EngineType = 'none' | 'reciprocating' | 'turboProp' | 'turboShaft' | 'turboJet' | 'turboFan' | 'ramjet' | 'twoCycle' | 'fourCycle' | 'unknown' | 'electric' | 'rotary';
@@ -470,6 +522,9 @@ export interface ProcedureTransition {
 export type ProcedureType = 'SID' | 'STAR' | 'IAP';
 
 // @public
+export type ResolutionAdvisoryType = 'climb' | 'descend' | 'crossingClimb' | 'crossingDescend' | 'increaseClimb' | 'increaseDescent' | 'reduceClimb' | 'reduceDescent' | 'doNotClimb' | 'doNotDescend' | 'reversalToClimb' | 'reversalToDescend';
+
+// @public
 export interface Runway {
     condition?: SurfaceCondition;
     ends: RunwayEnd[];
@@ -539,6 +594,23 @@ export type SurfaceCondition = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'FAILED'
 
 // @public
 export type SurfaceTreatment = 'GROOVED' | 'PFC' | 'GROOVED_PFC';
+
+// @public
+export interface TargetStateAndStatus {
+    altitudeHoldModeActive: boolean | undefined;
+    approachModeActive: boolean | undefined;
+    autopilotEngaged: boolean | undefined;
+    baroPressureSettingMb: number | undefined;
+    lnavModeActive: boolean | undefined;
+    navAccuracyCategoryPosition: number;
+    nicBaro: boolean;
+    selectedAltitudeFt: number | undefined;
+    selectedAltitudeSource: 'mcpFcu' | 'fms' | undefined;
+    selectedHeadingDeg: number | undefined;
+    sourceIntegrityLevel: number;
+    tcasOperational: boolean;
+    vnavModeActive: boolean | undefined;
+}
 
 // @public
 export type TurnDirection = 'L' | 'R';

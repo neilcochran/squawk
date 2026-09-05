@@ -81,6 +81,38 @@ describe('parseSbsLine', () => {
     ).toBeUndefined();
   });
 
+  it('maps the alert flag when it is exactly "0" or "1"', () => {
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 18: '1' }))?.squawkAlert).toBe(
+      true,
+    );
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 18: '0' }))?.squawkAlert).toBe(
+      false,
+    );
+  });
+
+  it('leaves squawkAlert unset when the alert flag is blank or an unrecognized value', () => {
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2' }))?.squawkAlert).toBeUndefined();
+    expect(
+      parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 18: '2' }))?.squawkAlert,
+    ).toBeUndefined();
+  });
+
+  it('maps the SPI flag to identActive when it is exactly "0" or "1"', () => {
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 20: '1' }))?.identActive).toBe(
+      true,
+    );
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 20: '0' }))?.identActive).toBe(
+      false,
+    );
+  });
+
+  it('leaves identActive unset when the SPI flag is blank or an unrecognized value', () => {
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2' }))?.identActive).toBeUndefined();
+    expect(
+      parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 20: '2' }))?.identActive,
+    ).toBeUndefined();
+  });
+
   it('trims a space-padded callsign and omits it when blank', () => {
     expect(
       parseSbsLine(buildLine({ 0: 'MSG', 1: '1', 4: 'a0b1c2', 10: '  ' }))?.callsign,
@@ -113,6 +145,8 @@ describe('parseSbsLine - real dump1090-fa capture', () => {
       lat: 43.12637,
       lon: -70.59115,
       onGround: false,
+      squawkAlert: false,
+      identActive: false,
     });
   });
 
@@ -133,6 +167,11 @@ describe('parseSbsLine - real dump1090-fa capture', () => {
     const update = parseSbsLine(
       'MSG,6,1,1,A262D4,1,2026/08/30,19:14:49.850,2026/08/30,19:14:49.912,,,,,,,,3543,0,0,0,',
     );
-    expect(update).toEqual({ icaoHex: 'A262D4', squawk: '3543' });
+    expect(update).toEqual({
+      icaoHex: 'A262D4',
+      squawk: '3543',
+      squawkAlert: false,
+      identActive: false,
+    });
   });
 });

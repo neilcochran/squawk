@@ -1,7 +1,26 @@
 import { AircraftCategory } from '@squawk/types';
-import type { AircraftCategory as AircraftCategoryValue } from '@squawk/types';
+import type { AircraftCategory as AircraftCategoryValue, EmergencyState } from '@squawk/types';
 
 import type { AircraftUpdate } from './tracker.js';
+
+/**
+ * Maps dump1090-fa's `emergency` JSON string (from its own `net_io.c`
+ * `emergency_enum_string`) to squawk's {@link EmergencyState}. Values are
+ * the raw 3-bit ADS-B emergency/priority state field spelled out as words -
+ * dump1090-fa's own `dump1090.h` documents `EMERGENCY_NONE` through
+ * `EMERGENCY_RESERVED` as matching that field's encoding directly, so this
+ * is a 1:1 rename rather than a lossy remap.
+ */
+const EMERGENCY_STATE_MAP: Readonly<Record<string, EmergencyState>> = {
+  none: 'none',
+  general: 'general',
+  lifeguard: 'lifeguardMedical',
+  minfuel: 'minimumFuel',
+  nordo: 'noCommunications',
+  unlawful: 'unlawfulInterference',
+  downed: 'downed',
+  reserved: 'reserved',
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -18,6 +37,11 @@ function isAircraftCategoryCode(value: string): value is keyof typeof AircraftCa
  */
 function mapCategory(raw: unknown): AircraftCategoryValue | undefined {
   return typeof raw === 'string' && isAircraftCategoryCode(raw) ? AircraftCategory[raw] : undefined;
+}
+
+/** Maps a raw `emergency` string from `aircraft.json` via {@link EMERGENCY_STATE_MAP}, or undefined if missing or unrecognized. */
+function mapEmergencyState(raw: unknown): EmergencyState | undefined {
+  return typeof raw === 'string' ? EMERGENCY_STATE_MAP[raw] : undefined;
 }
 
 /**
@@ -94,6 +118,10 @@ export function mapJsonAircraft(raw: unknown): AircraftUpdate | undefined {
   const category = mapCategory(raw.category);
   if (category !== undefined) {
     update.category = category;
+  }
+  const emergencyState = mapEmergencyState(raw.emergency);
+  if (emergencyState !== undefined) {
+    update.emergencyState = emergencyState;
   }
 
   return update;

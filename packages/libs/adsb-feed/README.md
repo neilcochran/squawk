@@ -103,4 +103,12 @@ dump1090-fa does not send CORS headers, so a browser fetching `aircraft.json` di
 - `feed.getPositionHistory(icaoHex)` - retained position samples for one aircraft, oldest first.
 - Events (via `addEventListener`, read off `CustomEvent.detail`): `aircraft:new` and `aircraft:update` (`{ aircraft: Aircraft }`), `aircraft:lost` (`{ icaoHex: string, lastAircraft: Aircraft }`).
 
-`Aircraft.origin` / `Aircraft.destination` are never populated - ADS-B data carries no flight-schedule information, so resolving a live aircraft's actual origin or destination needs a data source outside this package.
+## Field population by source
+
+Beyond the baseline fields all three sources populate, coverage differs:
+
+- **JSON** additionally populates `emergencyState` (from `aircraft.json`'s `emergency` field). It has no equivalent for `identActive`/`squawkAlert`/`resolutionAdvisory`/`targetState` - `aircraft.json` carries no such fields.
+- **SBS** additionally populates `identActive`/`squawkAlert` (from the BaseStation `SPI`/`Alert` fields). It has no equivalent for `emergencyState`/`resolutionAdvisory`/`targetState`.
+- **Beast** populates all of the above - `emergencyState`, `identActive`, `squawkAlert`, `resolutionAdvisory` (from either a DF16 reply or a type-code-28 subtype-2 broadcast), and `targetState` (from a type-code-29 message) - since it decodes the raw Mode-S/ADS-B messages itself rather than relying on dump1090-fa's own JSON/SBS summaries.
+
+`Aircraft.origin` / `Aircraft.destination` are never populated by any source - ADS-B data carries no flight-schedule information, so resolving a live aircraft's actual origin or destination needs a data source outside this package.

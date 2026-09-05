@@ -4,20 +4,57 @@ import { cprNumLongitudeZones } from '@squawk/mode-s';
 import type {
   AllCallReply,
   CprPosition,
+  ExtendedSquitterAcasRaBroadcast,
   ExtendedSquitterEmergencyStatus,
   ExtendedSquitterIdentification,
   ExtendedSquitterPosition,
+  ExtendedSquitterTargetStateAndStatus,
   ExtendedSquitterVelocity,
+  LongAirAirSurveillanceReply,
   ModeAcReply,
   ShortAirAirSurveillanceReply,
   SurveillanceIdentityReply,
 } from '@squawk/mode-s';
-import type { Aircraft } from '@squawk/types';
+import type { AcasResolutionAdvisoryReport, Aircraft, TargetStateAndStatus } from '@squawk/types';
 
 import { createBeastMapper } from './beast-mapping.js';
 
 const CPR_DENOMINATOR = 131072;
 const ICAO_HEX = 'A0B1C2';
+
+const TARGET_STATE: TargetStateAndStatus = {
+  selectedAltitudeSource: 'fms',
+  selectedAltitudeFt: 3200,
+  baroPressureSettingMb: 1013.2,
+  selectedHeadingDeg: 180,
+  navAccuracyCategoryPosition: 9,
+  nicBaro: true,
+  sourceIntegrityLevel: 2,
+  autopilotEngaged: true,
+  vnavModeActive: true,
+  altitudeHoldModeActive: false,
+  approachModeActive: false,
+  lnavModeActive: true,
+  tcasOperational: true,
+};
+
+const RESOLUTION_ADVISORY: AcasResolutionAdvisoryReport = {
+  active: true,
+  advisoryType: 'climb',
+  corrective: true,
+  downwardSense: false,
+  increasedRate: false,
+  senseReversal: false,
+  altitudeCrossing: false,
+  positive: true,
+  doNotPassBelow: false,
+  doNotPassAbove: false,
+  doNotTurnLeft: false,
+  doNotTurnRight: false,
+  terminated: false,
+  multipleThreat: false,
+  threat: { threatType: 'none' },
+};
 
 function mod(a: number, b: number): number {
   return ((a % b) + b) % b;
@@ -290,16 +327,48 @@ describe('map', () => {
     });
   });
 
-  it('maps extendedSquitterEmergencyStatus to squawk', () => {
+  it('maps extendedSquitterEmergencyStatus to squawk and emergencyState', () => {
     const mapper = createBeastMapper();
     const message: ExtendedSquitterEmergencyStatus = {
       kind: 'extendedSquitterEmergencyStatus',
       icaoHex: ICAO_HEX,
       messageSource: 'icaoDirect',
-      emergencyState: 'none',
-      squawk: '7700',
+      emergencyState: 'unlawfulInterference',
+      squawk: '7500',
     };
-    expect(mapper.map(message, noKnownAircraft)).toEqual({ icaoHex: ICAO_HEX, squawk: '7700' });
+    expect(mapper.map(message, noKnownAircraft)).toEqual({
+      icaoHex: ICAO_HEX,
+      squawk: '7500',
+      emergencyState: 'unlawfulInterference',
+    });
+  });
+
+  it('maps extendedSquitterTargetStateAndStatus to targetState', () => {
+    const mapper = createBeastMapper();
+    const message: ExtendedSquitterTargetStateAndStatus = {
+      kind: 'extendedSquitterTargetStateAndStatus',
+      icaoHex: ICAO_HEX,
+      messageSource: 'icaoDirect',
+      targetStateAndStatus: TARGET_STATE,
+    };
+    expect(mapper.map(message, noKnownAircraft)).toEqual({
+      icaoHex: ICAO_HEX,
+      targetState: TARGET_STATE,
+    });
+  });
+
+  it('maps extendedSquitterAcasRaBroadcast to resolutionAdvisory', () => {
+    const mapper = createBeastMapper();
+    const message: ExtendedSquitterAcasRaBroadcast = {
+      kind: 'extendedSquitterAcasRaBroadcast',
+      icaoHex: ICAO_HEX,
+      messageSource: 'icaoDirect',
+      resolutionAdvisory: RESOLUTION_ADVISORY,
+    };
+    expect(mapper.map(message, noKnownAircraft)).toEqual({
+      icaoHex: ICAO_HEX,
+      resolutionAdvisory: RESOLUTION_ADVISORY,
+    });
   });
 
   it('maps allCallReply to an icaoHex-only update', () => {
@@ -332,15 +401,65 @@ describe('map', () => {
       expect(mapper.map(message, () => known)).toEqual({ icaoHex: ICAO_HEX, baroAltitudeFt: 5000 });
     });
 
-    it('maps a squawk-carrying reply (DF5/21) to squawk rather than altitude', () => {
+    it('maps a squawk-carrying reply (DF5/21) to squawk rather than altitude, plus identActive/squawkAlert', () => {
       const mapper = createBeastMapper();
       const known: Aircraft = { icaoHex: ICAO_HEX, lastSeenAt: Date.now() };
       const message: SurveillanceIdentityReply = {
         kind: 'surveillanceIdentityReply',
         candidateIcaoHex: ICAO_HEX,
         squawk: '1200',
+        identActive: true,
+        squawkAlert: false,
+      };
+      expect(mapper.map(message, () => known)).toEqual({
+        icaoHex: ICAO_HEX,
+        squawk: '1200',
+        identActive: true,
+        squawkAlert: false,
+      });
+    });
+
+    it('omits identActive/squawkAlert when the Flight Status was reserved (both undefined)', () => {
+      const mapper = createBeastMapper();
+      const known: Aircraft = { icaoHex: ICAO_HEX, lastSeenAt: Date.now() };
+      const message: SurveillanceIdentityReply = {
+        kind: 'surveillanceIdentityReply',
+        candidateIcaoHex: ICAO_HEX,
+        squawk: '1200',
+        identActive: undefined,
+        squawkAlert: undefined,
       };
       expect(mapper.map(message, () => known)).toEqual({ icaoHex: ICAO_HEX, squawk: '1200' });
+    });
+
+    it("maps a DF16 reply's embedded resolutionAdvisory alongside altitude", () => {
+      const mapper = createBeastMapper();
+      const known: Aircraft = { icaoHex: ICAO_HEX, lastSeenAt: Date.now() };
+      const message: LongAirAirSurveillanceReply = {
+        kind: 'longAirAirSurveillanceReply',
+        candidateIcaoHex: ICAO_HEX,
+        surface: false,
+        altitudeFt: 5000,
+        resolutionAdvisory: RESOLUTION_ADVISORY,
+      };
+      expect(mapper.map(message, () => known)).toEqual({
+        icaoHex: ICAO_HEX,
+        baroAltitudeFt: 5000,
+        resolutionAdvisory: RESOLUTION_ADVISORY,
+      });
+    });
+
+    it('drops resolutionAdvisory from a DF16 reply that carries none (reserved Threat Type Indicator)', () => {
+      const mapper = createBeastMapper();
+      const known: Aircraft = { icaoHex: ICAO_HEX, lastSeenAt: Date.now() };
+      const message: LongAirAirSurveillanceReply = {
+        kind: 'longAirAirSurveillanceReply',
+        candidateIcaoHex: ICAO_HEX,
+        surface: false,
+        altitudeFt: 5000,
+        resolutionAdvisory: undefined,
+      };
+      expect(mapper.map(message, () => known)).toEqual({ icaoHex: ICAO_HEX, baroAltitudeFt: 5000 });
     });
   });
 });

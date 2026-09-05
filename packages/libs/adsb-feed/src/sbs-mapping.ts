@@ -12,6 +12,8 @@ const FIELD = {
   LONGITUDE: 15,
   VERTICAL_RATE: 16,
   SQUAWK: 17,
+  ALERT: 18,
+  SPI: 20,
   ON_GROUND: 21,
 } as const;
 
@@ -87,6 +89,14 @@ export function parseSbsLine(line: string): AircraftUpdate | undefined {
   const squawk = field(fields, FIELD.SQUAWK);
   if (squawk) {
     update.squawk = squawk;
+  }
+  const alert = field(fields, FIELD.ALERT);
+  if (alert === '0' || alert === '1') {
+    update.squawkAlert = alert === '1';
+  }
+  const spi = field(fields, FIELD.SPI);
+  if (spi === '0' || spi === '1') {
+    update.identActive = spi === '1';
   }
   const onGround = field(fields, FIELD.ON_GROUND);
   if (onGround === '0' || onGround === '1') {

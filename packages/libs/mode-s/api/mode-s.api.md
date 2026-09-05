@@ -4,52 +4,29 @@
 
 ```ts
 
+import { AcasResolutionAdvisoryReport } from '@squawk/types';
+import { AcasThreat } from '@squawk/types';
+import { AcasThreatAltitudeRangeBearing } from '@squawk/types';
+import { AcasThreatIcaoAddress } from '@squawk/types';
+import { AcasThreatNone } from '@squawk/types';
+import { AcasThreatType } from '@squawk/types';
 import type { AircraftCategory } from '@squawk/types';
+import { EmergencyState } from '@squawk/types';
 import type { Position } from '@squawk/types';
+import { ResolutionAdvisoryType } from '@squawk/types';
+import { TargetStateAndStatus } from '@squawk/types';
 
-// @public
-export interface AcasResolutionAdvisoryReport {
-    active: boolean;
-    advisoryType: ResolutionAdvisoryType | undefined;
-    altitudeCrossing: boolean;
-    corrective: boolean;
-    doNotPassAbove: boolean;
-    doNotPassBelow: boolean;
-    doNotTurnLeft: boolean;
-    doNotTurnRight: boolean;
-    downwardSense: boolean;
-    increasedRate: boolean;
-    multipleThreat: boolean;
-    positive: boolean;
-    senseReversal: boolean;
-    terminated: boolean;
-    threat: AcasThreat;
-}
+export { AcasResolutionAdvisoryReport }
 
-// @public
-export type AcasThreat = AcasThreatNone | AcasThreatIcaoAddress | AcasThreatAltitudeRangeBearing;
+export { AcasThreat }
 
-// @public
-export interface AcasThreatAltitudeRangeBearing {
-    threatAltitudeFt: number | undefined;
-    threatBearingDeg: number | undefined;
-    threatRangeNm: number | undefined;
-    threatType: 'altitudeRangeBearing';
-}
+export { AcasThreatAltitudeRangeBearing }
 
-// @public
-export interface AcasThreatIcaoAddress {
-    threatIcaoHex: string;
-    threatType: 'icaoAddress';
-}
+export { AcasThreatIcaoAddress }
 
-// @public
-export interface AcasThreatNone {
-    threatType: 'none';
-}
+export { AcasThreatNone }
 
-// @public
-export type AcasThreatType = AcasThreat['threatType'];
+export { AcasThreatType }
 
 // @public
 export type AirborneVelocity = GroundSpeedVelocity | AirSpeedVelocity;
@@ -101,15 +78,19 @@ export interface CommBAltitudeReply {
     altitudeFt: number | undefined;
     candidateIcaoHex: string;
     commBRegisters: CommBRegister[];
+    identActive: boolean | undefined;
     kind: 'commBAltitudeReply';
+    squawkAlert: boolean | undefined;
 }
 
 // @public
 export interface CommBIdentityReply {
     candidateIcaoHex: string;
     commBRegisters: CommBRegister[];
+    identActive: boolean | undefined;
     kind: 'commBIdentityReply';
     squawk: string;
+    squawkAlert: boolean | undefined;
 }
 
 // @public
@@ -161,6 +142,9 @@ export type DecodedModeSMessage = ExtendedSquitterPosition | ExtendedSquitterVel
 export function decodeEmergencyState(rawState: number): EmergencyState;
 
 // @public
+export function decodeFlightStatus(fsField: number): FlightStatus;
+
+// @public
 export function decodeHeadingAndSpeedReport(mb: Uint8Array): HeadingAndSpeedReport;
 
 // @public
@@ -195,8 +179,7 @@ export function decodeTargetStateAndStatus(me: Uint8Array): TargetStateAndStatus
 // @public
 export function decodeTrackAndTurnReport(mb: Uint8Array): TrackAndTurnReport;
 
-// @public
-export type EmergencyState = 'none' | 'general' | 'lifeguardMedical' | 'minimumFuel' | 'noCommunications' | 'unlawfulInterference' | 'downed' | 'reserved';
+export { EmergencyState }
 
 // @public
 export interface ExtendedSquitterAcasRaBroadcast extends ExtendedSquitterCommon {
@@ -258,6 +241,12 @@ export interface ExtendedSquitterVelocity extends ExtendedSquitterCommon {
 export function extractDownlinkFormat(bytes: Uint8Array): number;
 
 // @public
+export interface FlightStatus {
+    identActive: boolean | undefined;
+    squawkAlert: boolean | undefined;
+}
+
+// @public
 export interface GroundSpeedVelocity extends AirborneVelocityCommon {
     groundSpeedKt: number | undefined;
     // (undocumented)
@@ -310,8 +299,7 @@ export interface ModeSMessageEnvelope {
 // @public
 export function parseModeSFrame(bytes: Uint8Array): ModeSMessageEnvelope;
 
-// @public
-export type ResolutionAdvisoryType = 'climb' | 'descend' | 'crossingClimb' | 'crossingDescend' | 'increaseClimb' | 'increaseDescent' | 'reduceClimb' | 'reduceDescent' | 'doNotClimb' | 'doNotDescend' | 'reversalToClimb' | 'reversalToDescend';
+export { ResolutionAdvisoryType }
 
 // @public
 export interface SelectedVerticalIntention {
@@ -337,32 +325,21 @@ export interface ShortAirAirSurveillanceReply {
 export interface SurveillanceAltitudeReply {
     altitudeFt: number | undefined;
     candidateIcaoHex: string;
+    identActive: boolean | undefined;
     kind: 'surveillanceAltitudeReply';
+    squawkAlert: boolean | undefined;
 }
 
 // @public
 export interface SurveillanceIdentityReply {
     candidateIcaoHex: string;
+    identActive: boolean | undefined;
     kind: 'surveillanceIdentityReply';
     squawk: string;
+    squawkAlert: boolean | undefined;
 }
 
-// @public
-export interface TargetStateAndStatus {
-    altitudeHoldModeActive: boolean | undefined;
-    approachModeActive: boolean | undefined;
-    autopilotEngaged: boolean | undefined;
-    baroPressureSettingMb: number | undefined;
-    lnavModeActive: boolean | undefined;
-    navAccuracyCategoryPosition: number;
-    nicBaro: boolean;
-    selectedAltitudeFt: number | undefined;
-    selectedAltitudeSource: 'mcpFcu' | 'fms' | undefined;
-    selectedHeadingDeg: number | undefined;
-    sourceIntegrityLevel: number;
-    tcasOperational: boolean;
-    vnavModeActive: boolean | undefined;
-}
+export { TargetStateAndStatus }
 
 // @public
 export interface TrackAndTurnReport {
