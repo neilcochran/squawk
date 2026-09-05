@@ -11,6 +11,7 @@ import type { Position } from '@squawk/types';
 export interface AircraftFeed extends EventTarget {
     getAircraft(icaoHex: string): Aircraft | undefined;
     getAllAircraft(): Aircraft[];
+    getConnectionState(): ConnectionState;
     getPositionHistory(icaoHex: string): PositionHistoryEntry[];
     start(): void;
     stop(): void;
@@ -39,6 +40,14 @@ export interface BeastFeedOptions extends AircraftFeedOptions {
     port?: number;
     receiverPosition?: Pick<Position, 'lat' | 'lon'>;
     reconnectDelayMs?: number;
+}
+
+// @public
+export type ConnectionState = 'connected' | 'reconnecting';
+
+// @public
+export interface ConnectionStateEventDetail {
+    state: ConnectionState;
 }
 
 // @public
