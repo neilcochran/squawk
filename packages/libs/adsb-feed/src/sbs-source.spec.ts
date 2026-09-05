@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { createSbsAircraftFeed } from './sbs-source.js';
 import { collectEventDetails } from './test-utils.js';
-import type { AircraftUpdateEventDetail } from './types/index.js';
+import type { AircraftUpdateEventDetail, ConnectionStateEventDetail } from './types/index.js';
 
 let server: Server;
 let port: number;
@@ -228,5 +228,44 @@ describe('stop', () => {
 
     feed.stop();
     expect(feed.getAllAircraft()).toHaveLength(0);
+  });
+});
+
+describe('connection state', () => {
+  it('starts as reconnecting before the socket connects', () => {
+    const feed = createSbsAircraftFeed({ host: '127.0.0.1', port });
+    expect(feed.getConnectionState()).toBe('reconnecting');
+  });
+
+  it('dispatches connection:connect and updates getConnectionState once the socket connects', async () => {
+    const feed = createSbsAircraftFeed({ host: '127.0.0.1', port });
+    const events = collectEventDetails<ConnectionStateEventDetail>(feed, 'connection:connect');
+
+    const connection = waitForServerConnection();
+    feed.start();
+    await connection;
+    await waitUntil(() => feed.getConnectionState() === 'connected');
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.state).toBe('connected');
+
+    feed.stop();
+  });
+
+  it('dispatches connection:disconnect when the server closes the socket', async () => {
+    const feed = createSbsAircraftFeed({ host: '127.0.0.1', port, reconnectDelayMs: 20 });
+    const events = collectEventDetails<ConnectionStateEventDetail>(feed, 'connection:disconnect');
+
+    const connection = waitForServerConnection();
+    feed.start();
+    const serverSocket = await connection;
+    await waitUntil(() => feed.getConnectionState() === 'connected');
+    serverSocket.destroy();
+
+    await waitUntil(() => feed.getConnectionState() === 'reconnecting');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.state).toBe('reconnecting');
+
+    feed.stop();
   });
 });

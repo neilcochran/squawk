@@ -1,4 +1,4 @@
-import type { AircraftFeed, PositionHistoryEntry } from '@squawk/adsb-feed';
+import type { AircraftFeed, ConnectionState, PositionHistoryEntry } from '@squawk/adsb-feed';
 import type { Aircraft, AircraftRegistration } from '@squawk/types';
 
 import type { RegistryDataLoader } from './use-icao-registry.js';
@@ -34,6 +34,9 @@ export function createFakeAircraftFeed(): FakeAircraftFeed {
     },
     getPositionHistory(): PositionHistoryEntry[] {
       return [];
+    },
+    getConnectionState(): ConnectionState {
+      return 'connected';
     },
   });
   return feed;

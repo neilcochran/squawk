@@ -4,6 +4,8 @@ import type {
   AircraftFeedOptions,
   AircraftLostEventDetail,
   AircraftUpdateEventDetail,
+  ConnectionState,
+  ConnectionStateEventDetail,
   PositionHistoryEntry,
 } from './types/index.js';
 
@@ -55,9 +57,16 @@ export interface Tracker extends EventTarget {
   getAllAircraft(): Aircraft[];
   /** Returns the retained position history for one aircraft, oldest first. */
   getPositionHistory(icaoHex: string): PositionHistoryEntry[];
+  /** Returns the current connection state. */
+  getConnectionState(): ConnectionState;
+  /** Records a connection-state transition, dispatching `connection:connect` or `connection:disconnect`. No-ops if `state` matches the current state, so a source can call this on every underlying signal without duplicating events. */
+  setConnectionState(state: ConnectionState): void;
   /** Stops the staleness sweep timer and clears all tracked state. */
   dispose(): void;
 }
+
+/** Connection state before the first successful connection or poll, and after `dispose()`. */
+const DEFAULT_CONNECTION_STATE: ConnectionState = 'reconnecting';
 
 /**
  * Merges the position-shaped fields of an update onto a previously known
@@ -95,6 +104,11 @@ function mergePosition(
  * Neither aircraft.json nor SBS carries an explicit "removed" signal, so
  * both sources rely on this same timeout-based sweep for loss detection.
  *
+ * Also tracks connection state - each source calls `setConnectionState` from
+ * its own transport-level connect/disconnect (or poll success/failure)
+ * signal, and this dispatches `connection:connect` / `connection:disconnect`
+ * (carrying {@link ConnectionStateEventDetail}) only on an actual change.
+ *
  * @param options - Staleness and position-history retention configuration.
  * @returns A `Tracker` ready to receive `ingest` calls.
  */
@@ -105,6 +119,7 @@ export function createTracker(options: AircraftFeedOptions): Tracker {
 
   const aircraftByHex = new Map<string, Aircraft>();
   const historyByHex = new Map<string, PositionHistoryEntry[]>();
+  let connectionState: ConnectionState = DEFAULT_CONNECTION_STATE;
 
   const sweepHandle = setInterval(sweep, DEFAULT_SWEEP_INTERVAL_MS);
 
@@ -172,10 +187,23 @@ export function createTracker(options: AircraftFeedOptions): Tracker {
     getPositionHistory(icaoHex: string): PositionHistoryEntry[] {
       return [...(historyByHex.get(icaoHex) ?? [])];
     },
+    getConnectionState(): ConnectionState {
+      return connectionState;
+    },
+    setConnectionState(state: ConnectionState): void {
+      if (state === connectionState) {
+        return;
+      }
+      connectionState = state;
+      const detail: ConnectionStateEventDetail = { state };
+      const eventType = state === 'connected' ? 'connection:connect' : 'connection:disconnect';
+      target.dispatchEvent(new CustomEvent<ConnectionStateEventDetail>(eventType, { detail }));
+    },
     dispose(): void {
       clearInterval(sweepHandle);
       aircraftByHex.clear();
       historyByHex.clear();
+      connectionState = DEFAULT_CONNECTION_STATE;
     },
   });
 }

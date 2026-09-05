@@ -44,10 +44,31 @@ export interface AircraftLostEventDetail {
 }
 
 /**
+ * Connection lifecycle state for a feed's underlying transport. `'connected'`
+ * means data is actively flowing - for the JSON source, that the most recent
+ * poll succeeded. `'reconnecting'` covers everything else: not yet connected,
+ * a dropped connection awaiting automatic retry, or (for the JSON source) the
+ * most recent poll failed.
+ */
+export type ConnectionState = 'connected' | 'reconnecting';
+
+/**
+ * Detail payload carried by the `connection:connect` and
+ * `connection:disconnect` events as `CustomEvent.detail`.
+ */
+export interface ConnectionStateEventDetail {
+  /** The state the feed just transitioned to. */
+  state: ConnectionState;
+}
+
+/**
  * A live, typed feed of ADS-B aircraft state, normalized from a dump1090-fa
  * source into `Aircraft` events. Dispatches `aircraft:new` and
- * `aircraft:update` (both carrying {@link AircraftUpdateEventDetail}) and
- * `aircraft:lost` (carrying {@link AircraftLostEventDetail}).
+ * `aircraft:update` (both carrying {@link AircraftUpdateEventDetail}),
+ * `aircraft:lost` (carrying {@link AircraftLostEventDetail}), and
+ * `connection:connect` / `connection:disconnect` (both carrying
+ * {@link ConnectionStateEventDetail}) for the underlying transport's
+ * connection lifecycle.
  *
  * Create one with `createJsonAircraftFeed` or `createSbsAircraftFeed` rather
  * than implementing this interface directly.
@@ -63,4 +84,6 @@ export interface AircraftFeed extends EventTarget {
   getAllAircraft(): Aircraft[];
   /** Returns the retained position history for one aircraft, oldest first. Empty if not tracked or no positions recorded yet. */
   getPositionHistory(icaoHex: string): PositionHistoryEntry[];
+  /** Returns the feed's current connection state. `'reconnecting'` before the first successful connection or poll. */
+  getConnectionState(): ConnectionState;
 }

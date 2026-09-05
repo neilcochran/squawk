@@ -15,7 +15,10 @@ import type { AircraftFeed, AircraftLostEventDetail, BeastFeedOptions } from './
  * messages - this decodes them via `@squawk/beast`/`@squawk/mode-s` and
  * resolves CPR-encoded positions internally (see `BeastFeedOptions.receiverPosition`
  * for what that needs). Reconnects automatically, after `reconnectDelayMs`,
- * if the connection closes or errors, until `stop()` is called.
+ * if the connection closes or errors, until `stop()` is called. Forwards
+ * `@squawk/beast`'s own `beast:connect`/`beast:disconnect` signal into the
+ * returned feed's `connection:connect`/`connection:disconnect` events and
+ * `getConnectionState()`.
  *
  * ```typescript
  * import { createBeastAircraftFeed } from '@squawk/adsb-feed';
@@ -47,6 +50,12 @@ export function createBeastAircraftFeed(options: BeastFeedOptions): AircraftFeed
     if (update) {
       tracker.ingest(update);
     }
+  });
+  stream.addEventListener('beast:connect', () => {
+    tracker.setConnectionState('connected');
+  });
+  stream.addEventListener('beast:disconnect', () => {
+    tracker.setConnectionState('reconnecting');
   });
   tracker.addEventListener('aircraft:lost', (event) => {
     mapper.forget((event as CustomEvent<AircraftLostEventDetail>).detail.icaoHex);

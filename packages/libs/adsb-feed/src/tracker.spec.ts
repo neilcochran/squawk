@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { collectEventDetails } from './test-utils.js';
 import { createTracker } from './tracker.js';
-import type { AircraftLostEventDetail, AircraftUpdateEventDetail } from './types/index.js';
+import type {
+  AircraftLostEventDetail,
+  AircraftUpdateEventDetail,
+  ConnectionStateEventDetail,
+} from './types/index.js';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -212,5 +216,66 @@ describe('dispose', () => {
     tracker.dispose();
 
     expect(tracker.getAllAircraft()).toEqual([]);
+  });
+
+  it('resets connection state back to reconnecting', () => {
+    const tracker = createTracker({});
+    tracker.setConnectionState('connected');
+
+    tracker.dispose();
+
+    expect(tracker.getConnectionState()).toBe('reconnecting');
+  });
+});
+
+describe('connection state', () => {
+  it('defaults to reconnecting before any transition', () => {
+    const tracker = createTracker({});
+    expect(tracker.getConnectionState()).toBe('reconnecting');
+  });
+
+  it('dispatches connection:connect and updates the queryable state', () => {
+    const tracker = createTracker({});
+    const events = collectEventDetails<ConnectionStateEventDetail>(tracker, 'connection:connect');
+
+    tracker.setConnectionState('connected');
+
+    expect(tracker.getConnectionState()).toBe('connected');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.state).toBe('connected');
+  });
+
+  it('dispatches connection:disconnect when transitioning away from connected', () => {
+    const tracker = createTracker({});
+    tracker.setConnectionState('connected');
+    const events = collectEventDetails<ConnectionStateEventDetail>(
+      tracker,
+      'connection:disconnect',
+    );
+
+    tracker.setConnectionState('reconnecting');
+
+    expect(tracker.getConnectionState()).toBe('reconnecting');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.state).toBe('reconnecting');
+  });
+
+  it('does not dispatch an event when the state is set to its current value', () => {
+    const tracker = createTracker({});
+    const connectEvents = collectEventDetails<ConnectionStateEventDetail>(
+      tracker,
+      'connection:connect',
+    );
+    const disconnectEvents = collectEventDetails<ConnectionStateEventDetail>(
+      tracker,
+      'connection:disconnect',
+    );
+
+    tracker.setConnectionState('reconnecting');
+    tracker.setConnectionState('connected');
+    tracker.setConnectionState('connected');
+
+    expect(connectEvents).toHaveLength(1);
+    expect(disconnectEvents).toHaveLength(0);
   });
 });
