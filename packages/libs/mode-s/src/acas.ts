@@ -72,6 +72,15 @@ function decodeAdvisoryType(
  * TC28/ST2's ME uses that same first byte for its type-code-and-subtype
  * header instead - either way, content starts at bit 8).
  *
+ * This function assumes `payload` is already known to carry a genuine BDS
+ * 3,0 report - it does not itself check DF16's register-identifier byte,
+ * since a TC28/ST2 caller's first byte is never that identifier by
+ * construction. A DF16 caller must check that byte itself before calling
+ * this (see `decodeModeSMessage`'s DF16 branch) - DF16's MV is a
+ * general-purpose Comm-B register slot that can legitimately carry a
+ * different register, unlike TC28/ST2 which is gated by its own type-code
+ * and subtype instead.
+ *
  * @param payload - The 7-byte field: DF16's MV, or a type-code-28 subtype-2 ME.
  * @returns The decoded report, or undefined if the Threat Type Indicator is the reserved value (not a legitimate report).
  */

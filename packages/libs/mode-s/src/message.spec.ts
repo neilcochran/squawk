@@ -621,6 +621,7 @@ describe('decodeModeSMessage - DF0 short air-air surveillance reply (synthetic)'
 describe('decodeModeSMessage - DF16 long air-air surveillance reply (synthetic)', () => {
   function activeClimbMv(): Uint8Array {
     const mv = new Uint8Array(7);
+    setBits(mv, 0, 8, 0x30); // BDS 3,0 register identifier
     setBits(mv, 8, 1, 1); // active
     setBits(mv, 9, 1, 1); // corrective
     setBits(mv, 14, 1, 1); // positive
@@ -644,6 +645,22 @@ describe('decodeModeSMessage - DF16 long air-air surveillance reply (synthetic)'
   it('still reports altitude and address when the resolution advisory has a reserved Threat Type Indicator', () => {
     const mv = activeClimbMv();
     setBits(mv, 28, 2, 3); // TTI = reserved
+    const bytes = buildDf16(0, 0x0abc, mv, [0xab, 0x09, 0x69]);
+    const result = decodeModeSMessage(bytes);
+    expect(result?.kind).toBe('longAirAirSurveillanceReply');
+    if (result?.kind !== 'longAirAirSurveillanceReply') {
+      return;
+    }
+    expect(result.altitudeFt).toBe(decodeAltitudeCode(0x0abc));
+    expect(result.resolutionAdvisory).toBeUndefined();
+  });
+
+  it("still reports altitude and address but drops resolutionAdvisory when MV isn't a BDS 3,0 register", () => {
+    const mv = new Uint8Array(7);
+    setBits(mv, 0, 8, 0x10); // a different Comm-B register, not BDS 3,0
+    setBits(mv, 8, 1, 1); // bits that would read as an active climb RA if misinterpreted as BDS 3,0
+    setBits(mv, 9, 1, 1);
+    setBits(mv, 14, 1, 1);
     const bytes = buildDf16(0, 0x0abc, mv, [0xab, 0x09, 0x69]);
     const result = decodeModeSMessage(bytes);
     expect(result?.kind).toBe('longAirAirSurveillanceReply');

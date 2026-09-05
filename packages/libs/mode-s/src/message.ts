@@ -31,6 +31,9 @@ import { decodeAirborneVelocity } from './velocity.js';
  */
 const MAX_PLAUSIBLE_INTERROGATOR_CODE = 127;
 
+/** BDS 3,0 (ACAS Active Resolution Advisory) register identifier, per ICAO Annex 10 Vol IV - the value a DF16 reply's MV field starts with when (and only when) it actually carries an RA report. */
+const BDS_3_0_IDENTIFIER = 0x30;
+
 /** ADS-B type codes this package decodes, grouped by shared handling. Adding support for another type code means adding one entry here and one case in decodeExtendedSquitter's switch - the categories below are the complete, auditable list of what this package does and does not decode from a DF17/18 message. */
 type TypeCodeCategory =
   | 'identification'
@@ -309,10 +312,20 @@ export function decodeModeSMessage(bytes: Uint8Array): DecodedModeSMessage | und
   }
 
   if (envelope.downlinkFormat === 16) {
+    const mv = bytes.slice(4, 11);
+    // Unlike TC28/ST2 (gated by its own type-code+subtype, checked before
+    // decodeAcasResolutionAdvisory is ever called), DF16's MV field is a
+    // general-purpose Comm-B register slot - it only carries a BDS 3,0
+    // report when its own register-identifier byte says so. A transponder
+    // can legitimately reply to a UF16 interrogation with a different
+    // register loaded into MV, so decoding it unconditionally would
+    // misinterpret unrelated register content as a phantom Resolution
+    // Advisory.
+    const isBds30 = extractBits(mv, 0, 8) === BDS_3_0_IDENTIFIER;
     return {
       kind: 'longAirAirSurveillanceReply',
       ...decodeAirAirSurveillanceCore(bytes, envelope.crcRemainder),
-      resolutionAdvisory: decodeAcasResolutionAdvisory(bytes.slice(4, 11)),
+      resolutionAdvisory: isBds30 ? decodeAcasResolutionAdvisory(mv) : undefined,
     };
   }
 
