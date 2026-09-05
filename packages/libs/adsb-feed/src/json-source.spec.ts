@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { createJsonAircraftFeed } from './json-source.js';
 import { collectEventDetails } from './test-utils.js';
-import type { AircraftUpdateEventDetail } from './types/index.js';
+import type { AircraftUpdateEventDetail, ConnectionStateEventDetail } from './types/index.js';
 
 const URL = 'http://192.168.1.50:8080/data/aircraft.json';
 
@@ -149,5 +149,64 @@ describe('stop', () => {
 
     feed.stop();
     expect(feed.getAllAircraft()).toHaveLength(0);
+  });
+});
+
+describe('connection state', () => {
+  it('defaults to reconnecting before the first poll', () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ aircraft: [] }));
+    const feed = createJsonAircraftFeed({ url: URL, fetch: fetchMock });
+    expect(feed.getConnectionState()).toBe('reconnecting');
+  });
+
+  it('dispatches connection:connect once a poll succeeds', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ aircraft: [] }));
+    const feed = createJsonAircraftFeed({ url: URL, fetch: fetchMock });
+    const events = collectEventDetails<ConnectionStateEventDetail>(feed, 'connection:connect');
+
+    feed.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(feed.getConnectionState()).toBe('connected');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.state).toBe('connected');
+    feed.stop();
+  });
+
+  it('dispatches connection:disconnect when a poll returns a non-ok response after a successful one', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ aircraft: [] }))
+      .mockResolvedValue(jsonResponse({}, 503));
+    const feed = createJsonAircraftFeed({ url: URL, fetch: fetchMock, pollIntervalMs: 500 });
+    const events = collectEventDetails<ConnectionStateEventDetail>(feed, 'connection:disconnect');
+
+    feed.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(feed.getConnectionState()).toBe('connected');
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(feed.getConnectionState()).toBe('reconnecting');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.state).toBe('reconnecting');
+    feed.stop();
+  });
+
+  it('dispatches connection:disconnect when a poll rejects after a successful one', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ aircraft: [] }))
+      .mockRejectedValue(new Error('network down'));
+    const feed = createJsonAircraftFeed({ url: URL, fetch: fetchMock, pollIntervalMs: 500 });
+    const events = collectEventDetails<ConnectionStateEventDetail>(feed, 'connection:disconnect');
+
+    feed.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(feed.getConnectionState()).toBe('connected');
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(feed.getConnectionState()).toBe('reconnecting');
+    expect(events).toHaveLength(1);
+    feed.stop();
   });
 });

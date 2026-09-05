@@ -12,6 +12,8 @@ export type {
   AircraftFeedOptions,
   AircraftLostEventDetail,
   AircraftUpdateEventDetail,
+  ConnectionState,
+  ConnectionStateEventDetail,
   JsonFeedOptions,
   PositionHistoryEntry,
   PositionHistoryRetention,

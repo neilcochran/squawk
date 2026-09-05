@@ -10,6 +10,12 @@ const DEFAULT_POLL_INTERVAL_MS = 1000;
  * endpoint, polled on an interval. Browser-safe (also exported from this
  * package's `/browser` entry) given a same-origin URL or a CORS proxy.
  *
+ * HTTP polling has no persistent connection to track, so the returned feed's
+ * `connection:connect`/`connection:disconnect` events and
+ * `getConnectionState()` use the most recent poll's outcome instead:
+ * `'connected'` once a poll successfully parses, `'reconnecting'` after a
+ * non-ok response or a network/parse failure.
+ *
  * ```typescript
  * import { createJsonAircraftFeed } from '@squawk/adsb-feed';
  *
@@ -38,9 +44,11 @@ export function createJsonAircraftFeed(options: JsonFeedOptions): AircraftFeed {
     try {
       const response = await fetchImpl(options.url, { signal: abortController.signal });
       if (!response.ok) {
+        tracker.setConnectionState('reconnecting');
         return;
       }
       const parsed: unknown = await response.json();
+      tracker.setConnectionState('connected');
       for (const raw of extractAircraftRecords(parsed)) {
         const update = mapJsonAircraft(raw);
         if (update) {
@@ -51,6 +59,7 @@ export function createJsonAircraftFeed(options: JsonFeedOptions): AircraftFeed {
       // Transient network/parse failure, or an in-flight request aborted by
       // stop(). The next poll tick retries - a long-running feed shouldn't
       // die on one bad request.
+      tracker.setConnectionState('reconnecting');
     }
   }
 

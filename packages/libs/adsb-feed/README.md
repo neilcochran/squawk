@@ -101,7 +101,19 @@ dump1090-fa does not send CORS headers, so a browser fetching `aircraft.json` di
 - `feed.start()` / `feed.stop()` - begin or end polling/connecting. `stop()` clears all tracked state.
 - `feed.getAircraft(icaoHex)` / `feed.getAllAircraft()` - current normalized `Aircraft` state.
 - `feed.getPositionHistory(icaoHex)` - retained position samples for one aircraft, oldest first.
-- Events (via `addEventListener`, read off `CustomEvent.detail`): `aircraft:new` and `aircraft:update` (`{ aircraft: Aircraft }`), `aircraft:lost` (`{ icaoHex: string, lastAircraft: Aircraft }`).
+- `feed.getConnectionState()` - current connection state, `'connected' | 'reconnecting'`.
+- Events (via `addEventListener`, read off `CustomEvent.detail`): `aircraft:new` and `aircraft:update` (`{ aircraft: Aircraft }`), `aircraft:lost` (`{ icaoHex: string, lastAircraft: Aircraft }`), `connection:connect` and `connection:disconnect` (`{ state: 'connected' | 'reconnecting' }`).
+
+## Connection state
+
+All three sources expose the same connection lifecycle. For SBS and Beast, `getConnectionState()` and the `connection:connect`/`connection:disconnect` events reflect the underlying TCP socket's own connect/close lifecycle. The JSON source has no persistent connection to track, so it uses the most recent poll's outcome instead: `'connected'` once a poll successfully parses, `'reconnecting'` after a non-ok response or a network/parse failure.
+
+```typescript
+feed.addEventListener('connection:disconnect', () => {
+  console.log('lost connection, reconnecting...');
+});
+console.log(feed.getConnectionState()); // 'connected' | 'reconnecting'
+```
 
 ## Field population by source
 

@@ -16,7 +16,10 @@ const DEFAULT_RECONNECT_DELAY_MS = 5000;
  * browser API) - not exported from this package's `/browser` entry.
  *
  * Reconnects automatically, after `reconnectDelayMs`, if the connection
- * closes or errors, until `stop()` is called.
+ * closes or errors, until `stop()` is called. Exposes the socket's own
+ * connect/close lifecycle as the returned feed's
+ * `connection:connect`/`connection:disconnect` events and
+ * `getConnectionState()`.
  *
  * ```typescript
  * import { createSbsAircraftFeed } from '@squawk/adsb-feed';
@@ -61,6 +64,7 @@ export function createSbsAircraftFeed(options: SbsFeedOptions): AircraftFeed {
     if (stopped || reconnectHandle !== undefined) {
       return;
     }
+    tracker.setConnectionState('reconnecting');
     reconnectHandle = setTimeout(() => {
       reconnectHandle = undefined;
       connectSocket();
@@ -73,6 +77,9 @@ export function createSbsAircraftFeed(options: SbsFeedOptions): AircraftFeed {
     socket = nextSocket;
     nextSocket.setEncoding('utf8');
     nextSocket.on('data', handleData);
+    nextSocket.on('connect', () => {
+      tracker.setConnectionState('connected');
+    });
     // A listener is required so a connection failure (e.g. dump1090-fa not
     // yet reachable) doesn't crash the process - 'close' always follows
     // 'error' on a socket, and reconnection is scheduled there so it only
