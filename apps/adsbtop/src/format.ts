@@ -1,4 +1,4 @@
-import type { Aircraft } from '@squawk/types';
+import type { Aircraft, EmergencyState } from '@squawk/types';
 
 import type { MessageLogEntry } from './aircraft-state.js';
 
@@ -16,6 +16,30 @@ const EMERGENCY_SQUAWKS: ReadonlySet<string> = new Set(['7500', '7600', '7700'])
  */
 export function isEmergencySquawk(squawk: string | undefined): boolean {
   return squawk !== undefined && EMERGENCY_SQUAWKS.has(squawk);
+}
+
+// 'none' and 'reserved' are not declared emergencies - only the remaining EmergencyState values are.
+function isDeclaredEmergencyState(emergencyState: EmergencyState | undefined): boolean {
+  return emergencyState !== undefined && emergencyState !== 'none' && emergencyState !== 'reserved';
+}
+
+/**
+ * Whether `aircraft` should render as an emergency row: a declared emergency
+ * squawk code, a declared emergency state, or a currently-active ACAS/TCAS
+ * Resolution Advisory. Any one of the three is sufficient - they arrive on
+ * different messages (and different sources - see the `@squawk/adsb-feed`
+ * README's "Field population by source" section) and aren't expected to
+ * always agree.
+ *
+ * @param aircraft - The aircraft to check.
+ * @returns True if any of the three emergency signals is present.
+ */
+export function isEmergencyAircraft(aircraft: Aircraft): boolean {
+  return (
+    isEmergencySquawk(aircraft.squawk) ||
+    isDeclaredEmergencyState(aircraft.emergencyState) ||
+    aircraft.resolutionAdvisory?.active === true
+  );
 }
 
 /**

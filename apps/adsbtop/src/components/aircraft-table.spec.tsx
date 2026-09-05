@@ -96,6 +96,57 @@ describe('AircraftTable', () => {
     expect(lastFrame()).toContain('UAL911');
   });
 
+  it('renders a declared-emergency-state aircraft callsign in the output', () => {
+    const aircraft = [makeAircraft({ callsign: 'DAL456', emergencyState: 'minimumFuel' })];
+    const { lastFrame } = render(
+      <AircraftTable
+        aircraft={aircraft}
+        columns={visibleColumns(false)}
+        nowMs={0}
+        sortKey="icaoHex"
+        selectedIcaoHex={undefined}
+      />,
+    );
+
+    expect(lastFrame()).toContain('DAL456');
+  });
+
+  it('renders an active-resolution-advisory aircraft callsign in the output', () => {
+    const aircraft = [
+      makeAircraft({
+        callsign: 'SWA202',
+        resolutionAdvisory: {
+          active: true,
+          advisoryType: 'climb',
+          corrective: true,
+          downwardSense: false,
+          increasedRate: false,
+          senseReversal: false,
+          altitudeCrossing: false,
+          positive: true,
+          doNotPassBelow: false,
+          doNotPassAbove: false,
+          doNotTurnLeft: false,
+          doNotTurnRight: false,
+          terminated: false,
+          multipleThreat: false,
+          threat: { threatType: 'none' },
+        },
+      }),
+    ];
+    const { lastFrame } = render(
+      <AircraftTable
+        aircraft={aircraft}
+        columns={visibleColumns(false)}
+        nowMs={0}
+        sortKey="icaoHex"
+        selectedIcaoHex={undefined}
+      />,
+    );
+
+    expect(lastFrame()).toContain('SWA202');
+  });
+
   it('renders every header regardless of which column is the active sort key', () => {
     // ink-testing-library strips ANSI codes from lastFrame(), so the color
     // highlight itself isn't assertable here - this covers that switching
