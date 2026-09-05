@@ -331,15 +331,17 @@ describe('deframeBeastBytes - real dump1090-fa Beast capture (full session)', ()
     }
   });
 
-  it('decodes a real DF16 long air-air surveillance reply with no active Resolution Advisory', () => {
-    const df16 = result.frames.find(
+  it('omits resolutionAdvisory from every real DF16 reply in this capture, since none carry a genuine BDS 3,0 register', () => {
+    const df16Frames = result.frames.filter(
       (frame) => frame.decoded?.kind === 'longAirAirSurveillanceReply',
     );
-    expect(df16).toBeDefined();
-    if (df16?.decoded?.kind !== 'longAirAirSurveillanceReply') {
-      return;
+    expect(df16Frames.length).toBeGreaterThan(0);
+    for (const frame of df16Frames) {
+      if (frame.decoded?.kind !== 'longAirAirSurveillanceReply') {
+        continue;
+      }
+      expect(frame.decoded.resolutionAdvisory).toBeUndefined();
     }
-    expect(df16.decoded.resolutionAdvisory?.active).toBe(false);
   });
 
   it('decodes a real BDS 4,0/5,0/6,0 Comm-B register of each kind from DF20 replies', () => {
