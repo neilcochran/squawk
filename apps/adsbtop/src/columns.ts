@@ -1,13 +1,16 @@
-import type { Aircraft } from '@squawk/types';
+import type { Aircraft, Coordinates } from '@squawk/types';
 
 import {
   formatAltitude,
   formatAge,
+  formatBearing,
+  formatDistance,
   formatGroundSpeed,
   formatHeading,
   formatOnGround,
   formatVerticalRate,
 } from './format.js';
+import { bearingToAircraftDeg, distanceToAircraftNm } from './location.js';
 
 /** One column in the aircraft table. */
 export interface ColumnDef {
@@ -107,13 +110,57 @@ export const COLUMNS: readonly ColumnDef[] = [
 ] as const;
 
 /**
- * Selects the columns to render for the current width mode.
+ * Builds the Dist column shown when a receiver location (`--lat`/`--lon`) is
+ * configured. Not part of {@link COLUMNS} since its render function needs to
+ * close over `location`.
+ *
+ * @param location - The configured receiver location.
+ * @returns The Dist column definition.
+ */
+export function buildDistanceColumn(location: Coordinates): ColumnDef {
+  return {
+    key: 'distance',
+    header: 'Dist',
+    width: 6,
+    compact: false,
+    render: (aircraft) => formatDistance(distanceToAircraftNm(location, aircraft)),
+  };
+}
+
+/**
+ * Builds the Brg column shown when a receiver location (`--lat`/`--lon`) is
+ * configured. Not part of {@link COLUMNS} since its render function needs to
+ * close over `location`.
+ *
+ * @param location - The configured receiver location.
+ * @returns The Brg column definition.
+ */
+export function buildBearingColumn(location: Coordinates): ColumnDef {
+  return {
+    key: 'bearing',
+    header: 'Brg',
+    width: 5,
+    compact: false,
+    render: (aircraft) => formatBearing(bearingToAircraftDeg(location, aircraft)),
+  };
+}
+
+/**
+ * Selects the columns to render for the current width mode, appending the
+ * Dist/Brg columns when `location` is configured. Dist/Brg are omitted
+ * entirely (not shown blank) without a configured location, and never shown
+ * in compact mode regardless.
  *
  * @param compact - True to show only the columns marked `compact: true` (narrow terminal).
+ * @param location - The configured receiver location, if any.
  * @returns The columns to render, in display order.
  */
-export function visibleColumns(compact: boolean): readonly ColumnDef[] {
-  return compact ? COLUMNS.filter((column) => column.compact) : COLUMNS;
+export function visibleColumns(compact: boolean, location?: Coordinates): readonly ColumnDef[] {
+  const baseColumns = compact ? COLUMNS.filter((column) => column.compact) : COLUMNS;
+  if (compact || location === undefined) {
+    return baseColumns;
+  }
+  return [...baseColumns, buildDistanceColumn(location), buildBearingColumn(location)];
 }
 
 /** Table sort keys, in the order `[O]` cycles through them. */

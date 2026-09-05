@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Aircraft } from '@squawk/types';
+import type { Aircraft, Coordinates } from '@squawk/types';
 
-import { COLUMNS, compareAircraft, nextSortKey, sortAircraft, visibleColumns } from './columns.js';
+import {
+  buildBearingColumn,
+  buildDistanceColumn,
+  COLUMNS,
+  compareAircraft,
+  nextSortKey,
+  sortAircraft,
+  visibleColumns,
+} from './columns.js';
 import type { SortKey } from './columns.js';
 
 function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
@@ -26,15 +34,57 @@ describe('COLUMNS registration column', () => {
   });
 });
 
+describe('buildDistanceColumn', () => {
+  const location: Coordinates = { lat: 0, lon: 0 };
+  const column = buildDistanceColumn(location);
+
+  it('is not part of the compact set', () => {
+    expect(column.compact).toBe(false);
+  });
+
+  it('renders the distance to a positioned aircraft', () => {
+    const aircraft: Aircraft = { icaoHex: 'A0B1C2', lastSeenAt: 0, position: { lat: 1, lon: 0 } };
+    expect(column.render(aircraft, 0)).toBe('60nm');
+  });
+
+  it('renders a placeholder when the aircraft has no position', () => {
+    expect(column.render({ icaoHex: 'A0B1C2', lastSeenAt: 0 }, 0)).toBe('-');
+  });
+});
+
+describe('buildBearingColumn', () => {
+  const location: Coordinates = { lat: 0, lon: 0 };
+  const column = buildBearingColumn(location);
+
+  it('is not part of the compact set', () => {
+    expect(column.compact).toBe(false);
+  });
+
+  it('renders the bearing to a positioned aircraft', () => {
+    const aircraft: Aircraft = { icaoHex: 'A0B1C2', lastSeenAt: 0, position: { lat: 0, lon: 1 } };
+    expect(column.render(aircraft, 0)).toBe('90°');
+  });
+
+  it('renders a placeholder when the aircraft has no position', () => {
+    expect(column.render({ icaoHex: 'A0B1C2', lastSeenAt: 0 }, 0)).toBe('-');
+  });
+});
+
 describe('visibleColumns', () => {
-  it('returns every column when not compact', () => {
+  it('returns every column when not compact and no location is configured', () => {
     expect(visibleColumns(false)).toHaveLength(COLUMNS.length);
   });
 
-  it('returns only compact-flagged columns when compact', () => {
-    const columns = visibleColumns(true);
+  it('returns only compact-flagged columns when compact, regardless of location', () => {
+    const columns = visibleColumns(true, { lat: 0, lon: 0 });
     expect(columns.length).toBeGreaterThan(0);
     expect(columns.every((column) => column.compact)).toBe(true);
+  });
+
+  it('appends Dist/Brg columns when a location is configured and not compact', () => {
+    const columns = visibleColumns(false, { lat: 0, lon: 0 });
+    expect(columns).toHaveLength(COLUMNS.length + 2);
+    expect(columns.map((column) => column.key).slice(-2)).toEqual(['distance', 'bearing']);
   });
 });
 

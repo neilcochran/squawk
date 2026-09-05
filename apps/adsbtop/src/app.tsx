@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { AircraftFeed } from '@squawk/adsb-feed';
-import type { Aircraft } from '@squawk/types';
+import type { Aircraft, Coordinates } from '@squawk/types';
 
 import type { FeedSource } from './cli-args.js';
 import { nextSortKey, sortAircraft, visibleColumns } from './columns.js';
@@ -44,6 +44,8 @@ export interface AppProps {
   port: number;
   /** Loader for the bundled registry dataset used for registration enrichment. Defaults to a real dynamic import of `@squawk/icao-registry-data`; overridable in tests. */
   registryDataLoader?: RegistryDataLoader;
+  /** Configured receiver location (`--lat`/`--lon`), if any. Enables the table's Dist/Brg columns when set. */
+  location: Coordinates | undefined;
 }
 
 /**
@@ -101,7 +103,7 @@ export function App(props: AppProps): ReactElement {
     () => sortAircraft(displayedAircraft, sortKey),
     [displayedAircraft, sortKey],
   );
-  const columns = useMemo(() => visibleColumns(compact), [compact]);
+  const columns = useMemo(() => visibleColumns(compact, props.location), [compact, props.location]);
 
   const firstAircraft = sortedAircraft[0];
   if (selectedIcaoHex === undefined && firstAircraft !== undefined) {
@@ -231,11 +233,7 @@ export function App(props: AppProps): ReactElement {
       {panel === 'help' ? (
         <HelpOverlay />
       ) : panel === 'detail' && selectedAircraft !== undefined ? (
-        <DetailView
-          aircraft={selectedAircraft}
-          positionHistory={props.feed.getPositionHistory(selectedAircraft.icaoHex)}
-          nowMs={now}
-        />
+        <DetailView aircraft={selectedAircraft} nowMs={now} location={props.location} />
       ) : (
         <AircraftTable
           aircraft={sortedAircraft}

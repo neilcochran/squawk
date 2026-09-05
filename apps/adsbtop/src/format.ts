@@ -67,6 +67,26 @@ export function formatGroundSpeed(aircraft: Aircraft): string {
 }
 
 /**
+ * Formats a great-circle distance for table display.
+ *
+ * @param distanceNm - Distance in nautical miles, or undefined if not computable.
+ * @returns The distance in nautical miles with a unit suffix, or `"-"` if undefined.
+ */
+export function formatDistance(distanceNm: number | undefined): string {
+  return distanceNm === undefined ? '-' : `${Math.round(distanceNm)}nm`;
+}
+
+/**
+ * Formats a great-circle bearing for table display, matching {@link formatHeading}'s style.
+ *
+ * @param bearingDeg - Bearing in degrees true, or undefined if not computable.
+ * @returns The bearing in degrees with a trailing degree sign, or `"-"` if undefined.
+ */
+export function formatBearing(bearingDeg: number | undefined): string {
+  return bearingDeg === undefined ? '-' : `${Math.round(bearingDeg)}°`;
+}
+
+/**
  * Formats an aircraft's vertical rate for table display, with an explicit
  * `+` sign on climbs so climb/descend is visible without color.
  *

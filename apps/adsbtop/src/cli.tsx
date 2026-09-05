@@ -19,4 +19,12 @@ if (parsed.help) {
 
 const feed = buildFeed(parsed);
 
-render(<App feed={feed} source={parsed.source} host={parsed.host} port={parsed.port} />);
+render(
+  <App
+    feed={feed}
+    source={parsed.source}
+    host={parsed.host}
+    port={parsed.port}
+    location={parsed.location}
+  />,
+);

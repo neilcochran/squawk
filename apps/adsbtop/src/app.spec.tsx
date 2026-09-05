@@ -2,7 +2,7 @@ import { render } from 'ink-testing-library';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { AircraftUpdateEventDetail } from '@squawk/adsb-feed';
-import type { Aircraft } from '@squawk/types';
+import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { App } from './app.js';
 import { createFakeAircraftFeed, createFakeRegistryDataLoader } from './test-utils.js';
@@ -43,6 +43,7 @@ afterEach(() => {
 function renderApp(
   feed: FakeAircraftFeed,
   registryDataLoader: RegistryDataLoader = createFakeRegistryDataLoader(),
+  location?: Coordinates,
 ): ReturnType<typeof render> {
   const instance = render(
     <App
@@ -51,6 +52,7 @@ function renderApp(
       host="localhost"
       port={30003}
       registryDataLoader={registryDataLoader}
+      location={location}
     />,
   );
   activeUnmount = instance.unmount;
@@ -67,6 +69,26 @@ describe('App', () => {
     expect(frame).toContain('adsbtop');
     expect(frame).toContain('No aircraft tracked yet.');
     expect(frame).toContain('[Q]');
+  });
+
+  it('omits the Dist/Brg columns when no location is configured', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame } = renderApp(feed);
+    await flush();
+
+    const frame = lastFrame();
+    expect(frame).not.toContain('Dist');
+    expect(frame).not.toContain('Brg');
+  });
+
+  it('shows the Dist/Brg columns when a location is configured', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame } = renderApp(feed, createFakeRegistryDataLoader(), { lat: 0, lon: 0 });
+    await flush();
+
+    const frame = lastFrame();
+    expect(frame).toContain('Dist');
+    expect(frame).toContain('Brg');
   });
 
   it('toggles the help overlay with H and closes it with Escape', async () => {
@@ -161,6 +183,37 @@ describe('App', () => {
       await flush();
 
       expect(lastFrame()).toContain('D3E4F5 detail');
+    });
+
+    it('shows Distance/Bearing in the detail view when a location is configured', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed, createFakeRegistryDataLoader(), {
+        lat: 0,
+        lon: 0,
+      });
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', position: { lat: 0, lon: 1 } }));
+      await flush();
+
+      stdin.write('\r');
+      await flush();
+
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('Distance:');
+      expect(frame).toContain('Bearing:');
+    });
+
+    it('omits Distance/Bearing from the detail view when no location is configured', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', position: { lat: 0, lon: 1 } }));
+      await flush();
+
+      stdin.write('\r');
+      await flush();
+
+      const frame = lastFrame() ?? '';
+      expect(frame).not.toContain('Distance:');
+      expect(frame).not.toContain('Bearing:');
     });
 
     it('closes the detail view with Escape', async () => {

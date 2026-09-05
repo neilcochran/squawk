@@ -54,6 +54,10 @@ export function buildFeed(
     case 'sbs':
       return factories.createSbsAircraftFeed({ host: cli.host, port: cli.port });
     case 'beast':
-      return factories.createBeastAircraftFeed({ host: cli.host, port: cli.port });
+      return factories.createBeastAircraftFeed({
+        host: cli.host,
+        port: cli.port,
+        ...(cli.location !== undefined ? { receiverPosition: cli.location } : {}),
+      });
   }
 }

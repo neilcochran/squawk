@@ -1,20 +1,18 @@
 import { Box, Text } from 'ink';
 import type { ReactElement } from 'react';
 
-import type { PositionHistoryEntry } from '@squawk/adsb-feed';
-import type { Aircraft } from '@squawk/types';
+import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { buildDetailFields } from '../detail-fields.js';
-import { buildAltitudeSparkline } from '../sparkline.js';
 
 /** Props for {@link DetailView}. */
 export interface DetailViewProps {
   /** The aircraft to show full detail for. */
   aircraft: Aircraft;
-  /** Position history for the altitude sparkline, oldest first. */
-  positionHistory: readonly PositionHistoryEntry[];
   /** Current time, for the "last seen" age. */
   nowMs: number;
+  /** Configured receiver location (`--lat`/`--lon`), if any. Adds Distance/Bearing rows when set. */
+  location: Coordinates | undefined;
 }
 
 /**
@@ -22,11 +20,10 @@ export interface DetailViewProps {
  * Opened with `[Enter]`/`[D]` on the selected row, closed the same way or
  * with `Escape`.
  *
- * @param props - The aircraft, its position history, and the current time.
+ * @param props - The aircraft, the current time, and the configured receiver location.
  */
-export function DetailView({ aircraft, positionHistory, nowMs }: DetailViewProps): ReactElement {
-  const fields = buildDetailFields(aircraft, nowMs);
-  const sparkline = buildAltitudeSparkline(positionHistory);
+export function DetailView({ aircraft, nowMs, location }: DetailViewProps): ReactElement {
+  const fields = buildDetailFields(aircraft, nowMs, location);
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
@@ -38,8 +35,6 @@ export function DetailView({ aircraft, positionHistory, nowMs }: DetailViewProps
           <Text bold>{field.label}:</Text> {field.value}
         </Text>
       ))}
-      <Text bold>Altitude history:</Text>
-      <Text>{sparkline === '' ? 'No altitude history yet.' : sparkline}</Text>
     </Box>
   );
 }

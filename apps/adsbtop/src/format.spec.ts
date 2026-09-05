@@ -6,6 +6,8 @@ import type { MessageLogEntry } from './aircraft-state.js';
 import {
   formatAge,
   formatAltitude,
+  formatBearing,
+  formatDistance,
   formatGroundSpeed,
   formatHeading,
   formatMessageLogLine,
@@ -87,6 +89,26 @@ describe('formatGroundSpeed', () => {
 
   it('returns a placeholder when unavailable', () => {
     expect(formatGroundSpeed(makeAircraft())).toBe('-');
+  });
+});
+
+describe('formatDistance', () => {
+  it('rounds and suffixes distance', () => {
+    expect(formatDistance(41.6)).toBe('42nm');
+  });
+
+  it('returns a placeholder when undefined', () => {
+    expect(formatDistance(undefined)).toBe('-');
+  });
+});
+
+describe('formatBearing', () => {
+  it('rounds and suffixes bearing with a degree sign', () => {
+    expect(formatBearing(269.6)).toBe('270°');
+  });
+
+  it('returns a placeholder when undefined', () => {
+    expect(formatBearing(undefined)).toBe('-');
   });
 });
 

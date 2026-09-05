@@ -1,7 +1,6 @@
 import { render } from 'ink-testing-library';
 import { describe, expect, it } from 'vitest';
 
-import type { PositionHistoryEntry } from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
 import { DetailView } from './detail-view.js';
@@ -13,7 +12,7 @@ function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
 describe('DetailView', () => {
   it('shows the ICAO hex in the title and every field label', () => {
     const { lastFrame } = render(
-      <DetailView aircraft={makeAircraft()} positionHistory={[]} nowMs={0} />,
+      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} />,
     );
 
     const frame = lastFrame();
@@ -23,24 +22,24 @@ describe('DetailView', () => {
     expect(frame).toContain('Position:');
   });
 
-  it('shows a placeholder when there is no position history', () => {
+  it('omits Distance/Bearing when no location is configured', () => {
     const { lastFrame } = render(
-      <DetailView aircraft={makeAircraft()} positionHistory={[]} nowMs={0} />,
+      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} />,
     );
 
-    expect(lastFrame()).toContain('No altitude history yet.');
+    const frame = lastFrame();
+    expect(frame).not.toContain('Distance:');
+    expect(frame).not.toContain('Bearing:');
   });
 
-  it('renders an altitude sparkline when position history is available', () => {
-    const positionHistory: PositionHistoryEntry[] = [
-      { position: { lat: 0, lon: 0, baroAltitudeFt: 1000 }, recordedAt: 0 },
-      { position: { lat: 0, lon: 0, baroAltitudeFt: 5000 }, recordedAt: 1000 },
-    ];
+  it('shows Distance/Bearing when a location is configured', () => {
+    const aircraft = makeAircraft({ position: { lat: 0, lon: 1 } });
     const { lastFrame } = render(
-      <DetailView aircraft={makeAircraft()} positionHistory={positionHistory} nowMs={0} />,
+      <DetailView aircraft={aircraft} nowMs={0} location={{ lat: 0, lon: 0 }} />,
     );
 
-    expect(lastFrame()).not.toContain('No altitude history yet.');
-    expect(lastFrame()).toContain('Altitude history:');
+    const frame = lastFrame();
+    expect(frame).toContain('Distance:');
+    expect(frame).toContain('Bearing:');
   });
 });

@@ -11,6 +11,7 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     host: 'localhost',
     port: 30003,
     url: undefined,
+    location: undefined,
     ...overrides,
   };
 }
@@ -78,6 +79,53 @@ describe('buildFeed', () => {
     expect(factories.createBeastAircraftFeed).toHaveBeenCalledWith({
       host: '192.168.1.50',
       port: 30005,
+    });
+  });
+
+  it('passes the configured location as receiverPosition for the beast source', () => {
+    const factories = makeFakeFactories();
+    buildFeed(
+      makeCliOptions({
+        source: 'beast',
+        host: '192.168.1.50',
+        port: 30005,
+        location: { lat: 40.6413, lon: -73.7781 },
+      }),
+      factories,
+    );
+
+    expect(factories.createBeastAircraftFeed).toHaveBeenCalledWith({
+      host: '192.168.1.50',
+      port: 30005,
+      receiverPosition: { lat: 40.6413, lon: -73.7781 },
+    });
+  });
+
+  it('omits receiverPosition for the beast source when no location is configured', () => {
+    const factories = makeFakeFactories();
+    buildFeed(makeCliOptions({ source: 'beast', host: '192.168.1.50', port: 30005 }), factories);
+
+    expect(factories.createBeastAircraftFeed).toHaveBeenCalledWith({
+      host: '192.168.1.50',
+      port: 30005,
+    });
+  });
+
+  it('does not apply the configured location to the json or sbs sources', () => {
+    const factories = makeFakeFactories();
+    buildFeed(
+      makeCliOptions({
+        source: 'sbs',
+        host: '192.168.1.50',
+        port: 30003,
+        location: { lat: 40.6413, lon: -73.7781 },
+      }),
+      factories,
+    );
+
+    expect(factories.createSbsAircraftFeed).toHaveBeenCalledWith({
+      host: '192.168.1.50',
+      port: 30003,
     });
   });
 });

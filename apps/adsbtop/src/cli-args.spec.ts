@@ -92,4 +92,66 @@ describe('parseCliArgs', () => {
     const result = parseCliArgs(['--bogus']);
     expect(isError(result)).toBe(true);
   });
+
+  it('defaults location to undefined with no --lat/--lon', () => {
+    const result = parseCliArgs([]);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.location).toBeUndefined();
+    }
+  });
+
+  it('parses valid --lat and --lon into location', () => {
+    const result = parseCliArgs(['--lat', '40.6413', '--lon', '-73.7781']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.location).toEqual({ lat: 40.6413, lon: -73.7781 });
+    }
+  });
+
+  it('parses a negative --lat given as a separate argument, not just --lat=-N', () => {
+    const result = parseCliArgs(['--lat', '-33.9425', '--lon', '-118.4081']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.location).toEqual({ lat: -33.9425, lon: -118.4081 });
+    }
+  });
+
+  it('still accepts the explicit --lon=-N form', () => {
+    const result = parseCliArgs(['--lat', '40.6413', '--lon=-73.7781']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.location).toEqual({ lat: 40.6413, lon: -73.7781 });
+    }
+  });
+
+  it('rejects --lat without --lon', () => {
+    const result = parseCliArgs(['--lat', '40.6413']);
+    expect(isError(result)).toBe(true);
+  });
+
+  it('rejects --lon without --lat', () => {
+    const result = parseCliArgs(['--lon', '-73.7781']);
+    expect(isError(result)).toBe(true);
+  });
+
+  it('rejects a non-numeric --lat', () => {
+    const result = parseCliArgs(['--lat', 'abc', '--lon', '0']);
+    expect(isError(result)).toBe(true);
+  });
+
+  it('rejects a non-numeric --lon', () => {
+    const result = parseCliArgs(['--lat', '0', '--lon', 'abc']);
+    expect(isError(result)).toBe(true);
+  });
+
+  it('rejects a --lat outside -90..90', () => {
+    const result = parseCliArgs(['--lat', '91', '--lon', '0']);
+    expect(isError(result)).toBe(true);
+  });
+
+  it('rejects a --lon outside -180..180', () => {
+    const result = parseCliArgs(['--lat', '0', '--lon', '181']);
+    expect(isError(result)).toBe(true);
+  });
 });
