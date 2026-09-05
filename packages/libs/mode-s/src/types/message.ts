@@ -157,6 +157,10 @@ export interface SurveillanceAltitudeReply {
   candidateIcaoHex: string;
   /** Decoded altitude in feet, or undefined if the AC field is empty or invalid. */
   altitudeFt: number | undefined;
+  /** True when the transponder's Ident (SPI) pulse is active, from the Flight Status field. Undefined for a reserved Flight Status value. */
+  identActive: boolean | undefined;
+  /** True when the transponder is flagging a recent squawk code change, from the Flight Status field. Undefined for a reserved Flight Status value. */
+  squawkAlert: boolean | undefined;
 }
 
 /**
@@ -175,6 +179,10 @@ export interface CommBAltitudeReply {
   candidateIcaoHex: string;
   /** Decoded altitude in feet, or undefined if the AC field is empty or invalid. */
   altitudeFt: number | undefined;
+  /** True when the transponder's Ident (SPI) pulse is active, from the Flight Status field. Undefined for a reserved Flight Status value. */
+  identActive: boolean | undefined;
+  /** True when the transponder is flagging a recent squawk code change, from the Flight Status field. Undefined for a reserved Flight Status value. */
+  squawkAlert: boolean | undefined;
   /** Every Enhanced Surveillance Comm-B register the MB field plausibly holds - see {@link inferCommBRegisters}. Empty if none matched. */
   commBRegisters: CommBRegister[];
 }
@@ -193,6 +201,10 @@ export interface SurveillanceIdentityReply {
   candidateIcaoHex: string;
   /** The decoded 4-digit octal squawk code. */
   squawk: string;
+  /** True when the transponder's Ident (SPI) pulse is active, from the Flight Status field. Undefined for a reserved Flight Status value. */
+  identActive: boolean | undefined;
+  /** True when the transponder is flagging a recent squawk code change, from the Flight Status field. Undefined for a reserved Flight Status value. */
+  squawkAlert: boolean | undefined;
 }
 
 /**
@@ -211,6 +223,10 @@ export interface CommBIdentityReply {
   candidateIcaoHex: string;
   /** The decoded 4-digit octal squawk code. */
   squawk: string;
+  /** True when the transponder's Ident (SPI) pulse is active, from the Flight Status field. Undefined for a reserved Flight Status value. */
+  identActive: boolean | undefined;
+  /** True when the transponder is flagging a recent squawk code change, from the Flight Status field. Undefined for a reserved Flight Status value. */
+  squawkAlert: boolean | undefined;
   /** Every Enhanced Surveillance Comm-B register the MB field plausibly holds - see {@link inferCommBRegisters}. Empty if none matched. */
   commBRegisters: CommBRegister[];
 }

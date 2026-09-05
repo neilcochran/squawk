@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { decodeAltitudeCode } from './altitude.js';
+import { decodeFlightStatus } from './flight-status.js';
 import { computeCrc24 } from './frame.js';
 import { decodeIdentityCode } from './identity.js';
 import { decodeModeSMessage } from './message.js';
@@ -65,28 +66,32 @@ function buildDf16(
   return bytes;
 }
 
-/** Builds a DF20 message with the given altitude code and 7-byte MB field. */
+/** Builds a DF20 message with the given altitude code and 7-byte MB field. `flightStatus` defaults to 0 (no alert, no ident). */
 function buildDf20(
   altitudeCode: number,
   mb: Uint8Array,
   icaoHexBytes: [number, number, number],
+  flightStatus = 0,
 ): Uint8Array {
   const bytes = new Uint8Array(14);
   setBits(bytes, 0, 5, 20); // DF20
+  setBits(bytes, 5, 3, flightStatus);
   setBits(bytes, 19, 13, altitudeCode);
   bytes.set(mb, 4);
   writeAddressParityCrc(bytes, icaoHexBytes);
   return bytes;
 }
 
-/** Builds a DF21 message with the given identity (squawk) code and 7-byte MB field. */
+/** Builds a DF21 message with the given identity (squawk) code and 7-byte MB field. `flightStatus` defaults to 0 (no alert, no ident). */
 function buildDf21(
   idCode: number,
   mb: Uint8Array,
   icaoHexBytes: [number, number, number],
+  flightStatus = 0,
 ): Uint8Array {
   const bytes = new Uint8Array(14);
   setBits(bytes, 0, 5, 21); // DF21
+  setBits(bytes, 5, 3, flightStatus);
   setBits(bytes, 19, 13, idCode);
   bytes.set(mb, 4);
   writeAddressParityCrc(bytes, icaoHexBytes);
@@ -264,6 +269,9 @@ describe('decodeModeSMessage - real dump1090-fa Beast capture', () => {
     // Matches the altitude independently decoded from the real DF17
     // position pair above, taken ~440ms apart from the same aircraft.
     expect(result.altitudeFt).toBe(38975);
+    // Flight Status field is 0 in this capture - routine cruise traffic.
+    expect(result.identActive).toBe(false);
+    expect(result.squawkAlert).toBe(false);
   });
 
   it('decodes a real DF5 surveillance identity reply', () => {
@@ -273,6 +281,9 @@ describe('decodeModeSMessage - real dump1090-fa Beast capture', () => {
       return;
     }
     expect(result.squawk).toBe('1470');
+    // Flight Status field is 0 in this capture - routine cruise traffic.
+    expect(result.identActive).toBe(false);
+    expect(result.squawkAlert).toBe(false);
   });
 
   it('decodes a synthetic DF20 Comm-B altitude reply, including its BDS 4,0 register', () => {
@@ -315,6 +326,43 @@ describe('decodeModeSMessage - real dump1090-fa Beast capture', () => {
         (register) => register.bdsCode === '4,0' && register.mcpFcuSelectedAltitudeFt === 4800,
       ),
     ).toBe(true);
+  });
+
+  it('decodes an alerting Flight Status on a DF20 Comm-B altitude reply', () => {
+    const mb = new Uint8Array(7);
+    const bytes = buildDf20(6335, mb, [0xab, 0x09, 0x69], 2); // FS 2: alert, no ident
+    const result = decodeModeSMessage(bytes);
+    expect(result?.kind).toBe('commBAltitudeReply');
+    if (result?.kind !== 'commBAltitudeReply') {
+      return;
+    }
+    expect(result.identActive).toBe(decodeFlightStatus(2).identActive);
+    expect(result.squawkAlert).toBe(decodeFlightStatus(2).squawkAlert);
+  });
+
+  it('decodes an identing Flight Status on a DF21 Comm-B identity reply', () => {
+    const mb = new Uint8Array(7);
+    const idField = 0b0_001_0100_0111_0;
+    const bytes = buildDf21(idField, mb, [0xab, 0x09, 0x69], 5); // FS 5: ident, no alert
+    const result = decodeModeSMessage(bytes);
+    expect(result?.kind).toBe('commBIdentityReply');
+    if (result?.kind !== 'commBIdentityReply') {
+      return;
+    }
+    expect(result.identActive).toBe(decodeFlightStatus(5).identActive);
+    expect(result.squawkAlert).toBe(decodeFlightStatus(5).squawkAlert);
+  });
+
+  it('reports identActive/squawkAlert as undefined for a reserved Flight Status value', () => {
+    const mb = new Uint8Array(7);
+    const bytes = buildDf20(6335, mb, [0xab, 0x09, 0x69], 7); // FS 7: reserved
+    const result = decodeModeSMessage(bytes);
+    expect(result?.kind).toBe('commBAltitudeReply');
+    if (result?.kind !== 'commBAltitudeReply') {
+      return;
+    }
+    expect(result.identActive).toBeUndefined();
+    expect(result.squawkAlert).toBeUndefined();
   });
 
   it('decodes a real DF17 type-28 subtype-1 emergency status message', () => {

@@ -99,6 +99,26 @@ describe('mapJsonAircraft', () => {
   it('omits category for an unrecognized code', () => {
     expect(mapJsonAircraft({ hex: 'a0b1c2', category: 'Z9' })?.category).toBeUndefined();
   });
+
+  it.each([
+    ['none', 'none'],
+    ['general', 'general'],
+    ['lifeguard', 'lifeguardMedical'],
+    ['minfuel', 'minimumFuel'],
+    ['nordo', 'noCommunications'],
+    ['unlawful', 'unlawfulInterference'],
+    ['downed', 'downed'],
+    ['reserved', 'reserved'],
+  ] as const)('maps emergency %s to emergencyState %s', (raw, expected) => {
+    expect(mapJsonAircraft({ hex: 'a0b1c2', emergency: raw })?.emergencyState).toBe(expected);
+  });
+
+  it('omits emergencyState when the emergency field is absent or unrecognized', () => {
+    expect(mapJsonAircraft({ hex: 'a0b1c2' })?.emergencyState).toBeUndefined();
+    expect(
+      mapJsonAircraft({ hex: 'a0b1c2', emergency: 'not-a-real-value' })?.emergencyState,
+    ).toBeUndefined();
+  });
 });
 
 // Records below are verbatim entries from a live dump1090-fa aircraft.json
@@ -154,6 +174,7 @@ describe('mapJsonAircraft - real dump1090-fa capture', () => {
       magneticHeadingDeg: 228.3,
       verticalRateFtPerMin: 32,
       squawk: '1330',
+      emergencyState: 'none',
       category: 'heavy',
     });
   });

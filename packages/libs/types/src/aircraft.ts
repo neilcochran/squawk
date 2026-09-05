@@ -1,5 +1,8 @@
+import type { AcasResolutionAdvisoryReport } from './acas.js';
 import type { Airport } from './airport.js';
+import type { EmergencyState } from './emergency-status.js';
 import type { Position } from './position.js';
+import type { TargetStateAndStatus } from './target-state.js';
 
 import type { AircraftRegistration } from './index.js';
 
@@ -61,10 +64,20 @@ export interface Aircraft {
   verticalRateFtPerMin?: number;
   /** Squawk transponder code. */
   squawk?: string;
+  /** True when the transponder is flagging a recent squawk code change. */
+  squawkAlert?: boolean;
+  /** True when the transponder's Ident (SPI - Special Position Identification) pulse is active. */
+  identActive?: boolean;
   /** True if aircraft is on the ground. */
   onGround?: boolean;
   /** Aircraft category code for performance/weight class. */
   category?: AircraftCategory;
+  /** Declared emergency/priority state, if the aircraft is broadcasting one. */
+  emergencyState?: EmergencyState;
+  /** Active ACAS/TCAS Resolution Advisory, if one is currently in effect. */
+  resolutionAdvisory?: AcasResolutionAdvisoryReport;
+  /** Pilot-selected altitude/heading targets, altimeter setting, and active autopilot/nav modes (BDS 6,2). */
+  targetState?: TargetStateAndStatus;
   /** Origin airport information. */
   origin?: Airport;
   /** Destination airport information. */

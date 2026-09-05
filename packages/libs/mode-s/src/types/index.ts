@@ -2,6 +2,7 @@ export * from './acas.js';
 export * from './comm-b.js';
 export * from './cpr.js';
 export * from './emergency-status.js';
+export * from './flight-status.js';
 export * from './frame.js';
 export * from './identification.js';
 export * from './message.js';

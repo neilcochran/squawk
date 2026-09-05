@@ -7,6 +7,7 @@ import {
 import { extractBits, formatHexAddress } from './bits.js';
 import { inferCommBRegisters } from './comm-b.js';
 import { decodeEmergencyState } from './emergency-status.js';
+import { decodeFlightStatus } from './flight-status.js';
 import { parseModeSFrame } from './frame.js';
 import { decodeIdentification } from './identification.js';
 import { decodeIdentityCode } from './identity.js';
@@ -317,38 +318,50 @@ export function decodeModeSMessage(bytes: Uint8Array): DecodedModeSMessage | und
 
   if (envelope.downlinkFormat === 4) {
     const acField = extractBits(bytes, 19, 13);
+    const flightStatus = decodeFlightStatus(extractBits(bytes, 5, 3));
     return {
       kind: 'surveillanceAltitudeReply',
       candidateIcaoHex: formatHexAddress(envelope.crcRemainder),
       altitudeFt: decodeAltitudeCode(acField),
+      identActive: flightStatus.identActive,
+      squawkAlert: flightStatus.squawkAlert,
     };
   }
 
   if (envelope.downlinkFormat === 20) {
     const acField = extractBits(bytes, 19, 13);
+    const flightStatus = decodeFlightStatus(extractBits(bytes, 5, 3));
     return {
       kind: 'commBAltitudeReply',
       candidateIcaoHex: formatHexAddress(envelope.crcRemainder),
       altitudeFt: decodeAltitudeCode(acField),
+      identActive: flightStatus.identActive,
+      squawkAlert: flightStatus.squawkAlert,
       commBRegisters: inferCommBRegisters(bytes.slice(4, 11)),
     };
   }
 
   if (envelope.downlinkFormat === 5) {
     const idField = extractBits(bytes, 19, 13);
+    const flightStatus = decodeFlightStatus(extractBits(bytes, 5, 3));
     return {
       kind: 'surveillanceIdentityReply',
       candidateIcaoHex: formatHexAddress(envelope.crcRemainder),
       squawk: decodeIdentityCode(idField),
+      identActive: flightStatus.identActive,
+      squawkAlert: flightStatus.squawkAlert,
     };
   }
 
   if (envelope.downlinkFormat === 21) {
     const idField = extractBits(bytes, 19, 13);
+    const flightStatus = decodeFlightStatus(extractBits(bytes, 5, 3));
     return {
       kind: 'commBIdentityReply',
       candidateIcaoHex: formatHexAddress(envelope.crcRemainder),
       squawk: decodeIdentityCode(idField),
+      identActive: flightStatus.identActive,
+      squawkAlert: flightStatus.squawkAlert,
       commBRegisters: inferCommBRegisters(bytes.slice(4, 11)),
     };
   }

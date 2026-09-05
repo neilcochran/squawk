@@ -5,13 +5,14 @@
 Decodes raw Mode-S/ADS-B messages: downlink format and CRC extraction, CPR
 position, airborne velocity, aircraft identification, altitude (both the
 ADS-B position-message field and legacy Gillham-coded surveillance replies),
-squawk identity, emergency status, ACAS/TCAS Resolution Advisories, target
-state and status, aircraft operational status, and Enhanced Surveillance
-Comm-B registers (selected vertical intention, track and turn, heading and
-speed). Transport-agnostic - it operates on already-framed message bytes and
-has no opinion about where they came from (a live Beast feed, a logged
-capture, or any other source). For a Beast binary parser and live TCP client
-built on top of this package, see [`@squawk/beast`](../beast).
+squawk identity, Flight Status alert/ident flags, emergency status,
+ACAS/TCAS Resolution Advisories, target state and status, aircraft
+operational status, and Enhanced Surveillance Comm-B registers (selected
+vertical intention, track and turn, heading and speed). Transport-agnostic -
+it operates on already-framed message bytes and has no opinion about where
+they came from (a live Beast feed, a logged capture, or any other source).
+For a Beast binary parser and live TCP client built on top of this package,
+see [`@squawk/beast`](../beast).
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
 
@@ -70,6 +71,8 @@ package doesn't perform that cross-check itself. DF20/21 (`'commBAltitudeReply'`
 carry the same altitude/squawk payload as DF4/5 plus a 56-bit MB field,
 decoded into `commBRegisters` - see
 [Enhanced Surveillance Comm-B registers](#enhanced-surveillance-comm-b-registers).
+DF4/5/20/21 additionally carry `identActive`/`squawkAlert` - see
+[Flight Status (alert/ident)](#flight-status-alertident).
 
 ### Resolving CPR position
 
@@ -209,6 +212,23 @@ if (decoded?.kind === 'commBAltitudeReply') {
 `inferCommBRegisters(mb)` is also exported directly for callers working with
 a raw MB field outside of `decodeModeSMessage`'s DF20/21 dispatch.
 
+### Flight Status (alert/ident)
+
+DF4/5/20/21 carry a 3-bit Flight Status (FS) field with the transponder's
+Alert (recent squawk change) and Ident (SPI) flags:
+
+```typescript
+const decoded = decodeModeSMessage(rawMessageBytes);
+if (decoded?.kind === 'surveillanceAltitudeReply') {
+  console.log(decoded.identActive, decoded.squawkAlert);
+}
+```
+
+Both fields are undefined for the two reserved FS values (6, 7), where
+alert/ident status is not defined - `decodeFlightStatus(fsField)` is also
+exported directly for callers working with a raw FS field outside of
+`decodeModeSMessage`'s dispatch.
+
 ### Mode A/C
 
 Mode A/C predates Mode-S and carries no ICAO address, so it has no natural
@@ -234,6 +254,7 @@ console.log(reply.squawk, reply.identActive, reply.altitudeFt);
 - `decodeAltitudeCode(altitudeCode)`, `decodeAdsbPositionAltitude(field)`, `decodeAdsbGnssAltitude(field)` - altitude decoding.
 - `decodeSurfaceMovement(field)` - ground speed from a surface position message's movement field.
 - `decodeEmergencyState(rawState)` - emergency/priority state from an ADS-B aircraft status message.
+- `decodeFlightStatus(fsField)` - Alert/Ident flags from a DF4/5/20/21 Flight Status field.
 - `decodeAcasResolutionAdvisory(payload)` - ACAS/TCAS Resolution Advisory report from a DF16 MV field or a type-code-28 subtype-2 ME field.
 - `decodeTargetStateAndStatus(me)` - target state and status from a type-29 ME field.
 - `decodeAircraftOperationalStatus(me)` - operational status from a type-31 ME field.
