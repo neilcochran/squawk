@@ -1,5 +1,13 @@
 # @squawk/adsb-feed
 
+## 0.4.0
+
+### Minor Changes
+
+- 346a92d: ### Added
+
+  - `AircraftFeed.getConnectionState()` and `connection:connect`/`connection:disconnect` events, reporting `'connected' | 'reconnecting'` for all three sources. SBS and Beast reflect their own TCP socket's connect/close lifecycle (Beast forwards `@squawk/beast`'s own `beast:connect`/`beast:disconnect`); JSON uses the most recent poll's success/failure instead, since HTTP polling has no persistent connection to track.
+
 ## 0.3.0
 
 ### Minor Changes
