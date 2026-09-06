@@ -1,6 +1,8 @@
 import { Box, Text } from 'ink';
 import type { ReactElement } from 'react';
 
+import type { ConnectionState } from '@squawk/adsb-feed';
+
 import { formatStatusLine } from '../status-line.js';
 import type { StatusLineInfo } from '../status-line.js';
 
@@ -8,6 +10,8 @@ import type { StatusLineInfo } from '../status-line.js';
 export interface StatusHeaderProps extends StatusLineInfo {
   /** Whether the table is currently paused. */
   paused: boolean;
+  /** The feed's current connection state - shows a bold yellow "RECONNECTING" badge when not connected, matching the `paused` badge below. Nothing is shown while connected. */
+  connectionState: ConnectionState;
 }
 
 /**
@@ -25,6 +29,11 @@ export function StatusHeader(props: StatusHeaderProps): ReactElement {
         <Text bold color="white">
           {'adsbtop  '}
         </Text>
+        {props.connectionState === 'reconnecting' ? (
+          <Text bold color="yellow">
+            {'RECONNECTING  '}
+          </Text>
+        ) : undefined}
         <Text color="white">{formatStatusLine(props)}</Text>
         {props.paused ? (
           <Text bold color="yellow">

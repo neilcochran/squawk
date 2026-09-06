@@ -229,6 +229,7 @@ export function App(props: AppProps): ReactElement {
         lastMessageAt={view.lastMessageAt}
         nowMs={now}
         paused={paused}
+        connectionState={view.connectionState}
       />
       {panel === 'help' ? (
         <HelpOverlay />
