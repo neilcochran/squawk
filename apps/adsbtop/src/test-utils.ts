@@ -11,12 +11,20 @@ export interface FakeAircraftFeed extends AircraftFeed {
   stopCalls: number;
 }
 
+/** Options for {@link createFakeAircraftFeed}. */
+export interface FakeAircraftFeedOptions {
+  /** Value `getConnectionState()` reports until a `connection:connect`/`connection:disconnect` event is dispatched on the fake. Defaults to `'connected'`. */
+  connectionState?: ConnectionState;
+}
+
 /**
  * Creates a {@link FakeAircraftFeed} with no real socket/HTTP behavior, for
- * tests that need to dispatch `aircraft:new`/`aircraft:update`/`aircraft:lost`
- * events without a live dump1090-fa station.
+ * tests that need to dispatch `aircraft:new`/`aircraft:update`/`aircraft:lost`/
+ * `connection:connect`/`connection:disconnect` events without a live
+ * dump1090-fa station.
  */
-export function createFakeAircraftFeed(): FakeAircraftFeed {
+export function createFakeAircraftFeed(options: FakeAircraftFeedOptions = {}): FakeAircraftFeed {
+  const connectionState = options.connectionState ?? 'connected';
   const feed = Object.assign(new EventTarget(), {
     startCalls: 0,
     stopCalls: 0,
@@ -36,7 +44,7 @@ export function createFakeAircraftFeed(): FakeAircraftFeed {
       return [];
     },
     getConnectionState(): ConnectionState {
-      return 'connected';
+      return connectionState;
     },
   });
   return feed;

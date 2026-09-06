@@ -3,7 +3,12 @@ import { render } from 'ink-testing-library';
 import type { ReactElement } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { AircraftLostEventDetail, AircraftUpdateEventDetail } from '@squawk/adsb-feed';
+import type {
+  AircraftLostEventDetail,
+  AircraftUpdateEventDetail,
+  ConnectionState,
+  ConnectionStateEventDetail,
+} from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
 import { createFakeAircraftFeed } from './test-utils.js';
@@ -24,6 +29,7 @@ function Harness({ feed }: { feed: FakeAircraftFeed }): ReactElement {
         logLength: view.messageLog.length,
         lastLogType: view.messageLog.at(-1)?.type,
         newAndLostLogLength: view.newAndLostLog.length,
+        connectionState: view.connectionState,
       })}
     </Text>
   );
@@ -41,6 +47,12 @@ function dispatchUpdate(
 function dispatchLost(feed: FakeAircraftFeed, icaoHex: string): void {
   const detail: AircraftLostEventDetail = { icaoHex, lastAircraft: makeAircraft(icaoHex) };
   feed.dispatchEvent(new CustomEvent('aircraft:lost', { detail }));
+}
+
+function dispatchConnectionChange(feed: FakeAircraftFeed, state: ConnectionState): void {
+  const detail: ConnectionStateEventDetail = { state };
+  const eventType = state === 'connected' ? 'connection:connect' : 'connection:disconnect';
+  feed.dispatchEvent(new CustomEvent(eventType, { detail }));
 }
 
 function flush(ms = 20): Promise<void> {
@@ -131,5 +143,30 @@ describe('useAircraftFeed', () => {
     expect(lastFrame()).toContain('"logLength":3');
     expect(lastFrame()).toContain('"lastLogType":"lost"');
     expect(lastFrame()).toContain('"newAndLostLogLength":2');
+  });
+
+  describe('connectionState', () => {
+    it("reflects the feed's connection state at mount", async () => {
+      const feed = createFakeAircraftFeed({ connectionState: 'reconnecting' });
+      const { lastFrame } = renderHarness(feed);
+      await flush();
+
+      expect(lastFrame()).toContain('"connectionState":"reconnecting"');
+    });
+
+    it('updates on connection:disconnect and connection:connect', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame } = renderHarness(feed);
+      await flush();
+      expect(lastFrame()).toContain('"connectionState":"connected"');
+
+      dispatchConnectionChange(feed, 'reconnecting');
+      await flush();
+      expect(lastFrame()).toContain('"connectionState":"reconnecting"');
+
+      dispatchConnectionChange(feed, 'connected');
+      await flush();
+      expect(lastFrame()).toContain('"connectionState":"connected"');
+    });
   });
 });

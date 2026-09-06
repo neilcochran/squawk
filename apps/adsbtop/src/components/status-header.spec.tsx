@@ -15,6 +15,7 @@ describe('StatusHeader', () => {
         lastMessageAt={1000}
         nowMs={4000}
         paused={false}
+        connectionState="connected"
       />,
     );
 
@@ -23,6 +24,7 @@ describe('StatusHeader', () => {
     expect(frame).toContain('sbs 192.168.1.50:30003');
     expect(frame).toContain('aircraft: 5');
     expect(frame).not.toContain('PAUSED');
+    expect(frame).not.toContain('RECONNECTING');
   });
 
   it('shows a PAUSED indicator when paused', () => {
@@ -36,9 +38,28 @@ describe('StatusHeader', () => {
         lastMessageAt={undefined}
         nowMs={0}
         paused
+        connectionState="connected"
       />,
     );
 
     expect(lastFrame()).toContain('PAUSED');
+  });
+
+  it('shows a RECONNECTING indicator when the feed is not connected', () => {
+    const { lastFrame } = render(
+      <StatusHeader
+        source="sbs"
+        host="192.168.1.50"
+        port={30003}
+        aircraftCount={0}
+        messageRatePerSec={0}
+        lastMessageAt={undefined}
+        nowMs={0}
+        paused={false}
+        connectionState="reconnecting"
+      />,
+    );
+
+    expect(lastFrame()).toContain('RECONNECTING');
   });
 });

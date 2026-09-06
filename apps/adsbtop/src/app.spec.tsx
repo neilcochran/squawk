@@ -1,7 +1,7 @@
 import { render } from 'ink-testing-library';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { AircraftUpdateEventDetail } from '@squawk/adsb-feed';
+import type { AircraftUpdateEventDetail, ConnectionStateEventDetail } from '@squawk/adsb-feed';
 import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { App } from './app.js';
@@ -21,6 +21,11 @@ function dispatchNew(feed: FakeAircraftFeed, aircraft: Aircraft): void {
 function dispatchUpdate(feed: FakeAircraftFeed, aircraft: Aircraft): void {
   const detail: AircraftUpdateEventDetail = { aircraft };
   feed.dispatchEvent(new CustomEvent('aircraft:update', { detail }));
+}
+
+function dispatchDisconnect(feed: FakeAircraftFeed): void {
+  const detail: ConnectionStateEventDetail = { state: 'reconnecting' };
+  feed.dispatchEvent(new CustomEvent('connection:disconnect', { detail }));
 }
 
 function flush(ms = 20): Promise<void> {
@@ -69,6 +74,19 @@ describe('App', () => {
     expect(frame).toContain('adsbtop');
     expect(frame).toContain('No aircraft tracked yet.');
     expect(frame).toContain('[Q]');
+  });
+
+  it('shows no RECONNECTING badge while connected, and shows one after a connection:disconnect event', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame } = renderApp(feed);
+    await flush();
+
+    expect(lastFrame()).not.toContain('RECONNECTING');
+
+    dispatchDisconnect(feed);
+    await flush();
+
+    expect(lastFrame()).toContain('RECONNECTING');
   });
 
   it('omits the Dist/Brg columns when no location is configured', async () => {

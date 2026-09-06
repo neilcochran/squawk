@@ -46,6 +46,10 @@ adsbtop --source sbs --host 192.168.1.50
 
 Aircraft render in bold red when they carry any of: an emergency squawk code (7500/7600/7700), a declared emergency state, or an active ACAS/TCAS Resolution Advisory.
 
+### Connection status
+
+The status header shows a bold yellow `RECONNECTING` indicator whenever the underlying feed's connection isn't currently up - a dropped SBS/Beast socket awaiting automatic reconnect, or (for `--source json`) the most recent poll having failed. Nothing is shown while connected.
+
 ### Detail view
 
 Selecting a row and pressing `Enter` or `D` opens a full field dump for that aircraft, including barometric and geometric altitude, true track and magnetic heading, indicated/true airspeed, squawk alert/ident status, declared emergency state, active Resolution Advisory, and pilot-selected target state (altitude/heading/autopilot). Fields the active source doesn't populate show as `-`.

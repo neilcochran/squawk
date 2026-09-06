@@ -4,6 +4,8 @@ import type {
   AircraftFeed,
   AircraftLostEventDetail,
   AircraftUpdateEventDetail,
+  ConnectionState,
+  ConnectionStateEventDetail,
 } from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
@@ -27,6 +29,8 @@ export interface AircraftFeedView {
   messageLog: MessageLogEntry[];
   /** `aircraft:new`/`aircraft:lost` events only, oldest first, for the panel's default `newAndLost` verbosity - capped independently of `messageLog` so update volume can't evict a still-relevant entry. */
   newAndLostLog: MessageLogEntry[];
+  /** The feed's current connection state, for the status header's connection badge. */
+  connectionState: ConnectionState;
 }
 
 /**
@@ -40,6 +44,9 @@ export interface AircraftFeedView {
 export function useAircraftFeed(feed: AircraftFeed): AircraftFeedView {
   const [state, dispatch] = useReducer(aircraftStateReducer, initialAircraftState);
   const [messageRatePerSec, setMessageRatePerSec] = useState(0);
+  const [connectionState, setConnectionState] = useState<ConnectionState>(() =>
+    feed.getConnectionState(),
+  );
   const messageCountRef = useRef(state.messageCount);
 
   useEffect(() => {
@@ -59,16 +66,25 @@ export function useAircraftFeed(feed: AircraftFeed): AircraftFeedView {
       const { icaoHex, lastAircraft } = (event as CustomEvent<AircraftLostEventDetail>).detail;
       dispatch({ type: 'lost', icaoHex, callsign: lastAircraft.callsign, at: Date.now() });
     }
+    function handleConnectionChange(event: Event): void {
+      const { state: nextConnectionState } = (event as CustomEvent<ConnectionStateEventDetail>)
+        .detail;
+      setConnectionState(nextConnectionState);
+    }
 
     feed.addEventListener('aircraft:new', handleNew);
     feed.addEventListener('aircraft:update', handleUpdate);
     feed.addEventListener('aircraft:lost', handleLost);
+    feed.addEventListener('connection:connect', handleConnectionChange);
+    feed.addEventListener('connection:disconnect', handleConnectionChange);
     feed.start();
 
     return () => {
       feed.removeEventListener('aircraft:new', handleNew);
       feed.removeEventListener('aircraft:update', handleUpdate);
       feed.removeEventListener('aircraft:lost', handleLost);
+      feed.removeEventListener('connection:connect', handleConnectionChange);
+      feed.removeEventListener('connection:disconnect', handleConnectionChange);
       feed.stop();
     };
   }, [feed]);
@@ -98,5 +114,6 @@ export function useAircraftFeed(feed: AircraftFeed): AircraftFeedView {
     messageRatePerSec,
     messageLog: state.messageLog,
     newAndLostLog: state.newAndLostLog,
+    connectionState,
   };
 }
