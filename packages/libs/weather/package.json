@@ -41,8 +41,8 @@
     "test:coverage": "vitest run --coverage",
     "lint": "tsc --noEmit && eslint src",
     "lint:pack": "publint && attw --pack . --profile esm-only",
-    "api:check": "api-extractor run --verbose",
-    "api:report": "api-extractor run --local --verbose"
+    "api:check": "api-extractor run --verbose && api-extractor run --verbose -c api-extractor.fetch.json",
+    "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.fetch.json"
   },
   "dependencies": {
     "@squawk/types": "^0.9.0"
