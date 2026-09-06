@@ -1,5 +1,18 @@
 # @squawk/adsbtop
 
+## 0.4.0
+
+### Minor Changes
+
+- 6ca0808: ### Added
+
+  - The status header shows a `RECONNECTING` indicator whenever the underlying feed's connection isn't currently up, using `@squawk/adsb-feed`'s new connection-state surface.
+
+### Patch Changes
+
+- Updated dependencies [346a92d]
+  - @squawk/adsb-feed@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
