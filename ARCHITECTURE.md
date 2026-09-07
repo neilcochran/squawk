@@ -59,6 +59,8 @@ Whether a workspace publishes to npm is decided by that package's own `package.j
 
 Why: `apps/` groups applications built on the libraries together for discoverability, but an app's audience - and therefore whether it ships to npm - is a property of that specific app, not of the directory. [`apps/atlas/`](apps/atlas/) is a private SPA meant to be run locally or self-deployed; other apps under `apps/` may publish to npm as standalone installable tools when that better serves their audience.
 
+The corollary is that release tooling must not assume publishable packages live under one directory, in either direction: it has to reach a publishable app under `apps/`, and it must not sweep up a private one. So the Publish workflow derives the set of packages to collect from the workspace metadata via [scripts/check-publishable-dist.js](scripts/check-publishable-dist.js), rather than from directory globs that would need editing every time a workspace is added or flips its publish status.
+
 ### Logic / data separation (for dataset-backed query libraries)
 
 For libraries that query an FAA dataset (airports, navaids, fixes, airways, airspace, procedures, icao-registry), logic and data live in separate packages. The query library contains pure query functions that take data as input via a factory function; the companion `*-data` package ships the pre-processed snapshot. **Query libraries never import data packages at runtime** (only as devDependencies, for tests).
@@ -182,14 +184,16 @@ The gates that run in [.github/workflows/ci.yml](.github/workflows/ci.yml) on ev
 | Build                    | tsc (via Turborepo)                                                                                                                     | Every package compiles                                                                                                                       |
 | Test + per-file coverage | vitest                                                                                                                                  | Per-file 80% lines / functions / branches / statements                                                                                       |
 | Aggregate coverage       | [scripts/check-coverage.js](scripts/check-coverage.js)                                                                                  | Per-package and workspace-wide 90% lines / functions / branches                                                                              |
-| Pack shape               | publint + arethetypeswrong (`lint:pack`)                                                                                                | npm tarball / `exports` / types are valid                                                                                                    |
+| Pack shape               | publint + arethetypeswrong (`lint:pack`)                                                                                                | npm tarball / `exports` / types are valid (CLI-only packages run publint alone - see below)                                                  |
 | API surface              | [@microsoft/api-extractor](https://api-extractor.com/) + [scripts/check-browser-api-coverage.js](scripts/check-browser-api-coverage.js) | Public API surface of each tracked package matches committed `api/<pkg>.api.md`; divergent browser entries require a paired browser baseline |
 | README data dates        | [scripts/check-readme-dates.js](scripts/check-readme-dates.js)                                                                          | Each data package README's cycle date matches its bundled snapshot                                                                           |
 | MCP pinned version       | [scripts/check-mcp-pin.js](scripts/check-mcp-pin.js)                                                                                    | `packages/libs/mcp/README.md` pin matches the projected publish version (changeset-aware)                                                    |
+| Publishable build output | [scripts/check-publishable-dist.js](scripts/check-publishable-dist.js)                                                                  | Every non-private workspace has a `dist/` with JavaScript in it (Publish workflow only, both jobs)                                           |
 
-Two properties of the gate set:
+Three properties of the gate set:
 
 - **Coverage is layered intentionally.** Vitest's `perFile: true` enforces a per-file floor; the aggregate gate is a thin post-coverage script because Vitest can't express both in one threshold block.
+- **CLI-only packages run `publint` without arethetypeswrong.** [`apps/adsbtop/`](apps/adsbtop/) ships a `bin` and no `main` / `types` / `exports`, so there is nothing for a consumer to import and attw reports every resolution as failed. publint still applies and is the part that matters for a binary - it validates the tarball and that the `bin` target exists. A package that gains an importable entrypoint should pick up the full `publint && attw` line.
 - **Knip and ESLint cover different axes.** Knip handles package-level dead deps and orphaned files; ESLint handles source-level patterns. Source-level dead-export detection isn't part of the gate set.
 
 CodeQL runs as a separate workflow; it's a required check on `main`.
@@ -248,7 +252,8 @@ Commits inside the "Version Packages" PR, and the release commits and tags chang
 [3] publish.yml build job runs (no secrets)
         |- Checks out workflow_run.head_sha
         |- npm ci --ignore-scripts, npm run build
-        '- Uploads packages/libs/*/dist as an artifact
+        |- Verifies every publishable workspace has build output
+        '- Tars each publishable workspace's dist into one artifact
 
 [4] publish.yml publish job runs (squawk-release-bot, production-publish env)
         |- Pauses for one-tap approval
@@ -256,6 +261,7 @@ Commits inside the "Version Packages" PR, and the release commits and tags chang
         |- Checks out workflow_run.head_sha
         |- npm install -g npm@11.5, npm ci --ignore-scripts
         |- Downloads dist artifact
+        |- Re-verifies every publishable workspace has build output
         '- Hands off to changesets/action
 
 [5] changesets/action behavior depends on whether pending changesets exist
@@ -331,7 +337,7 @@ Beyond provenance, the publish flow is hardened against supply-chain compromise:
 
 - **npm Trusted Publisher (OIDC).** No long-lived `NPM_TOKEN` exists. The publish job exchanges a short-lived GitHub OIDC token (`id-token: write` + `npm@11.5`) for a per-run publish credential scoped to packages whose Trusted Publisher config matches this repo + workflow filename. Every `@squawk/*` package additionally has "Require two-factor authentication and disallow tokens" set on npm.
 - **`--ignore-scripts` on every `npm ci`.** All four workflows (ci, codeql, docs, publish) pass `--ignore-scripts` to neutralise prepare/postinstall script vectors.
-- **Build/publish job split.** The build job (`contents: read`, no secrets) produces the dist artifact; the publish job downloads the artifact and is the only job that holds the App token + OIDC permissions.
+- **Build/publish job split.** The build job (`contents: read`, no secrets) produces the dist artifact; the publish job downloads the artifact and is the only job that holds the App token + OIDC permissions. The publish job deliberately never runs `npm run build`, so the dist artifact is the sole source of build output at publish time - any publishable workspace missing from it would otherwise publish as a tarball containing nothing but `package.json` and `README.md`. The artifact is therefore built from the publishable-workspace list rather than directory globs, and [scripts/check-publishable-dist.js](scripts/check-publishable-dist.js) re-runs after the download to make that failure loud instead of silent. Bundling through `tar` also keeps the `bin` entry's executable bit, which the artifact upload's zip step would drop.
 - **Curated Actions allowlist + SHA pinning.** Repo Actions settings allow only `actions/*` (via the GitHub-authored toggle), `changesets/action@*`, and `lycheeverse/lychee-action@*`. "Require actions to be pinned to a full-length commit SHA" is enforced; Dependabot keeps the trailing version comments in sync.
 
 The disclosure process for vulnerability reports lives in [SECURITY.md](SECURITY.md). The repo is a one-maintainer project, so response times are measured in days rather than hours.
