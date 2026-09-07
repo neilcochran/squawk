@@ -60,7 +60,7 @@
     "@squawk/procedures": "^0.7.1",
     "@squawk/types": "^0.9.0",
     "@squawk/weather": "^0.6.1",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "peerDependencies": {
     "@squawk/icao-registry-data": "^0.8.12"
