@@ -53,14 +53,14 @@
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^18.3.0",
-    "globals": "^17.11.0",
-    "knip": "^6.33.0",
+    "globals": "^17.12.0",
+    "knip": "^6.34.0",
     "prettier": "^3.9.6",
     "publint": "^0.3.24",
     "turbo": "^2.10.12",
     "typedoc": "^0.28.20",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.68.0",
+    "typescript-eslint": "^8.69.0",
     "vitest": "^4.1.5"
   }
 }
