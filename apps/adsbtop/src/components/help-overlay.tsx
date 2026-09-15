@@ -11,7 +11,11 @@ interface HelpEntry {
 
 const HELP_ENTRIES: readonly HelpEntry[] = [
   { key: 'Up/Down', description: 'Move the row cursor' },
-  { key: 'O', description: 'Cycle sort column (ICAO, callsign, altitude, ground speed, age)' },
+  {
+    key: 'O / Shift+O',
+    description: 'Cycle the sort column forward/backward (every column but Grnd)',
+  },
+  { key: 'R', description: 'Reverse the sort direction (ascending/descending)' },
   { key: 'C', description: 'Toggle compact columns for narrow terminals' },
   { key: 'P', description: 'Pause/resume the table - the feed keeps running underneath' },
   {
@@ -21,6 +25,7 @@ const HELP_ENTRIES: readonly HelpEntry[] = [
   { key: 'N / Shift+N', description: 'Jump to the next/previous search match' },
   { key: 'M', description: 'Toggle the messages panel (recent new/update/lost events)' },
   { key: 'V', description: 'Toggle messages panel verbosity (new/lost only vs. every update)' },
+  { key: 'B', description: 'Hide/show the status bar' },
   { key: 'Enter / D', description: "Show the cursor row's full detail view" },
   { key: 'H', description: 'Toggle this help overlay' },
   { key: 'Q', description: 'Quit adsbtop' },

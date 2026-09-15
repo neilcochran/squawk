@@ -13,6 +13,8 @@ export interface DetailViewProps {
   nowMs: number;
   /** Configured receiver location (`--lat`/`--lon`), if any. Adds Distance/Bearing rows when set. */
   location: Coordinates | undefined;
+  /** Update events observed for this aircraft since it was first tracked, for the Messages row. */
+  messageCount: number;
 }
 
 /**
@@ -20,10 +22,15 @@ export interface DetailViewProps {
  * Opened with `[Enter]`/`[D]` on the selected row, closed the same way or
  * with `Escape`.
  *
- * @param props - The aircraft, the current time, and the configured receiver location.
+ * @param props - The aircraft, the current time, the configured receiver location, and the aircraft's message count.
  */
-export function DetailView({ aircraft, nowMs, location }: DetailViewProps): ReactElement {
-  const fields = buildDetailFields(aircraft, nowMs, location);
+export function DetailView({
+  aircraft,
+  nowMs,
+  location,
+  messageCount,
+}: DetailViewProps): ReactElement {
+  const fields = buildDetailFields(aircraft, nowMs, location, messageCount);
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
