@@ -4,7 +4,7 @@ import type { ReactElement } from 'react';
 
 import type { Aircraft } from '@squawk/types';
 
-import type { ColumnDef, SortKey } from '../columns.js';
+import type { ColumnDef, SortDirection, SortKey } from '../columns.js';
 import { isEmergencyAircraft } from '../format.js';
 
 /**
@@ -28,6 +28,8 @@ export interface AircraftTableProps {
   nowMs: number;
   /** The column `aircraft` is currently sorted by - highlighted in the header row so the active sort is visible while cycling with `[O]`. */
   sortKey: SortKey;
+  /** Which way `sortKey` is ordered - shown as a `^`/`v` suffix on the highlighted header. */
+  sortDirection: SortDirection;
   /** ICAO hex of the cursor row, moved with the arrow keys - highlighted with its own background. Undefined selects nothing. */
   selectedIcaoHex: string | undefined;
 }
@@ -47,10 +49,20 @@ export interface AircraftTableProps {
  * deliberately not `bold`, since bold text in a base ANSI color commonly
  * renders as that color's bright variant on top of any palette remapping.
  */
-function HeaderCell({ column, active }: { column: ColumnDef; active: boolean }): ReactElement {
+function HeaderCell({
+  column,
+  active,
+  direction,
+}: {
+  column: ColumnDef;
+  active: boolean;
+  direction: SortDirection;
+}): ReactElement {
   return active ? (
     <Box width={column.width} backgroundColor="yellow">
-      <Text color="#000000">{column.header}</Text>
+      <Text color="#000000">
+        {column.header} {direction === 'asc' ? '^' : 'v'}
+      </Text>
     </Box>
   ) : (
     <Box width={column.width}>
@@ -90,24 +102,40 @@ function HeaderSeparator({
  * see {@link isEmergencyAircraft}) renders in bold red - this is a full
  * separate `<Text>` branch rather than a conditionally-`undefined` `color`
  * prop, since Ink's `color`/`bold` props are only ever fully present or
- * fully omitted here.
+ * fully omitted here. Cells are separated by a right margin the width of
+ * the header row's `|` separator so columns line up; the last cell carries
+ * none, since a trailing margin only pushes the row past the table's inner
+ * width and makes Ink shrink (truncate) the first cell to compensate. A
+ * non-emergency cell on the cursor row renders in
+ * explicit hex black so it stays readable against the row's cyan
+ * background, where the terminal's default (typically white) foreground
+ * washes out - see {@link HeaderCell} for why `#000000` rather than the
+ * named ANSI `black`.
  */
 function AircraftCell({
   column,
   aircraft,
   nowMs,
   emergency,
+  selected,
+  last,
 }: {
   column: ColumnDef;
   aircraft: Aircraft;
   nowMs: number;
   emergency: boolean;
+  selected: boolean;
+  last: boolean;
 }): ReactElement {
   const value = column.render(aircraft, nowMs);
   return (
-    <Box width={column.width} marginRight={HEADER_SEPARATOR_WIDTH}>
+    <Box width={column.width} marginRight={last ? 0 : HEADER_SEPARATOR_WIDTH}>
       {emergency ? (
         <Text color="red" bold wrap="truncate-end">
+          {value}
+        </Text>
+      ) : selected ? (
+        <Text color="#000000" wrap="truncate-end">
           {value}
         </Text>
       ) : (
@@ -122,9 +150,10 @@ function AircraftCell({
  * background (full width, like the header bars) - a separate branch rather
  * than a conditional `backgroundColor` prop, matching {@link AircraftCell}'s
  * established convention of never passing Ink style props as `undefined`.
- * Cyan stays legible against emergency rows' bold red text, so the two
- * indicators don't fight each other when a selected row is also squawking
- * an emergency code.
+ * Its cells switch to black text so they read against the cyan; emergency
+ * rows keep their bold red text instead, which stays legible against cyan,
+ * so the two indicators don't fight each other when a selected row is also
+ * squawking an emergency code.
  */
 function AircraftRow({
   aircraft,
@@ -138,13 +167,15 @@ function AircraftRow({
   selected: boolean;
 }): ReactElement {
   const emergency = isEmergencyAircraft(aircraft);
-  const cells = columns.map((column) => (
+  const cells = columns.map((column, index) => (
     <AircraftCell
       key={column.key}
       column={column}
       aircraft={aircraft}
       nowMs={nowMs}
       emergency={emergency}
+      selected={selected}
+      last={index === columns.length - 1}
     />
   ));
   return selected ? (
@@ -160,14 +191,17 @@ function AircraftRow({
  * The live-updating aircraft table: a header row followed by one row per
  * tracked aircraft. Emergency aircraft render in bold red - see
  * {@link isEmergencyAircraft}. The active sort column's header is
- * highlighted - see {@link AircraftTableProps.sortKey}. The cursor row is
- * highlighted separately - see {@link AircraftTableProps.selectedIcaoHex}.
+ * highlighted with a direction suffix - see {@link AircraftTableProps.sortKey}
+ * and {@link AircraftTableProps.sortDirection}. The cursor row is highlighted
+ * separately - see {@link AircraftTableProps.selectedIcaoHex}. The whole
+ * table sits inside the same round cyan border the detail view and help
+ * overlay use, so every main-area panel shares one frame.
  *
- * @param props - The aircraft, columns, active sort key, selected row, and current time to render.
+ * @param props - The aircraft, columns, active sort key and direction, selected row, and current time to render.
  */
 export function AircraftTable(props: AircraftTableProps): ReactElement {
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
       <Box width="100%" backgroundColor="blue">
         {props.columns.map((column, index) => {
           const active = column.key === props.sortKey;
@@ -180,7 +214,7 @@ export function AircraftTable(props: AircraftTableProps): ReactElement {
                   afterActive={active}
                 />
               ) : undefined}
-              <HeaderCell column={column} active={active} />
+              <HeaderCell column={column} active={active} direction={props.sortDirection} />
             </Fragment>
           );
         })}

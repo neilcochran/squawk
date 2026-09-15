@@ -31,6 +31,8 @@ function Harness({ feed }: { feed: FakeAircraftFeed }): ReactElement {
         newAndLostLogLength: view.newAndLostLog.length,
         connectionState: view.connectionState,
       })}
+      {'\n'}
+      {`A0B1C2Count:${view.messageCountByHex.get('A0B1C2') ?? 0}`}
     </Text>
   );
 }
@@ -109,6 +111,7 @@ describe('useAircraftFeed', () => {
 
     expect(lastFrame()).toContain('"count":1');
     expect(lastFrame()).toContain('"messageCount":1');
+    expect(lastFrame()).toContain('A0B1C2Count:1');
   });
 
   it('removes a tracked aircraft on aircraft:lost', async () => {
@@ -120,6 +123,7 @@ describe('useAircraftFeed', () => {
     await flush();
 
     expect(lastFrame()).toContain('"count":0');
+    expect(lastFrame()).toContain('A0B1C2Count:0');
   });
 
   it('distinguishes new, update, and lost events in the message log', async () => {

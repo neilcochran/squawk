@@ -154,6 +154,100 @@ describe('App', () => {
     expect(byCallsign.indexOf('AAA111')).toBeLessThan(byCallsign.indexOf('ZZZ999'));
   });
 
+  it('cycles the sort column backward with Shift+O', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed);
+    dispatchNew(feed, makeAircraft({ icaoHex: 'B00000', callsign: 'ZZZ999' }));
+    dispatchNew(feed, makeAircraft({ icaoHex: 'A00000', callsign: 'AAA111' }));
+    await flush();
+
+    stdin.write('o');
+    await flush();
+    expect(lastFrame()).toContain('Callsign ^');
+
+    stdin.write('O');
+    await flush();
+
+    // Back to icaoHex ascending: A00000 before B00000.
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('ICAO ^');
+    expect(frame.indexOf('A00000')).toBeLessThan(frame.indexOf('B00000'));
+  });
+
+  it('reverses the sort direction with R and flips the header suffix and hotkey label', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed);
+    dispatchNew(feed, makeAircraft({ icaoHex: 'A00000' }));
+    dispatchNew(feed, makeAircraft({ icaoHex: 'B00000' }));
+    await flush();
+
+    const ascending = lastFrame() ?? '';
+    expect(ascending).toContain('ICAO ^');
+    expect(ascending).toContain('[R]Desc');
+    expect(ascending.indexOf('A00000')).toBeLessThan(ascending.indexOf('B00000'));
+
+    stdin.write('r');
+    await flush();
+
+    const descending = lastFrame() ?? '';
+    expect(descending).toContain('ICAO v');
+    expect(descending).toContain('[R]Asc');
+    expect(descending.indexOf('B00000')).toBeLessThan(descending.indexOf('A00000'));
+  });
+
+  it('keeps the sort direction when cycling to another column', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed);
+    dispatchNew(feed, makeAircraft({ icaoHex: 'A00000', callsign: 'AAA111' }));
+    dispatchNew(feed, makeAircraft({ icaoHex: 'B00000', callsign: 'ZZZ999' }));
+    await flush();
+
+    stdin.write('r');
+    await flush();
+    stdin.write('o');
+    await flush();
+
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('Callsign v');
+    expect(frame.indexOf('ZZZ999')).toBeLessThan(frame.indexOf('AAA111'));
+  });
+
+  it('hides and shows the status bar with B', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed);
+    await flush();
+    expect(lastFrame()).toContain('source: sbs');
+    expect(lastFrame()).toContain('[B]Hide status');
+
+    stdin.write('b');
+    await flush();
+    expect(lastFrame()).not.toContain('source: sbs');
+    expect(lastFrame()).toContain('[B]Status');
+
+    stdin.write('B');
+    await flush();
+    expect(lastFrame()).toContain('source: sbs');
+  });
+
+  it('counts every update event in the status bar total', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed);
+    dispatchNew(feed, makeAircraft({ icaoHex: 'A00000' }));
+    dispatchUpdate(feed, makeAircraft({ icaoHex: 'A00000' }));
+    dispatchNew(feed, makeAircraft({ icaoHex: 'B00000' }));
+    await flush();
+
+    expect(lastFrame()).toContain('msgs: 3');
+
+    // The total keeps counting while paused, since it reflects the feed
+    // rather than the frozen table.
+    stdin.write('p');
+    await flush();
+    dispatchUpdate(feed, makeAircraft({ icaoHex: 'B00000' }));
+    await flush();
+    expect(lastFrame()).toContain('msgs: 4');
+  });
+
   it('freezes the table while paused and shows the current state on resume', async () => {
     const feed = createFakeAircraftFeed();
     const { lastFrame, stdin } = renderApp(feed);
@@ -186,6 +280,21 @@ describe('App', () => {
       const frame = lastFrame() ?? '';
       expect(frame).toContain('A0B1C2 detail');
       expect(frame).not.toContain('D3E4F5 detail');
+    });
+
+    it("shows the selected aircraft's own message count in its detail view", async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      dispatchUpdate(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      dispatchUpdate(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5' }));
+      await flush();
+
+      stdin.write('\r');
+      await flush();
+
+      expect(lastFrame()).toContain('Messages: 3');
     });
 
     it('moves the cursor down with the arrow key before opening detail', async () => {
