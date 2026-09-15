@@ -19,6 +19,7 @@ describe('aircraftStateReducer', () => {
 
     expect(state.aircraftByHex.get('A0B1C2')?.icaoHex).toBe('A0B1C2');
     expect(state.messageCount).toBe(1);
+    expect(state.messageCountByHex.get('A0B1C2')).toBe(1);
     expect(state.lastMessageAt).toBe(1000);
   });
 
@@ -38,7 +39,33 @@ describe('aircraftStateReducer', () => {
 
     expect(second.aircraftByHex.get('A0B1C2')?.groundSpeedKt).toBe(250);
     expect(second.messageCount).toBe(2);
+    expect(second.messageCountByHex.get('A0B1C2')).toBe(2);
     expect(second.lastMessageAt).toBe(2000);
+  });
+
+  it('counts messages per aircraft independently', () => {
+    const first = aircraftStateReducer(initialAircraftState, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 1000,
+    });
+    const second = aircraftStateReducer(first, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('D3E4F5'),
+      at: 1100,
+    });
+    const third = aircraftStateReducer(second, {
+      type: 'message',
+      kind: 'update',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 1200,
+    });
+
+    expect(third.messageCount).toBe(3);
+    expect(third.messageCountByHex.get('A0B1C2')).toBe(2);
+    expect(third.messageCountByHex.get('D3E4F5')).toBe(1);
   });
 
   it('removes an aircraft on a lost action', () => {
@@ -57,6 +84,31 @@ describe('aircraftStateReducer', () => {
 
     expect(lost.aircraftByHex.has('A0B1C2')).toBe(false);
     expect(lost.messageCount).toBe(1);
+    expect(lost.messageCountByHex.has('A0B1C2')).toBe(false);
+  });
+
+  it('restarts the per-aircraft count from one when a lost aircraft reappears', () => {
+    const tracked = aircraftStateReducer(initialAircraftState, {
+      type: 'message',
+      kind: 'update',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 1000,
+    });
+    const lost = aircraftStateReducer(tracked, {
+      type: 'lost',
+      icaoHex: 'A0B1C2',
+      callsign: undefined,
+      at: 1500,
+    });
+    const back = aircraftStateReducer(lost, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 2000,
+    });
+
+    expect(back.messageCountByHex.get('A0B1C2')).toBe(1);
+    expect(back.messageCount).toBe(2);
   });
 
   it('logs a lost action for an unknown icaoHex without touching aircraftByHex', () => {

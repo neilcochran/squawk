@@ -139,12 +139,14 @@ function formatTargetState(targetState: TargetStateAndStatus | undefined): strin
  * @param aircraft - The selected aircraft to build fields for.
  * @param nowMs - Current time, for the "last seen" age.
  * @param location - The configured receiver location (`--lat`/`--lon`), if any. Adds Distance/Bearing rows after Position when set; omitted entirely otherwise, matching the table's Dist/Brg columns.
+ * @param messageCount - Update events adsbtop has observed for this aircraft since it was first (or most recently) tracked.
  * @returns Labeled rows in display order.
  */
 export function buildDetailFields(
   aircraft: Aircraft,
   nowMs: number,
   location: Coordinates | undefined,
+  messageCount: number,
 ): DetailField[] {
   const locationFields: DetailField[] =
     location === undefined
@@ -178,6 +180,7 @@ export function buildDetailFields(
     { label: 'Target state', value: formatTargetState(aircraft.targetState) },
     { label: 'Origin', value: formatAirport(aircraft.origin) },
     { label: 'Destination', value: formatAirport(aircraft.destination) },
+    { label: 'Messages', value: String(messageCount) },
     { label: 'Last seen', value: `${formatAge(aircraft.lastSeenAt, nowMs)} ago` },
   ];
 }
