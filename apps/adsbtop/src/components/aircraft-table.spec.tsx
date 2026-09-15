@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Aircraft } from '@squawk/types';
 
-import { visibleColumns } from '../columns.js';
+import { sortKeyCycle, visibleColumns } from '../columns.js';
 
 import { AircraftTable } from './aircraft-table.js';
 
@@ -19,6 +19,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(false)}
         nowMs={0}
         sortKey="icaoHex"
+        sortDirection="asc"
         selectedIcaoHex={undefined}
       />,
     );
@@ -36,6 +37,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(false)}
         nowMs={0}
         sortKey="icaoHex"
+        sortDirection="asc"
         selectedIcaoHex={undefined}
       />,
     );
@@ -54,6 +56,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(false)}
         nowMs={0}
         sortKey="icaoHex"
+        sortDirection="asc"
         selectedIcaoHex={undefined}
       />,
     );
@@ -72,6 +75,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(true)}
         nowMs={0}
         sortKey="icaoHex"
+        sortDirection="asc"
         selectedIcaoHex={undefined}
       />,
     );
@@ -89,6 +93,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(false)}
         nowMs={0}
         sortKey="icaoHex"
+        sortDirection="asc"
         selectedIcaoHex={undefined}
       />,
     );
@@ -104,6 +109,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(false)}
         nowMs={0}
         sortKey="icaoHex"
+        sortDirection="asc"
         selectedIcaoHex={undefined}
       />,
     );
@@ -140,6 +146,7 @@ describe('AircraftTable', () => {
         columns={visibleColumns(false)}
         nowMs={0}
         sortKey="icaoHex"
+        sortDirection="asc"
         selectedIcaoHex={undefined}
       />,
     );
@@ -152,13 +159,14 @@ describe('AircraftTable', () => {
     // highlight itself isn't assertable here - this covers that switching
     // sortKey doesn't drop or duplicate a header, which is the part that
     // could actually regress.
-    for (const sortKey of ['icaoHex', 'callsign', 'altitude', 'groundSpeed', 'age'] as const) {
+    for (const sortKey of sortKeyCycle({ lat: 0, lon: 0 })) {
       const { lastFrame } = render(
         <AircraftTable
           aircraft={[]}
           columns={visibleColumns(false)}
           nowMs={0}
           sortKey={sortKey}
+          sortDirection="asc"
           selectedIcaoHex={undefined}
         />,
       );
@@ -187,6 +195,7 @@ describe('AircraftTable', () => {
           columns={visibleColumns(false)}
           nowMs={0}
           sortKey="icaoHex"
+          sortDirection="asc"
           selectedIcaoHex={selectedIcaoHex}
         />,
       );

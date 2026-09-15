@@ -11,6 +11,7 @@ describe('StatusHeader', () => {
         host="192.168.1.50"
         port={30003}
         aircraftCount={5}
+        messageCount={1234}
         messageRatePerSec={12}
         lastMessageAt={1000}
         nowMs={4000}
@@ -23,6 +24,7 @@ describe('StatusHeader', () => {
     expect(frame).toContain('adsbtop');
     expect(frame).toContain('sbs 192.168.1.50:30003');
     expect(frame).toContain('aircraft: 5');
+    expect(frame).toContain('msgs: 1234');
     expect(frame).not.toContain('PAUSED');
     expect(frame).not.toContain('RECONNECTING');
   });
@@ -34,6 +36,7 @@ describe('StatusHeader', () => {
         host="localhost"
         port={30005}
         aircraftCount={0}
+        messageCount={0}
         messageRatePerSec={0}
         lastMessageAt={undefined}
         nowMs={0}
@@ -52,6 +55,7 @@ describe('StatusHeader', () => {
         host="192.168.1.50"
         port={30003}
         aircraftCount={0}
+        messageCount={0}
         messageRatePerSec={0}
         lastMessageAt={undefined}
         nowMs={0}
