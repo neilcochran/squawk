@@ -12,7 +12,7 @@ function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
 describe('DetailView', () => {
   it('shows the ICAO hex in the title and every field label', () => {
     const { lastFrame } = render(
-      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} />,
+      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} messageCount={0} />,
     );
 
     const frame = lastFrame();
@@ -24,7 +24,7 @@ describe('DetailView', () => {
 
   it('omits Distance/Bearing when no location is configured', () => {
     const { lastFrame } = render(
-      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} />,
+      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} messageCount={0} />,
     );
 
     const frame = lastFrame();
@@ -32,10 +32,18 @@ describe('DetailView', () => {
     expect(frame).not.toContain('Bearing:');
   });
 
+  it('shows the message count', () => {
+    const { lastFrame } = render(
+      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} messageCount={42} />,
+    );
+
+    expect(lastFrame()).toContain('Messages: 42');
+  });
+
   it('shows Distance/Bearing when a location is configured', () => {
     const aircraft = makeAircraft({ position: { lat: 0, lon: 1 } });
     const { lastFrame } = render(
-      <DetailView aircraft={aircraft} nowMs={0} location={{ lat: 0, lon: 0 }} />,
+      <DetailView aircraft={aircraft} nowMs={0} location={{ lat: 0, lon: 0 }} messageCount={0} />,
     );
 
     const frame = lastFrame();

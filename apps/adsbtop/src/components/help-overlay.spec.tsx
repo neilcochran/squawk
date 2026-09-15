@@ -9,8 +9,12 @@ describe('HelpOverlay', () => {
 
     const frame = lastFrame();
     expect(frame).toContain('adsbtop help');
-    expect(frame).toContain('[O]');
-    expect(frame).toContain('Cycle sort column');
+    expect(frame).toContain('[O / Shift+O]');
+    expect(frame).toContain('Cycle the sort column');
+    expect(frame).toContain('[R]');
+    expect(frame).toContain('Reverse the sort direction');
+    expect(frame).toContain('[B]');
+    expect(frame).toContain('Hide/show the status bar');
     expect(frame).toContain('[Q]');
     expect(frame).toContain('Quit adsbtop');
   });

@@ -35,6 +35,8 @@ export interface AircraftTableState {
   aircraftByHex: Map<string, Aircraft>;
   /** Total `aircraft:new`/`aircraft:update` events observed since the feed started. */
   messageCount: number;
+  /** `aircraft:new`/`aircraft:update` events observed per aircraft, keyed by ICAO hex, for the detail view's message count. An entry is dropped when its aircraft is lost, so a reappearing aircraft counts from zero as a fresh track. */
+  messageCountByHex: Map<string, number>;
   /** Unix epoch ms of the most recent `aircraft:new`/`aircraft:update` event, or undefined if none has arrived yet. */
   lastMessageAt: number | undefined;
   /** Every event type, oldest first, capped at {@link MAX_MESSAGE_LOG_ENTRIES} - backs the `[M]essages` panel's `all` verbosity. */
@@ -65,6 +67,7 @@ export type AircraftStateAction =
 export const initialAircraftState: AircraftTableState = {
   aircraftByHex: new Map(),
   messageCount: 0,
+  messageCountByHex: new Map(),
   lastMessageAt: undefined,
   messageLog: [],
   newAndLostLog: [],
@@ -98,7 +101,7 @@ function appendLogEntry(log: MessageLogEntry[], entry: MessageLogEntry): Message
  *
  * @param state - The current accumulated state.
  * @param action - The event to apply.
- * @returns The next state. Always a new `aircraftByHex` map when it changes, so React's `useReducer` sees a fresh reference.
+ * @returns The next state. Always a new `aircraftByHex`/`messageCountByHex` map when either changes, so React's `useReducer` sees a fresh reference.
  */
 export function aircraftStateReducer(
   state: AircraftTableState,
@@ -108,6 +111,11 @@ export function aircraftStateReducer(
     case 'message': {
       const aircraftByHex = new Map(state.aircraftByHex);
       aircraftByHex.set(action.aircraft.icaoHex, action.aircraft);
+      const messageCountByHex = new Map(state.messageCountByHex);
+      messageCountByHex.set(
+        action.aircraft.icaoHex,
+        (state.messageCountByHex.get(action.aircraft.icaoHex) ?? 0) + 1,
+      );
       const logEntry: MessageLogEntry = {
         id: state.nextLogId,
         type: action.kind,
@@ -120,6 +128,7 @@ export function aircraftStateReducer(
       return {
         aircraftByHex,
         messageCount: state.messageCount + 1,
+        messageCountByHex,
         lastMessageAt: action.at,
         messageLog: appendLogEntry(state.messageLog, logEntry),
         newAndLostLog,
@@ -142,7 +151,16 @@ export function aircraftStateReducer(
       }
       const aircraftByHex = new Map(state.aircraftByHex);
       aircraftByHex.delete(action.icaoHex);
-      return { ...state, aircraftByHex, messageLog, newAndLostLog, nextLogId };
+      const messageCountByHex = new Map(state.messageCountByHex);
+      messageCountByHex.delete(action.icaoHex);
+      return {
+        ...state,
+        aircraftByHex,
+        messageCountByHex,
+        messageLog,
+        newAndLostLog,
+        nextLogId,
+      };
     }
     default:
       return state;

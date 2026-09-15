@@ -1,6 +1,8 @@
 import { Box, Text } from 'ink';
 import type { ReactElement } from 'react';
 
+import type { SortDirection } from '../columns.js';
+
 /** One hotkey entry shown in {@link HotkeyBar}. */
 interface Hotkey {
   /** The key to press. */
@@ -13,8 +15,12 @@ interface Hotkey {
 export interface HotkeyBarProps {
   /** Whether the table is currently paused - swaps the pause hotkey's label to "Resume". */
   paused: boolean;
+  /** The active sort direction - the `[R]` label names the direction pressing it switches to. */
+  sortDirection: SortDirection;
   /** Whether the messages panel is currently shown - swaps its label and reveals `[V]erbosity`. */
   showMessages: boolean;
+  /** Whether the status bar is currently shown - swaps the `[B]` label between "Status" and "Hide status". */
+  showStatus: boolean;
   /** Whether a search has been submitted - reveals `[N]ext match` for cycling. */
   hasActiveSearch: boolean;
 }
@@ -26,11 +32,18 @@ export interface HotkeyBarProps {
  * to what a keypress does right now rather than listing every hotkey that
  * exists anywhere in the app.
  *
- * @param props - Pause/messages/search state, for the conditional labels and entries.
+ * @param props - Pause/sort/messages/status/search state, for the conditional labels and entries.
  */
-export function HotkeyBar({ paused, showMessages, hasActiveSearch }: HotkeyBarProps): ReactElement {
+export function HotkeyBar({
+  paused,
+  sortDirection,
+  showMessages,
+  showStatus,
+  hasActiveSearch,
+}: HotkeyBarProps): ReactElement {
   const hotkeys: Hotkey[] = [
     { key: 'O', label: 'Sort' },
+    { key: 'R', label: sortDirection === 'asc' ? 'Desc' : 'Asc' },
     { key: 'C', label: 'Columns' },
     { key: 'P', label: paused ? 'Resume' : 'Pause' },
     { key: 'S', label: 'Search' },
@@ -42,6 +55,7 @@ export function HotkeyBar({ paused, showMessages, hasActiveSearch }: HotkeyBarPr
   if (showMessages) {
     hotkeys.push({ key: 'V', label: 'Verbosity' });
   }
+  hotkeys.push({ key: 'B', label: showStatus ? 'Hide status' : 'Status' });
   hotkeys.push(
     { key: 'D', label: 'Detail' },
     { key: 'H', label: 'Help' },

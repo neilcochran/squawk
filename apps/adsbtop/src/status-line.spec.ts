@@ -9,6 +9,7 @@ function makeInfo(overrides: Partial<StatusLineInfo> = {}): StatusLineInfo {
     host: '192.168.1.50',
     port: 30003,
     aircraftCount: 0,
+    messageCount: 0,
     messageRatePerSec: 0,
     lastMessageAt: undefined,
     nowMs: 0,
@@ -17,11 +18,14 @@ function makeInfo(overrides: Partial<StatusLineInfo> = {}): StatusLineInfo {
 }
 
 describe('formatStatusLine', () => {
-  it('includes the source, host, port, aircraft count, and message rate', () => {
-    const line = formatStatusLine(makeInfo({ aircraftCount: 5, messageRatePerSec: 12 }));
+  it('includes the source, host, port, aircraft count, total messages, and message rate', () => {
+    const line = formatStatusLine(
+      makeInfo({ aircraftCount: 5, messageCount: 1234, messageRatePerSec: 12 }),
+    );
 
     expect(line).toContain('source: sbs 192.168.1.50:30003');
     expect(line).toContain('aircraft: 5');
+    expect(line).toContain('msgs: 1234');
     expect(line).toContain('msgs/s: 12');
   });
 

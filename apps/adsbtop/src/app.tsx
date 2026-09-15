@@ -7,7 +7,7 @@ import type { Aircraft, Coordinates } from '@squawk/types';
 
 import type { FeedSource } from './cli-args.js';
 import { nextSortKey, sortAircraft, visibleColumns } from './columns.js';
-import type { SortKey } from './columns.js';
+import type { SortDirection, SortKey } from './columns.js';
 import { AircraftTable } from './components/aircraft-table.js';
 import { DetailView } from './components/detail-view.js';
 import { HelpOverlay } from './components/help-overlay.js';
@@ -28,6 +28,8 @@ import type { RegistryDataLoader } from './use-icao-registry.js';
 const CLOCK_TICK_MS = 1000;
 /** Sort key adsbtop starts with. */
 const INITIAL_SORT_KEY: SortKey = 'icaoHex';
+/** Sort direction adsbtop starts with. */
+const INITIAL_SORT_DIRECTION: SortDirection = 'asc';
 
 /** Which content fills the main area below the status header. */
 type Panel = 'table' | 'help' | 'detail';
@@ -50,10 +52,10 @@ export interface AppProps {
 
 /**
  * adsbtop's root component: subscribes to the feed, owns display state
- * (pause, compact columns, sort, cursor, search, messages, and which main
- * panel is showing), wires the hotkey bar, and renders the status header,
- * main panel, optional messages panel, optional search prompt, and hotkey
- * bar.
+ * (pause, compact columns, sort key and direction, cursor, search, messages,
+ * status-bar visibility, and which main panel is showing), wires the hotkey
+ * bar, and renders the optional status header, main panel, optional messages
+ * panel, optional search prompt, and hotkey bar.
  *
  * `[P]ause` freezes the table's displayed rows (the feed keeps running
  * underneath - resuming immediately jumps to current state, doesn't replay
@@ -81,6 +83,8 @@ export function App(props: AppProps): ReactElement {
   const [compact, setCompact] = useState(false);
   const [panel, setPanel] = useState<Panel>('table');
   const [sortKey, setSortKey] = useState<SortKey>(INITIAL_SORT_KEY);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(INITIAL_SORT_DIRECTION);
+  const [showStatus, setShowStatus] = useState(true);
   const [now, setNow] = useState(() => Date.now());
   const [displayedAircraft, setDisplayedAircraft] = useState<Aircraft[]>(enrichedAircraft);
   const [selectedIcaoHex, setSelectedIcaoHex] = useState<string | undefined>(undefined);
@@ -100,8 +104,8 @@ export function App(props: AppProps): ReactElement {
   }
 
   const sortedAircraft = useMemo(
-    () => sortAircraft(displayedAircraft, sortKey),
-    [displayedAircraft, sortKey],
+    () => sortAircraft(displayedAircraft, sortKey, sortDirection, props.location),
+    [displayedAircraft, sortKey, sortDirection, props.location],
   );
   const columns = useMemo(() => visibleColumns(compact, props.location), [compact, props.location]);
 
@@ -166,8 +170,18 @@ export function App(props: AppProps): ReactElement {
           setPanel((prev) => (prev === 'help' ? 'table' : 'help'));
           break;
         case 'o':
+          setSortKey((prev) => nextSortKey(prev, props.location, 1));
+          break;
         case 'O':
-          setSortKey((prev) => nextSortKey(prev));
+          setSortKey((prev) => nextSortKey(prev, props.location, -1));
+          break;
+        case 'r':
+        case 'R':
+          setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+          break;
+        case 'b':
+        case 'B':
+          setShowStatus((prev) => !prev);
           break;
         case 'd':
         case 'D':
@@ -220,27 +234,36 @@ export function App(props: AppProps): ReactElement {
 
   return (
     <Box flexDirection="column">
-      <StatusHeader
-        source={props.source}
-        host={props.host}
-        port={props.port}
-        aircraftCount={view.aircraft.length}
-        messageRatePerSec={view.messageRatePerSec}
-        lastMessageAt={view.lastMessageAt}
-        nowMs={now}
-        paused={paused}
-        connectionState={view.connectionState}
-      />
+      {showStatus ? (
+        <StatusHeader
+          source={props.source}
+          host={props.host}
+          port={props.port}
+          aircraftCount={view.aircraft.length}
+          messageCount={view.messageCount}
+          messageRatePerSec={view.messageRatePerSec}
+          lastMessageAt={view.lastMessageAt}
+          nowMs={now}
+          paused={paused}
+          connectionState={view.connectionState}
+        />
+      ) : undefined}
       {panel === 'help' ? (
         <HelpOverlay />
       ) : panel === 'detail' && selectedAircraft !== undefined ? (
-        <DetailView aircraft={selectedAircraft} nowMs={now} location={props.location} />
+        <DetailView
+          aircraft={selectedAircraft}
+          nowMs={now}
+          location={props.location}
+          messageCount={view.messageCountByHex.get(selectedAircraft.icaoHex) ?? 0}
+        />
       ) : (
         <AircraftTable
           aircraft={sortedAircraft}
           columns={columns}
           nowMs={now}
           sortKey={sortKey}
+          sortDirection={sortDirection}
           selectedIcaoHex={selectedIcaoHex}
         />
       )}
@@ -255,7 +278,9 @@ export function App(props: AppProps): ReactElement {
       ) : undefined}
       <HotkeyBar
         paused={paused}
+        sortDirection={sortDirection}
         showMessages={showMessages}
+        showStatus={showStatus}
         hasActiveSearch={submittedSearchQuery !== undefined}
       />
     </Box>

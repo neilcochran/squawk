@@ -64,7 +64,7 @@ function fieldValue(
 
 describe('buildDetailFields', () => {
   it('shows "-" for every unpopulated field', () => {
-    const fields = buildDetailFields(makeAircraft(), 0, undefined);
+    const fields = buildDetailFields(makeAircraft(), 0, undefined, 0);
 
     expect(fieldValue(fields, 'Callsign')).toBe('-');
     expect(fieldValue(fields, 'Squawk')).toBe('-');
@@ -91,6 +91,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ icaoHex: 'A0B1C2', lastSeenAt: 1000 }),
       4000,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'ICAO')).toBe('A0B1C2');
@@ -102,6 +103,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ position: { lat: 40.64131, lon: -73.77812 } }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Position')).toBe('40.6413, -73.7781');
@@ -112,6 +114,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ position: { lat: 0, lon: 0, baroAltitudeFt: 35000, geoAltitudeFt: 35200 } }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Baro altitude')).toBe('35000ft');
@@ -123,6 +126,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ trueTrackDeg: 90.4, magneticHeadingDeg: 95.6 }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'True track')).toBe('90°');
@@ -136,6 +140,7 @@ describe('buildDetailFields', () => {
       }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Registration')).toBe('N12345 Cessna 172');
@@ -146,13 +151,19 @@ describe('buildDetailFields', () => {
       makeAircraft({ registration: { icaoHex: 'A0B1C2', registration: 'N12345' } }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Registration')).toBe('N12345');
   });
 
   it('omits Distance and Bearing entirely when no location is configured', () => {
-    const fields = buildDetailFields(makeAircraft({ position: { lat: 0, lon: 0 } }), 0, undefined);
+    const fields = buildDetailFields(
+      makeAircraft({ position: { lat: 0, lon: 0 } }),
+      0,
+      undefined,
+      0,
+    );
 
     expect(fields.some((field) => field.label === 'Distance')).toBe(false);
     expect(fields.some((field) => field.label === 'Bearing')).toBe(false);
@@ -160,7 +171,12 @@ describe('buildDetailFields', () => {
 
   it('adds Distance and Bearing right after Position when a location is configured', () => {
     const location: Coordinates = { lat: 0, lon: 0 };
-    const fields = buildDetailFields(makeAircraft({ position: { lat: 0, lon: 1 } }), 0, location);
+    const fields = buildDetailFields(
+      makeAircraft({ position: { lat: 0, lon: 1 } }),
+      0,
+      location,
+      0,
+    );
 
     const labels = fields.map((field) => field.label);
     expect(labels.indexOf('Distance')).toBe(labels.indexOf('Position') + 1);
@@ -170,7 +186,7 @@ describe('buildDetailFields', () => {
 
   it('shows a placeholder for Distance/Bearing when the aircraft has no position', () => {
     const location: Coordinates = { lat: 0, lon: 0 };
-    const fields = buildDetailFields(makeAircraft(), 0, location);
+    const fields = buildDetailFields(makeAircraft(), 0, location, 0);
 
     expect(fieldValue(fields, 'Distance')).toBe('-');
     expect(fieldValue(fields, 'Bearing')).toBe('-');
@@ -181,6 +197,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ squawkAlert: true, identActive: true }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Squawk alert')).toBe('Yes');
@@ -192,6 +209,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ squawkAlert: false, identActive: false }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Squawk alert')).toBe('-');
@@ -203,13 +221,14 @@ describe('buildDetailFields', () => {
       makeAircraft({ emergencyState: 'lifeguardMedical' }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Emergency state')).toBe('Lifeguard/medical');
   });
 
   it('formats "none" emergency state distinctly from an unpopulated field', () => {
-    const fields = buildDetailFields(makeAircraft({ emergencyState: 'none' }), 0, undefined);
+    const fields = buildDetailFields(makeAircraft({ emergencyState: 'none' }), 0, undefined, 0);
 
     expect(fieldValue(fields, 'Emergency state')).toBe('None');
   });
@@ -219,6 +238,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ resolutionAdvisory: makeResolutionAdvisory({ advisoryType: 'climb' }) }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('Climb');
@@ -231,6 +251,7 @@ describe('buildDetailFields', () => {
       }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('Descend (preventive)');
@@ -241,6 +262,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ resolutionAdvisory: makeResolutionAdvisory({ active: false }) }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('None');
@@ -256,6 +278,7 @@ describe('buildDetailFields', () => {
       }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('Active (multi-threat)');
@@ -271,6 +294,7 @@ describe('buildDetailFields', () => {
       }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('Active');
@@ -287,6 +311,7 @@ describe('buildDetailFields', () => {
       }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Target state')).toBe('35000ft sel, 270° sel, AP on');
@@ -297,6 +322,7 @@ describe('buildDetailFields', () => {
       makeAircraft({ targetState: makeTargetState() }),
       0,
       undefined,
+      0,
     );
 
     expect(fieldValue(fields, 'Target state')).toBe('-');
