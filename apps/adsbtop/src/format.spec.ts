@@ -7,7 +7,9 @@ import {
   formatAge,
   formatAltitude,
   formatBearing,
+  formatClosestApproach,
   formatDistance,
+  formatDuration,
   formatGroundSpeed,
   formatHeading,
   formatMessageLogLine,
@@ -184,6 +186,44 @@ describe('formatVerticalRate', () => {
 
   it('returns a placeholder when unavailable', () => {
     expect(formatVerticalRate(makeAircraft())).toBe('-');
+  });
+});
+
+describe('formatDuration', () => {
+  it('formats sub-minute durations in seconds', () => {
+    expect(formatDuration(45)).toBe('45s');
+  });
+
+  it('formats sub-hour durations as padded minutes and seconds', () => {
+    expect(formatDuration(65)).toBe('1m05s');
+  });
+
+  it('formats hour-plus durations as padded hours and minutes', () => {
+    expect(formatDuration(2 * 60 * 60 + 3 * 60)).toBe('2h03m');
+  });
+});
+
+describe('formatClosestApproach', () => {
+  it('keeps one decimal on the distance under 10 nm', () => {
+    expect(formatClosestApproach({ distanceNm: 2.14, timeToClosestApproachSec: 250.4 })).toBe(
+      '2.1nm in 4m10s',
+    );
+  });
+
+  it('rounds the distance to whole miles from 10 nm up', () => {
+    expect(formatClosestApproach({ distanceNm: 41.6, timeToClosestApproachSec: 3900 })).toBe(
+      '42nm in 1h05m',
+    );
+  });
+
+  it('rounds a distance that lands on 10.0 up to whole miles', () => {
+    expect(formatClosestApproach({ distanceNm: 9.97, timeToClosestApproachSec: 0 })).toBe(
+      '10nm in 0s',
+    );
+  });
+
+  it('returns a placeholder when undefined', () => {
+    expect(formatClosestApproach(undefined)).toBe('-');
   });
 });
 

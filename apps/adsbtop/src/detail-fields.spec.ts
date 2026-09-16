@@ -157,9 +157,9 @@ describe('buildDetailFields', () => {
     expect(fieldValue(fields, 'Registration')).toBe('N12345');
   });
 
-  it('omits Distance and Bearing entirely when no location is configured', () => {
+  it('omits Distance, Bearing, and Closest approach entirely when no location is configured', () => {
     const fields = buildDetailFields(
-      makeAircraft({ position: { lat: 0, lon: 0 } }),
+      makeAircraft({ position: { lat: 0, lon: 0 }, trueTrackDeg: 270, groundSpeedKt: 60 }),
       0,
       undefined,
       0,
@@ -167,12 +167,13 @@ describe('buildDetailFields', () => {
 
     expect(fields.some((field) => field.label === 'Distance')).toBe(false);
     expect(fields.some((field) => field.label === 'Bearing')).toBe(false);
+    expect(fields.some((field) => field.label === 'Closest approach')).toBe(false);
   });
 
-  it('adds Distance and Bearing right after Position when a location is configured', () => {
+  it('adds Distance, Bearing, and Closest approach right after Position when a location is configured', () => {
     const location: Coordinates = { lat: 0, lon: 0 };
     const fields = buildDetailFields(
-      makeAircraft({ position: { lat: 0, lon: 1 } }),
+      makeAircraft({ position: { lat: 0, lon: 1 }, trueTrackDeg: 270, groundSpeedKt: 60 }),
       0,
       location,
       0,
@@ -181,15 +182,31 @@ describe('buildDetailFields', () => {
     const labels = fields.map((field) => field.label);
     expect(labels.indexOf('Distance')).toBe(labels.indexOf('Position') + 1);
     expect(labels.indexOf('Bearing')).toBe(labels.indexOf('Distance') + 1);
+    expect(labels.indexOf('Closest approach')).toBe(labels.indexOf('Bearing') + 1);
     expect(fieldValue(fields, 'Bearing')).toBe('90°');
+    expect(fieldValue(fields, 'Closest approach')).toBe('0.0nm in 1h00m');
   });
 
-  it('shows a placeholder for Distance/Bearing when the aircraft has no position', () => {
+  it('shows a placeholder for the location rows when the aircraft has no position', () => {
     const location: Coordinates = { lat: 0, lon: 0 };
     const fields = buildDetailFields(makeAircraft(), 0, location, 0);
 
     expect(fieldValue(fields, 'Distance')).toBe('-');
     expect(fieldValue(fields, 'Bearing')).toBe('-');
+    expect(fieldValue(fields, 'Closest approach')).toBe('-');
+  });
+
+  it('shows a placeholder for Closest approach when the aircraft is opening', () => {
+    const location: Coordinates = { lat: 0, lon: 0 };
+    const fields = buildDetailFields(
+      makeAircraft({ position: { lat: 0, lon: 1 }, trueTrackDeg: 90, groundSpeedKt: 60 }),
+      0,
+      location,
+      0,
+    );
+
+    expect(fieldValue(fields, 'Distance')).toBe('60nm');
+    expect(fieldValue(fields, 'Closest approach')).toBe('-');
   });
 
   it('shows Yes for squawk alert and ident active when true', () => {

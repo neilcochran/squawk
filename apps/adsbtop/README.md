@@ -18,15 +18,15 @@ adsbtop --source sbs --host 192.168.1.50
 
 ### Options
 
-| Flag                | Description                                                                             | Default                                       |
-| ------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `--source <source>` | Feed to connect to: `json`, `sbs`, or `beast`                                           | `sbs`                                         |
-| `--host <host>`     | dump1090-fa station hostname/IP                                                         | `localhost`                                   |
-| `--port <port>`     | Port to connect to                                                                      | `8080` (json), `30003` (sbs), `30005` (beast) |
-| `--url <url>`       | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)           | -                                             |
-| `--lat <lat>`       | Receiver latitude in decimal degrees - enables the Dist/Brg columns (requires `--lon`)  | -                                             |
-| `--lon <lon>`       | Receiver longitude in decimal degrees - enables the Dist/Brg columns (requires `--lat`) | -                                             |
-| `-h`, `--help`      | Show usage                                                                              | -                                             |
+| Flag                | Description                                                                                 | Default                                       |
+| ------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `--source <source>` | Feed to connect to: `json`, `sbs`, or `beast`                                               | `sbs`                                         |
+| `--host <host>`     | dump1090-fa station hostname/IP                                                             | `localhost`                                   |
+| `--port <port>`     | Port to connect to                                                                          | `8080` (json), `30003` (sbs), `30005` (beast) |
+| `--url <url>`       | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)               | -                                             |
+| `--lat <lat>`       | Receiver latitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lon`)  | -                                             |
+| `--lon <lon>`       | Receiver longitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lat`) | -                                             |
+| `-h`, `--help`      | Show usage                                                                                  | -                                             |
 
 ### Hotkeys
 
@@ -50,7 +50,7 @@ Aircraft render in bold red when they carry any of: an emergency squawk code (75
 
 ### Sorting
 
-The table sorts by ICAO hex ascending at startup. `O` and `Shift+O` step through every column except `Grnd` in display order, and `R` flips between ascending and descending while keeping the current column. The active column's header is highlighted and suffixed with `^` (ascending) or `v` (descending). Aircraft with no value for the sorted column always sink to the bottom in either direction, so unknowns never interleave with real data. `Dist` and `Brg` join the sort cycle only when a receiver location is configured (see below).
+The table sorts by ICAO hex ascending at startup. `O` and `Shift+O` step through every column except `Grnd` in display order, and `R` flips between ascending and descending while keeping the current column. The active column's header is highlighted and suffixed with `^` (ascending) or `v` (descending). Aircraft with no value for the sorted column always sink to the bottom in either direction, so unknowns never interleave with real data. `Dist`, `Brg`, and `CPA` join the sort cycle only when a receiver location is configured (see below).
 
 ### Status bar
 
@@ -84,8 +84,10 @@ Five detail-view fields have meaningfully different coverage depending on `--sou
 
 The `Reg` column and the detail view's `Registration` field resolve each aircraft's ICAO hex to its N-number (and make/model/operator in the detail view) using the bundled FAA registry. `S`earch also matches against the N-number. The registry loads in the background after startup - rows show `-` for a few seconds until it's ready, then populate automatically as matches are found.
 
-### Location, distance, and bearing
+### Location, distance, bearing, and closest approach
 
-Passing both `--lat` and `--lon` (either together or not at all) configures your receiver's own position and adds two columns: `Dist` (great-circle distance in nautical miles) and `Brg` (bearing in degrees true), computed from that position to each aircraft's current position. The detail view gets the same two fields (`Distance`/`Bearing`, shown right after `Position`), and both columns become sortable. Without `--lat`/`--lon`, none of this appears at all - not the table columns, not the detail view rows, not the sort keys. An aircraft with no position yet shows `-` until one arrives.
+Passing both `--lat` and `--lon` (either together or not at all) configures your receiver's own position and adds three columns: `Dist` (great-circle distance in nautical miles) and `Brg` (bearing in degrees true), computed from that position to each aircraft's current position, and `CPA` (closest point of approach - see below). The detail view gets the same three fields (`Distance`/`Bearing`/`Closest approach`, shown right after `Position`), and all three columns become sortable. Without `--lat`/`--lon`, none of this appears at all - not the table columns, not the detail view rows, not the sort keys. An aircraft with no position yet shows `-` until one arrives.
+
+`CPA` projects each aircraft's current true track and ground speed as a straight line and reports how close that line passes to your receiver and how long until the aircraft gets there, e.g. `2.1nm in 4m10s` - an aircraft that will pass directly overhead in four minutes reads `0.0nm in 4m00s`. Distance keeps one decimal under 10 nm and rounds to whole miles beyond that. Sorting on `CPA` orders by the distance at closest approach, so ascending puts the aircraft that will pass nearest you at the top. The column shows `-` for an aircraft with no position, no true track, or no ground speed, and also for one that is already opening (its closest approach is behind it), so a `-` next to a real `Dist` value means "not coming any closer".
 
 For `--source beast`, the same location also serves as the receiver position used to decode surface (on-ground) CPR positions, which otherwise can't resolve from paired frames alone.

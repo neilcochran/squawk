@@ -4,6 +4,7 @@ import type { Aircraft, Coordinates } from '@squawk/types';
 
 import {
   buildBearingColumn,
+  buildClosestApproachColumn,
   buildDistanceColumn,
   COLUMNS,
   compareAircraft,
@@ -71,6 +72,28 @@ describe('buildBearingColumn', () => {
   });
 });
 
+describe('buildClosestApproachColumn', () => {
+  const location: Coordinates = { lat: 0, lon: 0 };
+  const column = buildClosestApproachColumn(location);
+
+  it('is not part of the compact set', () => {
+    expect(column.compact).toBe(false);
+  });
+
+  it('renders the closest approach for an aircraft tracking toward the receiver', () => {
+    const aircraft = makeAircraft({
+      position: { lat: 1, lon: 0 },
+      trueTrackDeg: 180,
+      groundSpeedKt: 120,
+    });
+    expect(column.render(aircraft, 0)).toBe('0.0nm in 30m01s');
+  });
+
+  it('renders a placeholder when the aircraft has no track or speed', () => {
+    expect(column.render(makeAircraft({ position: { lat: 1, lon: 0 } }), 0)).toBe('-');
+  });
+});
+
 describe('visibleColumns', () => {
   it('returns every column when not compact and no location is configured', () => {
     expect(visibleColumns(false)).toHaveLength(COLUMNS.length);
@@ -82,10 +105,14 @@ describe('visibleColumns', () => {
     expect(columns.every((column) => column.compact)).toBe(true);
   });
 
-  it('appends Dist/Brg columns when a location is configured and not compact', () => {
+  it('appends Dist/Brg/CPA columns when a location is configured and not compact', () => {
     const columns = visibleColumns(false, { lat: 0, lon: 0 });
-    expect(columns).toHaveLength(COLUMNS.length + 2);
-    expect(columns.map((column) => column.key).slice(-2)).toEqual(['distance', 'bearing']);
+    expect(columns).toHaveLength(COLUMNS.length + 3);
+    expect(columns.map((column) => column.key).slice(-3)).toEqual([
+      'distance',
+      'bearing',
+      'closestApproach',
+    ]);
   });
 });
 
@@ -104,10 +131,10 @@ describe('sortKeyCycle', () => {
     ]);
   });
 
-  it('appends distance and bearing when a location is configured', () => {
+  it('appends distance, bearing, and closest approach when a location is configured', () => {
     const cycle = sortKeyCycle({ lat: 0, lon: 0 });
-    expect(cycle.slice(-2)).toEqual(['distance', 'bearing']);
-    expect(cycle.length).toBe(sortKeyCycle(undefined).length + 2);
+    expect(cycle.slice(-3)).toEqual(['distance', 'bearing', 'closestApproach']);
+    expect(cycle.length).toBe(sortKeyCycle(undefined).length + 3);
   });
 });
 
@@ -129,13 +156,14 @@ describe('nextSortKey', () => {
     expect(nextSortKey('icaoHex', undefined, -1)).toBe('age');
   });
 
-  it('includes distance and bearing in the cycle only when a location is configured', () => {
+  it('includes the location keys in the cycle only when a location is configured', () => {
     const location: Coordinates = { lat: 0, lon: 0 };
     expect(nextSortKey('age', undefined, 1)).toBe('icaoHex');
     expect(nextSortKey('age', location, 1)).toBe('distance');
     expect(nextSortKey('distance', location, 1)).toBe('bearing');
-    expect(nextSortKey('bearing', location, 1)).toBe('icaoHex');
-    expect(nextSortKey('icaoHex', location, -1)).toBe('bearing');
+    expect(nextSortKey('bearing', location, 1)).toBe('closestApproach');
+    expect(nextSortKey('closestApproach', location, 1)).toBe('icaoHex');
+    expect(nextSortKey('icaoHex', location, -1)).toBe('closestApproach');
   });
 });
 
@@ -240,11 +268,40 @@ describe('compareAircraft', () => {
     expect(compareAircraft(north, near, 'bearing', 'asc', location)).toBeLessThan(0);
   });
 
-  it('treats every aircraft as unordered on distance/bearing without a location', () => {
-    const near = makeAircraft({ position: { lat: 0, lon: 1 } });
+  it('sorts by closest approach distance, nearest pass first', () => {
+    const location: Coordinates = { lat: 0, lon: 0 };
+    const overhead = makeAircraft({
+      position: { lat: 1, lon: 0 },
+      trueTrackDeg: 180,
+      groundSpeedKt: 120,
+    });
+    const abeam = makeAircraft({
+      icaoHex: 'D3E4F5',
+      position: { lat: 0, lon: 1 },
+      trueTrackDeg: 0,
+      groundSpeedKt: 120,
+    });
+    const opening = makeAircraft({
+      icaoHex: 'E5F6A7',
+      position: { lat: 0, lon: 1 },
+      trueTrackDeg: 90,
+      groundSpeedKt: 120,
+    });
+    expect(compareAircraft(overhead, abeam, 'closestApproach', 'asc', location)).toBeLessThan(0);
+    expect(compareAircraft(abeam, opening, 'closestApproach', 'asc', location)).toBeLessThan(0);
+    expect(compareAircraft(abeam, opening, 'closestApproach', 'desc', location)).toBeLessThan(0);
+  });
+
+  it('treats every aircraft as unordered on the location keys without a location', () => {
+    const near = makeAircraft({
+      position: { lat: 0, lon: 1 },
+      trueTrackDeg: 270,
+      groundSpeedKt: 60,
+    });
     const far = makeAircraft({ icaoHex: 'D3E4F5', position: { lat: 0, lon: 2 } });
     expect(compareAircraft(near, far, 'distance', 'asc', undefined)).toBe(0);
     expect(compareAircraft(near, far, 'bearing', 'desc', undefined)).toBe(0);
+    expect(compareAircraft(near, far, 'closestApproach', 'asc', undefined)).toBe(0);
   });
 
   it('reverses the order of aircraft that have the field when descending', () => {

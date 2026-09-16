@@ -46,7 +46,7 @@ export interface AppProps {
   port: number;
   /** Loader for the bundled registry dataset used for registration enrichment. Defaults to a real dynamic import of `@squawk/icao-registry-data`; overridable in tests. */
   registryDataLoader?: RegistryDataLoader;
-  /** Configured receiver location (`--lat`/`--lon`), if any. Enables the table's Dist/Brg columns when set. */
+  /** Configured receiver location (`--lat`/`--lon`), if any. Enables the table's Dist/Brg/CPA columns when set. */
   location: Coordinates | undefined;
 }
 

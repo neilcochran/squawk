@@ -10,9 +10,11 @@ import type {
   TargetStateAndStatus,
 } from '@squawk/types';
 
+import { closestPointOfApproach } from './cpa.js';
 import {
   formatAge,
   formatBearing,
+  formatClosestApproach,
   formatDistance,
   formatGroundSpeed,
   formatOnGround,
@@ -138,7 +140,7 @@ function formatTargetState(targetState: TargetStateAndStatus | undefined): strin
  *
  * @param aircraft - The selected aircraft to build fields for.
  * @param nowMs - Current time, for the "last seen" age.
- * @param location - The configured receiver location (`--lat`/`--lon`), if any. Adds Distance/Bearing rows after Position when set; omitted entirely otherwise, matching the table's Dist/Brg columns.
+ * @param location - The configured receiver location (`--lat`/`--lon`), if any. Adds Distance/Bearing/Closest approach rows after Position when set; omitted entirely otherwise, matching the table's Dist/Brg/CPA columns.
  * @param messageCount - Update events adsbtop has observed for this aircraft since it was first (or most recently) tracked.
  * @returns Labeled rows in display order.
  */
@@ -154,6 +156,10 @@ export function buildDetailFields(
       : [
           { label: 'Distance', value: formatDistance(distanceToAircraftNm(location, aircraft)) },
           { label: 'Bearing', value: formatBearing(bearingToAircraftDeg(location, aircraft)) },
+          {
+            label: 'Closest approach',
+            value: formatClosestApproach(closestPointOfApproach(location, aircraft)),
+          },
         ];
 
   return [

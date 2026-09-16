@@ -1,6 +1,7 @@
 import type { Aircraft, EmergencyState } from '@squawk/types';
 
 import type { MessageLogEntry } from './aircraft-state.js';
+import type { ClosestPointOfApproach } from './cpa.js';
 
 /** Squawk codes that always indicate a declared emergency, regardless of source. */
 const EMERGENCY_SQUAWKS: ReadonlySet<string> = new Set(['7500', '7600', '7700']);
@@ -128,27 +129,55 @@ export function formatVerticalRate(aircraft: Aircraft): string {
 }
 
 /**
- * Formats the time elapsed since `lastSeenAt` for the table's age column,
- * escalating precision as the value grows: seconds, then minutes/seconds,
- * then hours/minutes.
+ * Formats a duration in whole seconds, escalating precision as the value
+ * grows: seconds, then minutes/seconds, then hours/minutes.
  *
- * @param lastSeenAt - Unix epoch ms the aircraft was last updated.
- * @param nowMs - Unix epoch ms to measure elapsed time against, supplied by the caller so this stays pure and testable.
- * @returns A short elapsed-time string, e.g. `"3s"`, `"1m05s"`, or `"2h03m"`.
+ * @param totalSec - The duration in whole, non-negative seconds.
+ * @returns A short duration string, e.g. `"3s"`, `"1m05s"`, or `"2h03m"`.
  */
-export function formatAge(lastSeenAt: number, nowMs: number): string {
-  const elapsedSec = Math.max(0, Math.floor((nowMs - lastSeenAt) / 1000));
-  if (elapsedSec < 60) {
-    return `${elapsedSec}s`;
+export function formatDuration(totalSec: number): string {
+  if (totalSec < 60) {
+    return `${totalSec}s`;
   }
-  const minutes = Math.floor(elapsedSec / 60);
-  const seconds = elapsedSec % 60;
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = totalSec % 60;
   if (minutes < 60) {
     return `${minutes}m${seconds.toString().padStart(2, '0')}s`;
   }
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   return `${hours}h${remainingMinutes.toString().padStart(2, '0')}m`;
+}
+
+/**
+ * Formats the time elapsed since `lastSeenAt` for the table's age column,
+ * in {@link formatDuration}'s style.
+ *
+ * @param lastSeenAt - Unix epoch ms the aircraft was last updated.
+ * @param nowMs - Unix epoch ms to measure elapsed time against, supplied by the caller so this stays pure and testable.
+ * @returns A short elapsed-time string, e.g. `"3s"`, `"1m05s"`, or `"2h03m"`.
+ */
+export function formatAge(lastSeenAt: number, nowMs: number): string {
+  return formatDuration(Math.max(0, Math.floor((nowMs - lastSeenAt) / 1000)));
+}
+
+/**
+ * Formats a closest point of approach for the CPA column and detail row:
+ * the distance at closest approach and how long until the aircraft gets
+ * there. Distance keeps one decimal under 10 nm, where tenths matter for
+ * judging whether something will pass overhead, and rounds to whole miles
+ * beyond that.
+ *
+ * @param cpa - The projected closest approach, or undefined if not computable.
+ * @returns A string like `"2.1nm in 4m10s"`, or `"-"` if undefined.
+ */
+export function formatClosestApproach(cpa: ClosestPointOfApproach | undefined): string {
+  if (cpa === undefined) {
+    return '-';
+  }
+  const tenthsNm = Math.round(cpa.distanceNm * 10) / 10;
+  const distance = tenthsNm < 10 ? tenthsNm.toFixed(1) : String(Math.round(cpa.distanceNm));
+  return `${distance}nm in ${formatDuration(Math.round(cpa.timeToClosestApproachSec))}`;
 }
 
 /** Fixed-width label per {@link MessageLogEntry.type}, for column alignment in the messages panel. */

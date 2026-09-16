@@ -89,7 +89,7 @@ describe('App', () => {
     expect(lastFrame()).toContain('RECONNECTING');
   });
 
-  it('omits the Dist/Brg columns when no location is configured', async () => {
+  it('omits the Dist/Brg/CPA columns when no location is configured', async () => {
     const feed = createFakeAircraftFeed();
     const { lastFrame } = renderApp(feed);
     await flush();
@@ -97,9 +97,10 @@ describe('App', () => {
     const frame = lastFrame();
     expect(frame).not.toContain('Dist');
     expect(frame).not.toContain('Brg');
+    expect(frame).not.toContain('CPA');
   });
 
-  it('shows the Dist/Brg columns when a location is configured', async () => {
+  it('shows the Dist/Brg/CPA columns when a location is configured', async () => {
     const feed = createFakeAircraftFeed();
     const { lastFrame } = renderApp(feed, createFakeRegistryDataLoader(), { lat: 0, lon: 0 });
     await flush();
@@ -107,6 +108,7 @@ describe('App', () => {
     const frame = lastFrame();
     expect(frame).toContain('Dist');
     expect(frame).toContain('Brg');
+    expect(frame).toContain('CPA');
   });
 
   it('toggles the help overlay with H and closes it with Escape', async () => {

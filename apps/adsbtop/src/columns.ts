@@ -1,9 +1,11 @@
 import type { Aircraft, Coordinates } from '@squawk/types';
 
+import { closestPointOfApproach } from './cpa.js';
 import {
   formatAltitude,
   formatAge,
   formatBearing,
+  formatClosestApproach,
   formatDistance,
   formatGroundSpeed,
   formatHeading,
@@ -146,10 +148,28 @@ export function buildBearingColumn(location: Coordinates): ColumnDef {
 }
 
 /**
+ * Builds the CPA (closest point of approach) column shown when a receiver
+ * location (`--lat`/`--lon`) is configured. Not part of {@link COLUMNS}
+ * since its render function needs to close over `location`.
+ *
+ * @param location - The configured receiver location.
+ * @returns The CPA column definition.
+ */
+export function buildClosestApproachColumn(location: Coordinates): ColumnDef {
+  return {
+    key: 'closestApproach',
+    header: 'CPA',
+    width: 14,
+    compact: false,
+    render: (aircraft) => formatClosestApproach(closestPointOfApproach(location, aircraft)),
+  };
+}
+
+/**
  * Selects the columns to render for the current width mode, appending the
- * Dist/Brg columns when `location` is configured. Dist/Brg are omitted
- * entirely (not shown blank) without a configured location, and never shown
- * in compact mode regardless.
+ * Dist/Brg/CPA columns when `location` is configured. Those three are
+ * omitted entirely (not shown blank) without a configured location, and
+ * never shown in compact mode regardless.
  *
  * @param compact - True to show only the columns marked `compact: true` (narrow terminal).
  * @param location - The configured receiver location, if any.
@@ -160,13 +180,19 @@ export function visibleColumns(compact: boolean, location?: Coordinates): readon
   if (compact || location === undefined) {
     return baseColumns;
   }
-  return [...baseColumns, buildDistanceColumn(location), buildBearingColumn(location)];
+  return [
+    ...baseColumns,
+    buildDistanceColumn(location),
+    buildBearingColumn(location),
+    buildClosestApproachColumn(location),
+  ];
 }
 
 /**
  * Table sort keys - every column except Grnd, whose two-valued content has
- * no useful ordering. `distance` and `bearing` are only reachable when a
- * receiver location is configured, since their values need one to compute.
+ * no useful ordering. `distance`, `bearing`, and `closestApproach` are only
+ * reachable when a receiver location is configured, since their values need
+ * one to compute.
  */
 export type SortKey =
   | 'icaoHex'
@@ -179,7 +205,8 @@ export type SortKey =
   | 'verticalRate'
   | 'age'
   | 'distance'
-  | 'bearing';
+  | 'bearing'
+  | 'closestApproach';
 
 /** Which way the active sort column is ordered, toggled by the `[R]` hotkey. */
 export type SortDirection = 'asc' | 'desc';
@@ -197,12 +224,12 @@ const BASE_SORT_KEYS: readonly SortKey[] = [
   'age',
 ];
 
-/** Sort keys that additionally become available once a receiver location is configured, matching the Dist/Brg columns. */
-const LOCATION_SORT_KEYS: readonly SortKey[] = ['distance', 'bearing'];
+/** Sort keys that additionally become available once a receiver location is configured, matching the Dist/Brg/CPA columns. */
+const LOCATION_SORT_KEYS: readonly SortKey[] = ['distance', 'bearing', 'closestApproach'];
 
 /**
  * The ordered list of sort keys `[O]` cycles through: every base column in
- * display order, plus Dist/Brg at the end when `location` is configured.
+ * display order, plus Dist/Brg/CPA at the end when `location` is configured.
  *
  * @param location - The configured receiver location, if any.
  * @returns The sort keys in cycle order.
@@ -216,7 +243,7 @@ export function sortKeyCycle(location: Coordinates | undefined): readonly SortKe
  * wrapping at either end. `[O]` steps forward and `[Shift+O]` steps back.
  *
  * @param current - The active sort key.
- * @param location - The configured receiver location, if any - controls whether Dist/Brg are part of the cycle.
+ * @param location - The configured receiver location, if any - controls whether Dist/Brg/CPA are part of the cycle.
  * @param step - `1` to advance, `-1` to go back.
  * @returns The adjacent sort key in the cycle.
  */
@@ -243,10 +270,12 @@ function sortAltitudeFt(aircraft: Aircraft): number | undefined {
  * prefers barometric over geometric, and so on) so the sort order matches
  * what is on screen. Age returns the negated last-seen timestamp so that
  * ascending order puts the most recently seen aircraft (smallest age) first.
+ * Closest approach orders by the distance at closest approach, so ascending
+ * puts the aircraft that will pass nearest the receiver first.
  *
  * @param aircraft - The aircraft to read the sort value from.
  * @param sortKey - The field to read.
- * @param location - The configured receiver location, needed for `distance`/`bearing`.
+ * @param location - The configured receiver location, needed for `distance`/`bearing`/`closestApproach`.
  * @returns The sortable value, or undefined if the aircraft has none.
  */
 function sortValue(
@@ -277,6 +306,10 @@ function sortValue(
       return location === undefined ? undefined : distanceToAircraftNm(location, aircraft);
     case 'bearing':
       return location === undefined ? undefined : bearingToAircraftDeg(location, aircraft);
+    case 'closestApproach':
+      return location === undefined
+        ? undefined
+        : closestPointOfApproach(location, aircraft)?.distanceNm;
     default:
       return undefined;
   }
@@ -293,7 +326,7 @@ function sortValue(
  * @param b - Second aircraft to compare.
  * @param sortKey - The field to compare on.
  * @param direction - Ascending or descending order for aircraft that both have the field.
- * @param location - The configured receiver location, if any - required for the `distance`/`bearing` keys to order at all.
+ * @param location - The configured receiver location, if any - required for the `distance`/`bearing`/`closestApproach` keys to order at all.
  * @returns A negative number if `a` sorts first, positive if `b` sorts first, zero if equivalent.
  */
 export function compareAircraft(
@@ -325,7 +358,7 @@ export function compareAircraft(
  * @param aircraft - The aircraft to sort.
  * @param sortKey - The field to sort on.
  * @param direction - Ascending or descending order.
- * @param location - The configured receiver location, if any - required for the `distance`/`bearing` keys.
+ * @param location - The configured receiver location, if any - required for the `distance`/`bearing`/`closestApproach` keys.
  * @returns A new, sorted array.
  */
 export function sortAircraft(

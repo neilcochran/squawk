@@ -85,8 +85,8 @@ Options:
   --host <host>              dump1090-fa station hostname/IP (default: ${DEFAULT_HOST})
   --port <port>              Port to connect to (default: 8080 json, 30003 sbs, 30005 beast)
   --url <url>                Full aircraft.json URL, overriding --host/--port (source=json only)
-  --lat <lat>                Receiver latitude in decimal degrees - enables Dist/Brg columns (requires --lon)
-  --lon <lon>                Receiver longitude in decimal degrees - enables Dist/Brg columns (requires --lat)
+  --lat <lat>                Receiver latitude in decimal degrees - enables Dist/Brg/CPA columns (requires --lon)
+  --lon <lon>                Receiver longitude in decimal degrees - enables Dist/Brg/CPA columns (requires --lat)
   -h, --help                 Show this help message
 `;
 
