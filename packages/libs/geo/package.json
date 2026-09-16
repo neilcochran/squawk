@@ -54,6 +54,6 @@
     "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1"
+    "@types/node": "^26.5.1"
   }
 }
