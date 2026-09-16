@@ -18,15 +18,16 @@ adsbtop --source sbs --host 192.168.1.50
 
 ### Options
 
-| Flag                | Description                                                                                 | Default                                       |
-| ------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `--source <source>` | Feed to connect to: `json`, `sbs`, or `beast`                                               | `sbs`                                         |
-| `--host <host>`     | dump1090-fa station hostname/IP                                                             | `localhost`                                   |
-| `--port <port>`     | Port to connect to                                                                          | `8080` (json), `30003` (sbs), `30005` (beast) |
-| `--url <url>`       | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)               | -                                             |
-| `--lat <lat>`       | Receiver latitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lon`)  | -                                             |
-| `--lon <lon>`       | Receiver longitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lat`) | -                                             |
-| `-h`, `--help`      | Show usage                                                                                  | -                                             |
+| Flag                | Description                                                                                               | Default                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `--source <source>` | Feed to connect to: `json`, `sbs`, or `beast`                                                             | `sbs`                                         |
+| `--host <host>`     | dump1090-fa station hostname/IP                                                                           | `localhost`                                   |
+| `--port <port>`     | Port to connect to                                                                                        | `8080` (json), `30003` (sbs), `30005` (beast) |
+| `--url <url>`       | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)                             | -                                             |
+| `--lat <lat>`       | Receiver latitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lon`)                | -                                             |
+| `--lon <lon>`       | Receiver longitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lat`)               | -                                             |
+| `--columns <list>`  | Comma-separated columns to show, by header name (e.g. `icao,callsign,alt,dist`) - see [Columns](#columns) | auto-fit to the terminal width                |
+| `-h`, `--help`      | Show usage                                                                                                | -                                             |
 
 ### Hotkeys
 
@@ -35,7 +36,7 @@ adsbtop --source sbs --host 192.168.1.50
 | `Up` / `Down`   | Move the row cursor                                                          |
 | `O` / `Shift+O` | Cycle the sort column forward/backward (every column except `Grnd`)          |
 | `R`             | Reverse the sort direction (ascending/descending)                            |
-| `C`             | Toggle compact columns, for narrow terminals                                 |
+| `C`             | Open the column picker - choose which columns are shown                      |
 | `P`             | Pause/resume the table - the feed keeps running underneath                   |
 | `S`             | Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match |
 | `N` / `Shift+N` | Jump to the next/previous search match                                       |
@@ -50,7 +51,16 @@ Aircraft render in bold red when they carry any of: an emergency squawk code (75
 
 ### Sorting
 
-The table sorts by ICAO hex ascending at startup. `O` and `Shift+O` step through every column except `Grnd` in display order, and `R` flips between ascending and descending while keeping the current column. The active column's header is highlighted and suffixed with `^` (ascending) or `v` (descending). Aircraft with no value for the sorted column always sink to the bottom in either direction, so unknowns never interleave with real data. `Dist`, `Brg`, and `CPA` join the sort cycle only when a receiver location is configured (see below).
+The table sorts by ICAO hex ascending at startup. `O` and `Shift+O` step through every visible column except `Grnd` in display order, and `R` flips between ascending and descending while keeping the current column. The active column's header is highlighted and suffixed with `^` (ascending) or `v` (descending). Aircraft with no value for the sorted column always sink to the bottom in either direction, so unknowns never interleave with real data. `Dist`, `Brg`, and `CPA` join the sort cycle only when a receiver location is configured and they are shown (see [Columns](#columns) and [Location](#location-distance-bearing-and-closest-approach) below). Hiding the column currently sorted on resets the sort to the first visible column.
+
+### Columns
+
+Which columns render is decided in one of two ways:
+
+- **Auto-fit (the default).** With nothing configured, adsbtop reads the terminal width and drops columns until the table fits, so a narrow window shows a sensible subset instead of truncated cells. Columns are dropped least valuable first: `Grnd`, `Reg`, `VS`, `Brg`, `Hdg`, `CPA`, `GS`, `Dist`, `Age`, `Squawk`, `Alt`, `Callsign`. `ICAO` is never dropped. Auto-fit follows the window as you resize it.
+- **An explicit set.** `--columns <list>` takes comma-separated column names as they appear in the header, case-insensitive: `--columns icao,callsign,alt,dist,cpa`. Order does not matter - columns always render in their usual display order. An unknown or duplicated name is an error listing the valid names, and `Dist`/`Brg`/`CPA` are an error without `--lat`/`--lon`. Passing `--columns` turns auto-fit off.
+
+`C` opens the column picker once running. It lists every available column with a checkbox, showing both the short header and the full name (`Brg` / `Bearing from receiver`, `CPA` / `Closest point of approach`) so the abbreviations are never ambiguous, plus how wide the current table is against the terminal. `Up`/`Down` move the cursor, `Space` toggles the column under it, `A` selects every column, `M` selects the minimal set (`ICAO`, `Callsign`, `Squawk`, `Alt`, `Age`), `F` returns to auto-fit, and `Escape`, `Enter`, or `C` closes the picker. Toggling any column switches from auto-fit to an explicit set seeded from what was showing, and at least one column always stays selected. Without `--lat`/`--lon`, the location columns are listed dimmed and cannot be selected. The picker's choices last for the session only - use `--columns` for a persistent preference.
 
 ### Status bar
 
@@ -86,7 +96,7 @@ The `Reg` column and the detail view's `Registration` field resolve each aircraf
 
 ### Location, distance, bearing, and closest approach
 
-Passing both `--lat` and `--lon` (either together or not at all) configures your receiver's own position and adds three columns: `Dist` (great-circle distance in nautical miles) and `Brg` (bearing in degrees true), computed from that position to each aircraft's current position, and `CPA` (closest point of approach - see below). The detail view gets the same three fields (`Distance`/`Bearing`/`Closest approach`, shown right after `Position`), and all three columns become sortable. Without `--lat`/`--lon`, none of this appears at all - not the table columns, not the detail view rows, not the sort keys. An aircraft with no position yet shows `-` until one arrives.
+Passing both `--lat` and `--lon` (either together or not at all) configures your receiver's own position and makes three more columns available: `Dist` (great-circle distance in nautical miles) and `Brg` (bearing in degrees true), computed from that position to each aircraft's current position, and `CPA` (closest point of approach - see below). The detail view gets the same three fields (`Distance`/`Bearing`/`Closest approach`, shown right after `Position`), and all three columns become sortable. Without `--lat`/`--lon`, none of this appears at all - not the table columns, not the detail view rows, not the sort keys. An aircraft with no position yet shows `-` until one arrives. In a narrow terminal, auto-fit drops `Brg` and `CPA` before most other columns - see [Columns](#columns) to pin them with `--columns` or the picker.
 
 `CPA` projects each aircraft's current true track and ground speed as a straight line and reports how close that line passes to your receiver and how long until the aircraft gets there, e.g. `2.1nm in 4m10s` - an aircraft that will pass directly overhead in four minutes reads `0.0nm in 4m00s`. Distance keeps one decimal under 10 nm and rounds to whole miles beyond that. Sorting on `CPA` orders by the distance at closest approach, so ascending puts the aircraft that will pass nearest you at the top. The column shows `-` for an aircraft with no position, no true track, or no ground speed, and also for one that is already opening (its closest approach is behind it), so a `-` next to a real `Dist` value means "not coming any closer".
 

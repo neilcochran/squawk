@@ -16,7 +16,7 @@ const HELP_ENTRIES: readonly HelpEntry[] = [
     description: 'Cycle the sort column forward/backward (every column but Grnd)',
   },
   { key: 'R', description: 'Reverse the sort direction (ascending/descending)' },
-  { key: 'C', description: 'Toggle compact columns for narrow terminals' },
+  { key: 'C', description: 'Open the column picker - choose which columns are shown' },
   { key: 'P', description: 'Pause/resume the table - the feed keeps running underneath' },
   {
     key: 'S',

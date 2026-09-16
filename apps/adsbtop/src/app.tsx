@@ -1,4 +1,5 @@
 import { Box, useApp, useInput } from 'ink';
+import type { Key } from 'ink';
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -6,9 +7,21 @@ import type { AircraftFeed } from '@squawk/adsb-feed';
 import type { Aircraft, Coordinates } from '@squawk/types';
 
 import type { FeedSource } from './cli-args.js';
-import { nextSortKey, sortAircraft, visibleColumns } from './columns.js';
-import type { SortDirection, SortKey } from './columns.js';
+import {
+  autoFitColumns,
+  availableColumns,
+  COLUMNS,
+  minimalColumnKeys,
+  nextSortKey,
+  selectColumns,
+  sortAircraft,
+  sortKeyCycle,
+  TABLE_CHROME_WIDTH,
+  tableRowWidth,
+} from './columns.js';
+import type { ColumnKey, SortDirection, SortKey } from './columns.js';
 import { AircraftTable } from './components/aircraft-table.js';
+import { ColumnPicker } from './components/column-picker.js';
 import { DetailView } from './components/detail-view.js';
 import { HelpOverlay } from './components/help-overlay.js';
 import { HotkeyBar } from './components/hotkey-bar.js';
@@ -23,6 +36,7 @@ import { moveSelection } from './selection.js';
 import { useAircraftFeed } from './use-aircraft-feed.js';
 import { useIcaoRegistry } from './use-icao-registry.js';
 import type { RegistryDataLoader } from './use-icao-registry.js';
+import { useTerminalWidth } from './use-terminal-width.js';
 
 /** How often the age column and status-header "last update" text refresh. */
 const CLOCK_TICK_MS = 1000;
@@ -32,7 +46,7 @@ const INITIAL_SORT_KEY: SortKey = 'icaoHex';
 const INITIAL_SORT_DIRECTION: SortDirection = 'asc';
 
 /** Which content fills the main area below the status header. */
-type Panel = 'table' | 'help' | 'detail';
+type Panel = 'table' | 'help' | 'detail' | 'columns';
 
 /** Props for {@link App}. */
 export interface AppProps {
@@ -46,13 +60,15 @@ export interface AppProps {
   port: number;
   /** Loader for the bundled registry dataset used for registration enrichment. Defaults to a real dynamic import of `@squawk/icao-registry-data`; overridable in tests. */
   registryDataLoader?: RegistryDataLoader;
-  /** Configured receiver location (`--lat`/`--lon`), if any. Enables the table's Dist/Brg/CPA columns when set. */
+  /** Configured receiver location (`--lat`/`--lon`), if any. Makes the table's Dist/Brg/CPA columns available when set. */
   location: Coordinates | undefined;
+  /** Columns requested with `--columns`, if any. Undefined means auto-fit the available columns to the terminal width until the user picks a set with `[C]`. */
+  columnKeys: readonly ColumnKey[] | undefined;
 }
 
 /**
  * adsbtop's root component: subscribes to the feed, owns display state
- * (pause, compact columns, sort key and direction, cursor, search, messages,
+ * (pause, visible columns, sort key and direction, cursor, search, messages,
  * status-bar visibility, and which main panel is showing), wires the hotkey
  * bar, and renders the optional status header, main panel, optional messages
  * panel, optional search prompt, and hotkey bar.
@@ -64,15 +80,22 @@ export interface AppProps {
  * displayed, copying over only while not paused), not a `useEffect`, since
  * an effect-based version of this exact pattern trips
  * `react-hooks/set-state-in-effect` and cascades an extra render. The cursor
- * row's auto-selection uses the same render-time-adjustment pattern for the
- * same reason.
+ * row's auto-selection and the sort key's reset when its column is hidden
+ * use the same render-time-adjustment pattern for the same reason.
  *
- * @param props - The feed to display and its connection details.
+ * Visible columns come from one of two sources: an explicit key list (from
+ * `--columns` at startup, or the `[C]` picker once running), or, when there
+ * is none, auto-fit against the live terminal width. Picking any column in
+ * the picker switches to an explicit list seeded from what was showing;
+ * `[F]` in the picker returns to auto-fit.
+ *
+ * @param props - The feed to display, its connection details, and startup column configuration.
  */
 export function App(props: AppProps): ReactElement {
   const { exit } = useApp();
   const view = useAircraftFeed(props.feed);
   const registry = useIcaoRegistry(props.registryDataLoader);
+  const terminalWidth = useTerminalWidth();
   const [registrationCache] = useState<RegistrationCache>(() => new Map());
   const enrichedAircraft = useMemo(
     () => enrichAircraftList(view.aircraft, registry, registrationCache),
@@ -80,7 +103,8 @@ export function App(props: AppProps): ReactElement {
   );
 
   const [paused, setPaused] = useState(false);
-  const [compact, setCompact] = useState(false);
+  const [columnKeys, setColumnKeys] = useState<readonly ColumnKey[] | undefined>(props.columnKeys);
+  const [pickerIndex, setPickerIndex] = useState(0);
   const [panel, setPanel] = useState<Panel>('table');
   const [sortKey, setSortKey] = useState<SortKey>(INITIAL_SORT_KEY);
   const [sortDirection, setSortDirection] = useState<SortDirection>(INITIAL_SORT_DIRECTION);
@@ -107,7 +131,20 @@ export function App(props: AppProps): ReactElement {
     () => sortAircraft(displayedAircraft, sortKey, sortDirection, props.location),
     [displayedAircraft, sortKey, sortDirection, props.location],
   );
-  const columns = useMemo(() => visibleColumns(compact, props.location), [compact, props.location]);
+  const available = useMemo(() => availableColumns(props.location), [props.location]);
+  const columns = useMemo(
+    () =>
+      columnKeys === undefined
+        ? autoFitColumns(available, terminalWidth)
+        : selectColumns(available, columnKeys),
+    [available, columnKeys, terminalWidth],
+  );
+  const sortCycle = useMemo(() => sortKeyCycle(columns), [columns]);
+
+  const firstSortKey = sortCycle[0];
+  if (!sortCycle.includes(sortKey) && firstSortKey !== undefined) {
+    setSortKey(firstSortKey);
+  }
 
   const firstAircraft = sortedAircraft[0];
   if (selectedIcaoHex === undefined && firstAircraft !== undefined) {
@@ -130,10 +167,63 @@ export function App(props: AppProps): ReactElement {
     }
   }
 
+  function toggleColumnAtCursor(): void {
+    const target = available[pickerIndex];
+    if (target === undefined) {
+      return;
+    }
+    const shownKeys = columns.map((column) => column.key);
+    const nextKeys = shownKeys.includes(target.key)
+      ? shownKeys.filter((key) => key !== target.key)
+      : [...shownKeys, target.key];
+    if (nextKeys.length === 0) {
+      return;
+    }
+    setColumnKeys(nextKeys);
+  }
+
+  function handlePickerInput(input: string, key: Key): void {
+    if (key.escape || key.return || input === 'c' || input === 'C') {
+      setPanel('table');
+      return;
+    }
+    if (key.upArrow) {
+      setPickerIndex((prev) => Math.max(0, prev - 1));
+      return;
+    }
+    if (key.downArrow) {
+      setPickerIndex((prev) => Math.min(available.length - 1, prev + 1));
+      return;
+    }
+    switch (input) {
+      case ' ':
+        toggleColumnAtCursor();
+        break;
+      case 'a':
+      case 'A':
+        setColumnKeys(available.map((column) => column.key));
+        break;
+      case 'm':
+      case 'M':
+        setColumnKeys(minimalColumnKeys());
+        break;
+      case 'f':
+      case 'F':
+        setColumnKeys(undefined);
+        break;
+      default:
+        break;
+    }
+  }
+
   useInput(
     (input, key) => {
       if (input === 'q' || input === 'Q') {
         exit();
+        return;
+      }
+      if (panel === 'columns') {
+        handlePickerInput(input, key);
         return;
       }
       if (key.escape) {
@@ -163,17 +253,18 @@ export function App(props: AppProps): ReactElement {
           break;
         case 'c':
         case 'C':
-          setCompact((prev) => !prev);
+          setPickerIndex(0);
+          setPanel('columns');
           break;
         case 'h':
         case 'H':
           setPanel((prev) => (prev === 'help' ? 'table' : 'help'));
           break;
         case 'o':
-          setSortKey((prev) => nextSortKey(prev, props.location, 1));
+          setSortKey((prev) => nextSortKey(prev, sortCycle, 1));
           break;
         case 'O':
-          setSortKey((prev) => nextSortKey(prev, props.location, -1));
+          setSortKey((prev) => nextSortKey(prev, sortCycle, -1));
           break;
         case 'r':
         case 'R':
@@ -250,6 +341,16 @@ export function App(props: AppProps): ReactElement {
       ) : undefined}
       {panel === 'help' ? (
         <HelpOverlay />
+      ) : panel === 'columns' ? (
+        <ColumnPicker
+          availableColumns={available}
+          unavailableColumns={COLUMNS.filter((column) => !available.includes(column))}
+          selectedKeys={columns.map((column) => column.key)}
+          cursorIndex={pickerIndex}
+          autoFit={columnKeys === undefined}
+          terminalWidth={terminalWidth}
+          tableWidth={tableRowWidth(columns) + TABLE_CHROME_WIDTH}
+        />
       ) : panel === 'detail' && selectedAircraft !== undefined ? (
         <DetailView
           aircraft={selectedAircraft}
@@ -262,6 +363,7 @@ export function App(props: AppProps): ReactElement {
           aircraft={sortedAircraft}
           columns={columns}
           nowMs={now}
+          location={props.location}
           sortKey={sortKey}
           sortDirection={sortDirection}
           selectedIcaoHex={selectedIcaoHex}

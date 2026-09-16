@@ -2,6 +2,9 @@ import { parseArgs } from 'node:util';
 
 import type { Coordinates } from '@squawk/types';
 
+import { COLUMNS, parseColumnList } from './columns.js';
+import type { ColumnKey } from './columns.js';
+
 /** Which dump1090-fa output adsbtop connects to. */
 export type FeedSource = 'json' | 'sbs' | 'beast';
 
@@ -32,6 +35,12 @@ export interface CliOptions {
    * Undefined unless both `--lat` and `--lon` were passed.
    */
   location: Coordinates | undefined;
+  /**
+   * The columns to show, from `--columns`, as column keys in the order
+   * given. Undefined when the flag was not passed, meaning the table
+   * auto-fits the available columns to the terminal width instead.
+   */
+  columnKeys: readonly ColumnKey[] | undefined;
 }
 
 /** A `parseCliArgs` failure: the reason `argv` could not be turned into {@link CliOptions}. */
@@ -87,6 +96,7 @@ Options:
   --url <url>                Full aircraft.json URL, overriding --host/--port (source=json only)
   --lat <lat>                Receiver latitude in decimal degrees - enables Dist/Brg/CPA columns (requires --lon)
   --lon <lon>                Receiver longitude in decimal degrees - enables Dist/Brg/CPA columns (requires --lat)
+  --columns <list>           Comma-separated columns to show, by header name (e.g. icao,callsign,alt,dist) - default: auto-fit to the terminal width
   -h, --help                 Show this help message
 `;
 
@@ -122,6 +132,39 @@ function parseLocation(
 }
 
 /**
+ * Parses and validates `--columns` against the configured location: every
+ * name must be a known column, and the location-gated columns (Dist, Brg,
+ * CPA) cannot be requested without `--lat`/`--lon`, since they would have
+ * nothing to show. Returns `{ columnKeys: undefined }` when the flag was
+ * not passed, which means auto-fit.
+ *
+ * @param raw - Raw `--columns` value, if passed.
+ * @param location - The parsed receiver location, if any.
+ * @returns The column keys (possibly undefined), or a {@link CliArgsError}.
+ */
+function parseColumns(
+  raw: string | undefined,
+  location: Coordinates | undefined,
+): { columnKeys: readonly ColumnKey[] | undefined } | CliArgsError {
+  if (raw === undefined) {
+    return { columnKeys: undefined };
+  }
+  const parsed = parseColumnList(raw);
+  if ('message' in parsed) {
+    return parsed;
+  }
+  if (location === undefined) {
+    const gated = COLUMNS.find(
+      (column) => column.requiresLocation && parsed.keys.includes(column.key),
+    );
+    if (gated !== undefined) {
+      return { message: `--columns includes ${gated.header}, which needs --lat/--lon.` };
+    }
+  }
+  return { columnKeys: parsed.keys };
+}
+
+/**
  * Parses and validates `adsbtop`'s command-line arguments. Returns a result
  * type rather than throwing, so callers (and tests) can handle a bad
  * argument the same way as any other expected outcome.
@@ -141,6 +184,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
         url: { type: 'string' },
         lat: { type: 'string' },
         lon: { type: 'string' },
+        columns: { type: 'string' },
         help: { type: 'boolean', short: 'h', default: false },
       },
       strict: true,
@@ -158,12 +202,18 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       port: DEFAULT_PORT_BY_SOURCE[DEFAULT_SOURCE],
       url: undefined,
       location: undefined,
+      columnKeys: undefined,
     };
   }
 
   const parsedLocation = parseLocation(values.lat, values.lon);
   if ('message' in parsedLocation) {
     return parsedLocation;
+  }
+
+  const parsedColumns = parseColumns(values.columns, parsedLocation.location);
+  if ('message' in parsedColumns) {
+    return parsedColumns;
   }
 
   const rawSource = values.source ?? DEFAULT_SOURCE;
@@ -193,5 +243,6 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     port,
     url: values.url,
     location: parsedLocation.location,
+    columnKeys: parsedColumns.columnKeys,
   };
 }

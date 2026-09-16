@@ -101,6 +101,54 @@ describe('parseCliArgs', () => {
     }
   });
 
+  it('defaults columnKeys to undefined (auto-fit) with no --columns', () => {
+    const result = parseCliArgs([]);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.columnKeys).toBeUndefined();
+    }
+  });
+
+  it('parses --columns header names into column keys', () => {
+    const result = parseCliArgs(['--columns', 'icao,Callsign,ALT']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.columnKeys).toEqual(['icaoHex', 'callsign', 'altitude']);
+    }
+  });
+
+  it('accepts the location columns in --columns when --lat/--lon are given', () => {
+    const result = parseCliArgs([
+      '--columns',
+      'icao,dist,cpa',
+      '--lat',
+      '43.67',
+      '--lon',
+      '-70.36',
+    ]);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.columnKeys).toEqual(['icaoHex', 'distance', 'closestApproach']);
+    }
+  });
+
+  it('rejects a location column in --columns without --lat/--lon', () => {
+    const result = parseCliArgs(['--columns', 'icao,brg']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('Brg');
+      expect(result.message).toContain('--lat/--lon');
+    }
+  });
+
+  it('rejects an unknown column name in --columns', () => {
+    const result = parseCliArgs(['--columns', 'icao,bogus']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('Unknown column "bogus"');
+    }
+  });
+
   it('parses valid --lat and --lon into location', () => {
     const result = parseCliArgs(['--lat', '40.6413', '--lon', '-73.7781']);
     expect(isError(result)).toBe(false);

@@ -5,6 +5,7 @@ import type { AircraftUpdateEventDetail, ConnectionStateEventDetail } from '@squ
 import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { App } from './app.js';
+import type { ColumnKey } from './columns.js';
 import { createFakeAircraftFeed, createFakeRegistryDataLoader } from './test-utils.js';
 import type { FakeAircraftFeed } from './test-utils.js';
 import type { RegistryDataLoader } from './use-icao-registry.js';
@@ -49,6 +50,7 @@ function renderApp(
   feed: FakeAircraftFeed,
   registryDataLoader: RegistryDataLoader = createFakeRegistryDataLoader(),
   location?: Coordinates,
+  columnKeys?: readonly ColumnKey[],
 ): ReturnType<typeof render> {
   const instance = render(
     <App
@@ -58,6 +60,7 @@ function renderApp(
       port={30003}
       registryDataLoader={registryDataLoader}
       location={location}
+      columnKeys={columnKeys}
     />,
   );
   activeUnmount = instance.unmount;
@@ -100,15 +103,33 @@ describe('App', () => {
     expect(frame).not.toContain('CPA');
   });
 
-  it('shows the Dist/Brg/CPA columns when a location is configured', async () => {
+  it('auto-fits the columns to the terminal width when a location is configured', async () => {
+    // ink-testing-library reports a 100-column terminal; the full 13-column
+    // table is 128 wide, so auto-fit drops Grnd, Reg, VS, and Brg to fit.
     const feed = createFakeAircraftFeed();
     const { lastFrame } = renderApp(feed, createFakeRegistryDataLoader(), { lat: 0, lon: 0 });
     await flush();
 
     const frame = lastFrame();
     expect(frame).toContain('Dist');
-    expect(frame).toContain('Brg');
     expect(frame).toContain('CPA');
+    expect(frame).not.toContain('Brg');
+    expect(frame).not.toContain('Grnd');
+  });
+
+  it('shows exactly the --columns set instead of auto-fitting', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame } = renderApp(feed, createFakeRegistryDataLoader(), { lat: 0, lon: 0 }, [
+      'icaoHex',
+      'bearing',
+    ]);
+    await flush();
+
+    const frame = lastFrame();
+    expect(frame).toContain('ICAO');
+    expect(frame).toContain('Brg');
+    expect(frame).not.toContain('Callsign');
+    expect(frame).not.toContain('Dist');
   });
 
   it('toggles the help overlay with H and closes it with Escape', async () => {
@@ -125,16 +146,86 @@ describe('App', () => {
     expect(lastFrame()).not.toContain('adsbtop help');
   });
 
-  it('toggles compact columns with C', async () => {
+  it('opens the column picker with C and closes it with Escape', async () => {
     const feed = createFakeAircraftFeed();
     const { lastFrame, stdin } = renderApp(feed);
     await flush();
 
-    expect(lastFrame()).toContain('Grnd');
+    stdin.write('c');
+    await flush();
+    const picker = lastFrame();
+    expect(picker).toContain('adsbtop columns');
+    expect(picker).toContain('Auto-fit on');
+    expect(picker).toContain('Closest point of approach (needs --lat/--lon)');
+
+    stdin.write('\u001B');
+    await flush();
+    expect(lastFrame()).not.toContain('adsbtop columns');
+    expect(lastFrame()).toContain('No aircraft tracked yet.');
+  });
+
+  it('hides a column toggled off in the picker and switches to a custom selection', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed);
+    await flush();
+
+    expect(lastFrame()).toContain('Callsign');
 
     stdin.write('c');
     await flush();
-    expect(lastFrame()).not.toContain('Grnd');
+    stdin.write('\u001B[B');
+    await flush();
+    stdin.write(' ');
+    await flush();
+    expect(lastFrame()).toContain('Custom selection');
+    expect(lastFrame()).toMatch(/\[ \] Callsign/);
+
+    stdin.write('\u001B');
+    await flush();
+    expect(lastFrame()).not.toContain('Callsign');
+    expect(lastFrame()).toContain('ICAO');
+  });
+
+  it('selects the minimal preset with M and returns to auto-fit with F', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed);
+    await flush();
+
+    stdin.write('c');
+    await flush();
+    stdin.write('m');
+    await flush();
+    expect(lastFrame()).toMatch(/\[x\] Alt/);
+    expect(lastFrame()).toMatch(/\[ \] GS/);
+
+    stdin.write('f');
+    await flush();
+    expect(lastFrame()).toContain('Auto-fit on');
+    expect(lastFrame()).toMatch(/\[x\] GS/);
+  });
+
+  it('resets the sort key to the first visible column when its column is hidden', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed, createFakeRegistryDataLoader(), undefined, [
+      'icaoHex',
+      'callsign',
+    ]);
+    await flush();
+
+    stdin.write('o');
+    await flush();
+    expect(lastFrame()).toContain('Callsign ^');
+
+    stdin.write('c');
+    await flush();
+    stdin.write('\u001B[B');
+    await flush();
+    stdin.write(' ');
+    await flush();
+    stdin.write('\u001B');
+    await flush();
+    expect(lastFrame()).toContain('ICAO ^');
+    expect(lastFrame()).not.toContain('Callsign');
   });
 
   it('cycles the sort column with O', async () => {

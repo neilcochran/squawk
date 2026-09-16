@@ -12,6 +12,7 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     port: 30003,
     url: undefined,
     location: undefined,
+    columnKeys: undefined,
     ...overrides,
   };
 }

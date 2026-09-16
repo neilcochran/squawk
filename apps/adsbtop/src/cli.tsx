@@ -26,5 +26,6 @@ render(
     host={parsed.host}
     port={parsed.port}
     location={parsed.location}
+    columnKeys={parsed.columnKeys}
   />,
 );

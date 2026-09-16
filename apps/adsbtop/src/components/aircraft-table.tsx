@@ -2,21 +2,11 @@ import { Box, Text } from 'ink';
 import { Fragment } from 'react';
 import type { ReactElement } from 'react';
 
-import type { Aircraft } from '@squawk/types';
+import type { Aircraft, Coordinates } from '@squawk/types';
 
-import type { ColumnDef, SortDirection, SortKey } from '../columns.js';
+import { COLUMN_SEPARATOR_WIDTH } from '../columns.js';
+import type { ColumnDef, RenderContext, SortDirection, SortKey } from '../columns.js';
 import { isEmergencyAircraft } from '../format.js';
-
-/**
- * Width of the header row's `|` column separator (a space, the pipe, and
- * another space - see {@link HeaderSeparator}). `AircraftCell`'s
- * `marginRight` is derived from this so a data row's column gap always
- * matches the header's separator width - the two are visually the same
- * column boundary and would drift out of alignment if their widths could
- * diverge. Keep this in sync with `HeaderSeparator`'s own rendered width if
- * that ever changes.
- */
-const HEADER_SEPARATOR_WIDTH = ' | '.length;
 
 /** Props for {@link AircraftTable}. */
 export interface AircraftTableProps {
@@ -26,6 +16,8 @@ export interface AircraftTableProps {
   columns: readonly ColumnDef[];
   /** Current time, passed through to age-relative column renderers. */
   nowMs: number;
+  /** Configured receiver location, passed through to the location-gated column renderers. */
+  location: Coordinates | undefined;
   /** The column `aircraft` is currently sorted by - highlighted in the header row so the active sort is visible while cycling with `[O]`. */
   sortKey: SortKey;
   /** Which way `sortKey` is ordered - shown as a `^`/`v` suffix on the highlighted header. */
@@ -103,9 +95,12 @@ function HeaderSeparator({
  * separate `<Text>` branch rather than a conditionally-`undefined` `color`
  * prop, since Ink's `color`/`bold` props are only ever fully present or
  * fully omitted here. Cells are separated by a right margin the width of
- * the header row's `|` separator so columns line up; the last cell carries
- * none, since a trailing margin only pushes the row past the table's inner
- * width and makes Ink shrink (truncate) the first cell to compensate. A
+ * the header row's ` | ` separator ({@link COLUMN_SEPARATOR_WIDTH}) so
+ * columns line up - the two are visually the same column boundary and
+ * would drift out of alignment if their widths could diverge; the last
+ * cell carries none, since a trailing margin only pushes the row past the
+ * table's inner width and makes Ink shrink (truncate) the first cell to
+ * compensate. A
  * non-emergency cell on the cursor row renders in
  * explicit hex black so it stays readable against the row's cyan
  * background, where the terminal's default (typically white) foreground
@@ -115,21 +110,21 @@ function HeaderSeparator({
 function AircraftCell({
   column,
   aircraft,
-  nowMs,
+  context,
   emergency,
   selected,
   last,
 }: {
   column: ColumnDef;
   aircraft: Aircraft;
-  nowMs: number;
+  context: RenderContext;
   emergency: boolean;
   selected: boolean;
   last: boolean;
 }): ReactElement {
-  const value = column.render(aircraft, nowMs);
+  const value = column.render(aircraft, context);
   return (
-    <Box width={column.width} marginRight={last ? 0 : HEADER_SEPARATOR_WIDTH}>
+    <Box width={column.width} marginRight={last ? 0 : COLUMN_SEPARATOR_WIDTH}>
       {emergency ? (
         <Text color="red" bold wrap="truncate-end">
           {value}
@@ -158,12 +153,12 @@ function AircraftCell({
 function AircraftRow({
   aircraft,
   columns,
-  nowMs,
+  context,
   selected,
 }: {
   aircraft: Aircraft;
   columns: readonly ColumnDef[];
-  nowMs: number;
+  context: RenderContext;
   selected: boolean;
 }): ReactElement {
   const emergency = isEmergencyAircraft(aircraft);
@@ -172,7 +167,7 @@ function AircraftRow({
       key={column.key}
       column={column}
       aircraft={aircraft}
-      nowMs={nowMs}
+      context={context}
       emergency={emergency}
       selected={selected}
       last={index === columns.length - 1}
@@ -197,9 +192,10 @@ function AircraftRow({
  * table sits inside the same round cyan border the detail view and help
  * overlay use, so every main-area panel shares one frame.
  *
- * @param props - The aircraft, columns, active sort key and direction, selected row, and current time to render.
+ * @param props - The aircraft, columns, active sort key and direction, selected row, current time, and location to render.
  */
 export function AircraftTable(props: AircraftTableProps): ReactElement {
+  const context: RenderContext = { nowMs: props.nowMs, location: props.location };
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
       <Box width="100%" backgroundColor="blue">
@@ -227,7 +223,7 @@ export function AircraftTable(props: AircraftTableProps): ReactElement {
             key={aircraft.icaoHex}
             aircraft={aircraft}
             columns={props.columns}
-            nowMs={props.nowMs}
+            context={context}
             selected={aircraft.icaoHex === props.selectedIcaoHex}
           />
         ))
