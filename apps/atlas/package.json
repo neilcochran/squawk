@@ -42,9 +42,9 @@
     "@squawk/navaid-data": "*",
     "@squawk/navaids": "*",
     "@squawk/types": "*",
-    "@tanstack/react-router": "^1.170.32",
+    "@tanstack/react-router": "^1.170.33",
     "@vis.gl/react-maplibre": "^8.1.3",
-    "maplibre-gl": "^6.7.0",
+    "maplibre-gl": "^6.8.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zod": "^4.5.4"
