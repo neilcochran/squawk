@@ -2,6 +2,8 @@ import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import type { ReactElement } from 'react';
 
+import type { UnitSystem } from '../units.js';
+
 /** Props for {@link FilterBar}. */
 export interface FilterBarProps {
   /** The in-progress filter text. */
@@ -12,11 +14,19 @@ export interface FilterBarProps {
   onChange: (query: string) => void;
   /** Called with the submitted text when `Enter` is pressed. */
   onSubmit: (query: string) => void;
+  /** The active unit system - decides whether the hint shows `within:<nm>` or `within:<km>`. */
+  units: UnitSystem;
 }
 
-/** One-line reminder of the filter syntax, shown under the prompt while there is no error. */
-const SYNTAX_HINT =
-  'is:airborne (is:air)  is:ground (is:gnd)  is:emergency (is:emerg)  within:<nm>  text  (empty clears)';
+/**
+ * One-line reminder of the filter syntax, shown under the prompt while
+ * there is no error. The distance placeholder follows the active unit
+ * system, since that is how a bare `within:` value is read.
+ */
+function syntaxHint(units: UnitSystem): string {
+  const distance = units === 'metric' ? 'within:<km>' : 'within:<nm>';
+  return `is:airborne (is:air)  is:ground (is:gnd)  is:emergency (is:emerg)  ${distance}  text  (empty clears)`;
+}
 
 /**
  * `[F]ilter` prompt shown in place of the hotkey bar while composing a
@@ -24,9 +34,15 @@ const SYNTAX_HINT =
  * below. `Escape` cancels - handled by the app's own `useInput`, not here,
  * since `ink-text-input` has no built-in cancel key.
  *
- * @param props - The in-progress text, any rejection reason, and the change/submit callbacks.
+ * @param props - The in-progress text, any rejection reason, the change/submit callbacks, and the active units.
  */
-export function FilterBar({ query, error, onChange, onSubmit }: FilterBarProps): ReactElement {
+export function FilterBar({
+  query,
+  error,
+  onChange,
+  onSubmit,
+  units,
+}: FilterBarProps): ReactElement {
   return (
     <Box flexDirection="column">
       <Box>
@@ -35,7 +51,11 @@ export function FilterBar({ query, error, onChange, onSubmit }: FilterBarProps):
         </Text>
         <TextInput value={query} onChange={onChange} onSubmit={onSubmit} focus />
       </Box>
-      {error === undefined ? <Text dimColor>{SYNTAX_HINT}</Text> : <Text color="red">{error}</Text>}
+      {error === undefined ? (
+        <Text dimColor>{syntaxHint(units)}</Text>
+      ) : (
+        <Text color="red">{error}</Text>
+      )}
     </Box>
   );
 }

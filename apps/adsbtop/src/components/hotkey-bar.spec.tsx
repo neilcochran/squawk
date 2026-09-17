@@ -11,6 +11,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -30,6 +31,7 @@ describe('HotkeyBar', () => {
     expect(frame).toContain('Stats');
     expect(frame).toContain('[W]');
     expect(frame).toContain('Snapshot');
+    expect(frame).toContain('[U]Metric');
     expect(frame).toContain('[B]');
     expect(frame).toContain('[D]');
     expect(frame).toContain('[H]');
@@ -44,6 +46,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -60,6 +63,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -73,6 +77,7 @@ describe('HotkeyBar', () => {
         sortDirection="desc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -88,6 +93,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -101,6 +107,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus={false}
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -117,6 +124,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -130,6 +138,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch
         hasActiveFilter={false}
@@ -145,6 +154,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -158,6 +168,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -174,6 +185,7 @@ describe('HotkeyBar', () => {
         sortDirection="asc"
         showMessages={false}
         showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
         hasActiveFilter

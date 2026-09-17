@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { buildDetailFields } from '../detail-fields.js';
+import type { UnitSystem } from '../units.js';
 
 /** Props for {@link DetailView}. */
 export interface DetailViewProps {
@@ -15,6 +16,8 @@ export interface DetailViewProps {
   location: Coordinates | undefined;
   /** Update events observed for this aircraft since it was first tracked, for the Messages row. */
   messageCount: number;
+  /** The unit system to render altitudes, speeds, and distances in. */
+  units: UnitSystem;
 }
 
 /**
@@ -29,8 +32,9 @@ export function DetailView({
   nowMs,
   location,
   messageCount,
+  units,
 }: DetailViewProps): ReactElement {
-  const fields = buildDetailFields(aircraft, nowMs, location, messageCount);
+  const fields = buildDetailFields(aircraft, nowMs, location, messageCount, units);
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>

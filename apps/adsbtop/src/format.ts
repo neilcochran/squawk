@@ -2,6 +2,15 @@ import type { Aircraft, EmergencyState, Position } from '@squawk/types';
 
 import type { MessageLogEntry } from './aircraft-state.js';
 import type { ClosestPointOfApproach } from './cpa.js';
+import {
+  distanceInUnits,
+  distanceUnitSuffix,
+  formatAltitudeValue,
+  formatDistanceValue,
+  formatSpeedValue,
+  formatVerticalRateValue,
+} from './units.js';
+import type { UnitSystem } from './units.js';
 
 /** Squawk codes that always indicate a declared emergency, regardless of source. */
 const EMERGENCY_SQUAWKS: ReadonlySet<string> = new Set(['7500', '7600', '7700']);
@@ -50,11 +59,14 @@ export function isEmergencyAircraft(aircraft: Aircraft): boolean {
  * for that indicator.
  *
  * @param aircraft - The aircraft to read altitude from.
- * @returns The altitude in feet with a unit suffix, or `"-"` if neither field is populated.
+ * @param units - The unit system to render in.
+ * @returns The altitude with a unit suffix, or `"-"` if neither field is populated.
  */
-export function formatAltitude(aircraft: Aircraft): string {
-  const altitudeFt = aircraft.position?.baroAltitudeFt ?? aircraft.position?.geoAltitudeFt;
-  return altitudeFt === undefined ? '-' : `${Math.round(altitudeFt)}ft`;
+export function formatAltitude(aircraft: Aircraft, units: UnitSystem): string {
+  return formatAltitudeValue(
+    aircraft.position?.baroAltitudeFt ?? aircraft.position?.geoAltitudeFt,
+    units,
+  );
 }
 
 /**
@@ -96,20 +108,22 @@ export function formatHeading(aircraft: Aircraft): string {
  * Formats an aircraft's ground speed for table display.
  *
  * @param aircraft - The aircraft to read ground speed from.
- * @returns The ground speed in knots with a unit suffix, or `"-"` if unavailable.
+ * @param units - The unit system to render in.
+ * @returns The ground speed with a unit suffix, or `"-"` if unavailable.
  */
-export function formatGroundSpeed(aircraft: Aircraft): string {
-  return aircraft.groundSpeedKt === undefined ? '-' : `${Math.round(aircraft.groundSpeedKt)}kt`;
+export function formatGroundSpeed(aircraft: Aircraft, units: UnitSystem): string {
+  return formatSpeedValue(aircraft.groundSpeedKt, units);
 }
 
 /**
  * Formats a great-circle distance for table display.
  *
  * @param distanceNm - Distance in nautical miles, or undefined if not computable.
- * @returns The distance in nautical miles with a unit suffix, or `"-"` if undefined.
+ * @param units - The unit system to render in.
+ * @returns The distance with a unit suffix, or `"-"` if undefined.
  */
-export function formatDistance(distanceNm: number | undefined): string {
-  return distanceNm === undefined ? '-' : `${Math.round(distanceNm)}nm`;
+export function formatDistance(distanceNm: number | undefined, units: UnitSystem): string {
+  return formatDistanceValue(distanceNm, units);
 }
 
 /**
@@ -127,16 +141,11 @@ export function formatBearing(bearingDeg: number | undefined): string {
  * `+` sign on climbs so climb/descend is visible without color.
  *
  * @param aircraft - The aircraft to read vertical rate from.
- * @returns The vertical rate in feet per minute with a unit suffix, or `"-"` if unavailable.
+ * @param units - The unit system to render in.
+ * @returns The vertical rate with a unit suffix, or `"-"` if unavailable.
  */
-export function formatVerticalRate(aircraft: Aircraft): string {
-  const rate = aircraft.verticalRateFtPerMin;
-  if (rate === undefined) {
-    return '-';
-  }
-  const rounded = Math.round(rate);
-  const sign = rounded > 0 ? '+' : '';
-  return `${sign}${rounded}fpm`;
+export function formatVerticalRate(aircraft: Aircraft, units: UnitSystem): string {
+  return formatVerticalRateValue(aircraft.verticalRateFtPerMin, units);
 }
 
 /**
@@ -175,20 +184,26 @@ export function formatAge(lastSeenAt: number, nowMs: number): string {
 /**
  * Formats a closest point of approach for the CPA column and detail row:
  * the distance at closest approach and how long until the aircraft gets
- * there. Distance keeps one decimal under 10 nm, where tenths matter for
- * judging whether something will pass overhead, and rounds to whole miles
- * beyond that.
+ * there. Distance keeps one decimal under 10 (nm or km), where tenths
+ * matter for judging whether something will pass overhead, and rounds to
+ * whole units beyond that.
  *
  * @param cpa - The projected closest approach, or undefined if not computable.
- * @returns A string like `"2.1nm in 4m10s"`, or `"-"` if undefined.
+ * @param units - The unit system to render in.
+ * @returns A string like `"2.1nm in 4m10s"` or `"3.9km in 4m10s"`, or `"-"` if undefined.
  */
-export function formatClosestApproach(cpa: ClosestPointOfApproach | undefined): string {
+export function formatClosestApproach(
+  cpa: ClosestPointOfApproach | undefined,
+  units: UnitSystem,
+): string {
   if (cpa === undefined) {
     return '-';
   }
-  const tenthsNm = Math.round(cpa.distanceNm * 10) / 10;
-  const distance = tenthsNm < 10 ? tenthsNm.toFixed(1) : String(Math.round(cpa.distanceNm));
-  return `${distance}nm in ${formatDuration(Math.round(cpa.timeToClosestApproachSec))}`;
+  const value = distanceInUnits(cpa.distanceNm, units);
+  const tenths = Math.round(value * 10) / 10;
+  const distance = tenths < 10 ? tenths.toFixed(1) : String(Math.round(value));
+  const duration = formatDuration(Math.round(cpa.timeToClosestApproachSec));
+  return `${distance}${distanceUnitSuffix(units)} in ${duration}`;
 }
 
 /** Fixed-width label per {@link MessageLogEntry.type}, for column alignment in the messages panel. */

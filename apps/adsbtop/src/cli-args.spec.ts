@@ -196,6 +196,23 @@ describe('parseCliArgs', () => {
     }
   });
 
+  it('reads a bare within: in --filter in the --units system', () => {
+    const result = parseCliArgs([
+      '-f',
+      'within:100',
+      '--units',
+      'metric',
+      '--lat',
+      '43.67',
+      '--lon',
+      '-70.36',
+    ]);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.filter?.withinNm).toBeCloseTo(53.996, 2);
+    }
+  });
+
   it('rejects within: in --filter without --lat/--lon', () => {
     const result = parseCliArgs(['-f', 'within:25']);
     expect(isError(result)).toBe(true);
@@ -219,6 +236,28 @@ describe('parseCliArgs', () => {
     expect(isError(result)).toBe(true);
     if (isError(result)) {
       expect(result.message).toContain('at least one term');
+    }
+  });
+
+  it('defaults --units to aviation and accepts metric', () => {
+    const none = parseCliArgs([]);
+    expect(isError(none)).toBe(false);
+    if (!isError(none)) {
+      expect(none.units).toBe('aviation');
+    }
+
+    const metric = parseCliArgs(['--units', 'metric']);
+    expect(isError(metric)).toBe(false);
+    if (!isError(metric)) {
+      expect(metric.units).toBe('metric');
+    }
+  });
+
+  it('rejects an unknown --units value', () => {
+    const result = parseCliArgs(['--units', 'imperial']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('Invalid --units "imperial"');
     }
   });
 

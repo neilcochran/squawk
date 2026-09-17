@@ -36,6 +36,10 @@ const HELP_ENTRIES: readonly HelpEntry[] = [
   },
   { key: 'B', description: 'Hide/show the status bar' },
   {
+    key: 'U',
+    description: 'Toggle units: aviation (ft, kt, nm, fpm) or metric (m, km/h, km, m/s)',
+  },
+  {
     key: 'W',
     description: 'Write the table as shown (visible columns, sort, filter) to a timestamped CSV',
   },

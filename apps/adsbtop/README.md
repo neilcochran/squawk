@@ -33,6 +33,7 @@ adsbtop --source sbs --host 192.168.1.50
 | `--no-bell`             | Never ring the terminal bell; watchlist and emergency highlighting still apply                                                                     | bell on                                       |
 | `--stale-after <ms>`    | Drop an aircraft after this long without an update; rows dim at half this - see [Row styling](#row-styling)                                        | `60000`                                       |
 | `--record <file>`       | Append every new/update/lost feed event to the file as one JSON object per line - see [Snapshot and record](#snapshot-and-record)                  | -                                             |
+| `--units <system>`      | Unit system to start in, `aviation` or `metric` - see [Units](#units)                                                                              | `aviation`                                    |
 | `-h`, `--help`          | Show usage                                                                                                                                         | -                                             |
 
 ### Hotkeys
@@ -52,6 +53,7 @@ adsbtop --source sbs --host 192.168.1.50
 | `T`             | Toggle the session stats panel (see [Session stats](#session-stats))                            |
 | `B`             | Hide/show the status bar                                                                        |
 | `W`             | Write the table as shown to a timestamped CSV (see [Snapshot and record](#snapshot-and-record)) |
+| `U`             | Toggle units between aviation and metric (see [Units](#units))                                  |
 | `Enter` / `D`   | Show the cursor row's full detail view                                                          |
 | `H`             | Toggle the help overlay                                                                         |
 | `Q`             | Quit                                                                                            |
@@ -97,15 +99,15 @@ The blue status bar above the table shows the source, host, and port; the number
 
 `F` opens a filter prompt. The table then shows only aircraft matching every whitespace-separated term, and the status bar reads `aircraft: 12/40  |  filter: ...` so a narrowed table is never mistaken for a quiet sky. Terms are:
 
-| Term                           | Keeps                                                                                                                        |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `is:airborne` (or `is:air`)    | Aircraft not reporting on-ground, including those with no on-ground flag at all                                              |
-| `is:ground` (or `is:gnd`)      | Aircraft reporting on-ground                                                                                                 |
-| `is:emergency` (or `is:emerg`) | Aircraft rendering as an emergency row: an emergency squawk, a declared emergency state, or an active Resolution Advisory    |
-| `within:<nm>`                  | Aircraft within that many nautical miles of the receiver - needs `--lat`/`--lon`, and aircraft with no position are excluded |
-| anything else                  | Aircraft whose ICAO hex, callsign, squawk, or N-number contains the text - the same match `S`earch uses                      |
+| Term                           | Keeps                                                                                                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `is:airborne` (or `is:air`)    | Aircraft not reporting on-ground, including those with no on-ground flag at all                                                                                                                                                            |
+| `is:ground` (or `is:gnd`)      | Aircraft reporting on-ground                                                                                                                                                                                                               |
+| `is:emergency` (or `is:emerg`) | Aircraft rendering as an emergency row: an emergency squawk, a declared emergency state, or an active Resolution Advisory                                                                                                                  |
+| `within:<distance>`            | Aircraft within that distance of the receiver, read in the active units (nautical miles, or kilometres under metric) unless it carries an explicit `nm` or `km` suffix - needs `--lat`/`--lon`, and aircraft with no position are excluded |
+| anything else                  | Aircraft whose ICAO hex, callsign, squawk, or N-number contains the text - the same match `S`earch uses                                                                                                                                    |
 
-For example, `is:air within:25 UAL` keeps airborne United aircraft inside 25 nm. The prompt opens pre-filled with the current filter so it can be edited: `Enter` applies it, submitting an empty prompt clears it, and `Escape` cancels the edit and keeps whatever filter was already active. A term that cannot be parsed (an unknown qualifier, `is:airborne` together with `is:ground`, or `within:` without a location) keeps the prompt open with the reason shown under it. Once a filter is active, `Escape` on the table clears it, and the hotkey bar's `[F]` reads `Edit filter`.
+For example, `is:air within:25 UAL` keeps airborne United aircraft inside 25 nm (or 25 km under metric units - see [Units](#units)). The prompt opens pre-filled with the current filter so it can be edited: `Enter` applies it, submitting an empty prompt clears it, and `Escape` cancels the edit and keeps whatever filter was already active. A term that cannot be parsed (an unknown qualifier, `is:airborne` together with `is:ground`, or `within:` without a location) keeps the prompt open with the reason shown under it. Once a filter is active, `Escape` on the table clears it, and the hotkey bar's `[F]` reads `Edit filter`.
 
 To start already filtered, pass `-f`/`--filter <text>` with the same syntax; it is validated at startup and a bad term exits with the message the prompt would have shown. Once running, `F` and `Escape` edit or clear it like any other filter.
 
@@ -139,6 +141,10 @@ Six fields have meaningfully different coverage depending on `--source` - see [`
 | Emergency state     | Yes  | -   | Yes   |
 | Resolution advisory | -    | -   | Yes   |
 | Target state        | -    | -   | Yes   |
+
+### Units
+
+adsbtop renders in aviation units by default: feet, knots, nautical miles, and feet per minute, as broadcast. `U` switches every altitude, speed, distance, and vertical rate in the table, the detail view, the stats panel, and snapshots to metric - metres, km/h, kilometres, and metres per second - and back; the hotkey bar's `[U]` names the system pressing it switches to. `--units metric` starts that way. Bearings and headings are degrees either way. The `Filter` prompt's hint and a bare `within:` value follow the active system - `within:25` is 25 nm in aviation units and 25 km in metric - and an explicit `nm` or `km` suffix always wins; a filter keeps the distance it was applied with if you toggle units afterwards. The choice lasts for the session only.
 
 ### Session stats
 

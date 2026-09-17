@@ -15,6 +15,7 @@ function makeInfo(overrides: Partial<SessionStatsInfo> = {}): SessionStatsInfo {
     rateHistory: [],
     maxDistance: undefined,
     hasLocation: false,
+    units: 'aviation',
     ...overrides,
   };
 }
@@ -77,6 +78,18 @@ describe('formatStatsLines', () => {
 
     expect(withCallsign).toContain('max distance: 212nm (A0B1C2 UAL123)');
     expect(withoutCallsign).toContain('max distance: 212nm (A0B1C2)');
+  });
+
+  it('renders the max distance in metric when asked', () => {
+    const lines = formatStatsLines(
+      makeInfo({
+        hasLocation: true,
+        units: 'metric',
+        maxDistance: { icaoHex: 'A0B1C2', callsign: undefined, distanceNm: 100 },
+      }),
+    );
+
+    expect(lines).toContain('max distance: 185km (A0B1C2)');
   });
 
   it('ends with a sparkline of the rate window when there are samples', () => {

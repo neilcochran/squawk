@@ -31,7 +31,7 @@ describe('buildSnapshotCsv', () => {
         makeAircraft({ icaoHex: 'D3E4F5', lastSeenAt: 0 }),
       ],
       columns,
-      { nowMs: 5_000, location: undefined },
+      { nowMs: 5_000, location: undefined, units: 'aviation' },
     );
 
     expect(csv).toBe('ICAO,Callsign,Alt,Age\nA0B1C2,UAL123,35000ft,5s\nD3E4F5,-,-,5s\n');
@@ -41,15 +41,15 @@ describe('buildSnapshotCsv', () => {
     const csv = buildSnapshotCsv(
       [makeAircraft({ callsign: 'A,"B' })],
       selectColumns(availableColumns({ source: 'beast', location: undefined }), ['callsign']),
-      { nowMs: 0, location: undefined },
+      { nowMs: 0, location: undefined, units: 'aviation' },
     );
 
     expect(csv).toBe('Callsign\n"A,""B"\n');
   });
 
   it('writes only the header for an empty table', () => {
-    expect(buildSnapshotCsv([], columns, { nowMs: 0, location: undefined })).toBe(
-      'ICAO,Callsign,Alt,Age\n',
-    );
+    expect(
+      buildSnapshotCsv([], columns, { nowMs: 0, location: undefined, units: 'aviation' }),
+    ).toBe('ICAO,Callsign,Alt,Age\n');
   });
 });

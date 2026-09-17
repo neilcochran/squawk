@@ -1,5 +1,6 @@
 import { formatDistance, formatDuration } from './format.js';
 import { sparkline } from './sparkline.js';
+import type { UnitSystem } from './units.js';
 
 /** The farthest aircraft observed this session, for the stats panel. */
 export interface MaxDistanceRecord {
@@ -33,6 +34,8 @@ export interface SessionStatsInfo {
   maxDistance: MaxDistanceRecord | undefined;
   /** Whether a receiver location is configured - decides whether the distance line appears at all. */
   hasLocation: boolean;
+  /** The unit system to render the max distance in. */
+  units: UnitSystem;
 }
 
 /**
@@ -72,7 +75,9 @@ export function formatStatsLines(info: SessionStatsInfo): string[] {
       const who = [info.maxDistance.icaoHex, info.maxDistance.callsign]
         .filter((part) => part !== undefined)
         .join(' ');
-      lines.push(`max distance: ${formatDistance(info.maxDistance.distanceNm)} (${who})`);
+      lines.push(
+        `max distance: ${formatDistance(info.maxDistance.distanceNm, info.units)} (${who})`,
+      );
     }
   }
 

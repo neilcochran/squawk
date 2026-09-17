@@ -19,6 +19,7 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     alertEmergency: false,
     bell: true,
     recordPath: undefined,
+    units: 'aviation',
     ...overrides,
   };
 }

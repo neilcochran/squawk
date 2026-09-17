@@ -9,6 +9,7 @@ import type { ColumnDef, RenderContext, SortDirection, SortKey } from '../column
 import { isEmergencyAircraft } from '../format.js';
 import { isFreshRow, isStaleRow, rowTextStyle } from '../row-style.js';
 import type { RowTextStyle } from '../row-style.js';
+import type { UnitSystem } from '../units.js';
 import { matchesWatchlist } from '../watchlist.js';
 
 /** Props for {@link AircraftTable}. */
@@ -27,6 +28,8 @@ export interface AircraftTableProps {
   firstSeenAtByHex: ReadonlyMap<string, number>;
   /** The feed's stale threshold in ms - rows with no update for `STALE_DIM_FRACTION` of it render dimmed. */
   staleAfterMs: number;
+  /** The unit system the unit-bearing columns render in. */
+  units: UnitSystem;
   /** The column `aircraft` is currently sorted by - highlighted in the header row so the active sort is visible while cycling with `[O]`. */
   sortKey: SortKey;
   /** Which way `sortKey` is ordered - shown as a `^`/`v` suffix on the highlighted header. */
@@ -200,7 +203,11 @@ function AircraftRow({
  * @param props - The aircraft, columns, active sort key and direction, selected row, current time, and location to render.
  */
 export function AircraftTable(props: AircraftTableProps): ReactElement {
-  const context: RenderContext = { nowMs: props.nowMs, location: props.location };
+  const context: RenderContext = {
+    nowMs: props.nowMs,
+    location: props.location,
+    units: props.units,
+  };
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
       <Box width="100%" backgroundColor="blue">

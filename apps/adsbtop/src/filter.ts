@@ -1,8 +1,10 @@
 import type { Aircraft, Coordinates } from '@squawk/types';
+import { distance } from '@squawk/units';
 
 import { isEmergencyAircraft } from './format.js';
 import { distanceToAircraftNm } from './location.js';
 import { matchesSearch } from './search.js';
+import type { UnitSystem } from './units.js';
 
 /**
  * A parsed `[F]ilter` query: every part must match for an aircraft to stay
@@ -42,17 +44,24 @@ const IS_QUALIFIERS: Readonly<Record<string, 'airborne' | 'ground' | 'emergency'
  * Parses `[F]ilter` query text into an {@link AircraftFilter}. Terms are
  * whitespace-separated and all must match. `is:airborne` (`is:air`),
  * `is:ground` (`is:gnd`), and `is:emergency` (`is:emerg`) select by state,
- * `within:<nm>` by distance from the receiver, and any other term is free
- * text matched the way `[S]earch` matches. Qualifier names and values are
- * case-insensitive. Returns a {@link FilterError} rather than guessing when
- * a term is malformed, contradictory, or needs a location that is not
- * configured.
+ * `within:<distance>` by distance from the receiver, and any other term is
+ * free text matched the way `[S]earch` matches. A bare `within:` value is
+ * read in the active unit system (nautical miles, or kilometres under
+ * metric); an explicit `nm` or `km` suffix always wins. Qualifier names
+ * and values are case-insensitive. Returns a {@link FilterError} rather
+ * than guessing when a term is malformed, contradictory, or needs a
+ * location that is not configured.
  *
  * @param text - The query text. Must contain at least one term - the caller treats an empty query as "clear the filter" before calling this.
  * @param hasLocation - Whether a receiver location is configured, which `within:` needs.
+ * @param units - The active unit system, which decides how a bare `within:` value is read.
  * @returns The parsed filter, or a {@link FilterError} for the first bad term.
  */
-export function parseFilter(text: string, hasLocation: boolean): AircraftFilter | FilterError {
+export function parseFilter(
+  text: string,
+  hasLocation: boolean,
+  units: UnitSystem,
+): AircraftFilter | FilterError {
   const trimmed = text.trim();
   const terms: string[] = [];
   let onGround: boolean | undefined;
@@ -89,11 +98,15 @@ export function parseFilter(text: string, hasLocation: boolean): AircraftFilter 
       if (!hasLocation) {
         return { message: 'within: needs a receiver location - start with --lat/--lon.' };
       }
-      const nm = Number(value);
-      if (value === '' || !Number.isFinite(nm) || nm < 0) {
-        return { message: `Invalid distance "${value}" - expected within:<nautical miles>.` };
+      const match = /^(\d+(?:\.\d+)?)(nm|km)?$/i.exec(value);
+      if (match === null) {
+        return {
+          message: `Invalid distance "${value}" - expected within:<distance>, optionally with nm or km.`,
+        };
       }
-      withinNm = nm;
+      const magnitude = Number(match[1]);
+      const suffix = match[2]?.toLowerCase() ?? (units === 'metric' ? 'km' : 'nm');
+      withinNm = suffix === 'km' ? distance.kilometersToNauticalMiles(magnitude) : magnitude;
       continue;
     }
     return { message: `Unknown qualifier "${qualifier}:" - expected is: or within:.` };

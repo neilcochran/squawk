@@ -4,6 +4,7 @@ import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { filterAircraft, matchesFilter, parseFilter } from './filter.js';
 import type { AircraftFilter, FilterError } from './filter.js';
+import type { UnitSystem } from './units.js';
 
 function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
   return { icaoHex: 'A0B1C2', lastSeenAt: 0, ...overrides };
@@ -13,8 +14,8 @@ function isError(result: AircraftFilter | FilterError): result is FilterError {
   return 'message' in result;
 }
 
-function parse(text: string, hasLocation = true): AircraftFilter {
-  const result = parseFilter(text, hasLocation);
+function parse(text: string, hasLocation = true, units: UnitSystem = 'aviation'): AircraftFilter {
+  const result = parseFilter(text, hasLocation, units);
   assert(!isError(result), 'message' in result ? result.message : 'expected a filter');
   return result;
 }
@@ -43,9 +44,18 @@ describe('parseFilter', () => {
     expect(parse('is:emerg').emergencyOnly).toBe(true);
   });
 
-  it('parses within:<nm> when a location is configured', () => {
+  it('parses within:<distance> when a location is configured, with an optional unit suffix', () => {
     expect(parse('within:25').withinNm).toBe(25);
     expect(parse('within:2.5').withinNm).toBe(2.5);
+    expect(parse('within:25nm').withinNm).toBe(25);
+    expect(parse('within:100km').withinNm).toBeCloseTo(53.996, 2);
+    expect(parse('within:100KM').withinNm).toBeCloseTo(53.996, 2);
+  });
+
+  it('reads a bare within: value in the active unit system, with a suffix overriding it', () => {
+    expect(parse('within:100', true, 'metric').withinNm).toBeCloseTo(53.996, 2);
+    expect(parse('within:100nm', true, 'metric').withinNm).toBe(100);
+    expect(parse('within:100km', true, 'aviation').withinNm).toBeCloseTo(53.996, 2);
   });
 
   it('combines qualifiers and free text', () => {
@@ -57,7 +67,7 @@ describe('parseFilter', () => {
   });
 
   it('rejects within: without a location', () => {
-    const result = parseFilter('within:25', false);
+    const result = parseFilter('within:25', false, 'aviation');
     expect(isError(result)).toBe(true);
     if (isError(result)) {
       expect(result.message).toContain('--lat/--lon');
@@ -66,7 +76,7 @@ describe('parseFilter', () => {
 
   it('rejects a malformed within: value', () => {
     for (const text of ['within:', 'within:abc', 'within:-5']) {
-      const result = parseFilter(text, true);
+      const result = parseFilter(text, true, 'aviation');
       expect(isError(result)).toBe(true);
       if (isError(result)) {
         expect(result.message).toContain('Invalid distance');
@@ -75,7 +85,7 @@ describe('parseFilter', () => {
   });
 
   it('rejects an unknown is: value', () => {
-    const result = parseFilter('is:flying', true);
+    const result = parseFilter('is:flying', true, 'aviation');
     expect(isError(result)).toBe(true);
     if (isError(result)) {
       expect(result.message).toContain('Unknown state "flying"');
@@ -83,7 +93,7 @@ describe('parseFilter', () => {
   });
 
   it('rejects contradictory is:airborne and is:ground', () => {
-    const result = parseFilter('is:airborne is:ground', true);
+    const result = parseFilter('is:airborne is:ground', true, 'aviation');
     expect(isError(result)).toBe(true);
     if (isError(result)) {
       expect(result.message).toContain('cannot both apply');
@@ -91,7 +101,7 @@ describe('parseFilter', () => {
   });
 
   it('rejects an unknown qualifier', () => {
-    const result = parseFilter('alt:5000', true);
+    const result = parseFilter('alt:5000', true, 'aviation');
     expect(isError(result)).toBe(true);
     if (isError(result)) {
       expect(result.message).toContain('Unknown qualifier "alt:"');

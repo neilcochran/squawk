@@ -17,6 +17,7 @@ describe('StatsPanel', () => {
         rateHistory={[30, 40, 61]}
         maxDistance={{ icaoHex: 'A0B1C2', callsign: 'UAL123', distanceNm: 212 }}
         hasLocation
+        units="aviation"
       />,
     );
 
@@ -41,6 +42,7 @@ describe('StatsPanel', () => {
         rateHistory={[]}
         maxDistance={undefined}
         hasLocation={false}
+        units="aviation"
       />,
     );
 

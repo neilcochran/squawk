@@ -11,7 +11,15 @@ function flush(ms = 20): Promise<void> {
 
 function Harness({ onSubmit }: { onSubmit: (query: string) => void }): ReactElement {
   const [query, setQuery] = useState('');
-  return <FilterBar query={query} error={undefined} onChange={setQuery} onSubmit={onSubmit} />;
+  return (
+    <FilterBar
+      query={query}
+      error={undefined}
+      onChange={setQuery}
+      onSubmit={onSubmit}
+      units="aviation"
+    />
+  );
 }
 
 describe('FilterBar', () => {
@@ -22,6 +30,7 @@ describe('FilterBar', () => {
         error={undefined}
         onChange={() => undefined}
         onSubmit={() => undefined}
+        units="aviation"
       />,
     );
     const frame = lastFrame();
@@ -38,6 +47,7 @@ describe('FilterBar', () => {
         error={undefined}
         onChange={() => undefined}
         onSubmit={() => undefined}
+        units="aviation"
       />,
     );
     expect(lastFrame()).toContain('is:air UAL');
@@ -50,6 +60,7 @@ describe('FilterBar', () => {
         error='Unknown state "flying"'
         onChange={() => undefined}
         onSubmit={() => undefined}
+        units="aviation"
       />,
     );
     const frame = lastFrame();
@@ -68,5 +79,19 @@ describe('FilterBar', () => {
     await flush();
 
     expect(onSubmit).toHaveBeenCalledWith('is:gnd');
+  });
+
+  it('shows the distance placeholder in the active unit system', () => {
+    const { lastFrame } = render(
+      <FilterBar
+        query=""
+        error={undefined}
+        onChange={() => undefined}
+        onSubmit={() => undefined}
+        units="metric"
+      />,
+    );
+    expect(lastFrame()).toContain('within:<km>');
+    expect(lastFrame()).not.toContain('within:<nm>');
   });
 });

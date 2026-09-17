@@ -64,7 +64,7 @@ function fieldValue(
 
 describe('buildDetailFields', () => {
   it('shows "-" for every unpopulated field', () => {
-    const fields = buildDetailFields(makeAircraft(), 0, undefined, 0);
+    const fields = buildDetailFields(makeAircraft(), 0, undefined, 0, 'aviation');
 
     expect(fieldValue(fields, 'Callsign')).toBe('-');
     expect(fieldValue(fields, 'Squawk')).toBe('-');
@@ -92,6 +92,7 @@ describe('buildDetailFields', () => {
       4000,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'ICAO')).toBe('A0B1C2');
@@ -104,6 +105,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Position')).toBe('40.6413, -73.7781');
@@ -115,6 +117,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Baro altitude')).toBe('35000ft');
@@ -127,14 +130,44 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'True track')).toBe('90°');
     expect(fieldValue(fields, 'Magnetic heading')).toBe('96°');
   });
 
+  it('renders altitudes, speeds, and distances in metric when asked', () => {
+    const fields = buildDetailFields(
+      makeAircraft({
+        position: { lat: 0, lon: 1, baroAltitudeFt: 35_000 },
+        groundSpeedKt: 515,
+        trueAirspeedKt: 480,
+        verticalRateFtPerMin: -800,
+        targetState: makeTargetState({ selectedAltitudeFt: 35_000 }),
+      }),
+      0,
+      { lat: 0, lon: 0 },
+      0,
+      'metric',
+    );
+
+    expect(fieldValue(fields, 'Baro altitude')).toBe('10668m');
+    expect(fieldValue(fields, 'Ground speed')).toBe('954km/h');
+    expect(fieldValue(fields, 'True airspeed')).toBe('889km/h');
+    expect(fieldValue(fields, 'Vertical rate')).toBe('-4.1m/s');
+    expect(fieldValue(fields, 'Distance')).toBe('111km');
+    expect(fieldValue(fields, 'Target state')).toBe('10668m sel');
+  });
+
   it('spells out the category with its weight class', () => {
-    const fields = buildDetailFields(makeAircraft({ category: 'large' }), 0, undefined, 0);
+    const fields = buildDetailFields(
+      makeAircraft({ category: 'large' }),
+      0,
+      undefined,
+      0,
+      'aviation',
+    );
 
     expect(fieldValue(fields, 'Category')).toBe('Large (75,000 to 300,000 lb)');
   });
@@ -147,6 +180,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Registration')).toBe('N12345 Cessna 172');
@@ -158,6 +192,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Registration')).toBe('N12345');
@@ -169,6 +204,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fields.some((field) => field.label === 'Distance')).toBe(false);
@@ -183,6 +219,7 @@ describe('buildDetailFields', () => {
       0,
       location,
       0,
+      'aviation',
     );
 
     const labels = fields.map((field) => field.label);
@@ -195,7 +232,7 @@ describe('buildDetailFields', () => {
 
   it('shows a placeholder for the location rows when the aircraft has no position', () => {
     const location: Coordinates = { lat: 0, lon: 0 };
-    const fields = buildDetailFields(makeAircraft(), 0, location, 0);
+    const fields = buildDetailFields(makeAircraft(), 0, location, 0, 'aviation');
 
     expect(fieldValue(fields, 'Distance')).toBe('-');
     expect(fieldValue(fields, 'Bearing')).toBe('-');
@@ -209,6 +246,7 @@ describe('buildDetailFields', () => {
       0,
       location,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Distance')).toBe('60nm');
@@ -221,6 +259,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Squawk alert')).toBe('Yes');
@@ -233,6 +272,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Squawk alert')).toBe('-');
@@ -245,13 +285,20 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Emergency state')).toBe('Lifeguard/medical');
   });
 
   it('formats "none" emergency state distinctly from an unpopulated field', () => {
-    const fields = buildDetailFields(makeAircraft({ emergencyState: 'none' }), 0, undefined, 0);
+    const fields = buildDetailFields(
+      makeAircraft({ emergencyState: 'none' }),
+      0,
+      undefined,
+      0,
+      'aviation',
+    );
 
     expect(fieldValue(fields, 'Emergency state')).toBe('None');
   });
@@ -262,6 +309,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('Climb');
@@ -275,6 +323,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('Descend (preventive)');
@@ -286,6 +335,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('None');
@@ -302,6 +352,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('Active (multi-threat)');
@@ -318,6 +369,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Resolution advisory')).toBe('Active');
@@ -335,6 +387,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Target state')).toBe('35000ft sel, 270° sel, AP on');
@@ -346,6 +399,7 @@ describe('buildDetailFields', () => {
       0,
       undefined,
       0,
+      'aviation',
     );
 
     expect(fieldValue(fields, 'Target state')).toBe('-');

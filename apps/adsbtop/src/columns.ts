@@ -15,6 +15,7 @@ import {
   formatVerticalRate,
 } from './format.js';
 import { bearingToAircraftDeg, distanceToAircraftNm } from './location.js';
+import type { UnitSystem } from './units.js';
 
 /**
  * Identifies one table column. Doubles as the column's React list key and,
@@ -53,6 +54,8 @@ export interface RenderContext {
   nowMs: number;
   /** The configured receiver location (`--lat`/`--lon`), if any. The location-gated columns render a placeholder without it. */
   location: Coordinates | undefined;
+  /** The unit system to render altitudes, speeds, and distances in - toggled with `[U]`. */
+  units: UnitSystem;
 }
 
 /** One column in the aircraft table. */
@@ -145,17 +148,17 @@ export const COLUMNS: readonly ColumnDef[] = [
     minimal: true,
     requiresLocation: false,
     unsupportedSources: [],
-    render: (aircraft) => formatAltitude(aircraft),
+    render: (aircraft, context) => formatAltitude(aircraft, context.units),
   },
   {
     key: 'groundSpeed',
     header: 'GS',
     name: 'Ground speed',
-    width: 6,
+    width: 8,
     minimal: false,
     requiresLocation: false,
     unsupportedSources: [],
-    render: (aircraft) => formatGroundSpeed(aircraft),
+    render: (aircraft, context) => formatGroundSpeed(aircraft, context.units),
   },
   {
     key: 'heading',
@@ -175,7 +178,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     minimal: false,
     requiresLocation: false,
     unsupportedSources: [],
-    render: (aircraft) => formatVerticalRate(aircraft),
+    render: (aircraft, context) => formatVerticalRate(aircraft, context.units),
   },
   {
     key: 'onGround',
@@ -208,7 +211,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     render: (aircraft, context) =>
       context.location === undefined
         ? '-'
-        : formatDistance(distanceToAircraftNm(context.location, aircraft)),
+        : formatDistance(distanceToAircraftNm(context.location, aircraft), context.units),
   },
   {
     key: 'bearing',
@@ -234,7 +237,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     render: (aircraft, context) =>
       context.location === undefined
         ? '-'
-        : formatClosestApproach(closestPointOfApproach(context.location, aircraft)),
+        : formatClosestApproach(closestPointOfApproach(context.location, aircraft), context.units),
   },
 ] as const;
 

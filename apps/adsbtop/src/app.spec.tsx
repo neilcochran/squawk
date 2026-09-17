@@ -90,6 +90,7 @@ function renderApp(
       alertEmergency={false}
       bell={true}
       recordPath={undefined}
+      units="aviation"
       {...overrides}
     />,
   );
@@ -776,6 +777,42 @@ describe('App', () => {
     expect(lastFrame()).not.toContain('Session stats');
   });
 
+  it('toggles between aviation and metric units with U', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed, {
+      columnKeys: ['icaoHex', 'altitude', 'groundSpeed'],
+    });
+    dispatchNew(
+      feed,
+      makeAircraft({
+        icaoHex: 'A0B1C2',
+        position: { lat: 0, lon: 0, baroAltitudeFt: 35_000 },
+        groundSpeedKt: 515,
+      }),
+    );
+    await flush();
+    expect(lastFrame()).toContain('35000ft');
+    expect(lastFrame()).toContain('[U]Metric');
+
+    stdin.write('u');
+    await flush();
+    expect(lastFrame()).toContain('10668m');
+    expect(lastFrame()).toContain('954km/h');
+    expect(lastFrame()).toContain('[U]Aviation');
+
+    stdin.write('u');
+    await flush();
+    expect(lastFrame()).toContain('35000ft');
+  });
+
+  it('starts in metric when --units says so', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame } = renderApp(feed, { units: 'metric', columnKeys: ['icaoHex', 'altitude'] });
+    dispatchNew(feed, makeAircraft({ position: { lat: 0, lon: 0, baroAltitudeFt: 35_000 } }));
+    await flush();
+    expect(lastFrame()).toContain('10668m');
+  });
+
   describe('snapshot and record', () => {
     it('writes the visible table as CSV on W and confirms in the status bar', async () => {
       const writeSnapshot = vi.fn<(fileName: string, contents: string) => Promise<void>>(() =>
@@ -978,7 +1015,7 @@ describe('App', () => {
     });
 
     it('starts with the --filter applied and lets Escape clear it', async () => {
-      const startupFilter = parseFilter('dal', false);
+      const startupFilter = parseFilter('dal', false, 'aviation');
       if ('message' in startupFilter) {
         throw new Error(startupFilter.message);
       }

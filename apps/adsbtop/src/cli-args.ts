@@ -6,6 +6,8 @@ import { parseColumnList, unavailableReason, COLUMNS } from './columns.js';
 import type { ColumnAvailability, ColumnKey } from './columns.js';
 import { parseFilter } from './filter.js';
 import type { AircraftFilter } from './filter.js';
+import { DEFAULT_UNIT_SYSTEM, isUnitSystem } from './units.js';
+import type { UnitSystem } from './units.js';
 import { parseWatchlist } from './watchlist.js';
 
 /** Which dump1090-fa output adsbtop connects to. */
@@ -63,6 +65,8 @@ export interface CliOptions {
   bell: boolean;
   /** File to append every feed event to as JSON lines, from `--record`. Undefined when not recording. */
   recordPath: string | undefined;
+  /** The unit system to start in, from `--units`. Defaults to aviation units. */
+  units: UnitSystem;
 }
 
 /** A `parseCliArgs` failure: the reason `argv` could not be turned into {@link CliOptions}. */
@@ -125,6 +129,7 @@ Options:
   --no-bell                  Never ring the terminal bell (watchlist and emergency highlighting still apply)
   --stale-after <ms>         Drop an aircraft after this long without an update (default: ${DEFAULT_STALE_AFTER_MS}) - rows dim at half this
   --record <file>            Append every new/update/lost feed event to <file> as one JSON object per line
+  --units <aviation|metric>  Unit system to start in (default: ${DEFAULT_UNIT_SYSTEM}) - [U] toggles while running
   -h, --help                 Show this help message
 `;
 
@@ -202,11 +207,13 @@ function parseColumns(
  *
  * @param raw - Raw `--filter` value, if passed.
  * @param hasLocation - Whether a receiver location is configured, which `within:` needs.
+ * @param units - The `--units` system, which decides how a bare `within:` value is read.
  * @returns The parsed filter (possibly undefined), or a {@link CliArgsError}.
  */
 function parseStartupFilter(
   raw: string | undefined,
   hasLocation: boolean,
+  units: UnitSystem,
 ): { filter: AircraftFilter | undefined } | CliArgsError {
   if (raw === undefined) {
     return { filter: undefined };
@@ -214,7 +221,7 @@ function parseStartupFilter(
   if (raw.trim() === '') {
     return { message: '--filter needs at least one term.' };
   }
-  const parsed = parseFilter(raw, hasLocation);
+  const parsed = parseFilter(raw, hasLocation, units);
   if ('message' in parsed) {
     return { message: `Invalid --filter: ${parsed.message}` };
   }
@@ -248,6 +255,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
         'no-bell': { type: 'boolean', default: false },
         'stale-after': { type: 'string' },
         record: { type: 'string' },
+        units: { type: 'string', default: DEFAULT_UNIT_SYSTEM },
         help: { type: 'boolean', short: 'h', default: false },
       },
       strict: true,
@@ -272,17 +280,13 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       alertEmergency: false,
       bell: true,
       recordPath: undefined,
+      units: DEFAULT_UNIT_SYSTEM,
     };
   }
 
   const parsedLocation = parseLocation(values.lat, values.lon);
   if ('message' in parsedLocation) {
     return parsedLocation;
-  }
-
-  const parsedFilter = parseStartupFilter(values.filter, parsedLocation.location !== undefined);
-  if ('message' in parsedFilter) {
-    return parsedFilter;
   }
 
   let staleAfterMs = DEFAULT_STALE_AFTER_MS;
@@ -294,6 +298,20 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       };
     }
     staleAfterMs = parsedStaleAfter;
+  }
+
+  const rawUnits = values.units ?? DEFAULT_UNIT_SYSTEM;
+  if (!isUnitSystem(rawUnits)) {
+    return { message: `Invalid --units "${rawUnits}" - expected aviation or metric.` };
+  }
+
+  const parsedFilter = parseStartupFilter(
+    values.filter,
+    parsedLocation.location !== undefined,
+    rawUnits,
+  );
+  if ('message' in parsedFilter) {
+    return parsedFilter;
   }
 
   if (values.record !== undefined && values.record.trim() === '') {
@@ -351,5 +369,6 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     alertEmergency: values['alert-emergency'] === true,
     bell: values['no-bell'] !== true,
     recordPath: values.record,
+    units: rawUnits,
   };
 }

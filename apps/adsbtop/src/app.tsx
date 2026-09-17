@@ -41,6 +41,8 @@ import type { RegistrationCache } from './registration-cache.js';
 import { findMatchIcaoHex } from './search.js';
 import { moveSelection } from './selection.js';
 import { buildSnapshotCsv, snapshotFileName, writeSnapshotFile } from './snapshot.js';
+import { toggleUnitSystem } from './units.js';
+import type { UnitSystem } from './units.js';
 import { useAircraftFeed } from './use-aircraft-feed.js';
 import { ringTerminalBell, useAlerts } from './use-alerts.js';
 import { useIcaoRegistry } from './use-icao-registry.js';
@@ -94,11 +96,13 @@ export interface AppProps {
   writeSnapshot?: (fileName: string, contents: string) => Promise<void>;
   /** Opens the `--record` sink. Defaults to appending to the file; overridable in tests. */
   openRecordSink?: (path: string, onError: (error: Error) => void) => RecordSink;
+  /** The unit system to start in (`--units`); `[U]` toggles it while running. */
+  units: UnitSystem;
 }
 
 /**
  * adsbtop's root component: subscribes to the feed, owns display state
- * (pause, visible columns, sort key and direction, cursor, search, filter,
+ * (pause, visible columns, units, sort key and direction, cursor, search, filter,
  * messages, stats, status-bar visibility, and which main panel is showing), wires the hotkey
  * bar, and renders the optional status header, main panel, optional messages
  * panel, optional search prompt, and hotkey bar.
@@ -167,6 +171,7 @@ export function App(props: AppProps): ReactElement {
   const [filterError, setFilterError] = useState<string | undefined>(undefined);
   const [activeFilter, setActiveFilter] = useState<AircraftFilter | undefined>(props.filter);
   const [notice, setNotice] = useState<(StatusNotice & { at: number }) | undefined>(undefined);
+  const [units, setUnits] = useState<UnitSystem>(props.units);
 
   const { recordPath, openRecordSink: openSink = openRecordSink } = props;
   useEffect(() => {
@@ -270,7 +275,7 @@ export function App(props: AppProps): ReactElement {
       setActiveFilter(undefined);
       return;
     }
-    const parsed = parseFilter(query, props.location !== undefined);
+    const parsed = parseFilter(query, props.location !== undefined, units);
     if ('message' in parsed) {
       setFilterError(parsed.message);
       return;
@@ -289,6 +294,7 @@ export function App(props: AppProps): ReactElement {
     const csv = buildSnapshotCsv(filteredAircraft, columns, {
       nowMs: now,
       location: props.location,
+      units,
     });
     const write = props.writeSnapshot ?? writeSnapshotFile;
     write(fileName, csv).then(
@@ -440,6 +446,10 @@ export function App(props: AppProps): ReactElement {
         case 'W':
           handleSnapshot();
           break;
+        case 'u':
+        case 'U':
+          setUnits((prev) => toggleUnitSystem(prev));
+          break;
         case 'v':
         case 'V':
           setMessageVerbosity((prev) => (prev === 'all' ? 'newAndLost' : 'all'));
@@ -525,6 +535,7 @@ export function App(props: AppProps): ReactElement {
           nowMs={now}
           location={props.location}
           messageCount={view.messageCountByHex.get(selectedAircraft.icaoHex) ?? 0}
+          units={units}
         />
       ) : (
         <AircraftTable
@@ -535,6 +546,7 @@ export function App(props: AppProps): ReactElement {
           watchlist={props.watchlist}
           firstSeenAtByHex={view.firstSeenAtByHex}
           staleAfterMs={props.staleAfterMs}
+          units={units}
           sortKey={sortKey}
           sortDirection={sortDirection}
           selectedIcaoHex={selectedIcaoHex}
@@ -552,6 +564,7 @@ export function App(props: AppProps): ReactElement {
           rateHistory={view.rateHistory}
           maxDistance={view.maxDistance}
           hasLocation={props.location !== undefined}
+          units={units}
         />
       ) : undefined}
       {showMessages ? (
@@ -569,6 +582,7 @@ export function App(props: AppProps): ReactElement {
           error={filterError}
           onChange={handleFilterChange}
           onSubmit={handleFilterSubmit}
+          units={units}
         />
       ) : undefined}
       <HotkeyBar
@@ -579,6 +593,7 @@ export function App(props: AppProps): ReactElement {
         showStatus={showStatus}
         hasActiveSearch={submittedSearchQuery !== undefined}
         hasActiveFilter={activeFilter !== undefined}
+        units={units}
       />
     </Box>
   );

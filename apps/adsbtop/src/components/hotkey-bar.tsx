@@ -2,6 +2,7 @@ import { Box, Text } from 'ink';
 import type { ReactElement } from 'react';
 
 import type { SortDirection } from '../columns.js';
+import type { UnitSystem } from '../units.js';
 
 /** One hotkey entry shown in {@link HotkeyBar}. */
 interface Hotkey {
@@ -27,6 +28,8 @@ export interface HotkeyBarProps {
   hasActiveSearch: boolean;
   /** Whether a filter is narrowing the table - swaps the `[F]` label between "Filter" and "Edit filter". */
   hasActiveFilter: boolean;
+  /** The active unit system - the `[U]` label names the system pressing it switches to. */
+  units: UnitSystem;
 }
 
 /**
@@ -48,6 +51,7 @@ export function HotkeyBar({
   showStatus,
   hasActiveSearch,
   hasActiveFilter,
+  units,
 }: HotkeyBarProps): ReactElement {
   const hotkeys: Hotkey[] = [
     { key: 'O', label: 'Sort' },
@@ -66,6 +70,7 @@ export function HotkeyBar({
   }
   hotkeys.push({ key: 'T', label: showStats ? 'Hide stats' : 'Stats' });
   hotkeys.push({ key: 'W', label: 'Snapshot' });
+  hotkeys.push({ key: 'U', label: units === 'aviation' ? 'Metric' : 'Aviation' });
   hotkeys.push({ key: 'B', label: showStatus ? 'Hide status' : 'Status' });
   hotkeys.push(
     { key: 'D', label: 'Detail' },

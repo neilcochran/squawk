@@ -33,5 +33,6 @@ render(
     alertEmergency={parsed.alertEmergency}
     bell={parsed.bell}
     recordPath={parsed.recordPath}
+    units={parsed.units}
   />,
 );

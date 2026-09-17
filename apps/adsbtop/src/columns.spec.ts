@@ -40,8 +40,8 @@ function keysOf(columns: readonly ColumnDef[]): ColumnKey[] {
 const LOCATION: Coordinates = { lat: 0, lon: 0 };
 const BEAST_NO_LOCATION = { source: 'beast', location: undefined } as const;
 const BEAST_WITH_LOCATION = { source: 'beast', location: LOCATION } as const;
-const NO_LOCATION: RenderContext = { nowMs: 0, location: undefined };
-const WITH_LOCATION: RenderContext = { nowMs: 0, location: LOCATION };
+const NO_LOCATION: RenderContext = { nowMs: 0, location: undefined, units: 'aviation' };
+const WITH_LOCATION: RenderContext = { nowMs: 0, location: LOCATION, units: 'aviation' };
 
 describe('COLUMNS', () => {
   it('gives every column a distinct key, header, and full name', () => {
@@ -68,6 +68,19 @@ describe('COLUMNS', () => {
     expect(column('category').render(makeAircraft({ category: 'heavy' }), NO_LOCATION)).toBe('HVY');
     expect(column('category').render(makeAircraft({ category: 'unknown' }), NO_LOCATION)).toBe('-');
     expect(column('category').render(makeAircraft(), NO_LOCATION)).toBe('-');
+  });
+
+  it('renders the unit-bearing columns in the context unit system', () => {
+    const aircraft = makeAircraft({
+      position: { lat: 1, lon: 0, baroAltitudeFt: 35_000 },
+      groundSpeedKt: 515,
+      verticalRateFtPerMin: 1200,
+    });
+    const metric: RenderContext = { ...WITH_LOCATION, units: 'metric' };
+    expect(column('altitude').render(aircraft, metric)).toBe('10668m');
+    expect(column('groundSpeed').render(aircraft, metric)).toBe('954km/h');
+    expect(column('verticalRate').render(aircraft, metric)).toBe('+6.1m/s');
+    expect(column('distance').render(aircraft, metric)).toBe('111km');
   });
 
   it('renders the age column relative to the context time', () => {
