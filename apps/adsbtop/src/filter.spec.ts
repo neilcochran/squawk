@@ -30,6 +30,38 @@ describe('parseFilter', () => {
     expect(filter.onGround).toBeUndefined();
     expect(filter.emergencyOnly).toBe(false);
     expect(filter.withinNm).toBeUndefined();
+    expect(filter.minAltitudeFt).toBeUndefined();
+    expect(filter.maxAltitudeFt).toBeUndefined();
+  });
+
+  it('parses alt: as a floor, a ceiling, or an inclusive range', () => {
+    expect(parse('alt:>5000')).toMatchObject({ minAltitudeFt: 5000, maxAltitudeFt: undefined });
+    expect(parse('alt:<10000')).toMatchObject({ minAltitudeFt: undefined, maxAltitudeFt: 10000 });
+    expect(parse('alt:5000-10000')).toMatchObject({ minAltitudeFt: 5000, maxAltitudeFt: 10000 });
+    expect(parse('alt:>5000 alt:<10000')).toMatchObject({
+      minAltitudeFt: 5000,
+      maxAltitudeFt: 10000,
+    });
+  });
+
+  it('reads a bare alt: value in the active unit system, with a suffix overriding it', () => {
+    expect(parse('alt:>1000', true, 'metric').minAltitudeFt).toBeCloseTo(3280.84, 1);
+    expect(parse('alt:>1000ft', true, 'metric').minAltitudeFt).toBe(1000);
+    expect(parse('alt:1000-2000m', true, 'aviation')).toMatchObject({
+      minAltitudeFt: expect.closeTo(3280.84, 1),
+      maxAltitudeFt: expect.closeTo(6561.68, 1),
+    });
+  });
+
+  it('rejects a malformed or inverted alt: value', () => {
+    for (const text of ['alt:', 'alt:5000', 'alt:>abc', 'alt:10000-5000', 'alt:>10000 alt:<5000']) {
+      const result = parseFilter(text, true, 'aviation');
+      expect(isError(result)).toBe(true);
+    }
+    const inverted = parseFilter('alt:10000-5000', true, 'aviation');
+    if (isError(inverted)) {
+      expect(inverted.message).toContain('floor is above its ceiling');
+    }
   });
 
   it('parses is:airborne and is:ground, including their aliases, case-insensitively', () => {
@@ -101,10 +133,10 @@ describe('parseFilter', () => {
   });
 
   it('rejects an unknown qualifier', () => {
-    const result = parseFilter('alt:5000', true, 'aviation');
+    const result = parseFilter('speed:300', true, 'aviation');
     expect(isError(result)).toBe(true);
     if (isError(result)) {
-      expect(result.message).toContain('Unknown qualifier "alt:"');
+      expect(result.message).toContain('Unknown qualifier "speed:"');
     }
   });
 });
@@ -138,6 +170,23 @@ describe('matchesFilter', () => {
       false,
     );
     expect(matchesFilter(makeAircraft(), filter, LOCATION)).toBe(false);
+  });
+
+  it('keeps only aircraft inside the altitude bounds, excluding those with no altitude', () => {
+    const between = parse('alt:5000-10000');
+    const at = (baroAltitudeFt: number): Aircraft =>
+      makeAircraft({ position: { lat: 0, lon: 0, baroAltitudeFt } });
+    expect(matchesFilter(at(7500), between, undefined)).toBe(true);
+    expect(matchesFilter(at(5000), between, undefined)).toBe(false);
+    expect(matchesFilter(at(10000), between, undefined)).toBe(false);
+    expect(matchesFilter(makeAircraft(), between, undefined)).toBe(false);
+
+    const above = parse('alt:>5000');
+    expect(matchesFilter(at(5001), above, undefined)).toBe(true);
+    expect(matchesFilter(at(5000), above, undefined)).toBe(false);
+
+    const geoOnly = makeAircraft({ position: { lat: 0, lon: 0, geoAltitudeFt: 7500 } });
+    expect(matchesFilter(geoOnly, between, undefined)).toBe(true);
   });
 
   it('requires every free-text term to match', () => {

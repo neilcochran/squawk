@@ -25,7 +25,8 @@ export interface FilterBarProps {
  */
 function syntaxHint(units: UnitSystem): string {
   const distance = units === 'metric' ? 'within:<km>' : 'within:<nm>';
-  return `is:airborne (is:air)  is:ground (is:gnd)  is:emergency (is:emerg)  ${distance}  text  (empty clears)`;
+  const altitude = units === 'metric' ? 'alt:>N|<N|N-M (m)' : 'alt:>N|<N|N-M (ft)';
+  return `is:airborne (is:air)  is:ground (is:gnd)  is:emergency (is:emerg)  ${distance}  ${altitude}  text  (empty clears)`;
 }
 
 /**

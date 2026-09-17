@@ -1,5 +1,5 @@
 import type { Aircraft, Coordinates } from '@squawk/types';
-import { distance } from '@squawk/units';
+import { altitude, distance } from '@squawk/units';
 
 import { isEmergencyAircraft } from './format.js';
 import { distanceToAircraftNm } from './location.js';
@@ -22,6 +22,10 @@ export interface AircraftFilter {
   emergencyOnly: boolean;
   /** Maximum distance from the receiver in nautical miles (`within:<nm>`), or undefined for no limit. */
   withinNm: number | undefined;
+  /** Altitude the aircraft must be above, in feet (`alt:>N` or the low end of `alt:N-M`), or undefined for no floor. */
+  minAltitudeFt: number | undefined;
+  /** Altitude the aircraft must be below, in feet (`alt:<N` or the high end of `alt:N-M`), or undefined for no ceiling. */
+  maxAltitudeFt: number | undefined;
 }
 
 /** A `parseFilter` failure: what was wrong with the query text. */
@@ -44,10 +48,13 @@ const IS_QUALIFIERS: Readonly<Record<string, 'airborne' | 'ground' | 'emergency'
  * Parses `[F]ilter` query text into an {@link AircraftFilter}. Terms are
  * whitespace-separated and all must match. `is:airborne` (`is:air`),
  * `is:ground` (`is:gnd`), and `is:emergency` (`is:emerg`) select by state,
- * `within:<distance>` by distance from the receiver, and any other term is
- * free text matched the way `[S]earch` matches. A bare `within:` value is
- * read in the active unit system (nautical miles, or kilometres under
- * metric); an explicit `nm` or `km` suffix always wins. Qualifier names
+ * `within:<distance>` by distance from the receiver, `alt:>N`, `alt:<N`,
+ * or `alt:N-M` by altitude, and any other term is free text matched the
+ * way `[S]earch` matches. A bare `within:` or `alt:` value is read in the
+ * active unit system (nautical miles and feet, or kilometres and metres
+ * under metric); an explicit `nm`/`km` or `ft`/`m` suffix always wins.
+ * `>` and `<` are strict, a range is inclusive, and several `alt:` terms
+ * narrow each other. Qualifier names
  * and values are case-insensitive. Returns a {@link FilterError} rather
  * than guessing when a term is malformed, contradictory, or needs a
  * location that is not configured.
@@ -67,6 +74,8 @@ export function parseFilter(
   let onGround: boolean | undefined;
   let emergencyOnly = false;
   let withinNm: number | undefined;
+  let minAltitudeFt: number | undefined;
+  let maxAltitudeFt: number | undefined;
 
   for (const raw of trimmed.split(/\s+/)) {
     const separator = raw.indexOf(':');
@@ -109,10 +118,39 @@ export function parseFilter(
       withinNm = suffix === 'km' ? distance.kilometersToNauticalMiles(magnitude) : magnitude;
       continue;
     }
-    return { message: `Unknown qualifier "${qualifier}:" - expected is: or within:.` };
+    if (qualifier === 'alt') {
+      const match = /^(?:([<>])(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?))(ft|m)?$/i.exec(
+        value,
+      );
+      if (match === null) {
+        return {
+          message: `Invalid altitude "${value}" - expected alt:>N, alt:<N, or alt:N-M, optionally with ft or m.`,
+        };
+      }
+      const suffix = match[5]?.toLowerCase() ?? (units === 'metric' ? 'm' : 'ft');
+      const toFeet = (raw: string): number =>
+        suffix === 'm' ? altitude.metersToFeet(Number(raw)) : Number(raw);
+      if (match[1] === '>' && match[2] !== undefined) {
+        minAltitudeFt = Math.max(minAltitudeFt ?? -Infinity, toFeet(match[2]));
+      } else if (match[1] === '<' && match[2] !== undefined) {
+        maxAltitudeFt = Math.min(maxAltitudeFt ?? Infinity, toFeet(match[2]));
+      } else if (match[3] !== undefined && match[4] !== undefined) {
+        minAltitudeFt = Math.max(minAltitudeFt ?? -Infinity, toFeet(match[3]));
+        maxAltitudeFt = Math.min(maxAltitudeFt ?? Infinity, toFeet(match[4]));
+      }
+      if (
+        minAltitudeFt !== undefined &&
+        maxAltitudeFt !== undefined &&
+        minAltitudeFt > maxAltitudeFt
+      ) {
+        return { message: 'alt: floor is above its ceiling - nothing can match.' };
+      }
+      continue;
+    }
+    return { message: `Unknown qualifier "${qualifier}:" - expected is:, within:, or alt:.` };
   }
 
-  return { text: trimmed, terms, onGround, emergencyOnly, withinNm };
+  return { text: trimmed, terms, onGround, emergencyOnly, withinNm, minAltitudeFt, maxAltitudeFt };
 }
 
 /**
@@ -138,6 +176,18 @@ export function matchesFilter(
     const distanceNm =
       location === undefined ? undefined : distanceToAircraftNm(location, aircraft);
     if (distanceNm === undefined || distanceNm > filter.withinNm) {
+      return false;
+    }
+  }
+  if (filter.minAltitudeFt !== undefined || filter.maxAltitudeFt !== undefined) {
+    const altitudeFt = aircraft.position?.baroAltitudeFt ?? aircraft.position?.geoAltitudeFt;
+    if (altitudeFt === undefined) {
+      return false;
+    }
+    if (filter.minAltitudeFt !== undefined && altitudeFt <= filter.minAltitudeFt) {
+      return false;
+    }
+    if (filter.maxAltitudeFt !== undefined && altitudeFt >= filter.maxAltitudeFt) {
       return false;
     }
   }

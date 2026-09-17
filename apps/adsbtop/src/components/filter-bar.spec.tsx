@@ -38,6 +38,7 @@ describe('FilterBar', () => {
     expect(frame).toContain('is:airborne (is:air)');
     expect(frame).toContain('is:emergency (is:emerg)');
     expect(frame).toContain('within:<nm>');
+    expect(frame).toContain('alt:>N|<N|N-M (ft)');
   });
 
   it('shows the in-progress text', () => {
@@ -92,6 +93,7 @@ describe('FilterBar', () => {
       />,
     );
     expect(lastFrame()).toContain('within:<km>');
+    expect(lastFrame()).toContain('alt:>N|<N|N-M (m)');
     expect(lastFrame()).not.toContain('within:<nm>');
   });
 });
