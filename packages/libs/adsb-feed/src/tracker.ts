@@ -12,7 +12,7 @@ import type {
 /** Default staleness window before an aircraft is considered lost. */
 const DEFAULT_STALE_AFTER_MS = 60_000;
 /** Default interval between staleness sweeps. */
-const DEFAULT_SWEEP_INTERVAL_MS = 5_000;
+const DEFAULT_SWEEP_INTERVAL_MS = 1_000;
 
 /**
  * Normalized fields for one aircraft update, as produced by a source's
@@ -99,7 +99,12 @@ function mergePosition(
  * `aircraft:new` / `aircraft:update` (both carrying
  * {@link AircraftUpdateEventDetail}) on each `ingest`, and dispatching
  * `aircraft:lost` (carrying {@link AircraftLostEventDetail}) for any
- * aircraft that goes longer than `staleAfterMs` without an update.
+ * aircraft that goes longer than `staleAfterMs` without an update. The
+ * sweep runs every `sweepIntervalMs`, so loss is detected up to one
+ * interval late. The default of one second keeps that lag negligible at a
+ * cost of one pass over the tracked map per second, which is trivial even
+ * for a receiver tracking hundreds of aircraft; consumers can lengthen it
+ * if they would rather sweep less often.
  *
  * Neither aircraft.json nor SBS carries an explicit "removed" signal, so
  * both sources rely on this same timeout-based sweep for loss detection.
@@ -109,19 +114,20 @@ function mergePosition(
  * signal, and this dispatches `connection:connect` / `connection:disconnect`
  * (carrying {@link ConnectionStateEventDetail}) only on an actual change.
  *
- * @param options - Staleness and position-history retention configuration.
+ * @param options - Staleness, sweep-interval, and position-history retention configuration.
  * @returns A `Tracker` ready to receive `ingest` calls.
  */
 export function createTracker(options: AircraftFeedOptions): Tracker {
   const target = new EventTarget();
   const staleAfterMs = options.staleAfterMs ?? DEFAULT_STALE_AFTER_MS;
+  const sweepIntervalMs = options.sweepIntervalMs ?? DEFAULT_SWEEP_INTERVAL_MS;
   const retention = options.positionHistoryRetention;
 
   const aircraftByHex = new Map<string, Aircraft>();
   const historyByHex = new Map<string, PositionHistoryEntry[]>();
   let connectionState: ConnectionState = DEFAULT_CONNECTION_STATE;
 
-  const sweepHandle = setInterval(sweep, DEFAULT_SWEEP_INTERVAL_MS);
+  const sweepHandle = setInterval(sweep, sweepIntervalMs);
 
   function sweep(): void {
     const now = Date.now();

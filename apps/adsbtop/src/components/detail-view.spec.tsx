@@ -12,7 +12,14 @@ function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
 describe('DetailView', () => {
   it('shows the ICAO hex in the title and every field label', () => {
     const { lastFrame } = render(
-      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} messageCount={0} />,
+      <DetailView
+        aircraft={makeAircraft()}
+        nowMs={0}
+        location={undefined}
+        messageCount={0}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
+      />,
     );
 
     const frame = lastFrame();
@@ -24,7 +31,14 @@ describe('DetailView', () => {
 
   it('omits Distance/Bearing when no location is configured', () => {
     const { lastFrame } = render(
-      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} messageCount={0} />,
+      <DetailView
+        aircraft={makeAircraft()}
+        nowMs={0}
+        location={undefined}
+        messageCount={0}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
+      />,
     );
 
     const frame = lastFrame();
@@ -34,7 +48,14 @@ describe('DetailView', () => {
 
   it('shows the message count', () => {
     const { lastFrame } = render(
-      <DetailView aircraft={makeAircraft()} nowMs={0} location={undefined} messageCount={42} />,
+      <DetailView
+        aircraft={makeAircraft()}
+        nowMs={0}
+        location={undefined}
+        messageCount={42}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
+      />,
     );
 
     expect(lastFrame()).toContain('Messages: 42');
@@ -43,7 +64,14 @@ describe('DetailView', () => {
   it('shows Distance/Bearing when a location is configured', () => {
     const aircraft = makeAircraft({ position: { lat: 0, lon: 1 } });
     const { lastFrame } = render(
-      <DetailView aircraft={aircraft} nowMs={0} location={{ lat: 0, lon: 0 }} messageCount={0} />,
+      <DetailView
+        aircraft={aircraft}
+        nowMs={0}
+        location={{ lat: 0, lon: 0 }}
+        messageCount={0}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
+      />,
     );
 
     const frame = lastFrame();

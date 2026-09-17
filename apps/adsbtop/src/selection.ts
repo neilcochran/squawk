@@ -34,7 +34,7 @@ export function findSelectedIndex(
 export function moveSelection(
   aircraft: readonly Aircraft[],
   selectedIcaoHex: string | undefined,
-  delta: -1 | 1,
+  delta: number,
 ): string | undefined {
   if (aircraft.length === 0) {
     return undefined;

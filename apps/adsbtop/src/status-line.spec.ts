@@ -13,6 +13,9 @@ function makeInfo(overrides: Partial<StatusLineInfo> = {}): StatusLineInfo {
     messageRatePerSec: 0,
     lastMessageAt: undefined,
     nowMs: 0,
+    filter: undefined,
+    watch: undefined,
+    recordPath: undefined,
     ...overrides,
   };
 }
@@ -27,6 +30,40 @@ describe('formatStatusLine', () => {
     expect(line).toContain('aircraft: 5');
     expect(line).toContain('msgs: 1234');
     expect(line).toContain('msgs/s: 12');
+  });
+
+  it('shows the matching count over the total and the filter text while filtering', () => {
+    const line = formatStatusLine(
+      makeInfo({ aircraftCount: 40, filter: { text: 'is:air UAL', matchCount: 12 } }),
+    );
+
+    expect(line).toContain('aircraft: 12/40  |  filter: is:air UAL  |  msgs:');
+  });
+
+  it('shows the watched count when a watchlist is configured', () => {
+    const line = formatStatusLine(
+      makeInfo({ aircraftCount: 40, watch: { matchCount: 2, hiddenCount: 0 } }),
+    );
+
+    expect(line).toContain('aircraft: 40  |  watch: 2  |  msgs:');
+  });
+
+  it('notes how many watched aircraft the filter is hiding', () => {
+    const line = formatStatusLine(
+      makeInfo({
+        aircraftCount: 40,
+        filter: { text: 'is:air', matchCount: 12 },
+        watch: { matchCount: 2, hiddenCount: 1 },
+      }),
+    );
+
+    expect(line).toContain('filter: is:air  |  watch: 2 (1 hidden)  |  msgs:');
+  });
+
+  it('names the record file while recording', () => {
+    const line = formatStatusLine(makeInfo({ recordPath: 'flights.jsonl' }));
+
+    expect(line).toContain('|  rec: flights.jsonl  |  msgs:');
   });
 
   it('shows a placeholder before any update has arrived', () => {

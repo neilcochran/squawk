@@ -11,6 +11,10 @@ describe('StatusHeader', () => {
         host="192.168.1.50"
         port={30003}
         aircraftCount={5}
+        filter={undefined}
+        watch={undefined}
+        recordPath={undefined}
+        notice={undefined}
         messageCount={1234}
         messageRatePerSec={12}
         lastMessageAt={1000}
@@ -36,6 +40,10 @@ describe('StatusHeader', () => {
         host="localhost"
         port={30005}
         aircraftCount={0}
+        filter={undefined}
+        watch={undefined}
+        recordPath={undefined}
+        notice={undefined}
         messageCount={0}
         messageRatePerSec={0}
         lastMessageAt={undefined}
@@ -55,6 +63,10 @@ describe('StatusHeader', () => {
         host="192.168.1.50"
         port={30003}
         aircraftCount={0}
+        filter={undefined}
+        watch={undefined}
+        recordPath={undefined}
+        notice={undefined}
         messageCount={0}
         messageRatePerSec={0}
         lastMessageAt={undefined}
@@ -65,5 +77,30 @@ describe('StatusHeader', () => {
     );
 
     expect(lastFrame()).toContain('RECONNECTING');
+  });
+
+  it('shows a notice chip when one is set', () => {
+    const { lastFrame } = render(
+      <StatusHeader
+        source="sbs"
+        host="192.168.1.50"
+        port={30003}
+        aircraftCount={0}
+        filter={undefined}
+        watch={undefined}
+        recordPath="f.jsonl"
+        notice={{ text: 'saved adsbtop-20260916-090507.csv', kind: 'ok' }}
+        messageCount={0}
+        messageRatePerSec={0}
+        lastMessageAt={undefined}
+        nowMs={0}
+        paused={false}
+        connectionState="connected"
+      />,
+    );
+
+    const frame = lastFrame();
+    expect(frame).toContain('rec: f.jsonl');
+    expect(frame).toContain('saved adsbtop-20260916-090507.csv');
   });
 });

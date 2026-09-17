@@ -10,22 +10,43 @@ interface HelpEntry {
 }
 
 const HELP_ENTRIES: readonly HelpEntry[] = [
-  { key: 'Up/Down', description: 'Move the row cursor' },
+  { key: 'Up/Down', description: 'Move the row cursor (in the detail view: scroll the fields)' },
+  { key: 'PgUp/PgDn', description: 'Move the cursor (or scroll the detail view) a page at a time' },
+  { key: 'Home/End', description: 'Jump to the first/last row (or line of the detail view)' },
+  { key: 'Left/Right', description: 'In the detail view: show the previous/next aircraft' },
   {
     key: 'O / Shift+O',
     description: 'Cycle the sort column forward/backward (every column but Grnd)',
   },
   { key: 'R', description: 'Reverse the sort direction (ascending/descending)' },
-  { key: 'C', description: 'Toggle compact columns for narrow terminals' },
+  { key: 'C', description: 'Open the column picker - choose which columns are shown' },
   { key: 'P', description: 'Pause/resume the table - the feed keeps running underneath' },
   {
     key: 'S',
     description: 'Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match',
   },
   { key: 'N / Shift+N', description: 'Jump to the next/previous search match' },
+  {
+    key: 'F',
+    description:
+      'Filter the table (is:air, is:gnd, is:emerg, within:<nm>, alt:>N|<N|N-M, text) - Escape clears',
+  },
   { key: 'M', description: 'Toggle the messages panel (recent new/update/lost events)' },
   { key: 'V', description: 'Toggle messages panel verbosity (new/lost only vs. every update)' },
+  {
+    key: 'T',
+    description:
+      'Toggle the session stats panel (peak/unique aircraft, message rates, max distance)',
+  },
   { key: 'B', description: 'Hide/show the status bar' },
+  {
+    key: 'U',
+    description: 'Toggle units: aviation (ft, kt, nm, fpm) or metric (m, km/h, km, m/s)',
+  },
+  {
+    key: 'W',
+    description: 'Write the table as shown (visible columns, sort, filter) to a timestamped CSV',
+  },
   { key: 'Enter / D', description: "Show the cursor row's full detail view" },
   { key: 'H', description: 'Toggle this help overlay' },
   { key: 'Q', description: 'Quit adsbtop' },

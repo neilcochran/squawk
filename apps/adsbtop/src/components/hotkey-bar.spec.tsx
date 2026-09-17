@@ -10,8 +10,11 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
 
@@ -21,7 +24,14 @@ describe('HotkeyBar', () => {
     expect(frame).toContain('[C]');
     expect(frame).toContain('[P]');
     expect(frame).toContain('[S]');
+    expect(frame).toContain('[F]');
+    expect(frame).toContain('Filter');
     expect(frame).toContain('[M]');
+    expect(frame).toContain('[T]');
+    expect(frame).toContain('Stats');
+    expect(frame).toContain('[W]');
+    expect(frame).toContain('Snapshot');
+    expect(frame).toContain('[U]Metric');
     expect(frame).toContain('[B]');
     expect(frame).toContain('[D]');
     expect(frame).toContain('[H]');
@@ -35,8 +45,11 @@ describe('HotkeyBar', () => {
         paused
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
 
@@ -49,8 +62,11 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(ascending.lastFrame()).toContain('[R]Desc');
@@ -60,8 +76,11 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="desc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(descending.lastFrame()).toContain('[R]Asc');
@@ -73,8 +92,11 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(shown.lastFrame()).toContain('[B]Hide status');
@@ -84,8 +106,11 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus={false}
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(hidden.lastFrame()).toContain('[B]Status');
@@ -98,8 +123,11 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(withoutSearch.lastFrame()).not.toContain('[N]');
@@ -109,8 +137,11 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch
+        hasActiveFilter={false}
       />,
     );
     expect(withSearch.lastFrame()).toContain('[N]');
@@ -122,8 +153,11 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(withoutMessages.lastFrame()).not.toContain('[V]');
@@ -133,11 +167,31 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages
+        showStats={false}
+        units="aviation"
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(withMessages.lastFrame()).toContain('[V]');
     expect(withMessages.lastFrame()).toContain('Hide msgs');
+  });
+
+  it('labels [F] as Edit filter while a filter is active', () => {
+    const { lastFrame } = render(
+      <HotkeyBar
+        paused={false}
+        sortDirection="asc"
+        showMessages={false}
+        showStats={false}
+        units="aviation"
+        showStatus
+        hasActiveSearch={false}
+        hasActiveFilter
+      />,
+    );
+
+    expect(lastFrame()).toContain('[F]Edit filter');
   });
 });

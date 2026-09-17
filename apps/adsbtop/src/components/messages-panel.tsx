@@ -7,6 +7,19 @@ import { formatMessageLogLine } from '../format.js';
 /** Number of log lines shown at once - older entries scroll off the top as new ones arrive. */
 const VISIBLE_ROWS = 8;
 
+/**
+ * Rows the panel occupies for `entryCount` entries: top border, title,
+ * at least one body line (the placeholder or the entries, capped at
+ * {@link VISIBLE_ROWS}), bottom border. `App` subtracts this from the row
+ * budget while the panel is shown.
+ *
+ * @param entryCount - Entries in the log being shown.
+ * @returns The panel's height in rows.
+ */
+export function messagesPanelHeight(entryCount: number): number {
+  return 3 + Math.max(1, Math.min(entryCount, VISIBLE_ROWS));
+}
+
 /** Verbosity levels for {@link MessagesPanel}, toggled by `[V]`. */
 export type MessageVerbosity = 'newAndLost' | 'all';
 

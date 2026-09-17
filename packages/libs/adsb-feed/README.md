@@ -95,9 +95,12 @@ dump1090-fa does not send CORS headers, so a browser fetching `aircraft.json` di
 
 ## API
 
-- `createJsonAircraftFeed({ url, pollIntervalMs?, fetch?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by HTTP-polled `aircraft.json`.
-- `createSbsAircraftFeed({ host, port?, reconnectDelayMs?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by a persistent SBS/BaseStation socket connection. Node-only.
-- `createBeastAircraftFeed({ host, port?, reconnectDelayMs?, receiverPosition?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by a persistent Beast binary socket connection, decoding raw Mode-S/ADS-B messages itself. Node-only.
+- `createJsonAircraftFeed({ url, pollIntervalMs?, fetch?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by HTTP-polled `aircraft.json`.
+- `createSbsAircraftFeed({ host, port?, reconnectDelayMs?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by a persistent SBS/BaseStation socket connection. Node-only.
+- `createBeastAircraftFeed({ host, port?, reconnectDelayMs?, receiverPosition?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by a persistent Beast binary socket connection, decoding raw Mode-S/ADS-B messages itself. Node-only.
+
+All three accept `staleAfterMs` (how long an aircraft may go without an update before `aircraft:lost`, default 60000) and `sweepIntervalMs` (how often the staleness sweep runs, default 1000). An aircraft is dropped on the first sweep after its window elapses, so `aircraft:lost` can fire up to one sweep interval late; the one-second default keeps that negligible, and the sweep is a single pass over the tracked aircraft, so it costs next to nothing. Lengthen it only if you would rather sweep less often.
+
 - `feed.start()` / `feed.stop()` - begin or end polling/connecting. `stop()` clears all tracked state.
 - `feed.getAircraft(icaoHex)` / `feed.getAllAircraft()` - current normalized `Aircraft` state.
 - `feed.getPositionHistory(icaoHex)` - retained position samples for one aircraft, oldest first.
@@ -119,8 +122,8 @@ console.log(feed.getConnectionState()); // 'connected' | 'reconnecting'
 
 Beyond the baseline fields all three sources populate, coverage differs:
 
-- **JSON** additionally populates `emergencyState` (from `aircraft.json`'s `emergency` field). It has no equivalent for `identActive`/`squawkAlert`/`resolutionAdvisory`/`targetState` - `aircraft.json` carries no such fields.
-- **SBS** additionally populates `identActive`/`squawkAlert` (from the BaseStation `SPI`/`Alert` fields). It has no equivalent for `emergencyState`/`resolutionAdvisory`/`targetState`.
-- **Beast** populates all of the above - `emergencyState`, `identActive`, `squawkAlert`, `resolutionAdvisory` (from either a DF16 reply or a type-code-28 subtype-2 broadcast), and `targetState` (from a type-code-29 message) - since it decodes the raw Mode-S/ADS-B messages itself rather than relying on dump1090-fa's own JSON/SBS summaries.
+- **JSON** additionally populates `category` (from `aircraft.json`'s `category` code) and `emergencyState` (from its `emergency` field). It has no equivalent for `identActive`/`squawkAlert`/`resolutionAdvisory`/`targetState` - `aircraft.json` carries no such fields.
+- **SBS** additionally populates `identActive`/`squawkAlert` (from the BaseStation `SPI`/`Alert` fields). It has no equivalent for `category`, `emergencyState`, `resolutionAdvisory`, or `targetState` - the BaseStation format carries none of them.
+- **Beast** populates all of the above - `category` (from type-code 1-4 identification messages), `emergencyState`, `identActive`, `squawkAlert`, `resolutionAdvisory` (from either a DF16 reply or a type-code-28 subtype-2 broadcast), and `targetState` (from a type-code-29 message) - since it decodes the raw Mode-S/ADS-B messages itself rather than relying on dump1090-fa's own JSON/SBS summaries.
 
 `Aircraft.origin` / `Aircraft.destination` are never populated by any source - ADS-B data carries no flight-schedule information, so resolving a live aircraft's actual origin or destination needs a data source outside this package.

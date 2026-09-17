@@ -3,9 +3,25 @@ import { describe, expect, it } from 'vitest';
 
 import type { Aircraft } from '@squawk/types';
 
-import { sortKeyCycle, visibleColumns } from '../columns.js';
+import {
+  autoFitColumns,
+  availableColumns,
+  COLUMNS,
+  minimalColumnKeys,
+  selectColumns,
+  sortKeyCycle,
+} from '../columns.js';
 
 import { AircraftTable } from './aircraft-table.js';
+
+// ink-testing-library reports a 100-column terminal, and this spec feeds
+// columns straight to the table without App's auto-fit, so use the set
+// auto-fit would pick at that width - the full set no longer fits and Ink
+// would truncate the first cell.
+const TABLE_COLUMNS = autoFitColumns(
+  availableColumns({ source: 'beast', location: undefined }),
+  100,
+);
 
 function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
   return { icaoHex: 'A0B1C2', lastSeenAt: 0, ...overrides };
@@ -16,8 +32,14 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={[]}
-        columns={visibleColumns(false)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -34,8 +56,14 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={[]}
-        columns={visibleColumns(false)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -53,8 +81,14 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={aircraft}
-        columns={visibleColumns(false)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -72,8 +106,14 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={[]}
-        columns={visibleColumns(true)}
+        columns={selectColumns(COLUMNS, minimalColumnKeys())}
         nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -90,8 +130,14 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={aircraft}
-        columns={visibleColumns(false)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -106,8 +152,14 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={aircraft}
-        columns={visibleColumns(false)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -143,8 +195,14 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={aircraft}
-        columns={visibleColumns(false)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -154,17 +212,104 @@ describe('AircraftTable', () => {
     expect(lastFrame()).toContain('SWA202');
   });
 
+  it('renders a watched aircraft row in full', () => {
+    // ink-testing-library strips ANSI codes from lastFrame(), so the yellow
+    // highlight itself isn't assertable here - this covers that the watched
+    // branch renders the same content, both on and off the cursor row.
+    const aircraft = [makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' })];
+    for (const selectedIcaoHex of ['A0B1C2', undefined]) {
+      const { lastFrame } = render(
+        <AircraftTable
+          aircraft={aircraft}
+          columns={TABLE_COLUMNS}
+          nowMs={0}
+          location={undefined}
+          watchlist={['UAL']}
+          firstSeenAtByHex={new Map()}
+          staleAfterMs={60_000}
+          units="aviation"
+          window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
+          sortKey="icaoHex"
+          sortDirection="asc"
+          selectedIcaoHex={selectedIcaoHex}
+        />,
+      );
+      expect(lastFrame()).toContain('UAL123');
+    }
+  });
+
+  it('renders only the window with a footer when one is set', () => {
+    const aircraft = Array.from({ length: 5 }, (_, i) =>
+      makeAircraft({ icaoHex: `A0000${i}`, callsign: `CS${i}` }),
+    );
+    const { lastFrame } = render(
+      <AircraftTable
+        aircraft={aircraft}
+        columns={TABLE_COLUMNS}
+        nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 1, visibleRows: 2 }}
+        sortKey="icaoHex"
+        sortDirection="asc"
+        selectedIcaoHex={undefined}
+      />,
+    );
+    const frame = lastFrame();
+    expect(frame).not.toContain('A00000');
+    expect(frame).toContain('A00001');
+    expect(frame).toContain('A00002');
+    expect(frame).not.toContain('A00003');
+    expect(frame).toContain('rows 2-3 of 5');
+  });
+
+  it('renders new and stale rows in full', () => {
+    // As above, the green/dim styling isn't assertable through the
+    // ANSI-stripped frame - this covers that both branches keep the content.
+    const aircraft = [
+      makeAircraft({ icaoHex: 'A0B1C2', callsign: 'NEW111', lastSeenAt: 10_000 }),
+      makeAircraft({ icaoHex: 'D3E4F5', callsign: 'OLD222', lastSeenAt: 0 }),
+    ];
+    const { lastFrame } = render(
+      <AircraftTable
+        aircraft={aircraft}
+        columns={TABLE_COLUMNS}
+        nowMs={10_000}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map([['A0B1C2', 10_000]])}
+        staleAfterMs={10_000}
+        units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
+        sortKey="icaoHex"
+        sortDirection="asc"
+        selectedIcaoHex={undefined}
+      />,
+    );
+    expect(lastFrame()).toContain('NEW111');
+    expect(lastFrame()).toContain('OLD222');
+  });
+
   it('renders every header regardless of which column is the active sort key', () => {
     // ink-testing-library strips ANSI codes from lastFrame(), so the color
     // highlight itself isn't assertable here - this covers that switching
     // sortKey doesn't drop or duplicate a header, which is the part that
     // could actually regress.
-    for (const sortKey of sortKeyCycle({ lat: 0, lon: 0 })) {
+    for (const sortKey of sortKeyCycle(TABLE_COLUMNS)) {
       const { lastFrame } = render(
         <AircraftTable
           aircraft={[]}
-          columns={visibleColumns(false)}
+          columns={TABLE_COLUMNS}
           nowMs={0}
+          location={undefined}
+          watchlist={[]}
+          firstSeenAtByHex={new Map()}
+          staleAfterMs={60_000}
+          units="aviation"
+          window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
           sortKey={sortKey}
           sortDirection="asc"
           selectedIcaoHex={undefined}
@@ -192,8 +337,14 @@ describe('AircraftTable', () => {
       const { lastFrame } = render(
         <AircraftTable
           aircraft={aircraft}
-          columns={visibleColumns(false)}
+          columns={TABLE_COLUMNS}
           nowMs={0}
+          location={undefined}
+          watchlist={[]}
+          firstSeenAtByHex={new Map()}
+          staleAfterMs={60_000}
+          units="aviation"
+          window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
           sortKey="icaoHex"
           sortDirection="asc"
           selectedIcaoHex={selectedIcaoHex}

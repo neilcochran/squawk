@@ -19,6 +19,8 @@ if (parsed.help) {
 
 const feed = buildFeed(parsed);
 
+// The alternate screen buffer, as top/htop/less use: the app draws on its
+// own screen and the shell's scrollback is untouched and restored on exit.
 render(
   <App
     feed={feed}
@@ -26,5 +28,14 @@ render(
     host={parsed.host}
     port={parsed.port}
     location={parsed.location}
+    columnKeys={parsed.columnKeys}
+    filter={parsed.filter}
+    staleAfterMs={parsed.staleAfterMs}
+    watchlist={parsed.watchlist}
+    alertEmergency={parsed.alertEmergency}
+    bell={parsed.bell}
+    recordPath={parsed.recordPath}
+    units={parsed.units}
   />,
+  { alternateScreen: true },
 );
