@@ -5,7 +5,6 @@ import type {
   Airport,
   Coordinates,
   EmergencyState,
-  Position,
   ResolutionAdvisoryType,
   TargetStateAndStatus,
 } from '@squawk/types';
@@ -19,6 +18,7 @@ import {
   formatDistance,
   formatGroundSpeed,
   formatOnGround,
+  formatPosition,
   formatVerticalRate,
 } from './format.js';
 import { bearingToAircraftDeg, distanceToAircraftNm } from './location.js';
@@ -41,10 +41,6 @@ function formatKnots(valueKt: number | undefined): string {
 
 function formatDegrees(valueDeg: number | undefined): string {
   return valueDeg === undefined ? '-' : `${Math.round(valueDeg)}°`;
-}
-
-function formatPosition(position: Position | undefined): string {
-  return position === undefined ? '-' : `${position.lat.toFixed(4)}, ${position.lon.toFixed(4)}`;
 }
 
 function formatRegistration(registration: AircraftRegistration | undefined): string {

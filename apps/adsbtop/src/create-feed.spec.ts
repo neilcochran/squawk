@@ -65,6 +65,7 @@ describe('buildFeed', () => {
     expect(factories.createJsonAircraftFeed).toHaveBeenCalledWith({
       url: 'http://192.168.1.50:8080/data/aircraft.json',
       staleAfterMs: 60_000,
+      positionHistoryRetention: { maxEntries: 300 },
     });
     expect(factories.createSbsAircraftFeed).not.toHaveBeenCalled();
     expect(factories.createBeastAircraftFeed).not.toHaveBeenCalled();
@@ -80,6 +81,7 @@ describe('buildFeed', () => {
     expect(factories.createJsonAircraftFeed).toHaveBeenCalledWith({
       url: 'http://example.com/aircraft.json',
       staleAfterMs: 60_000,
+      positionHistoryRetention: { maxEntries: 300 },
     });
   });
 
@@ -91,6 +93,7 @@ describe('buildFeed', () => {
       host: '192.168.1.50',
       port: 30003,
       staleAfterMs: 60_000,
+      positionHistoryRetention: { maxEntries: 300 },
     });
   });
 
@@ -102,6 +105,7 @@ describe('buildFeed', () => {
       host: '192.168.1.50',
       port: 30005,
       staleAfterMs: 60_000,
+      positionHistoryRetention: { maxEntries: 300 },
     });
   });
 
@@ -122,6 +126,7 @@ describe('buildFeed', () => {
       port: 30005,
       receiverPosition: { lat: 40.6413, lon: -73.7781 },
       staleAfterMs: 60_000,
+      positionHistoryRetention: { maxEntries: 300 },
     });
   });
 
@@ -133,6 +138,7 @@ describe('buildFeed', () => {
       host: '192.168.1.50',
       port: 30005,
       staleAfterMs: 60_000,
+      positionHistoryRetention: { maxEntries: 300 },
     });
   });
 
@@ -152,6 +158,7 @@ describe('buildFeed', () => {
       host: '192.168.1.50',
       port: 30003,
       staleAfterMs: 60_000,
+      positionHistoryRetention: { maxEntries: 300 },
     });
   });
 });

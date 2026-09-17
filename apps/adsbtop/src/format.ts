@@ -1,4 +1,4 @@
-import type { Aircraft, EmergencyState } from '@squawk/types';
+import type { Aircraft, EmergencyState, Position } from '@squawk/types';
 
 import type { MessageLogEntry } from './aircraft-state.js';
 import type { ClosestPointOfApproach } from './cpa.js';
@@ -55,6 +55,17 @@ export function isEmergencyAircraft(aircraft: Aircraft): boolean {
 export function formatAltitude(aircraft: Aircraft): string {
   const altitudeFt = aircraft.position?.baroAltitudeFt ?? aircraft.position?.geoAltitudeFt;
   return altitudeFt === undefined ? '-' : `${Math.round(altitudeFt)}ft`;
+}
+
+/**
+ * Formats a position as `lat, lon` to four decimal places (about 10 m),
+ * for the detail view's Position row.
+ *
+ * @param position - The position, if known.
+ * @returns E.g. `"40.6413, -73.7781"`, or `"-"` if undefined.
+ */
+export function formatPosition(position: Position | undefined): string {
+  return position === undefined ? '-' : `${position.lat.toFixed(4)}, ${position.lon.toFixed(4)}`;
 }
 
 /**
