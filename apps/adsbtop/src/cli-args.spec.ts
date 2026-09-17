@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_PORT_BY_SOURCE, parseCliArgs } from './cli-args.js';
+import { DEFAULT_PORT_BY_SOURCE, DEFAULT_STALE_AFTER_MS, parseCliArgs } from './cli-args.js';
 import type { CliArgsError, CliOptions } from './cli-args.js';
 
 function isError(result: CliOptions | CliArgsError): result is CliArgsError {
@@ -219,6 +219,37 @@ describe('parseCliArgs', () => {
     expect(isError(result)).toBe(true);
     if (isError(result)) {
       expect(result.message).toContain('at least one term');
+    }
+  });
+
+  it('defaults --stale-after to the feed default', () => {
+    const result = parseCliArgs([]);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.staleAfterMs).toBe(DEFAULT_STALE_AFTER_MS);
+    }
+  });
+
+  it('parses --stale-after as milliseconds', () => {
+    const result = parseCliArgs(['--stale-after', '30000']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.staleAfterMs).toBe(30_000);
+    }
+  });
+
+  it('rejects a --stale-after that is not a positive whole number', () => {
+    for (const argv of [
+      ['--stale-after', 'abc'],
+      ['--stale-after', '0'],
+      ['--stale-after=-5'],
+      ['--stale-after', '1.5'],
+    ]) {
+      const result = parseCliArgs(argv);
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.message).toContain('Invalid --stale-after');
+      }
     }
   });
 

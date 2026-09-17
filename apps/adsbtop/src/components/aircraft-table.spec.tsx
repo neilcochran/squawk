@@ -36,6 +36,8 @@ describe('AircraftTable', () => {
         nowMs={0}
         location={undefined}
         watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -56,6 +58,8 @@ describe('AircraftTable', () => {
         nowMs={0}
         location={undefined}
         watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -77,6 +81,8 @@ describe('AircraftTable', () => {
         nowMs={0}
         location={undefined}
         watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -98,6 +104,8 @@ describe('AircraftTable', () => {
         nowMs={0}
         location={undefined}
         watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -118,6 +126,8 @@ describe('AircraftTable', () => {
         nowMs={0}
         location={undefined}
         watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -136,6 +146,8 @@ describe('AircraftTable', () => {
         nowMs={0}
         location={undefined}
         watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -175,6 +187,8 @@ describe('AircraftTable', () => {
         nowMs={0}
         location={undefined}
         watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -197,6 +211,8 @@ describe('AircraftTable', () => {
           nowMs={0}
           location={undefined}
           watchlist={['UAL']}
+          firstSeenAtByHex={new Map()}
+          staleAfterMs={60_000}
           sortKey="icaoHex"
           sortDirection="asc"
           selectedIcaoHex={selectedIcaoHex}
@@ -204,6 +220,31 @@ describe('AircraftTable', () => {
       );
       expect(lastFrame()).toContain('UAL123');
     }
+  });
+
+  it('renders new and stale rows in full', () => {
+    // As above, the green/dim styling isn't assertable through the
+    // ANSI-stripped frame - this covers that both branches keep the content.
+    const aircraft = [
+      makeAircraft({ icaoHex: 'A0B1C2', callsign: 'NEW111', lastSeenAt: 10_000 }),
+      makeAircraft({ icaoHex: 'D3E4F5', callsign: 'OLD222', lastSeenAt: 0 }),
+    ];
+    const { lastFrame } = render(
+      <AircraftTable
+        aircraft={aircraft}
+        columns={TABLE_COLUMNS}
+        nowMs={10_000}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map([['A0B1C2', 10_000]])}
+        staleAfterMs={10_000}
+        sortKey="icaoHex"
+        sortDirection="asc"
+        selectedIcaoHex={undefined}
+      />,
+    );
+    expect(lastFrame()).toContain('NEW111');
+    expect(lastFrame()).toContain('OLD222');
   });
 
   it('renders every header regardless of which column is the active sort key', () => {
@@ -219,6 +260,8 @@ describe('AircraftTable', () => {
           nowMs={0}
           location={undefined}
           watchlist={[]}
+          firstSeenAtByHex={new Map()}
+          staleAfterMs={60_000}
           sortKey={sortKey}
           sortDirection="asc"
           selectedIcaoHex={undefined}
@@ -250,6 +293,8 @@ describe('AircraftTable', () => {
           nowMs={0}
           location={undefined}
           watchlist={[]}
+          firstSeenAtByHex={new Map()}
+          staleAfterMs={60_000}
           sortKey="icaoHex"
           sortDirection="asc"
           selectedIcaoHex={selectedIcaoHex}

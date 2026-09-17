@@ -8,6 +8,8 @@ import type { PositionHistoryRetention } from './feed.js';
 export interface AircraftFeedOptions {
   /** Milliseconds an aircraft can go without an update before `aircraft:lost` fires. Defaults to 60000. */
   staleAfterMs?: number;
+  /** Milliseconds between staleness sweeps. An aircraft is dropped on the first sweep after `staleAfterMs` elapses, so this bounds how late `aircraft:lost` can fire. Defaults to 1000. */
+  sweepIntervalMs?: number;
   /** How much position history to retain per aircraft. Unbounded (subject to memory) if omitted. */
   positionHistoryRetention?: PositionHistoryRetention;
 }

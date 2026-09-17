@@ -126,6 +126,48 @@ describe('aircraftStateReducer', () => {
     expect(lost.newAndLostLog[0]?.type).toBe('lost');
   });
 
+  it('records when each aircraft was first seen and keeps it across updates', () => {
+    const first = aircraftStateReducer(initialAircraftState, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 1000,
+    });
+    const second = aircraftStateReducer(first, {
+      type: 'message',
+      kind: 'update',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 5000,
+    });
+
+    expect(second.firstSeenAtByHex.get('A0B1C2')).toBe(1000);
+    expect(second.firstSeenAtByHex).toBe(first.firstSeenAtByHex);
+  });
+
+  it('forgets the first-seen time on loss so a reappearing aircraft is new again', () => {
+    const tracked = aircraftStateReducer(initialAircraftState, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 1000,
+    });
+    const lost = aircraftStateReducer(tracked, {
+      type: 'lost',
+      icaoHex: 'A0B1C2',
+      callsign: undefined,
+      at: 2000,
+    });
+    const back = aircraftStateReducer(lost, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 9000,
+    });
+
+    expect(lost.firstSeenAtByHex.has('A0B1C2')).toBe(false);
+    expect(back.firstSeenAtByHex.get('A0B1C2')).toBe(9000);
+  });
+
   it('does not mutate the previous state object', () => {
     const first = aircraftStateReducer(initialAircraftState, {
       type: 'message',

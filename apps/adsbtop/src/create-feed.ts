@@ -38,7 +38,10 @@ export function buildJsonUrl(host: string, port: number): string {
 
 /**
  * Constructs the `AircraftFeed` for the CLI's selected source and connection
- * options.
+ * options. The stale threshold is always passed explicitly, so what the
+ * table dims against is exactly what the feed drops against. The feed's
+ * default one-second staleness sweep means a drop lands within a second of
+ * that threshold.
  *
  * @param cli - Parsed, validated CLI options (must have `help: false`).
  * @param factories - Feed factories to use; defaults to the real `@squawk/adsb-feed` factories.
@@ -50,13 +53,21 @@ export function buildFeed(
 ): AircraftFeed {
   switch (cli.source) {
     case 'json':
-      return factories.createJsonAircraftFeed({ url: cli.url ?? buildJsonUrl(cli.host, cli.port) });
+      return factories.createJsonAircraftFeed({
+        url: cli.url ?? buildJsonUrl(cli.host, cli.port),
+        staleAfterMs: cli.staleAfterMs,
+      });
     case 'sbs':
-      return factories.createSbsAircraftFeed({ host: cli.host, port: cli.port });
+      return factories.createSbsAircraftFeed({
+        host: cli.host,
+        port: cli.port,
+        staleAfterMs: cli.staleAfterMs,
+      });
     case 'beast':
       return factories.createBeastAircraftFeed({
         host: cli.host,
         port: cli.port,
+        staleAfterMs: cli.staleAfterMs,
         ...(cli.location !== undefined ? { receiverPosition: cli.location } : {}),
       });
   }

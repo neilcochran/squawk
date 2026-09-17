@@ -85,6 +85,7 @@ function renderApp(
       location={undefined}
       columnKeys={undefined}
       filter={undefined}
+      staleAfterMs={60_000}
       watchlist={[]}
       alertEmergency={false}
       bell={true}

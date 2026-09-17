@@ -23,6 +23,8 @@ export interface AircraftFeedView {
   messageCount: number;
   /** Update events observed per currently tracked aircraft, keyed by ICAO hex. Entries are dropped when the aircraft is lost. */
   messageCountByHex: Map<string, number>;
+  /** Unix epoch ms each currently tracked aircraft was first observed, keyed by ICAO hex, for the table's new-row highlight. */
+  firstSeenAtByHex: ReadonlyMap<string, number>;
   /** Unix epoch ms of the most recent update, or undefined if none has arrived yet. */
   lastMessageAt: number | undefined;
   /** Update events observed in roughly the last second. */
@@ -113,6 +115,7 @@ export function useAircraftFeed(feed: AircraftFeed): AircraftFeedView {
     aircraft,
     messageCount: state.messageCount,
     messageCountByHex: state.messageCountByHex,
+    firstSeenAtByHex: state.firstSeenAtByHex,
     lastMessageAt: state.lastMessageAt,
     messageRatePerSec,
     messageLog: state.messageLog,

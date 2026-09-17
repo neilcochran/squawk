@@ -95,9 +95,12 @@ dump1090-fa does not send CORS headers, so a browser fetching `aircraft.json` di
 
 ## API
 
-- `createJsonAircraftFeed({ url, pollIntervalMs?, fetch?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by HTTP-polled `aircraft.json`.
-- `createSbsAircraftFeed({ host, port?, reconnectDelayMs?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by a persistent SBS/BaseStation socket connection. Node-only.
-- `createBeastAircraftFeed({ host, port?, reconnectDelayMs?, receiverPosition?, staleAfterMs?, positionHistoryRetention? })` - creates a feed backed by a persistent Beast binary socket connection, decoding raw Mode-S/ADS-B messages itself. Node-only.
+- `createJsonAircraftFeed({ url, pollIntervalMs?, fetch?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by HTTP-polled `aircraft.json`.
+- `createSbsAircraftFeed({ host, port?, reconnectDelayMs?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by a persistent SBS/BaseStation socket connection. Node-only.
+- `createBeastAircraftFeed({ host, port?, reconnectDelayMs?, receiverPosition?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by a persistent Beast binary socket connection, decoding raw Mode-S/ADS-B messages itself. Node-only.
+
+All three accept `staleAfterMs` (how long an aircraft may go without an update before `aircraft:lost`, default 60000) and `sweepIntervalMs` (how often the staleness sweep runs, default 1000). An aircraft is dropped on the first sweep after its window elapses, so `aircraft:lost` can fire up to one sweep interval late; the one-second default keeps that negligible, and the sweep is a single pass over the tracked aircraft, so it costs next to nothing. Lengthen it only if you would rather sweep less often.
+
 - `feed.start()` / `feed.stop()` - begin or end polling/connecting. `stop()` clears all tracked state.
 - `feed.getAircraft(icaoHex)` / `feed.getAllAircraft()` - current normalized `Aircraft` state.
 - `feed.getPositionHistory(icaoHex)` - retained position samples for one aircraft, oldest first.

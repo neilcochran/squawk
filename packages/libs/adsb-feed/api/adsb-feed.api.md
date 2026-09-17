@@ -21,6 +21,7 @@ export interface AircraftFeed extends EventTarget {
 export interface AircraftFeedOptions {
     positionHistoryRetention?: PositionHistoryRetention;
     staleAfterMs?: number;
+    sweepIntervalMs?: number;
 }
 
 // @public

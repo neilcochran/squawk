@@ -7,6 +7,8 @@ import type { Aircraft, Coordinates } from '@squawk/types';
 import { COLUMN_SEPARATOR_WIDTH } from '../columns.js';
 import type { ColumnDef, RenderContext, SortDirection, SortKey } from '../columns.js';
 import { isEmergencyAircraft } from '../format.js';
+import { isFreshRow, isStaleRow, rowTextStyle } from '../row-style.js';
+import type { RowTextStyle } from '../row-style.js';
 import { matchesWatchlist } from '../watchlist.js';
 
 /** Props for {@link AircraftTable}. */
@@ -21,6 +23,10 @@ export interface AircraftTableProps {
   location: Coordinates | undefined;
   /** Normalized `--watch` terms; rows matching any of them render highlighted. Empty for no watchlist. */
   watchlist: readonly string[];
+  /** Unix epoch ms each aircraft was first tracked, keyed by ICAO hex - rows first seen within `NEW_HIGHLIGHT_MS` of `nowMs` render in the new-row style. */
+  firstSeenAtByHex: ReadonlyMap<string, number>;
+  /** The feed's stale threshold in ms - rows with no update for `STALE_DIM_FRACTION` of it render dimmed. */
+  staleAfterMs: number;
   /** The column `aircraft` is currently sorted by - highlighted in the header row so the active sort is visible while cycling with `[O]`. */
   sortKey: SortKey;
   /** Which way `sortKey` is ordered - shown as a `^`/`v` suffix on the highlighted header. */
@@ -92,66 +98,35 @@ function HeaderSeparator({
 }
 
 /**
- * Renders one aircraft's cell for `column`. An emergency aircraft (declared
- * squawk code, declared emergency state, or an active Resolution Advisory -
- * see {@link isEmergencyAircraft}) renders in bold red - this is a full
- * separate `<Text>` branch rather than a conditionally-`undefined` `color`
- * prop, since Ink's `color`/`bold` props are only ever fully present or
- * fully omitted here. Cells are separated by a right margin the width of
- * the header row's ` | ` separator ({@link COLUMN_SEPARATOR_WIDTH}) so
- * columns line up - the two are visually the same column boundary and
- * would drift out of alignment if their widths could diverge; the last
- * cell carries none, since a trailing margin only pushes the row past the
- * table's inner width and makes Ink shrink (truncate) the first cell to
- * compensate. A
- * non-emergency cell on the cursor row renders in
- * explicit hex black so it stays readable against the row's cyan
- * background, where the terminal's default (typically white) foreground
- * washes out - see {@link HeaderCell} for why `#000000` rather than the
- * named ANSI `black`. A watched aircraft (see `matchesWatchlist`) renders
- * in bold yellow, or bold black on the cursor row where yellow would not
- * read against the cyan; emergency red wins over both, since it matters
- * more.
+ * Renders one aircraft's cell for `column`. The text style comes from
+ * {@link rowTextStyle}, which resolves the row's emergency/cursor/watched/
+ * new/stale flags by precedence and returns only the Ink props that apply,
+ * so spreading it never passes a style prop as `undefined`. Cells are
+ * separated by a right margin the width of the header row's ` | `
+ * separator ({@link COLUMN_SEPARATOR_WIDTH}) so columns line up - the two
+ * are visually the same column boundary and would drift out of alignment
+ * if their widths could diverge; the last cell carries none, since a
+ * trailing margin only pushes the row past the table's inner width and
+ * makes Ink shrink (truncate) the first cell to compensate.
  */
 function AircraftCell({
   column,
   aircraft,
   context,
-  emergency,
-  watched,
-  selected,
+  style,
   last,
 }: {
   column: ColumnDef;
   aircraft: Aircraft;
   context: RenderContext;
-  emergency: boolean;
-  watched: boolean;
-  selected: boolean;
+  style: RowTextStyle;
   last: boolean;
 }): ReactElement {
-  const value = column.render(aircraft, context);
   return (
     <Box width={column.width} marginRight={last ? 0 : COLUMN_SEPARATOR_WIDTH}>
-      {emergency ? (
-        <Text color="red" bold wrap="truncate-end">
-          {value}
-        </Text>
-      ) : selected && watched ? (
-        <Text color="#000000" bold wrap="truncate-end">
-          {value}
-        </Text>
-      ) : selected ? (
-        <Text color="#000000" wrap="truncate-end">
-          {value}
-        </Text>
-      ) : watched ? (
-        <Text color="yellow" bold wrap="truncate-end">
-          {value}
-        </Text>
-      ) : (
-        <Text wrap="truncate-end">{value}</Text>
-      )}
+      <Text {...style} wrap="truncate-end">
+        {column.render(aircraft, context)}
+      </Text>
     </Box>
   );
 }
@@ -159,37 +134,44 @@ function AircraftCell({
 /**
  * Renders one aircraft's full row. The cursor row gets its own cyan
  * background (full width, like the header bars) - a separate branch rather
- * than a conditional `backgroundColor` prop, matching {@link AircraftCell}'s
- * established convention of never passing Ink style props as `undefined`.
- * Its cells switch to black text so they read against the cyan; emergency
- * rows keep their bold red text instead, which stays legible against cyan,
- * so the two indicators don't fight each other when a selected row is also
- * squawking an emergency code.
+ * than a conditional `backgroundColor` prop, so no Ink style prop is ever
+ * passed as `undefined`. Its cells switch to black text so they read
+ * against the cyan; emergency rows keep their bold red text instead, which
+ * stays legible against cyan, so the two indicators don't fight each other
+ * when a selected row is also squawking an emergency code. See
+ * {@link rowTextStyle} for the full precedence.
  */
 function AircraftRow({
   aircraft,
   columns,
   context,
   watchlist,
+  firstSeenAt,
+  staleAfterMs,
   selected,
 }: {
   aircraft: Aircraft;
   columns: readonly ColumnDef[];
   context: RenderContext;
   watchlist: readonly string[];
+  firstSeenAt: number | undefined;
+  staleAfterMs: number;
   selected: boolean;
 }): ReactElement {
-  const emergency = isEmergencyAircraft(aircraft);
-  const watched = matchesWatchlist(aircraft, watchlist);
+  const style = rowTextStyle({
+    emergency: isEmergencyAircraft(aircraft),
+    selected,
+    watched: matchesWatchlist(aircraft, watchlist),
+    fresh: isFreshRow(firstSeenAt, context.nowMs),
+    stale: isStaleRow(aircraft.lastSeenAt, context.nowMs, staleAfterMs),
+  });
   const cells = columns.map((column, index) => (
     <AircraftCell
       key={column.key}
       column={column}
       aircraft={aircraft}
       context={context}
-      emergency={emergency}
-      watched={watched}
-      selected={selected}
+      style={style}
       last={index === columns.length - 1}
     />
   ));
@@ -205,8 +187,10 @@ function AircraftRow({
 /**
  * The live-updating aircraft table: a header row followed by one row per
  * tracked aircraft. Emergency aircraft render in bold red - see
- * {@link isEmergencyAircraft} - and watched aircraft in bold yellow - see
- * {@link AircraftTableProps.watchlist}. The active sort column's header is
+ * {@link isEmergencyAircraft} - watched aircraft in bold yellow - see
+ * {@link AircraftTableProps.watchlist} - newly tracked aircraft in green
+ * for a few seconds, and aircraft going stale dimmed - see
+ * {@link rowTextStyle}. The active sort column's header is
  * highlighted with a direction suffix - see {@link AircraftTableProps.sortKey}
  * and {@link AircraftTableProps.sortDirection}. The cursor row is highlighted
  * separately - see {@link AircraftTableProps.selectedIcaoHex}. The whole
@@ -246,6 +230,8 @@ export function AircraftTable(props: AircraftTableProps): ReactElement {
             columns={props.columns}
             context={context}
             watchlist={props.watchlist}
+            firstSeenAt={props.firstSeenAtByHex.get(aircraft.icaoHex)}
+            staleAfterMs={props.staleAfterMs}
             selected={aircraft.icaoHex === props.selectedIcaoHex}
           />
         ))

@@ -18,6 +18,13 @@ export const DEFAULT_PORT_BY_SOURCE: Record<FeedSource, number> = {
   beast: 30005,
 };
 
+/**
+ * Default for `--stale-after`: how long an aircraft may go without an
+ * update before the feed drops it. Matches `@squawk/adsb-feed`'s own
+ * default, and is passed to the feed explicitly so the two cannot drift.
+ */
+export const DEFAULT_STALE_AFTER_MS = 60_000;
+
 /** Parsed and validated CLI options for the `adsbtop` command. */
 export interface CliOptions {
   /** Whether `--help` was passed. When true, every other field is a placeholder and the caller should print usage and exit without starting a feed. */
@@ -46,6 +53,8 @@ export interface CliOptions {
   columnKeys: readonly ColumnKey[] | undefined;
   /** The filter to start with, from `-f`/`--filter`, already parsed and validated. Undefined when the flag was not passed. */
   filter: AircraftFilter | undefined;
+  /** How long an aircraft may go without an update before the feed drops it, from `--stale-after`. Defaults to {@link DEFAULT_STALE_AFTER_MS}. Rows dim at half this. */
+  staleAfterMs: number;
   /** Normalized `--watch` terms (ICAO hexes, N-numbers, callsign prefixes). Empty when the flag was not passed. */
   watchlist: readonly string[];
   /** Whether `--alert-emergency` was passed: ring the bell when an aircraft first becomes an emergency. */
@@ -112,6 +121,7 @@ Options:
   --watch <list>             Comma-separated ICAO hexes, N-numbers, or callsign prefixes to highlight and ring the bell for
   --alert-emergency          Ring the bell when an aircraft first squawks or declares an emergency
   --no-bell                  Never ring the terminal bell (watchlist and emergency highlighting still apply)
+  --stale-after <ms>         Drop an aircraft after this long without an update (default: ${DEFAULT_STALE_AFTER_MS}) - rows dim at half this
   -h, --help                 Show this help message
 `;
 
@@ -233,6 +243,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
         watch: { type: 'string' },
         'alert-emergency': { type: 'boolean', default: false },
         'no-bell': { type: 'boolean', default: false },
+        'stale-after': { type: 'string' },
         help: { type: 'boolean', short: 'h', default: false },
       },
       strict: true,
@@ -252,6 +263,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       location: undefined,
       columnKeys: undefined,
       filter: undefined,
+      staleAfterMs: DEFAULT_STALE_AFTER_MS,
       watchlist: [],
       alertEmergency: false,
       bell: true,
@@ -266,6 +278,17 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
   const parsedFilter = parseStartupFilter(values.filter, parsedLocation.location !== undefined);
   if ('message' in parsedFilter) {
     return parsedFilter;
+  }
+
+  let staleAfterMs = DEFAULT_STALE_AFTER_MS;
+  if (values['stale-after'] !== undefined) {
+    const parsedStaleAfter = Number(values['stale-after']);
+    if (!Number.isInteger(parsedStaleAfter) || parsedStaleAfter <= 0) {
+      return {
+        message: `Invalid --stale-after "${values['stale-after']}" - expected a positive whole number of milliseconds.`,
+      };
+    }
+    staleAfterMs = parsedStaleAfter;
   }
 
   let watchlist: readonly string[] = [];
@@ -314,6 +337,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     location: parsedLocation.location,
     columnKeys: parsedColumns.columnKeys,
     filter: parsedFilter.filter,
+    staleAfterMs,
     watchlist,
     alertEmergency: values['alert-emergency'] === true,
     bell: values['no-bell'] !== true,

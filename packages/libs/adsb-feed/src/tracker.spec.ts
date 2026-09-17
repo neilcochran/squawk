@@ -174,6 +174,23 @@ describe('staleness sweep', () => {
     expect(tracker.getAircraft('A0B1C2')).toBeUndefined();
   });
 
+  it('detects loss on the first sweep after staleAfterMs, within a second by default', () => {
+    const slow = createTracker({ staleAfterMs: 10_000, sweepIntervalMs: 5_000 });
+    const slowLost = collectEventDetails<AircraftLostEventDetail>(slow, 'aircraft:lost');
+    const fast = createTracker({ staleAfterMs: 10_000 });
+    const fastLost = collectEventDetails<AircraftLostEventDetail>(fast, 'aircraft:lost');
+
+    slow.ingest({ icaoHex: 'A0B1C2' });
+    fast.ingest({ icaoHex: 'A0B1C2' });
+    vi.advanceTimersByTime(11_000);
+
+    expect(fastLost).toHaveLength(1);
+    expect(slowLost).toHaveLength(0);
+
+    vi.advanceTimersByTime(4_000);
+    expect(slowLost).toHaveLength(1);
+  });
+
   it('does not dispatch aircraft:lost while updates keep arriving within the staleness window', () => {
     const tracker = createTracker({ staleAfterMs: 30_000 });
     const lostEvents = collectEventDetails<AircraftLostEventDetail>(tracker, 'aircraft:lost');

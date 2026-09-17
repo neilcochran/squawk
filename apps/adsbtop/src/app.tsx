@@ -71,6 +71,8 @@ export interface AppProps {
   columnKeys: readonly ColumnKey[] | undefined;
   /** Filter to start with (`-f`/`--filter`), if any. The `[F]` prompt and Escape edit or clear it like one entered in-app. */
   filter: AircraftFilter | undefined;
+  /** The feed's stale threshold (`--stale-after`), which the table dims rows against - see `isStaleRow`. */
+  staleAfterMs: number;
   /** Normalized `--watch` terms; empty for no watchlist. Matching rows render highlighted and ring the bell on appearance and loss. */
   watchlist: readonly string[];
   /** Whether an aircraft first becoming an emergency rings the bell (`--alert-emergency`). */
@@ -464,6 +466,8 @@ export function App(props: AppProps): ReactElement {
           nowMs={now}
           location={props.location}
           watchlist={props.watchlist}
+          firstSeenAtByHex={view.firstSeenAtByHex}
+          staleAfterMs={props.staleAfterMs}
           sortKey={sortKey}
           sortDirection={sortDirection}
           selectedIcaoHex={selectedIcaoHex}

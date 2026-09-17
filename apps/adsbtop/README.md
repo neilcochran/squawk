@@ -31,6 +31,7 @@ adsbtop --source sbs --host 192.168.1.50
 | `--watch <list>`        | Comma-separated ICAO hexes, N-numbers, or callsign prefixes to highlight and ring the bell for - see [Watchlist and alerts](#watchlist-and-alerts) | -                                             |
 | `--alert-emergency`     | Ring the bell when an aircraft first squawks or declares an emergency                                                                              | off                                           |
 | `--no-bell`             | Never ring the terminal bell; watchlist and emergency highlighting still apply                                                                     | bell on                                       |
+| `--stale-after <ms>`    | Drop an aircraft after this long without an update; rows dim at half this - see [Row styling](#row-styling)                                        | `60000`                                       |
 | `-h`, `--help`          | Show usage                                                                                                                                         | -                                             |
 
 ### Hotkeys
@@ -52,7 +53,21 @@ adsbtop --source sbs --host 192.168.1.50
 | `H`             | Toggle the help overlay                                                                        |
 | `Q`             | Quit                                                                                           |
 
-Aircraft render in bold red when they carry any of: an emergency squawk code (7500/7600/7700), a declared emergency state, or an active ACAS/TCAS Resolution Advisory. Aircraft on the `--watch` list render in bold yellow (see [Watchlist and alerts](#watchlist-and-alerts)); an emergency row stays red even when watched.
+Rows are styled by state - see [Row styling](#row-styling).
+
+### Row styling
+
+Each row's text reflects the aircraft's state, by precedence:
+
+| State      | Style         | Meaning                                                                                                                                                               |
+| ---------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Emergency  | bold red      | An emergency squawk (7500/7600/7700), a declared emergency state, or an active ACAS/TCAS Resolution Advisory - beats every other style                                |
+| Cursor row | black on cyan | The row `Up`/`Down` selects; bold when the aircraft is also watched                                                                                                   |
+| Watched    | bold yellow   | On the `--watch` list - see [Watchlist and alerts](#watchlist-and-alerts)                                                                                             |
+| New        | green         | First tracked within the last 3 seconds, so arrivals catch the eye without the messages panel open; an aircraft that is lost and reappears is new again               |
+| Stale      | dimmed        | No update for half the stale threshold (see below) - the row will drop off the table if nothing arrives; applied on top of the other styles, except on the cursor row |
+
+`--stale-after <ms>` sets the stale threshold: how long an aircraft may go without any update before the feed drops it (default `60000`, one minute). Rows dim at half that, so with the default a row that has been quiet for 30 seconds dims and is dropped at 60, within about a second of the threshold. Lower it on a busy receiver to clear departed traffic sooner, or raise it on a quiet one where legitimate gaps between updates are long.
 
 ### Sorting
 

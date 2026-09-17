@@ -28,6 +28,7 @@ render(
     location={parsed.location}
     columnKeys={parsed.columnKeys}
     filter={parsed.filter}
+    staleAfterMs={parsed.staleAfterMs}
     watchlist={parsed.watchlist}
     alertEmergency={parsed.alertEmergency}
     bell={parsed.bell}
