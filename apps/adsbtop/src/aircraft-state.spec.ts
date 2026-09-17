@@ -168,6 +168,101 @@ describe('aircraftStateReducer', () => {
     expect(back.firstSeenAtByHex.get('A0B1C2')).toBe(9000);
   });
 
+  it('tracks the peak simultaneous count and the unique hexes seen, including lost ones', () => {
+    let state = aircraftStateReducer(initialAircraftState, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 1000,
+    });
+    state = aircraftStateReducer(state, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('D3E4F5'),
+      at: 2000,
+    });
+    state = aircraftStateReducer(state, {
+      type: 'lost',
+      icaoHex: 'A0B1C2',
+      callsign: undefined,
+      at: 3000,
+    });
+    state = aircraftStateReducer(state, {
+      type: 'message',
+      kind: 'update',
+      aircraft: makeAircraft('D3E4F5'),
+      at: 4000,
+    });
+
+    expect(state.aircraftByHex.size).toBe(1);
+    expect(state.peakAircraftCount).toBe(2);
+    expect(state.seenHexes.size).toBe(2);
+  });
+
+  it('keeps the seen-hex set by reference when nothing new appears', () => {
+    const first = aircraftStateReducer(initialAircraftState, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 1000,
+    });
+    const second = aircraftStateReducer(first, {
+      type: 'message',
+      kind: 'update',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 2000,
+    });
+
+    expect(second.seenHexes).toBe(first.seenHexes);
+  });
+
+  it('records the farthest aircraft seen from messages that carry a distance', () => {
+    let state = aircraftStateReducer(initialAircraftState, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2', { callsign: 'UAL123' }),
+      at: 1000,
+      distanceNm: 50,
+    });
+    state = aircraftStateReducer(state, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('D3E4F5'),
+      at: 2000,
+      distanceNm: 120.5,
+    });
+    state = aircraftStateReducer(state, {
+      type: 'message',
+      kind: 'update',
+      aircraft: makeAircraft('A0B1C2', { callsign: 'UAL123' }),
+      at: 3000,
+      distanceNm: 90,
+    });
+    state = aircraftStateReducer(state, {
+      type: 'message',
+      kind: 'update',
+      aircraft: makeAircraft('A0B1C2', { callsign: 'UAL123' }),
+      at: 4000,
+    });
+
+    expect(state.maxDistance).toEqual({
+      icaoHex: 'D3E4F5',
+      callsign: undefined,
+      distanceNm: 120.5,
+    });
+  });
+
+  it('leaves the max distance undefined when no message carries a distance', () => {
+    const state = aircraftStateReducer(initialAircraftState, {
+      type: 'message',
+      kind: 'new',
+      aircraft: makeAircraft('A0B1C2'),
+      at: 1000,
+    });
+
+    expect(state.maxDistance).toBeUndefined();
+  });
+
   it('does not mutate the previous state object', () => {
     const first = aircraftStateReducer(initialAircraftState, {
       type: 'message',

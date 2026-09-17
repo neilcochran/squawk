@@ -750,6 +750,31 @@ describe('App', () => {
     });
   });
 
+  it('toggles the session stats panel with T', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame, stdin } = renderApp(feed, { location: { lat: 0, lon: 0 } });
+    dispatchNew(
+      feed,
+      makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123', position: { lat: 1, lon: 0 } }),
+    );
+    dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5' }));
+    dispatchLost(feed, 'D3E4F5');
+    await flush();
+    expect(lastFrame()).not.toContain('Session stats');
+
+    stdin.write('t');
+    await flush();
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('Session stats');
+    expect(frame).toContain('aircraft: 1 now, peak 2, 2 unique');
+    expect(frame).toContain('max distance: 60nm (A0B1C2 UAL123)');
+    expect(frame).toContain('[T]Hide stats');
+
+    stdin.write('t');
+    await flush();
+    expect(lastFrame()).not.toContain('Session stats');
+  });
+
   describe('filter', () => {
     it('opens a filter prompt with F and narrows the table on submit', async () => {
       const feed = createFakeAircraftFeed();

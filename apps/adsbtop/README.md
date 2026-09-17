@@ -48,6 +48,7 @@ adsbtop --source sbs --host 192.168.1.50
 | `F`             | Filter the table (see [Filtering](#filtering)) - `Escape` on the table clears an active filter |
 | `M`             | Toggle the messages panel (recent new/update/lost events)                                      |
 | `V`             | Toggle messages panel verbosity (new/lost only vs. every update)                               |
+| `T`             | Toggle the session stats panel (see [Session stats](#session-stats))                           |
 | `B`             | Hide/show the status bar                                                                       |
 | `Enter` / `D`   | Show the cursor row's full detail view                                                         |
 | `H`             | Toggle the help overlay                                                                        |
@@ -136,6 +137,16 @@ Six fields have meaningfully different coverage depending on `--source` - see [`
 | Emergency state     | Yes  | -   | Yes   |
 | Resolution advisory | -    | -   | Yes   |
 | Target state        | -    | -   | Yes   |
+
+### Session stats
+
+`T` toggles a panel below the table summarizing the session so far:
+
+- uptime, and the aircraft count now, at its peak, and the number of distinct ICAO hexes seen since start (including aircraft since lost);
+- the total message count, the current rate, and the average and peak rate over the last minute, followed by a one-line sparkline of that minute's per-second rates - a quick read on whether the receiver is healthy and how busy the sky is;
+- with `--lat`/`--lon`, the farthest aircraft seen and which one it was, as a rough measure of the receiver's range.
+
+The figures accumulate from the feed events adsbtop already receives, so the panel costs nothing while hidden and is never reset until adsbtop exits.
 
 ### Messages panel
 

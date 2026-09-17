@@ -29,6 +29,11 @@ const HELP_ENTRIES: readonly HelpEntry[] = [
   },
   { key: 'M', description: 'Toggle the messages panel (recent new/update/lost events)' },
   { key: 'V', description: 'Toggle messages panel verbosity (new/lost only vs. every update)' },
+  {
+    key: 'T',
+    description:
+      'Toggle the session stats panel (peak/unique aircraft, message rates, max distance)',
+  },
   { key: 'B', description: 'Hide/show the status bar' },
   { key: 'Enter / D', description: "Show the cursor row's full detail view" },
   { key: 'H', description: 'Toggle this help overlay' },

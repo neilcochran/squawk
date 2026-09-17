@@ -19,6 +19,8 @@ export interface HotkeyBarProps {
   sortDirection: SortDirection;
   /** Whether the messages panel is currently shown - swaps its label and reveals `[V]erbosity`. */
   showMessages: boolean;
+  /** Whether the stats panel is currently shown - swaps the `[T]` label between "Stats" and "Hide stats". */
+  showStats: boolean;
   /** Whether the status bar is currently shown - swaps the `[B]` label between "Status" and "Hide status". */
   showStatus: boolean;
   /** Whether a search has been submitted - reveals `[N]ext match` for cycling. */
@@ -36,12 +38,13 @@ export interface HotkeyBarProps {
  * terminal rather than each shrinking to fit one line, since a truncated
  * label like `Hide statu` is worse than a second row.
  *
- * @param props - Pause/sort/messages/status/search/filter state, for the conditional labels and entries.
+ * @param props - Pause/sort/messages/stats/status/search/filter state, for the conditional labels and entries.
  */
 export function HotkeyBar({
   paused,
   sortDirection,
   showMessages,
+  showStats,
   showStatus,
   hasActiveSearch,
   hasActiveFilter,
@@ -61,6 +64,7 @@ export function HotkeyBar({
   if (showMessages) {
     hotkeys.push({ key: 'V', label: 'Verbosity' });
   }
+  hotkeys.push({ key: 'T', label: showStats ? 'Hide stats' : 'Stats' });
   hotkeys.push({ key: 'B', label: showStatus ? 'Hide status' : 'Status' });
   hotkeys.push(
     { key: 'D', label: 'Detail' },

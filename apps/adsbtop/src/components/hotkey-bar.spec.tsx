@@ -10,6 +10,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -25,6 +26,8 @@ describe('HotkeyBar', () => {
     expect(frame).toContain('[F]');
     expect(frame).toContain('Filter');
     expect(frame).toContain('[M]');
+    expect(frame).toContain('[T]');
+    expect(frame).toContain('Stats');
     expect(frame).toContain('[B]');
     expect(frame).toContain('[D]');
     expect(frame).toContain('[H]');
@@ -38,6 +41,7 @@ describe('HotkeyBar', () => {
         paused
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -53,6 +57,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -65,6 +70,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="desc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -79,6 +85,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -91,6 +98,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus={false}
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -106,6 +114,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -118,6 +127,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch
         hasActiveFilter={false}
@@ -132,6 +142,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -144,6 +155,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter={false}
@@ -159,6 +171,7 @@ describe('HotkeyBar', () => {
         paused={false}
         sortDirection="asc"
         showMessages={false}
+        showStats={false}
         showStatus
         hasActiveSearch={false}
         hasActiveFilter

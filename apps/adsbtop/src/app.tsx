@@ -29,6 +29,7 @@ import { HotkeyBar } from './components/hotkey-bar.js';
 import { MessagesPanel } from './components/messages-panel.js';
 import type { MessageVerbosity } from './components/messages-panel.js';
 import { SearchBar } from './components/search-bar.js';
+import { StatsPanel } from './components/stats-panel.js';
 import { StatusHeader } from './components/status-header.js';
 import { filterAircraft, parseFilter } from './filter.js';
 import type { AircraftFilter } from './filter.js';
@@ -86,7 +87,7 @@ export interface AppProps {
 /**
  * adsbtop's root component: subscribes to the feed, owns display state
  * (pause, visible columns, sort key and direction, cursor, search, filter,
- * messages, status-bar visibility, and which main panel is showing), wires the hotkey
+ * messages, stats, status-bar visibility, and which main panel is showing), wires the hotkey
  * bar, and renders the optional status header, main panel, optional messages
  * panel, optional search prompt, and hotkey bar.
  *
@@ -118,7 +119,7 @@ export interface AppProps {
  */
 export function App(props: AppProps): ReactElement {
   const { exit } = useApp();
-  const view = useAircraftFeed(props.feed);
+  const view = useAircraftFeed(props.feed, props.location);
   const registry = useIcaoRegistry(props.registryDataLoader);
   const terminalWidth = useTerminalWidth();
   const [registrationCache] = useState<RegistrationCache>(() => new Map());
@@ -138,6 +139,7 @@ export function App(props: AppProps): ReactElement {
   const [displayedAircraft, setDisplayedAircraft] = useState<Aircraft[]>(enrichedAircraft);
   const [selectedIcaoHex, setSelectedIcaoHex] = useState<string | undefined>(undefined);
   const [showMessages, setShowMessages] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [messageVerbosity, setMessageVerbosity] = useState<MessageVerbosity>('newAndLost');
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -379,6 +381,10 @@ export function App(props: AppProps): ReactElement {
         case 'M':
           setShowMessages((prev) => !prev);
           break;
+        case 't':
+        case 'T':
+          setShowStats((prev) => !prev);
+          break;
         case 'v':
         case 'V':
           setMessageVerbosity((prev) => (prev === 'all' ? 'newAndLost' : 'all'));
@@ -473,6 +479,20 @@ export function App(props: AppProps): ReactElement {
           selectedIcaoHex={selectedIcaoHex}
         />
       )}
+      {showStats ? (
+        <StatsPanel
+          startedAt={view.startedAt}
+          nowMs={now}
+          aircraftCount={view.aircraft.length}
+          peakAircraftCount={view.peakAircraftCount}
+          uniqueAircraftCount={view.uniqueAircraftCount}
+          messageCount={view.messageCount}
+          messageRatePerSec={view.messageRatePerSec}
+          rateHistory={view.rateHistory}
+          maxDistance={view.maxDistance}
+          hasLocation={props.location !== undefined}
+        />
+      ) : undefined}
       {showMessages ? (
         <MessagesPanel
           entries={messageVerbosity === 'newAndLost' ? view.newAndLostLog : view.messageLog}
@@ -494,6 +514,7 @@ export function App(props: AppProps): ReactElement {
         paused={paused}
         sortDirection={sortDirection}
         showMessages={showMessages}
+        showStats={showStats}
         showStatus={showStatus}
         hasActiveSearch={submittedSearchQuery !== undefined}
         hasActiveFilter={activeFilter !== undefined}

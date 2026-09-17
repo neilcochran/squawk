@@ -9,7 +9,7 @@ import type {
   ConnectionState,
   ConnectionStateEventDetail,
 } from '@squawk/adsb-feed';
-import type { Aircraft } from '@squawk/types';
+import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { createFakeAircraftFeed } from './test-utils.js';
 import type { FakeAircraftFeed } from './test-utils.js';
@@ -19,8 +19,14 @@ function makeAircraft(icaoHex: string): Aircraft {
   return { icaoHex, lastSeenAt: 0 };
 }
 
-function Harness({ feed }: { feed: FakeAircraftFeed }): ReactElement {
-  const view = useAircraftFeed(feed);
+function Harness({
+  feed,
+  location,
+}: {
+  feed: FakeAircraftFeed;
+  location?: Coordinates;
+}): ReactElement {
+  const view = useAircraftFeed(feed, location);
   return (
     <Text>
       {JSON.stringify({
@@ -30,7 +36,14 @@ function Harness({ feed }: { feed: FakeAircraftFeed }): ReactElement {
         lastLogType: view.messageLog.at(-1)?.type,
         newAndLostLogLength: view.newAndLostLog.length,
         connectionState: view.connectionState,
+        peak: view.peakAircraftCount,
+        unique: view.uniqueAircraftCount,
+        rateSamples: view.rateHistory.length,
       })}
+      {'\n'}
+      {view.maxDistance === undefined
+        ? 'maxDistance:none'
+        : `maxDistance:${view.maxDistance.icaoHex}:${view.maxDistance.callsign ?? '-'}:${Math.round(view.maxDistance.distanceNm)}`}
       {'\n'}
       {`A0B1C2Count:${view.messageCountByHex.get('A0B1C2') ?? 0}`}
     </Text>
@@ -171,6 +184,43 @@ describe('useAircraftFeed', () => {
       dispatchConnectionChange(feed, 'connected');
       await flush();
       expect(lastFrame()).toContain('"connectionState":"connected"');
+    });
+  });
+
+  describe('session stats', () => {
+    it('reports peak and unique counts and starts with no rate samples', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame } = render(<Harness feed={feed} />);
+      await flush();
+
+      dispatchUpdate(feed, 'aircraft:new', makeAircraft('A0B1C2'));
+      dispatchUpdate(feed, 'aircraft:new', makeAircraft('D3E4F5'));
+      dispatchLost(feed, 'A0B1C2');
+      await flush();
+
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('"peak":2');
+      expect(frame).toContain('"unique":2');
+      expect(frame).toContain('"rateSamples":0');
+    });
+
+    it('records the farthest aircraft only when a location is configured', async () => {
+      const feed = createFakeAircraftFeed();
+      const located = render(<Harness feed={feed} location={{ lat: 0, lon: 0 }} />);
+      await flush();
+      dispatchUpdate(feed, 'aircraft:new', {
+        ...makeAircraft('A0B1C2'),
+        callsign: 'UAL123',
+        position: { lat: 1, lon: 0 },
+      });
+      await flush();
+      expect(located.lastFrame()).toContain('maxDistance:A0B1C2:UAL123:60');
+      located.unmount();
+
+      const unlocated = render(<Harness feed={createFakeAircraftFeed()} />);
+      await flush();
+      expect(unlocated.lastFrame()).toContain('maxDistance:none');
+      unlocated.unmount();
     });
   });
 });
