@@ -18,34 +18,36 @@ adsbtop --source sbs --host 192.168.1.50
 
 ### Options
 
-| Flag                | Description                                                                                               | Default                                       |
-| ------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `--source <source>` | Feed to connect to: `json`, `sbs`, or `beast`                                                             | `sbs`                                         |
-| `--host <host>`     | dump1090-fa station hostname/IP                                                                           | `localhost`                                   |
-| `--port <port>`     | Port to connect to                                                                                        | `8080` (json), `30003` (sbs), `30005` (beast) |
-| `--url <url>`       | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)                             | -                                             |
-| `--lat <lat>`       | Receiver latitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lon`)                | -                                             |
-| `--lon <lon>`       | Receiver longitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lat`)               | -                                             |
-| `--columns <list>`  | Comma-separated columns to show, by header name (e.g. `icao,callsign,alt,dist`) - see [Columns](#columns) | auto-fit to the terminal width                |
-| `-h`, `--help`      | Show usage                                                                                                | -                                             |
+| Flag                    | Description                                                                                                             | Default                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `--source <source>`     | Feed to connect to: `json`, `sbs`, or `beast`                                                                           | `sbs`                                         |
+| `--host <host>`         | dump1090-fa station hostname/IP                                                                                         | `localhost`                                   |
+| `--port <port>`         | Port to connect to                                                                                                      | `8080` (json), `30003` (sbs), `30005` (beast) |
+| `--url <url>`           | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)                                           | -                                             |
+| `--lat <lat>`           | Receiver latitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lon`)                              | -                                             |
+| `--lon <lon>`           | Receiver longitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lat`)                             | -                                             |
+| `--columns <list>`      | Comma-separated columns to show, by header name (e.g. `icao,callsign,alt,dist`) - see [Columns](#columns)               | auto-fit to the terminal width                |
+| `-f`, `--filter <text>` | Start with this filter applied, same syntax as the `F` prompt (e.g. `"is:air within:25"`) - see [Filtering](#filtering) | -                                             |
+| `-h`, `--help`          | Show usage                                                                                                              | -                                             |
 
 ### Hotkeys
 
-| Key             | Action                                                                       |
-| --------------- | ---------------------------------------------------------------------------- |
-| `Up` / `Down`   | Move the row cursor                                                          |
-| `O` / `Shift+O` | Cycle the sort column forward/backward (every column except `Grnd`)          |
-| `R`             | Reverse the sort direction (ascending/descending)                            |
-| `C`             | Open the column picker - choose which columns are shown                      |
-| `P`             | Pause/resume the table - the feed keeps running underneath                   |
-| `S`             | Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match |
-| `N` / `Shift+N` | Jump to the next/previous search match                                       |
-| `M`             | Toggle the messages panel (recent new/update/lost events)                    |
-| `V`             | Toggle messages panel verbosity (new/lost only vs. every update)             |
-| `B`             | Hide/show the status bar                                                     |
-| `Enter` / `D`   | Show the cursor row's full detail view                                       |
-| `H`             | Toggle the help overlay                                                      |
-| `Q`             | Quit                                                                         |
+| Key             | Action                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| `Up` / `Down`   | Move the row cursor                                                                            |
+| `O` / `Shift+O` | Cycle the sort column forward/backward (every column except `Grnd`)                            |
+| `R`             | Reverse the sort direction (ascending/descending)                                              |
+| `C`             | Open the column picker - choose which columns are shown                                        |
+| `P`             | Pause/resume the table - the feed keeps running underneath                                     |
+| `S`             | Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match                   |
+| `N` / `Shift+N` | Jump to the next/previous search match                                                         |
+| `F`             | Filter the table (see [Filtering](#filtering)) - `Escape` on the table clears an active filter |
+| `M`             | Toggle the messages panel (recent new/update/lost events)                                      |
+| `V`             | Toggle messages panel verbosity (new/lost only vs. every update)                               |
+| `B`             | Hide/show the status bar                                                                       |
+| `Enter` / `D`   | Show the cursor row's full detail view                                                         |
+| `H`             | Toggle the help overlay                                                                        |
+| `Q`             | Quit                                                                                           |
 
 Aircraft render in bold red when they carry any of: an emergency squawk code (7500/7600/7700), a declared emergency state, or an active ACAS/TCAS Resolution Advisory.
 
@@ -64,7 +66,25 @@ Which columns render is decided in one of two ways:
 
 ### Status bar
 
-The blue status bar above the table shows the source, host, and port; the number of tracked aircraft; the total number of feed update events received since adsbtop started (`msgs`); the current rate (`msgs/s`); and the time since the last update. `B` hides and shows it. While paused, a `PAUSED` chip (black on red) sits at the end of the bar. Note that the `PAUSED` and `RECONNECTING` chips live in the status bar, so they are hidden along with it.
+The blue status bar above the table shows the source, host, and port; the number of tracked aircraft (as `matching/total` followed by the filter text while a filter is active - see [Filtering](#filtering)); the total number of feed update events received since adsbtop started (`msgs`); the current rate (`msgs/s`); and the time since the last update. `B` hides and shows it. While paused, a `PAUSED` chip (black on red) sits at the end of the bar. Note that the `PAUSED` and `RECONNECTING` chips live in the status bar, so they are hidden along with it.
+
+### Filtering
+
+`F` opens a filter prompt. The table then shows only aircraft matching every whitespace-separated term, and the status bar reads `aircraft: 12/40  |  filter: ...` so a narrowed table is never mistaken for a quiet sky. Terms are:
+
+| Term                           | Keeps                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `is:airborne` (or `is:air`)    | Aircraft not reporting on-ground, including those with no on-ground flag at all                                              |
+| `is:ground` (or `is:gnd`)      | Aircraft reporting on-ground                                                                                                 |
+| `is:emergency` (or `is:emerg`) | Aircraft rendering as an emergency row: an emergency squawk, a declared emergency state, or an active Resolution Advisory    |
+| `within:<nm>`                  | Aircraft within that many nautical miles of the receiver - needs `--lat`/`--lon`, and aircraft with no position are excluded |
+| anything else                  | Aircraft whose ICAO hex, callsign, squawk, or N-number contains the text - the same match `S`earch uses                      |
+
+For example, `is:air within:25 UAL` keeps airborne United aircraft inside 25 nm. The prompt opens pre-filled with the current filter so it can be edited: `Enter` applies it, submitting an empty prompt clears it, and `Escape` cancels the edit and keeps whatever filter was already active. A term that cannot be parsed (an unknown qualifier, `is:airborne` together with `is:ground`, or `within:` without a location) keeps the prompt open with the reason shown under it. Once a filter is active, `Escape` on the table clears it, and the hotkey bar's `[F]` reads `Edit filter`.
+
+To start already filtered, pass `-f`/`--filter <text>` with the same syntax; it is validated at startup and a bad term exits with the message the prompt would have shown. Once running, `F` and `Escape` edit or clear it like any other filter.
+
+The cursor, `S`earch, `N`ext match, and the detail view all work on the filtered rows, and applying a filter that hides the cursor row moves the cursor to the first match. An aircraft whose state changes so it no longer matches (say it lands under `is:airborne`) drops out of the table on its next update. The filter lasts for the session only.
 
 ### Connection status
 

@@ -4,6 +4,8 @@ import type { Coordinates } from '@squawk/types';
 
 import { COLUMNS, parseColumnList } from './columns.js';
 import type { ColumnKey } from './columns.js';
+import { parseFilter } from './filter.js';
+import type { AircraftFilter } from './filter.js';
 
 /** Which dump1090-fa output adsbtop connects to. */
 export type FeedSource = 'json' | 'sbs' | 'beast';
@@ -41,6 +43,8 @@ export interface CliOptions {
    * auto-fits the available columns to the terminal width instead.
    */
   columnKeys: readonly ColumnKey[] | undefined;
+  /** The filter to start with, from `-f`/`--filter`, already parsed and validated. Undefined when the flag was not passed. */
+  filter: AircraftFilter | undefined;
 }
 
 /** A `parseCliArgs` failure: the reason `argv` could not be turned into {@link CliOptions}. */
@@ -97,6 +101,7 @@ Options:
   --lat <lat>                Receiver latitude in decimal degrees - enables Dist/Brg/CPA columns (requires --lon)
   --lon <lon>                Receiver longitude in decimal degrees - enables Dist/Brg/CPA columns (requires --lat)
   --columns <list>           Comma-separated columns to show, by header name (e.g. icao,callsign,alt,dist) - default: auto-fit to the terminal width
+  -f, --filter <text>        Start with this filter applied, same syntax as the [F] prompt (e.g. "is:air within:25")
   -h, --help                 Show this help message
 `;
 
@@ -165,6 +170,33 @@ function parseColumns(
 }
 
 /**
+ * Parses and validates `-f`/`--filter` with the same rules as the in-app
+ * `[F]` prompt, so a bad term fails at startup with the message the prompt
+ * would have shown. Returns `{ filter: undefined }` when the flag was not
+ * passed.
+ *
+ * @param raw - Raw `--filter` value, if passed.
+ * @param hasLocation - Whether a receiver location is configured, which `within:` needs.
+ * @returns The parsed filter (possibly undefined), or a {@link CliArgsError}.
+ */
+function parseStartupFilter(
+  raw: string | undefined,
+  hasLocation: boolean,
+): { filter: AircraftFilter | undefined } | CliArgsError {
+  if (raw === undefined) {
+    return { filter: undefined };
+  }
+  if (raw.trim() === '') {
+    return { message: '--filter needs at least one term.' };
+  }
+  const parsed = parseFilter(raw, hasLocation);
+  if ('message' in parsed) {
+    return { message: `Invalid --filter: ${parsed.message}` };
+  }
+  return { filter: parsed };
+}
+
+/**
  * Parses and validates `adsbtop`'s command-line arguments. Returns a result
  * type rather than throwing, so callers (and tests) can handle a bad
  * argument the same way as any other expected outcome.
@@ -185,6 +217,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
         lat: { type: 'string' },
         lon: { type: 'string' },
         columns: { type: 'string' },
+        filter: { type: 'string', short: 'f' },
         help: { type: 'boolean', short: 'h', default: false },
       },
       strict: true,
@@ -203,6 +236,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       url: undefined,
       location: undefined,
       columnKeys: undefined,
+      filter: undefined,
     };
   }
 
@@ -214,6 +248,11 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
   const parsedColumns = parseColumns(values.columns, parsedLocation.location);
   if ('message' in parsedColumns) {
     return parsedColumns;
+  }
+
+  const parsedFilter = parseStartupFilter(values.filter, parsedLocation.location !== undefined);
+  if ('message' in parsedFilter) {
+    return parsedFilter;
   }
 
   const rawSource = values.source ?? DEFAULT_SOURCE;
@@ -244,5 +283,6 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     url: values.url,
     location: parsedLocation.location,
     columnKeys: parsedColumns.columnKeys,
+    filter: parsedFilter.filter,
   };
 }

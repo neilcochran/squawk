@@ -23,12 +23,15 @@ import type { ColumnKey, SortDirection, SortKey } from './columns.js';
 import { AircraftTable } from './components/aircraft-table.js';
 import { ColumnPicker } from './components/column-picker.js';
 import { DetailView } from './components/detail-view.js';
+import { FilterBar } from './components/filter-bar.js';
 import { HelpOverlay } from './components/help-overlay.js';
 import { HotkeyBar } from './components/hotkey-bar.js';
 import { MessagesPanel } from './components/messages-panel.js';
 import type { MessageVerbosity } from './components/messages-panel.js';
 import { SearchBar } from './components/search-bar.js';
 import { StatusHeader } from './components/status-header.js';
+import { filterAircraft, parseFilter } from './filter.js';
+import type { AircraftFilter } from './filter.js';
 import { enrichAircraftList } from './registration-cache.js';
 import type { RegistrationCache } from './registration-cache.js';
 import { findMatchIcaoHex } from './search.js';
@@ -64,12 +67,14 @@ export interface AppProps {
   location: Coordinates | undefined;
   /** Columns requested with `--columns`, if any. Undefined means auto-fit the available columns to the terminal width until the user picks a set with `[C]`. */
   columnKeys: readonly ColumnKey[] | undefined;
+  /** Filter to start with (`-f`/`--filter`), if any. The `[F]` prompt and Escape edit or clear it like one entered in-app. */
+  filter: AircraftFilter | undefined;
 }
 
 /**
  * adsbtop's root component: subscribes to the feed, owns display state
- * (pause, visible columns, sort key and direction, cursor, search, messages,
- * status-bar visibility, and which main panel is showing), wires the hotkey
+ * (pause, visible columns, sort key and direction, cursor, search, filter,
+ * messages, status-bar visibility, and which main panel is showing), wires the hotkey
  * bar, and renders the optional status header, main panel, optional messages
  * panel, optional search prompt, and hotkey bar.
  *
@@ -88,6 +93,10 @@ export interface AppProps {
  * is none, auto-fit against the live terminal width. Picking any column in
  * the picker switches to an explicit list seeded from what was showing;
  * `[F]` in the picker returns to auto-fit.
+ *
+ * The `[F]ilter` narrows the sorted rows before anything else sees them:
+ * the cursor, search, next-match, and the detail view all operate on the
+ * filtered list, so a hidden aircraft can never be selected or opened.
  *
  * @param props - The feed to display, its connection details, and startup column configuration.
  */
@@ -117,6 +126,10 @@ export function App(props: AppProps): ReactElement {
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [submittedSearchQuery, setSubmittedSearchQuery] = useState<string | undefined>(undefined);
+  const [filtering, setFiltering] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [filterError, setFilterError] = useState<string | undefined>(undefined);
+  const [activeFilter, setActiveFilter] = useState<AircraftFilter | undefined>(props.filter);
 
   useEffect(() => {
     const handle = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS);
@@ -130,6 +143,10 @@ export function App(props: AppProps): ReactElement {
   const sortedAircraft = useMemo(
     () => sortAircraft(displayedAircraft, sortKey, sortDirection, props.location),
     [displayedAircraft, sortKey, sortDirection, props.location],
+  );
+  const filteredAircraft = useMemo(
+    () => filterAircraft(sortedAircraft, activeFilter, props.location),
+    [sortedAircraft, activeFilter, props.location],
   );
   const available = useMemo(() => availableColumns(props.location), [props.location]);
   const columns = useMemo(
@@ -146,12 +163,14 @@ export function App(props: AppProps): ReactElement {
     setSortKey(firstSortKey);
   }
 
-  const firstAircraft = sortedAircraft[0];
+  const firstAircraft = filteredAircraft[0];
   if (selectedIcaoHex === undefined && firstAircraft !== undefined) {
     setSelectedIcaoHex(firstAircraft.icaoHex);
   }
 
-  const selectedAircraft = sortedAircraft.find((aircraft) => aircraft.icaoHex === selectedIcaoHex);
+  const selectedAircraft = filteredAircraft.find(
+    (aircraft) => aircraft.icaoHex === selectedIcaoHex,
+  );
 
   function handleSearchSubmit(query: string): void {
     setSearching(false);
@@ -161,9 +180,35 @@ export function App(props: AppProps): ReactElement {
       return;
     }
     setSubmittedSearchQuery(trimmed);
-    const match = findMatchIcaoHex(sortedAircraft, trimmed, selectedIcaoHex, 1);
+    const match = findMatchIcaoHex(filteredAircraft, trimmed, selectedIcaoHex, 1);
     if (match !== undefined) {
       setSelectedIcaoHex(match);
+    }
+  }
+
+  function handleFilterChange(query: string): void {
+    setFilterQuery(query);
+    setFilterError(undefined);
+  }
+
+  function handleFilterSubmit(query: string): void {
+    if (query.trim() === '') {
+      setFiltering(false);
+      setFilterError(undefined);
+      setActiveFilter(undefined);
+      return;
+    }
+    const parsed = parseFilter(query, props.location !== undefined);
+    if ('message' in parsed) {
+      setFilterError(parsed.message);
+      return;
+    }
+    setFiltering(false);
+    setFilterError(undefined);
+    setActiveFilter(parsed);
+    const matches = filterAircraft(sortedAircraft, parsed, props.location);
+    if (!matches.some((aircraft) => aircraft.icaoHex === selectedIcaoHex)) {
+      setSelectedIcaoHex(matches[0]?.icaoHex);
     }
   }
 
@@ -229,15 +274,17 @@ export function App(props: AppProps): ReactElement {
       if (key.escape) {
         if (panel !== 'table') {
           setPanel('table');
+        } else if (activeFilter !== undefined) {
+          setActiveFilter(undefined);
         }
         return;
       }
       if (key.upArrow) {
-        setSelectedIcaoHex((prev) => moveSelection(sortedAircraft, prev, -1));
+        setSelectedIcaoHex((prev) => moveSelection(filteredAircraft, prev, -1));
         return;
       }
       if (key.downArrow) {
-        setSelectedIcaoHex((prev) => moveSelection(sortedAircraft, prev, 1));
+        setSelectedIcaoHex((prev) => moveSelection(filteredAircraft, prev, 1));
         return;
       }
       if (key.return) {
@@ -285,6 +332,12 @@ export function App(props: AppProps): ReactElement {
           setSearching(true);
           setSearchQuery('');
           break;
+        case 'f':
+        case 'F':
+          setFiltering(true);
+          setFilterQuery(activeFilter?.text ?? '');
+          setFilterError(undefined);
+          break;
         case 'm':
         case 'M':
           setShowMessages((prev) => !prev);
@@ -296,14 +349,14 @@ export function App(props: AppProps): ReactElement {
         case 'n':
           if (submittedSearchQuery !== undefined) {
             setSelectedIcaoHex(
-              (prev) => findMatchIcaoHex(sortedAircraft, submittedSearchQuery, prev, 1) ?? prev,
+              (prev) => findMatchIcaoHex(filteredAircraft, submittedSearchQuery, prev, 1) ?? prev,
             );
           }
           break;
         case 'N':
           if (submittedSearchQuery !== undefined) {
             setSelectedIcaoHex(
-              (prev) => findMatchIcaoHex(sortedAircraft, submittedSearchQuery, prev, -1) ?? prev,
+              (prev) => findMatchIcaoHex(filteredAircraft, submittedSearchQuery, prev, -1) ?? prev,
             );
           }
           break;
@@ -311,16 +364,17 @@ export function App(props: AppProps): ReactElement {
           break;
       }
     },
-    { isActive: !searching },
+    { isActive: !searching && !filtering },
   );
 
   useInput(
     (_input, key) => {
       if (key.escape) {
         setSearching(false);
+        setFiltering(false);
       }
     },
-    { isActive: searching },
+    { isActive: searching || filtering },
   );
 
   return (
@@ -337,6 +391,11 @@ export function App(props: AppProps): ReactElement {
           nowMs={now}
           paused={paused}
           connectionState={view.connectionState}
+          filter={
+            activeFilter === undefined
+              ? undefined
+              : { text: activeFilter.text, matchCount: filteredAircraft.length }
+          }
         />
       ) : undefined}
       {panel === 'help' ? (
@@ -360,7 +419,7 @@ export function App(props: AppProps): ReactElement {
         />
       ) : (
         <AircraftTable
-          aircraft={sortedAircraft}
+          aircraft={filteredAircraft}
           columns={columns}
           nowMs={now}
           location={props.location}
@@ -378,12 +437,21 @@ export function App(props: AppProps): ReactElement {
       {searching ? (
         <SearchBar query={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} />
       ) : undefined}
+      {filtering ? (
+        <FilterBar
+          query={filterQuery}
+          error={filterError}
+          onChange={handleFilterChange}
+          onSubmit={handleFilterSubmit}
+        />
+      ) : undefined}
       <HotkeyBar
         paused={paused}
         sortDirection={sortDirection}
         showMessages={showMessages}
         showStatus={showStatus}
         hasActiveSearch={submittedSearchQuery !== undefined}
+        hasActiveFilter={activeFilter !== undefined}
       />
     </Box>
   );

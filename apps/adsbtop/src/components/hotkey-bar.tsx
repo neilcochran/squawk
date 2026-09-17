@@ -23,6 +23,8 @@ export interface HotkeyBarProps {
   showStatus: boolean;
   /** Whether a search has been submitted - reveals `[N]ext match` for cycling. */
   hasActiveSearch: boolean;
+  /** Whether a filter is narrowing the table - swaps the `[F]` label between "Filter" and "Edit filter". */
+  hasActiveFilter: boolean;
 }
 
 /**
@@ -30,9 +32,11 @@ export interface HotkeyBarProps {
  * currently-active single-key action. `[N]ext match` and `[V]erbosity` only
  * appear while they would actually do something, keeping the bar accurate
  * to what a keypress does right now rather than listing every hotkey that
- * exists anywhere in the app.
+ * exists anywhere in the app. Entries wrap onto further lines in a narrow
+ * terminal rather than each shrinking to fit one line, since a truncated
+ * label like `Hide statu` is worse than a second row.
  *
- * @param props - Pause/sort/messages/status/search state, for the conditional labels and entries.
+ * @param props - Pause/sort/messages/status/search/filter state, for the conditional labels and entries.
  */
 export function HotkeyBar({
   paused,
@@ -40,6 +44,7 @@ export function HotkeyBar({
   showMessages,
   showStatus,
   hasActiveSearch,
+  hasActiveFilter,
 }: HotkeyBarProps): ReactElement {
   const hotkeys: Hotkey[] = [
     { key: 'O', label: 'Sort' },
@@ -51,6 +56,7 @@ export function HotkeyBar({
   if (hasActiveSearch) {
     hotkeys.push({ key: 'N', label: 'Next match' });
   }
+  hotkeys.push({ key: 'F', label: hasActiveFilter ? 'Edit filter' : 'Filter' });
   hotkeys.push({ key: 'M', label: showMessages ? 'Hide msgs' : 'Messages' });
   if (showMessages) {
     hotkeys.push({ key: 'V', label: 'Verbosity' });
@@ -63,7 +69,7 @@ export function HotkeyBar({
   );
 
   return (
-    <Box>
+    <Box flexWrap="wrap">
       {hotkeys.map((hotkey, index) => (
         <Text key={hotkey.key}>
           <Text bold color="cyan">

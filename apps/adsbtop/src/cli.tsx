@@ -27,5 +27,6 @@ render(
     port={parsed.port}
     location={parsed.location}
     columnKeys={parsed.columnKeys}
+    filter={parsed.filter}
   />,
 );

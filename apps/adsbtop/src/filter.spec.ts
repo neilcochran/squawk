@@ -1,0 +1,163 @@
+import { assert, describe, expect, it } from 'vitest';
+
+import type { Aircraft, Coordinates } from '@squawk/types';
+
+import { filterAircraft, matchesFilter, parseFilter } from './filter.js';
+import type { AircraftFilter, FilterError } from './filter.js';
+
+function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
+  return { icaoHex: 'A0B1C2', lastSeenAt: 0, ...overrides };
+}
+
+function isError(result: AircraftFilter | FilterError): result is FilterError {
+  return 'message' in result;
+}
+
+function parse(text: string, hasLocation = true): AircraftFilter {
+  const result = parseFilter(text, hasLocation);
+  assert(!isError(result), 'message' in result ? result.message : 'expected a filter');
+  return result;
+}
+
+const LOCATION: Coordinates = { lat: 0, lon: 0 };
+
+describe('parseFilter', () => {
+  it('treats bare words as free-text terms and keeps the trimmed text', () => {
+    const filter = parse('  UAL 7700 ');
+    expect(filter.text).toBe('UAL 7700');
+    expect(filter.terms).toEqual(['UAL', '7700']);
+    expect(filter.onGround).toBeUndefined();
+    expect(filter.emergencyOnly).toBe(false);
+    expect(filter.withinNm).toBeUndefined();
+  });
+
+  it('parses is:airborne and is:ground, including their aliases, case-insensitively', () => {
+    expect(parse('is:airborne').onGround).toBe(false);
+    expect(parse('IS:Air').onGround).toBe(false);
+    expect(parse('is:ground').onGround).toBe(true);
+    expect(parse('is:GND').onGround).toBe(true);
+  });
+
+  it('parses is:emergency and its alias', () => {
+    expect(parse('is:emergency').emergencyOnly).toBe(true);
+    expect(parse('is:emerg').emergencyOnly).toBe(true);
+  });
+
+  it('parses within:<nm> when a location is configured', () => {
+    expect(parse('within:25').withinNm).toBe(25);
+    expect(parse('within:2.5').withinNm).toBe(2.5);
+  });
+
+  it('combines qualifiers and free text', () => {
+    const filter = parse('is:air within:30 dal is:emerg');
+    expect(filter.terms).toEqual(['dal']);
+    expect(filter.onGround).toBe(false);
+    expect(filter.emergencyOnly).toBe(true);
+    expect(filter.withinNm).toBe(30);
+  });
+
+  it('rejects within: without a location', () => {
+    const result = parseFilter('within:25', false);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('--lat/--lon');
+    }
+  });
+
+  it('rejects a malformed within: value', () => {
+    for (const text of ['within:', 'within:abc', 'within:-5']) {
+      const result = parseFilter(text, true);
+      expect(isError(result)).toBe(true);
+      if (isError(result)) {
+        expect(result.message).toContain('Invalid distance');
+      }
+    }
+  });
+
+  it('rejects an unknown is: value', () => {
+    const result = parseFilter('is:flying', true);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('Unknown state "flying"');
+    }
+  });
+
+  it('rejects contradictory is:airborne and is:ground', () => {
+    const result = parseFilter('is:airborne is:ground', true);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('cannot both apply');
+    }
+  });
+
+  it('rejects an unknown qualifier', () => {
+    const result = parseFilter('alt:5000', true);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('Unknown qualifier "alt:"');
+    }
+  });
+});
+
+describe('matchesFilter', () => {
+  it('keeps only airborne aircraft for is:airborne, treating unknown as airborne', () => {
+    const filter = parse('is:airborne');
+    expect(matchesFilter(makeAircraft({ onGround: false }), filter, undefined)).toBe(true);
+    expect(matchesFilter(makeAircraft(), filter, undefined)).toBe(true);
+    expect(matchesFilter(makeAircraft({ onGround: true }), filter, undefined)).toBe(false);
+  });
+
+  it('keeps only on-ground aircraft for is:ground', () => {
+    const filter = parse('is:ground');
+    expect(matchesFilter(makeAircraft({ onGround: true }), filter, undefined)).toBe(true);
+    expect(matchesFilter(makeAircraft(), filter, undefined)).toBe(false);
+  });
+
+  it('keeps only emergency aircraft for is:emergency', () => {
+    const filter = parse('is:emergency');
+    expect(matchesFilter(makeAircraft({ squawk: '7700' }), filter, undefined)).toBe(true);
+    expect(matchesFilter(makeAircraft({ squawk: '1200' }), filter, undefined)).toBe(false);
+  });
+
+  it('keeps only aircraft within the distance limit, excluding those with no position', () => {
+    const filter = parse('within:100');
+    expect(matchesFilter(makeAircraft({ position: { lat: 1, lon: 0 } }), filter, LOCATION)).toBe(
+      true,
+    );
+    expect(matchesFilter(makeAircraft({ position: { lat: 2, lon: 0 } }), filter, LOCATION)).toBe(
+      false,
+    );
+    expect(matchesFilter(makeAircraft(), filter, LOCATION)).toBe(false);
+  });
+
+  it('requires every free-text term to match', () => {
+    const filter = parse('ual 111');
+    expect(matchesFilter(makeAircraft({ callsign: 'UAL111' }), filter, undefined)).toBe(true);
+    expect(matchesFilter(makeAircraft({ callsign: 'UAL222' }), filter, undefined)).toBe(false);
+  });
+
+  it('requires every part to match when combined', () => {
+    const filter = parse('is:airborne ual');
+    expect(matchesFilter(makeAircraft({ callsign: 'UAL111' }), filter, undefined)).toBe(true);
+    expect(
+      matchesFilter(makeAircraft({ callsign: 'UAL111', onGround: true }), filter, undefined),
+    ).toBe(false);
+  });
+});
+
+describe('filterAircraft', () => {
+  const aircraft = [
+    makeAircraft({ icaoHex: 'A00000', callsign: 'UAL111' }),
+    makeAircraft({ icaoHex: 'B00000', callsign: 'DAL222', onGround: true }),
+    makeAircraft({ icaoHex: 'C00000', callsign: 'UAL333' }),
+  ];
+
+  it('returns the input untouched with no filter', () => {
+    expect(filterAircraft(aircraft, undefined, undefined)).toBe(aircraft);
+  });
+
+  it('keeps matching aircraft in their original order', () => {
+    const kept = filterAircraft(aircraft, parse('ual'), undefined);
+    expect(kept.map((candidate) => candidate.icaoHex)).toEqual(['A00000', 'C00000']);
+  });
+});

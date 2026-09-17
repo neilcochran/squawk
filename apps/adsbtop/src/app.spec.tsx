@@ -6,6 +6,8 @@ import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { App } from './app.js';
 import type { ColumnKey } from './columns.js';
+import { parseFilter } from './filter.js';
+import type { AircraftFilter } from './filter.js';
 import { createFakeAircraftFeed, createFakeRegistryDataLoader } from './test-utils.js';
 import type { FakeAircraftFeed } from './test-utils.js';
 import type { RegistryDataLoader } from './use-icao-registry.js';
@@ -51,6 +53,7 @@ function renderApp(
   registryDataLoader: RegistryDataLoader = createFakeRegistryDataLoader(),
   location?: Coordinates,
   columnKeys?: readonly ColumnKey[],
+  filter?: AircraftFilter,
 ): ReturnType<typeof render> {
   const instance = render(
     <App
@@ -61,6 +64,7 @@ function renderApp(
       registryDataLoader={registryDataLoader}
       location={location}
       columnKeys={columnKeys}
+      filter={filter}
     />,
   );
   activeUnmount = instance.unmount;
@@ -397,7 +401,7 @@ describe('App', () => {
       dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
       await flush();
 
-      stdin.write('[B');
+      stdin.write('\u001B[B');
       await flush();
       stdin.write('d');
       await flush();
@@ -710,6 +714,172 @@ describe('App', () => {
       await flush();
 
       expect(lastFrame()).toContain('A0B1C2 detail');
+    });
+  });
+
+  describe('filter', () => {
+    it('opens a filter prompt with F and narrows the table on submit', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222', onGround: true }));
+      await flush();
+
+      stdin.write('f');
+      await flush();
+      expect(lastFrame()).toContain('Filter:');
+      expect(lastFrame()).toContain('is:airborne');
+
+      stdin.write('is:gnd');
+      await flush();
+      stdin.write('\r');
+      await flush();
+
+      const frame = lastFrame() ?? '';
+      expect(frame).not.toContain('Filter:');
+      expect(frame).toContain('D3E4F5');
+      expect(frame).not.toContain('A0B1C2');
+      expect(frame).toContain('aircraft: 1/2');
+      expect(frame).toContain('filter: is:gnd');
+      expect(frame).toContain('[F]Edit filter');
+    });
+
+    it('keeps the prompt open and shows the reason when a term is invalid', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      await flush();
+
+      stdin.write('f');
+      await flush();
+      stdin.write('is:flying');
+      await flush();
+      stdin.write('\r');
+      await flush();
+
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('Filter:');
+      expect(frame).toContain('Unknown state "flying"');
+      expect(frame).not.toContain('filter: is:flying');
+    });
+
+    it('cancels the prompt with Escape, keeping the existing filter', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      await flush();
+
+      stdin.write('f');
+      await flush();
+      stdin.write('ual');
+      await flush();
+      stdin.write('\r');
+      await flush();
+      expect(lastFrame()).toContain('filter: ual');
+
+      stdin.write('f');
+      await flush();
+      expect(lastFrame()).toContain('Filter:');
+      stdin.write('\u001B');
+      await flush();
+      expect(lastFrame()).not.toContain('Filter:');
+      expect(lastFrame()).toContain('filter: ual');
+    });
+
+    it('clears the filter with Escape on the table', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      stdin.write('f');
+      await flush();
+      stdin.write('dal');
+      await flush();
+      stdin.write('\r');
+      await flush();
+      expect(lastFrame()).not.toContain('A0B1C2');
+
+      stdin.write('\u001B');
+      await flush();
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('A0B1C2');
+      expect(frame).toContain('D3E4F5');
+      expect(frame).not.toContain('filter:');
+      expect(frame).toContain('aircraft: 2');
+    });
+
+    it('clears the filter by submitting an empty prompt', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      stdin.write('f');
+      await flush();
+      stdin.write('dal');
+      await flush();
+      stdin.write('\r');
+      await flush();
+      expect(lastFrame()).not.toContain('A0B1C2');
+
+      stdin.write('f');
+      await flush();
+      for (let i = 0; i < 'dal'.length; i++) {
+        stdin.write('\u007F');
+        await flush();
+      }
+      stdin.write('\r');
+      await flush();
+      expect(lastFrame()).toContain('A0B1C2');
+      expect(lastFrame()).not.toContain('filter:');
+    });
+
+    it('starts with the --filter applied and lets Escape clear it', async () => {
+      const startupFilter = parseFilter('dal', false);
+      if ('message' in startupFilter) {
+        throw new Error(startupFilter.message);
+      }
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(
+        feed,
+        createFakeRegistryDataLoader(),
+        undefined,
+        undefined,
+        startupFilter,
+      );
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      expect(lastFrame()).toContain('filter: dal');
+      expect(lastFrame()).toContain('D3E4F5');
+      expect(lastFrame()).not.toContain('A0B1C2');
+
+      stdin.write('\u001B');
+      await flush();
+      expect(lastFrame()).toContain('A0B1C2');
+      expect(lastFrame()).not.toContain('filter:');
+    });
+
+    it('moves the cursor to the first match when the filter hides the selected row', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed);
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      stdin.write('f');
+      await flush();
+      stdin.write('dal');
+      await flush();
+      stdin.write('\r');
+      await flush();
+
+      stdin.write('d');
+      await flush();
+      expect(lastFrame()).toContain('D3E4F5 detail');
     });
   });
 });

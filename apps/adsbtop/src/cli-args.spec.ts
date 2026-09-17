@@ -149,6 +149,63 @@ describe('parseCliArgs', () => {
     }
   });
 
+  it('defaults filter to undefined with no --filter', () => {
+    const result = parseCliArgs([]);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.filter).toBeUndefined();
+    }
+  });
+
+  it('parses --filter with the prompt syntax, including the -f short form', () => {
+    for (const argv of [
+      ['--filter', 'is:air UAL'],
+      ['-f', 'is:air UAL'],
+    ]) {
+      const result = parseCliArgs(argv);
+      expect(isError(result)).toBe(false);
+      if (!isError(result)) {
+        expect(result.filter?.text).toBe('is:air UAL');
+        expect(result.filter?.onGround).toBe(false);
+        expect(result.filter?.terms).toEqual(['UAL']);
+      }
+    }
+  });
+
+  it('accepts within: in --filter when --lat/--lon are given', () => {
+    const result = parseCliArgs(['-f', 'within:25', '--lat', '43.67', '--lon', '-70.36']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.filter?.withinNm).toBe(25);
+    }
+  });
+
+  it('rejects within: in --filter without --lat/--lon', () => {
+    const result = parseCliArgs(['-f', 'within:25']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('Invalid --filter');
+      expect(result.message).toContain('--lat/--lon');
+    }
+  });
+
+  it('rejects an invalid --filter term with the prompt message', () => {
+    const result = parseCliArgs(['--filter', 'is:flying']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('Invalid --filter');
+      expect(result.message).toContain('Unknown state "flying"');
+    }
+  });
+
+  it('rejects an empty --filter', () => {
+    const result = parseCliArgs(['--filter', '  ']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('at least one term');
+    }
+  });
+
   it('parses valid --lat and --lon into location', () => {
     const result = parseCliArgs(['--lat', '40.6413', '--lon', '-73.7781']);
     expect(isError(result)).toBe(false);

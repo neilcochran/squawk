@@ -19,13 +19,17 @@ export interface StatusLineInfo {
   lastMessageAt: number | undefined;
   /** Current time, for the "last update" age. */
   nowMs: number;
+  /** The active `[F]ilter`, if any: its text and how many of `aircraftCount` currently match. */
+  filter: { text: string; matchCount: number } | undefined;
 }
 
 /**
  * Builds the single-line connection/activity summary shown in the status
- * header: source/host/port, tracked aircraft, total messages since start,
- * current message rate, and time since the last update. A pure string builder, kept separate from the Ink component so it
- * is directly unit-testable without a render harness.
+ * header: source/host/port, tracked aircraft (as `matching/total` plus the
+ * filter text while a filter is active), total messages since start,
+ * current message rate, and time since the last update. A pure string
+ * builder, kept separate from the Ink component so it is directly
+ * unit-testable without a render harness.
  *
  * @param info - The connection and activity state to summarize.
  * @returns The formatted status line, without any styling applied.
@@ -35,9 +39,13 @@ export function formatStatusLine(info: StatusLineInfo): string {
     info.lastMessageAt === undefined
       ? 'none yet'
       : `${formatAge(info.lastMessageAt, info.nowMs)} ago`;
+  const aircraft =
+    info.filter === undefined
+      ? `aircraft: ${info.aircraftCount}`
+      : `aircraft: ${info.filter.matchCount}/${info.aircraftCount}  |  filter: ${info.filter.text}`;
   return (
     `source: ${info.source} ${info.host}:${info.port}  |  ` +
-    `aircraft: ${info.aircraftCount}  |  ` +
+    `${aircraft}  |  ` +
     `msgs: ${info.messageCount}  |  ` +
     `msgs/s: ${info.messageRatePerSec}  |  ` +
     `last update: ${lastUpdate}`

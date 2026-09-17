@@ -23,6 +23,10 @@ const HELP_ENTRIES: readonly HelpEntry[] = [
     description: 'Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match',
   },
   { key: 'N / Shift+N', description: 'Jump to the next/previous search match' },
+  {
+    key: 'F',
+    description: 'Filter the table (is:air, is:gnd, is:emerg, within:<nm>, text) - Escape clears',
+  },
   { key: 'M', description: 'Toggle the messages panel (recent new/update/lost events)' },
   { key: 'V', description: 'Toggle messages panel verbosity (new/lost only vs. every update)' },
   { key: 'B', description: 'Hide/show the status bar' },

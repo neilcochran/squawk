@@ -13,6 +13,7 @@ function makeInfo(overrides: Partial<StatusLineInfo> = {}): StatusLineInfo {
     messageRatePerSec: 0,
     lastMessageAt: undefined,
     nowMs: 0,
+    filter: undefined,
     ...overrides,
   };
 }
@@ -27,6 +28,14 @@ describe('formatStatusLine', () => {
     expect(line).toContain('aircraft: 5');
     expect(line).toContain('msgs: 1234');
     expect(line).toContain('msgs/s: 12');
+  });
+
+  it('shows the matching count over the total and the filter text while filtering', () => {
+    const line = formatStatusLine(
+      makeInfo({ aircraftCount: 40, filter: { text: 'is:air UAL', matchCount: 12 } }),
+    );
+
+    expect(line).toContain('aircraft: 12/40  |  filter: is:air UAL  |  msgs:');
   });
 
   it('shows a placeholder before any update has arrived', () => {

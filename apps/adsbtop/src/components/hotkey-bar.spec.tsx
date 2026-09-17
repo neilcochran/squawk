@@ -12,6 +12,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
 
@@ -21,6 +22,8 @@ describe('HotkeyBar', () => {
     expect(frame).toContain('[C]');
     expect(frame).toContain('[P]');
     expect(frame).toContain('[S]');
+    expect(frame).toContain('[F]');
+    expect(frame).toContain('Filter');
     expect(frame).toContain('[M]');
     expect(frame).toContain('[B]');
     expect(frame).toContain('[D]');
@@ -37,6 +40,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
 
@@ -51,6 +55,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(ascending.lastFrame()).toContain('[R]Desc');
@@ -62,6 +67,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(descending.lastFrame()).toContain('[R]Asc');
@@ -75,6 +81,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(shown.lastFrame()).toContain('[B]Hide status');
@@ -86,6 +93,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus={false}
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(hidden.lastFrame()).toContain('[B]Status');
@@ -100,6 +108,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(withoutSearch.lastFrame()).not.toContain('[N]');
@@ -111,6 +120,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus
         hasActiveSearch
+        hasActiveFilter={false}
       />,
     );
     expect(withSearch.lastFrame()).toContain('[N]');
@@ -124,6 +134,7 @@ describe('HotkeyBar', () => {
         showMessages={false}
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(withoutMessages.lastFrame()).not.toContain('[V]');
@@ -135,9 +146,25 @@ describe('HotkeyBar', () => {
         showMessages
         showStatus
         hasActiveSearch={false}
+        hasActiveFilter={false}
       />,
     );
     expect(withMessages.lastFrame()).toContain('[V]');
     expect(withMessages.lastFrame()).toContain('Hide msgs');
+  });
+
+  it('labels [F] as Edit filter while a filter is active', () => {
+    const { lastFrame } = render(
+      <HotkeyBar
+        paused={false}
+        sortDirection="asc"
+        showMessages={false}
+        showStatus
+        hasActiveSearch={false}
+        hasActiveFilter
+      />,
+    );
+
+    expect(lastFrame()).toContain('[F]Edit filter');
   });
 });

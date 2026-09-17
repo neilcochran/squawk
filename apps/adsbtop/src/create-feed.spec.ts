@@ -13,6 +13,7 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     url: undefined,
     location: undefined,
     columnKeys: undefined,
+    filter: undefined,
     ...overrides,
   };
 }
