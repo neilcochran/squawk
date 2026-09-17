@@ -7,6 +7,7 @@ import type { Aircraft, Coordinates } from '@squawk/types';
 import { COLUMN_SEPARATOR_WIDTH } from '../columns.js';
 import type { ColumnDef, RenderContext, SortDirection, SortKey } from '../columns.js';
 import { isEmergencyAircraft } from '../format.js';
+import { matchesWatchlist } from '../watchlist.js';
 
 /** Props for {@link AircraftTable}. */
 export interface AircraftTableProps {
@@ -18,6 +19,8 @@ export interface AircraftTableProps {
   nowMs: number;
   /** Configured receiver location, passed through to the location-gated column renderers. */
   location: Coordinates | undefined;
+  /** Normalized `--watch` terms; rows matching any of them render highlighted. Empty for no watchlist. */
+  watchlist: readonly string[];
   /** The column `aircraft` is currently sorted by - highlighted in the header row so the active sort is visible while cycling with `[O]`. */
   sortKey: SortKey;
   /** Which way `sortKey` is ordered - shown as a `^`/`v` suffix on the highlighted header. */
@@ -105,13 +108,17 @@ function HeaderSeparator({
  * explicit hex black so it stays readable against the row's cyan
  * background, where the terminal's default (typically white) foreground
  * washes out - see {@link HeaderCell} for why `#000000` rather than the
- * named ANSI `black`.
+ * named ANSI `black`. A watched aircraft (see `matchesWatchlist`) renders
+ * in bold yellow, or bold black on the cursor row where yellow would not
+ * read against the cyan; emergency red wins over both, since it matters
+ * more.
  */
 function AircraftCell({
   column,
   aircraft,
   context,
   emergency,
+  watched,
   selected,
   last,
 }: {
@@ -119,6 +126,7 @@ function AircraftCell({
   aircraft: Aircraft;
   context: RenderContext;
   emergency: boolean;
+  watched: boolean;
   selected: boolean;
   last: boolean;
 }): ReactElement {
@@ -129,8 +137,16 @@ function AircraftCell({
         <Text color="red" bold wrap="truncate-end">
           {value}
         </Text>
+      ) : selected && watched ? (
+        <Text color="#000000" bold wrap="truncate-end">
+          {value}
+        </Text>
       ) : selected ? (
         <Text color="#000000" wrap="truncate-end">
+          {value}
+        </Text>
+      ) : watched ? (
+        <Text color="yellow" bold wrap="truncate-end">
           {value}
         </Text>
       ) : (
@@ -154,14 +170,17 @@ function AircraftRow({
   aircraft,
   columns,
   context,
+  watchlist,
   selected,
 }: {
   aircraft: Aircraft;
   columns: readonly ColumnDef[];
   context: RenderContext;
+  watchlist: readonly string[];
   selected: boolean;
 }): ReactElement {
   const emergency = isEmergencyAircraft(aircraft);
+  const watched = matchesWatchlist(aircraft, watchlist);
   const cells = columns.map((column, index) => (
     <AircraftCell
       key={column.key}
@@ -169,6 +188,7 @@ function AircraftRow({
       aircraft={aircraft}
       context={context}
       emergency={emergency}
+      watched={watched}
       selected={selected}
       last={index === columns.length - 1}
     />
@@ -185,7 +205,8 @@ function AircraftRow({
 /**
  * The live-updating aircraft table: a header row followed by one row per
  * tracked aircraft. Emergency aircraft render in bold red - see
- * {@link isEmergencyAircraft}. The active sort column's header is
+ * {@link isEmergencyAircraft} - and watched aircraft in bold yellow - see
+ * {@link AircraftTableProps.watchlist}. The active sort column's header is
  * highlighted with a direction suffix - see {@link AircraftTableProps.sortKey}
  * and {@link AircraftTableProps.sortDirection}. The cursor row is highlighted
  * separately - see {@link AircraftTableProps.selectedIcaoHex}. The whole
@@ -224,6 +245,7 @@ export function AircraftTable(props: AircraftTableProps): ReactElement {
             aircraft={aircraft}
             columns={props.columns}
             context={context}
+            watchlist={props.watchlist}
             selected={aircraft.icaoHex === props.selectedIcaoHex}
           />
         ))

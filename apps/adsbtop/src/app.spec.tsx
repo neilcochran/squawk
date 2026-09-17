@@ -1,16 +1,18 @@
 import { render } from 'ink-testing-library';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { AircraftUpdateEventDetail, ConnectionStateEventDetail } from '@squawk/adsb-feed';
-import type { Aircraft, Coordinates } from '@squawk/types';
+import type {
+  AircraftLostEventDetail,
+  AircraftUpdateEventDetail,
+  ConnectionStateEventDetail,
+} from '@squawk/adsb-feed';
+import type { Aircraft } from '@squawk/types';
 
 import { App } from './app.js';
-import type { ColumnKey } from './columns.js';
+import type { AppProps } from './app.js';
 import { parseFilter } from './filter.js';
-import type { AircraftFilter } from './filter.js';
 import { createFakeAircraftFeed, createFakeRegistryDataLoader } from './test-utils.js';
 import type { FakeAircraftFeed } from './test-utils.js';
-import type { RegistryDataLoader } from './use-icao-registry.js';
 
 function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
   return { icaoHex: 'A0B1C2', lastSeenAt: Date.now(), ...overrides };
@@ -26,6 +28,11 @@ function dispatchUpdate(feed: FakeAircraftFeed, aircraft: Aircraft): void {
   feed.dispatchEvent(new CustomEvent('aircraft:update', { detail }));
 }
 
+function dispatchLost(feed: FakeAircraftFeed, icaoHex: string): void {
+  const detail: AircraftLostEventDetail = { icaoHex, lastAircraft: makeAircraft({ icaoHex }) };
+  feed.dispatchEvent(new CustomEvent('aircraft:lost', { detail }));
+}
+
 function dispatchDisconnect(feed: FakeAircraftFeed): void {
   const detail: ConnectionStateEventDetail = { state: 'reconnecting' };
   feed.dispatchEvent(new CustomEvent('connection:disconnect', { detail }));
@@ -33,6 +40,22 @@ function dispatchDisconnect(feed: FakeAircraftFeed): void {
 
 function flush(ms = 20): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// The bell rings from a passive effect, which the test renderer flushes
+// noticeably later than the frame itself once the table has rows to lay
+// out. Positive expectations poll for the call rather than assuming one
+// flush() is enough; negative ones settle for longer before asserting.
+async function untilRung(ring: ReturnType<typeof vi.fn>, times: number): Promise<void> {
+  const deadline = Date.now() + 2000;
+  while (ring.mock.calls.length < times && Date.now() < deadline) {
+    await flush(10);
+  }
+  expect(ring).toHaveBeenCalledTimes(times);
+}
+
+function settle(): Promise<void> {
+  return flush(200);
 }
 
 // Each test's `render()` starts a real setInterval (the clock tick) and an
@@ -50,10 +73,7 @@ afterEach(() => {
 
 function renderApp(
   feed: FakeAircraftFeed,
-  registryDataLoader: RegistryDataLoader = createFakeRegistryDataLoader(),
-  location?: Coordinates,
-  columnKeys?: readonly ColumnKey[],
-  filter?: AircraftFilter,
+  overrides: Partial<Omit<AppProps, 'feed'>> = {},
 ): ReturnType<typeof render> {
   const instance = render(
     <App
@@ -61,10 +81,14 @@ function renderApp(
       source="sbs"
       host="localhost"
       port={30003}
-      registryDataLoader={registryDataLoader}
-      location={location}
-      columnKeys={columnKeys}
-      filter={filter}
+      registryDataLoader={createFakeRegistryDataLoader()}
+      location={undefined}
+      columnKeys={undefined}
+      filter={undefined}
+      watchlist={[]}
+      alertEmergency={false}
+      bell={true}
+      {...overrides}
     />,
   );
   activeUnmount = instance.unmount;
@@ -111,7 +135,7 @@ describe('App', () => {
     // ink-testing-library reports a 100-column terminal; the full 13-column
     // table is 128 wide, so auto-fit drops Grnd, Reg, VS, and Brg to fit.
     const feed = createFakeAircraftFeed();
-    const { lastFrame } = renderApp(feed, createFakeRegistryDataLoader(), { lat: 0, lon: 0 });
+    const { lastFrame } = renderApp(feed, { location: { lat: 0, lon: 0 } });
     await flush();
 
     const frame = lastFrame();
@@ -123,10 +147,10 @@ describe('App', () => {
 
   it('shows exactly the --columns set instead of auto-fitting', async () => {
     const feed = createFakeAircraftFeed();
-    const { lastFrame } = renderApp(feed, createFakeRegistryDataLoader(), { lat: 0, lon: 0 }, [
-      'icaoHex',
-      'bearing',
-    ]);
+    const { lastFrame } = renderApp(feed, {
+      location: { lat: 0, lon: 0 },
+      columnKeys: ['icaoHex', 'bearing'],
+    });
     await flush();
 
     const frame = lastFrame();
@@ -210,10 +234,7 @@ describe('App', () => {
 
   it('resets the sort key to the first visible column when its column is hidden', async () => {
     const feed = createFakeAircraftFeed();
-    const { lastFrame, stdin } = renderApp(feed, createFakeRegistryDataLoader(), undefined, [
-      'icaoHex',
-      'callsign',
-    ]);
+    const { lastFrame, stdin } = renderApp(feed, { columnKeys: ['icaoHex', 'callsign'] });
     await flush();
 
     stdin.write('o');
@@ -411,10 +432,7 @@ describe('App', () => {
 
     it('shows Distance/Bearing in the detail view when a location is configured', async () => {
       const feed = createFakeAircraftFeed();
-      const { lastFrame, stdin } = renderApp(feed, createFakeRegistryDataLoader(), {
-        lat: 0,
-        lon: 0,
-      });
+      const { lastFrame, stdin } = renderApp(feed, { location: { lat: 0, lon: 0 } });
       dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', position: { lat: 0, lon: 1 } }));
       await flush();
 
@@ -678,7 +696,7 @@ describe('App', () => {
     it('populates the Reg column once the registry loads and finds a match', async () => {
       const feed = createFakeAircraftFeed();
       const loader = createFakeRegistryDataLoader([{ icaoHex: 'A0B1C2', registration: 'N12345' }]);
-      const { lastFrame } = renderApp(feed, loader);
+      const { lastFrame } = renderApp(feed, { registryDataLoader: loader });
       dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }));
       await flush();
 
@@ -688,7 +706,9 @@ describe('App', () => {
 
     it('leaves the Reg column at "-" for an aircraft with no registry match', async () => {
       const feed = createFakeAircraftFeed();
-      const { lastFrame } = renderApp(feed, createFakeRegistryDataLoader([]));
+      const { lastFrame } = renderApp(feed, {
+        registryDataLoader: createFakeRegistryDataLoader([]),
+      });
       dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }));
       await flush();
 
@@ -699,7 +719,7 @@ describe('App', () => {
     it('finds an aircraft by N-number with Search', async () => {
       const feed = createFakeAircraftFeed();
       const loader = createFakeRegistryDataLoader([{ icaoHex: 'A0B1C2', registration: 'N12345' }]);
-      const { lastFrame, stdin } = renderApp(feed, loader);
+      const { lastFrame, stdin } = renderApp(feed, { registryDataLoader: loader });
       dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
       dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5' }));
       await flush();
@@ -842,13 +862,7 @@ describe('App', () => {
         throw new Error(startupFilter.message);
       }
       const feed = createFakeAircraftFeed();
-      const { lastFrame, stdin } = renderApp(
-        feed,
-        createFakeRegistryDataLoader(),
-        undefined,
-        undefined,
-        startupFilter,
-      );
+      const { lastFrame, stdin } = renderApp(feed, { filter: startupFilter });
       dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
       dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
       await flush();
@@ -880,6 +894,95 @@ describe('App', () => {
       stdin.write('d');
       await flush();
       expect(lastFrame()).toContain('D3E4F5 detail');
+    });
+  });
+
+  describe('watchlist', () => {
+    it('rings the bell when a watched aircraft appears and when it is lost', async () => {
+      const ring = vi.fn();
+      const feed = createFakeAircraftFeed();
+      renderApp(feed, { watchlist: ['UAL'], ring });
+      await settle();
+      expect(ring).not.toHaveBeenCalled();
+
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'DAL111' }));
+      await settle();
+      expect(ring).not.toHaveBeenCalled();
+
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'UAL222' }));
+      await untilRung(ring, 1);
+
+      dispatchLost(feed, 'D3E4F5');
+      await untilRung(ring, 2);
+    });
+
+    it('shows the watched count in the status bar, including aircraft hidden by the filter', async () => {
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed, { watchlist: ['UAL'], ring: () => undefined });
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'UAL222', onGround: true }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'E5F6A7', callsign: 'DAL333' }));
+      await flush();
+      expect(lastFrame()).toContain('watch: 2  |');
+
+      stdin.write('f');
+      await flush();
+      stdin.write('is:air');
+      await flush();
+      stdin.write('\r');
+      await flush();
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('aircraft: 2/3');
+      expect(frame).toContain('watch: 2 (1 hidden)');
+      expect(frame).not.toContain('D3E4F5');
+    });
+
+    it('still rings for a watched aircraft the filter hides', async () => {
+      const ring = vi.fn();
+      const feed = createFakeAircraftFeed();
+      const { stdin } = renderApp(feed, { watchlist: ['UAL'], ring });
+      await flush();
+      stdin.write('f');
+      await flush();
+      stdin.write('is:air');
+      await flush();
+      stdin.write('\r');
+      await flush();
+
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'UAL222', onGround: true }));
+      await untilRung(ring, 1);
+    });
+
+    it('does not ring while paused or under --no-bell', async () => {
+      const ring = vi.fn();
+      const feed = createFakeAircraftFeed();
+      const { stdin } = renderApp(feed, { watchlist: ['UAL'], ring });
+      await flush();
+      stdin.write('p');
+      await flush();
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'UAL222' }));
+      await settle();
+      expect(ring).not.toHaveBeenCalled();
+
+      const silent = vi.fn();
+      const quietFeed = createFakeAircraftFeed();
+      renderApp(quietFeed, { watchlist: ['UAL'], bell: false, ring: silent });
+      await flush();
+      dispatchNew(quietFeed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'UAL222' }));
+      await settle();
+      expect(silent).not.toHaveBeenCalled();
+    });
+
+    it('rings for a new emergency only with --alert-emergency', async () => {
+      const ring = vi.fn();
+      const feed = createFakeAircraftFeed();
+      renderApp(feed, { alertEmergency: true, ring });
+      await flush();
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', squawk: '1200' }));
+      await settle();
+      expect(ring).not.toHaveBeenCalled();
+      dispatchUpdate(feed, makeAircraft({ icaoHex: 'A0B1C2', squawk: '7700' }));
+      await untilRung(ring, 1);
     });
   });
 });

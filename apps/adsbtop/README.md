@@ -18,17 +18,20 @@ adsbtop --source sbs --host 192.168.1.50
 
 ### Options
 
-| Flag                    | Description                                                                                                             | Default                                       |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `--source <source>`     | Feed to connect to: `json`, `sbs`, or `beast`                                                                           | `sbs`                                         |
-| `--host <host>`         | dump1090-fa station hostname/IP                                                                                         | `localhost`                                   |
-| `--port <port>`         | Port to connect to                                                                                                      | `8080` (json), `30003` (sbs), `30005` (beast) |
-| `--url <url>`           | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)                                           | -                                             |
-| `--lat <lat>`           | Receiver latitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lon`)                              | -                                             |
-| `--lon <lon>`           | Receiver longitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lat`)                             | -                                             |
-| `--columns <list>`      | Comma-separated columns to show, by header name (e.g. `icao,callsign,alt,dist`) - see [Columns](#columns)               | auto-fit to the terminal width                |
-| `-f`, `--filter <text>` | Start with this filter applied, same syntax as the `F` prompt (e.g. `"is:air within:25"`) - see [Filtering](#filtering) | -                                             |
-| `-h`, `--help`          | Show usage                                                                                                              | -                                             |
+| Flag                    | Description                                                                                                                                        | Default                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `--source <source>`     | Feed to connect to: `json`, `sbs`, or `beast`                                                                                                      | `sbs`                                         |
+| `--host <host>`         | dump1090-fa station hostname/IP                                                                                                                    | `localhost`                                   |
+| `--port <port>`         | Port to connect to                                                                                                                                 | `8080` (json), `30003` (sbs), `30005` (beast) |
+| `--url <url>`           | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)                                                                      | -                                             |
+| `--lat <lat>`           | Receiver latitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lon`)                                                         | -                                             |
+| `--lon <lon>`           | Receiver longitude in decimal degrees - enables the Dist/Brg/CPA columns (requires `--lat`)                                                        | -                                             |
+| `--columns <list>`      | Comma-separated columns to show, by header name (e.g. `icao,callsign,alt,dist`) - see [Columns](#columns)                                          | auto-fit to the terminal width                |
+| `-f`, `--filter <text>` | Start with this filter applied, same syntax as the `F` prompt (e.g. `"is:air within:25"`) - see [Filtering](#filtering)                            | -                                             |
+| `--watch <list>`        | Comma-separated ICAO hexes, N-numbers, or callsign prefixes to highlight and ring the bell for - see [Watchlist and alerts](#watchlist-and-alerts) | -                                             |
+| `--alert-emergency`     | Ring the bell when an aircraft first squawks or declares an emergency                                                                              | off                                           |
+| `--no-bell`             | Never ring the terminal bell; watchlist and emergency highlighting still apply                                                                     | bell on                                       |
+| `-h`, `--help`          | Show usage                                                                                                                                         | -                                             |
 
 ### Hotkeys
 
@@ -49,7 +52,7 @@ adsbtop --source sbs --host 192.168.1.50
 | `H`             | Toggle the help overlay                                                                        |
 | `Q`             | Quit                                                                                           |
 
-Aircraft render in bold red when they carry any of: an emergency squawk code (7500/7600/7700), a declared emergency state, or an active ACAS/TCAS Resolution Advisory.
+Aircraft render in bold red when they carry any of: an emergency squawk code (7500/7600/7700), a declared emergency state, or an active ACAS/TCAS Resolution Advisory. Aircraft on the `--watch` list render in bold yellow (see [Watchlist and alerts](#watchlist-and-alerts)); an emergency row stays red even when watched.
 
 ### Sorting
 
@@ -66,7 +69,7 @@ Which columns render is decided in one of two ways:
 
 ### Status bar
 
-The blue status bar above the table shows the source, host, and port; the number of tracked aircraft (as `matching/total` followed by the filter text while a filter is active - see [Filtering](#filtering)); the total number of feed update events received since adsbtop started (`msgs`); the current rate (`msgs/s`); and the time since the last update. `B` hides and shows it. While paused, a `PAUSED` chip (black on red) sits at the end of the bar. Note that the `PAUSED` and `RECONNECTING` chips live in the status bar, so they are hidden along with it.
+The blue status bar above the table shows the source, host, and port; the number of tracked aircraft (as `matching/total` followed by the filter text while a filter is active - see [Filtering](#filtering)); the number of watched aircraft when `--watch` is set, with how many the filter is hiding (see [Watchlist and alerts](#watchlist-and-alerts)); the total number of feed update events received since adsbtop started (`msgs`); the current rate (`msgs/s`); and the time since the last update. `B` hides and shows it. While paused, a `PAUSED` chip (black on red) sits at the end of the bar. Note that the `PAUSED` and `RECONNECTING` chips live in the status bar, so they are hidden along with it.
 
 ### Filtering
 
@@ -85,6 +88,14 @@ For example, `is:air within:25 UAL` keeps airborne United aircraft inside 25 nm.
 To start already filtered, pass `-f`/`--filter <text>` with the same syntax; it is validated at startup and a bad term exits with the message the prompt would have shown. Once running, `F` and `Escape` edit or clear it like any other filter.
 
 The cursor, `S`earch, `N`ext match, and the detail view all work on the filtered rows, and applying a filter that hides the cursor row moves the cursor to the first match. An aircraft whose state changes so it no longer matches (say it lands under `is:airborne`) drops out of the table on its next update. The filter lasts for the session only.
+
+### Watchlist and alerts
+
+`--watch <list>` takes comma-separated terms, each an ICAO hex, an N-number, or a callsign prefix: `--watch a0b1c2,N12345,UAL`. A term never has to say which kind it is - it matches an aircraft whose hex or resolved N-number equals it, or whose callsign starts with it, ignoring case. Matching rows render in bold yellow, and the status bar gains a `watch: 2` segment counting the tracked aircraft that match.
+
+The terminal bell rings once when a watched aircraft first appears and once when it is lost. Because N-numbers resolve from the bundled registry a few seconds after startup, a watch by N-number rings when the registration resolves rather than when the aircraft first shows up. `--alert-emergency` additionally rings when any aircraft first becomes an emergency row (an emergency squawk, a declared emergency state, or an active Resolution Advisory), watched or not. Several alerts landing in the same update ring once.
+
+Alerts and the filter are deliberately independent: the bell reports what is tracked, not what is shown, so a watched aircraft that an active filter hides still rings, and the status bar reads `watch: 2 (1 hidden)` so you know to widen the filter. The bell is suppressed while the table is paused, and `--no-bell` silences it for the whole session while keeping the highlighting - useful in a shared terminal.
 
 ### Connection status
 

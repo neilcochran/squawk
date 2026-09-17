@@ -6,6 +6,7 @@ import { COLUMNS, parseColumnList } from './columns.js';
 import type { ColumnKey } from './columns.js';
 import { parseFilter } from './filter.js';
 import type { AircraftFilter } from './filter.js';
+import { parseWatchlist } from './watchlist.js';
 
 /** Which dump1090-fa output adsbtop connects to. */
 export type FeedSource = 'json' | 'sbs' | 'beast';
@@ -45,6 +46,12 @@ export interface CliOptions {
   columnKeys: readonly ColumnKey[] | undefined;
   /** The filter to start with, from `-f`/`--filter`, already parsed and validated. Undefined when the flag was not passed. */
   filter: AircraftFilter | undefined;
+  /** Normalized `--watch` terms (ICAO hexes, N-numbers, callsign prefixes). Empty when the flag was not passed. */
+  watchlist: readonly string[];
+  /** Whether `--alert-emergency` was passed: ring the bell when an aircraft first becomes an emergency. */
+  alertEmergency: boolean;
+  /** Whether the terminal bell may ring at all. False under `--no-bell`. */
+  bell: boolean;
 }
 
 /** A `parseCliArgs` failure: the reason `argv` could not be turned into {@link CliOptions}. */
@@ -102,6 +109,9 @@ Options:
   --lon <lon>                Receiver longitude in decimal degrees - enables Dist/Brg/CPA columns (requires --lat)
   --columns <list>           Comma-separated columns to show, by header name (e.g. icao,callsign,alt,dist) - default: auto-fit to the terminal width
   -f, --filter <text>        Start with this filter applied, same syntax as the [F] prompt (e.g. "is:air within:25")
+  --watch <list>             Comma-separated ICAO hexes, N-numbers, or callsign prefixes to highlight and ring the bell for
+  --alert-emergency          Ring the bell when an aircraft first squawks or declares an emergency
+  --no-bell                  Never ring the terminal bell (watchlist and emergency highlighting still apply)
   -h, --help                 Show this help message
 `;
 
@@ -218,6 +228,9 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
         lon: { type: 'string' },
         columns: { type: 'string' },
         filter: { type: 'string', short: 'f' },
+        watch: { type: 'string' },
+        'alert-emergency': { type: 'boolean', default: false },
+        'no-bell': { type: 'boolean', default: false },
         help: { type: 'boolean', short: 'h', default: false },
       },
       strict: true,
@@ -237,6 +250,9 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       location: undefined,
       columnKeys: undefined,
       filter: undefined,
+      watchlist: [],
+      alertEmergency: false,
+      bell: true,
     };
   }
 
@@ -253,6 +269,15 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
   const parsedFilter = parseStartupFilter(values.filter, parsedLocation.location !== undefined);
   if ('message' in parsedFilter) {
     return parsedFilter;
+  }
+
+  let watchlist: readonly string[] = [];
+  if (values.watch !== undefined) {
+    const parsedWatchlist = parseWatchlist(values.watch);
+    if ('message' in parsedWatchlist) {
+      return parsedWatchlist;
+    }
+    watchlist = parsedWatchlist.terms;
   }
 
   const rawSource = values.source ?? DEFAULT_SOURCE;
@@ -284,5 +309,8 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     location: parsedLocation.location,
     columnKeys: parsedColumns.columnKeys,
     filter: parsedFilter.filter,
+    watchlist,
+    alertEmergency: values['alert-emergency'] === true,
+    bell: values['no-bell'] !== true,
   };
 }

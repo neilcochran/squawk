@@ -37,9 +37,11 @@ import type { RegistrationCache } from './registration-cache.js';
 import { findMatchIcaoHex } from './search.js';
 import { moveSelection } from './selection.js';
 import { useAircraftFeed } from './use-aircraft-feed.js';
+import { ringTerminalBell, useAlerts } from './use-alerts.js';
 import { useIcaoRegistry } from './use-icao-registry.js';
 import type { RegistryDataLoader } from './use-icao-registry.js';
 import { useTerminalWidth } from './use-terminal-width.js';
+import { matchesWatchlist } from './watchlist.js';
 
 /** How often the age column and status-header "last update" text refresh. */
 const CLOCK_TICK_MS = 1000;
@@ -69,6 +71,14 @@ export interface AppProps {
   columnKeys: readonly ColumnKey[] | undefined;
   /** Filter to start with (`-f`/`--filter`), if any. The `[F]` prompt and Escape edit or clear it like one entered in-app. */
   filter: AircraftFilter | undefined;
+  /** Normalized `--watch` terms; empty for no watchlist. Matching rows render highlighted and ring the bell on appearance and loss. */
+  watchlist: readonly string[];
+  /** Whether an aircraft first becoming an emergency rings the bell (`--alert-emergency`). */
+  alertEmergency: boolean;
+  /** Whether the bell may ring at all (false under `--no-bell`). */
+  bell: boolean;
+  /** Rings the terminal bell. Defaults to writing BEL to stdout; overridable in tests. */
+  ring?: () => void;
 }
 
 /**
@@ -97,6 +107,10 @@ export interface AppProps {
  * The `[F]ilter` narrows the sorted rows before anything else sees them:
  * the cursor, search, next-match, and the detail view all operate on the
  * filtered list, so a hidden aircraft can never be selected or opened.
+ * Watchlist alerts deliberately do not go through the filter - they diff
+ * the live, unfiltered aircraft list, since the bell is about what is
+ * tracked rather than what is shown - and the status bar's `watch` segment
+ * reports how many watched aircraft the filter is currently hiding.
  *
  * @param props - The feed to display, its connection details, and startup column configuration.
  */
@@ -131,6 +145,14 @@ export function App(props: AppProps): ReactElement {
   const [filterError, setFilterError] = useState<string | undefined>(undefined);
   const [activeFilter, setActiveFilter] = useState<AircraftFilter | undefined>(props.filter);
 
+  useAlerts({
+    aircraft: enrichedAircraft,
+    watchlist: props.watchlist,
+    alertEmergency: props.alertEmergency,
+    enabled: props.bell && !paused,
+    ring: props.ring ?? ringTerminalBell,
+  });
+
   useEffect(() => {
     const handle = setInterval(() => setNow(Date.now()), CLOCK_TICK_MS);
     return () => clearInterval(handle);
@@ -157,6 +179,15 @@ export function App(props: AppProps): ReactElement {
     [available, columnKeys, terminalWidth],
   );
   const sortCycle = useMemo(() => sortKeyCycle(columns), [columns]);
+  const watchedCount = useMemo(
+    () =>
+      displayedAircraft.filter((aircraft) => matchesWatchlist(aircraft, props.watchlist)).length,
+    [displayedAircraft, props.watchlist],
+  );
+  const visibleWatchedCount = useMemo(
+    () => filteredAircraft.filter((aircraft) => matchesWatchlist(aircraft, props.watchlist)).length,
+    [filteredAircraft, props.watchlist],
+  );
 
   const firstSortKey = sortCycle[0];
   if (!sortCycle.includes(sortKey) && firstSortKey !== undefined) {
@@ -396,6 +427,11 @@ export function App(props: AppProps): ReactElement {
               ? undefined
               : { text: activeFilter.text, matchCount: filteredAircraft.length }
           }
+          watch={
+            props.watchlist.length === 0
+              ? undefined
+              : { matchCount: watchedCount, hiddenCount: watchedCount - visibleWatchedCount }
+          }
         />
       ) : undefined}
       {panel === 'help' ? (
@@ -423,6 +459,7 @@ export function App(props: AppProps): ReactElement {
           columns={columns}
           nowMs={now}
           location={props.location}
+          watchlist={props.watchlist}
           sortKey={sortKey}
           sortDirection={sortDirection}
           selectedIcaoHex={selectedIcaoHex}

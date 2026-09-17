@@ -14,6 +14,9 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     location: undefined,
     columnKeys: undefined,
     filter: undefined,
+    watchlist: [],
+    alertEmergency: false,
+    bell: true,
     ...overrides,
   };
 }

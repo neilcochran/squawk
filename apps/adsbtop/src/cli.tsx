@@ -28,5 +28,8 @@ render(
     location={parsed.location}
     columnKeys={parsed.columnKeys}
     filter={parsed.filter}
+    watchlist={parsed.watchlist}
+    alertEmergency={parsed.alertEmergency}
+    bell={parsed.bell}
   />,
 );

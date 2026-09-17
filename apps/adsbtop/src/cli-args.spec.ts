@@ -206,6 +206,41 @@ describe('parseCliArgs', () => {
     }
   });
 
+  it('defaults to no watchlist, no emergency alerts, and the bell enabled', () => {
+    const result = parseCliArgs([]);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.watchlist).toEqual([]);
+      expect(result.alertEmergency).toBe(false);
+      expect(result.bell).toBe(true);
+    }
+  });
+
+  it('parses --watch into normalized terms', () => {
+    const result = parseCliArgs(['--watch', 'a0b1c2, n12345,UAL']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.watchlist).toEqual(['A0B1C2', 'N12345', 'UAL']);
+    }
+  });
+
+  it('rejects an empty --watch', () => {
+    const result = parseCliArgs(['--watch', ' , ']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('--watch needs at least one');
+    }
+  });
+
+  it('parses --alert-emergency and --no-bell', () => {
+    const result = parseCliArgs(['--alert-emergency', '--no-bell']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.alertEmergency).toBe(true);
+      expect(result.bell).toBe(false);
+    }
+  });
+
   it('parses valid --lat and --lon into location', () => {
     const result = parseCliArgs(['--lat', '40.6413', '--lon', '-73.7781']);
     expect(isError(result)).toBe(false);

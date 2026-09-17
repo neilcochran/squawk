@@ -25,6 +25,7 @@ describe('AircraftTable', () => {
         columns={availableColumns(undefined)}
         nowMs={0}
         location={undefined}
+        watchlist={[]}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -44,6 +45,7 @@ describe('AircraftTable', () => {
         columns={availableColumns(undefined)}
         nowMs={0}
         location={undefined}
+        watchlist={[]}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -64,6 +66,7 @@ describe('AircraftTable', () => {
         columns={availableColumns(undefined)}
         nowMs={0}
         location={undefined}
+        watchlist={[]}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -84,6 +87,7 @@ describe('AircraftTable', () => {
         columns={selectColumns(COLUMNS, minimalColumnKeys())}
         nowMs={0}
         location={undefined}
+        watchlist={[]}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -103,6 +107,7 @@ describe('AircraftTable', () => {
         columns={availableColumns(undefined)}
         nowMs={0}
         location={undefined}
+        watchlist={[]}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -120,6 +125,7 @@ describe('AircraftTable', () => {
         columns={availableColumns(undefined)}
         nowMs={0}
         location={undefined}
+        watchlist={[]}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -158,6 +164,7 @@ describe('AircraftTable', () => {
         columns={availableColumns(undefined)}
         nowMs={0}
         location={undefined}
+        watchlist={[]}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -165,6 +172,28 @@ describe('AircraftTable', () => {
     );
 
     expect(lastFrame()).toContain('SWA202');
+  });
+
+  it('renders a watched aircraft row in full', () => {
+    // ink-testing-library strips ANSI codes from lastFrame(), so the yellow
+    // highlight itself isn't assertable here - this covers that the watched
+    // branch renders the same content, both on and off the cursor row.
+    const aircraft = [makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' })];
+    for (const selectedIcaoHex of ['A0B1C2', undefined]) {
+      const { lastFrame } = render(
+        <AircraftTable
+          aircraft={aircraft}
+          columns={availableColumns(undefined)}
+          nowMs={0}
+          location={undefined}
+          watchlist={['UAL']}
+          sortKey="icaoHex"
+          sortDirection="asc"
+          selectedIcaoHex={selectedIcaoHex}
+        />,
+      );
+      expect(lastFrame()).toContain('UAL123');
+    }
   });
 
   it('renders every header regardless of which column is the active sort key', () => {
@@ -179,6 +208,7 @@ describe('AircraftTable', () => {
           columns={availableColumns(undefined)}
           nowMs={0}
           location={undefined}
+          watchlist={[]}
           sortKey={sortKey}
           sortDirection="asc"
           selectedIcaoHex={undefined}
@@ -209,6 +239,7 @@ describe('AircraftTable', () => {
           columns={availableColumns(undefined)}
           nowMs={0}
           location={undefined}
+          watchlist={[]}
           sortKey="icaoHex"
           sortDirection="asc"
           selectedIcaoHex={selectedIcaoHex}

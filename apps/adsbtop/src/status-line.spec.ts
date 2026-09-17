@@ -14,6 +14,7 @@ function makeInfo(overrides: Partial<StatusLineInfo> = {}): StatusLineInfo {
     lastMessageAt: undefined,
     nowMs: 0,
     filter: undefined,
+    watch: undefined,
     ...overrides,
   };
 }
@@ -36,6 +37,26 @@ describe('formatStatusLine', () => {
     );
 
     expect(line).toContain('aircraft: 12/40  |  filter: is:air UAL  |  msgs:');
+  });
+
+  it('shows the watched count when a watchlist is configured', () => {
+    const line = formatStatusLine(
+      makeInfo({ aircraftCount: 40, watch: { matchCount: 2, hiddenCount: 0 } }),
+    );
+
+    expect(line).toContain('aircraft: 40  |  watch: 2  |  msgs:');
+  });
+
+  it('notes how many watched aircraft the filter is hiding', () => {
+    const line = formatStatusLine(
+      makeInfo({
+        aircraftCount: 40,
+        filter: { text: 'is:air', matchCount: 12 },
+        watch: { matchCount: 2, hiddenCount: 1 },
+      }),
+    );
+
+    expect(line).toContain('filter: is:air  |  watch: 2 (1 hidden)  |  msgs:');
   });
 
   it('shows a placeholder before any update has arrived', () => {

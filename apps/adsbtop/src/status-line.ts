@@ -21,13 +21,16 @@ export interface StatusLineInfo {
   nowMs: number;
   /** The active `[F]ilter`, if any: its text and how many of `aircraftCount` currently match. */
   filter: { text: string; matchCount: number } | undefined;
+  /** The `--watch` list's standing, if one is configured: how many tracked aircraft match it and how many of those the filter is hiding. */
+  watch: { matchCount: number; hiddenCount: number } | undefined;
 }
 
 /**
  * Builds the single-line connection/activity summary shown in the status
  * header: source/host/port, tracked aircraft (as `matching/total` plus the
- * filter text while a filter is active), total messages since start,
- * current message rate, and time since the last update. A pure string
+ * filter text while a filter is active), watched aircraft (with how many
+ * the filter hides, when a watchlist is configured), total messages since
+ * start, current message rate, and time since the last update. A pure string
  * builder, kept separate from the Ink component so it is directly
  * unit-testable without a render harness.
  *
@@ -43,9 +46,16 @@ export function formatStatusLine(info: StatusLineInfo): string {
     info.filter === undefined
       ? `aircraft: ${info.aircraftCount}`
       : `aircraft: ${info.filter.matchCount}/${info.aircraftCount}  |  filter: ${info.filter.text}`;
+  const watch =
+    info.watch === undefined
+      ? ''
+      : info.watch.hiddenCount > 0
+        ? `watch: ${info.watch.matchCount} (${info.watch.hiddenCount} hidden)  |  `
+        : `watch: ${info.watch.matchCount}  |  `;
   return (
     `source: ${info.source} ${info.host}:${info.port}  |  ` +
     `${aircraft}  |  ` +
+    watch +
     `msgs: ${info.messageCount}  |  ` +
     `msgs/s: ${info.messageRatePerSec}  |  ` +
     `last update: ${lastUpdate}`
