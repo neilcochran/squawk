@@ -8,6 +8,18 @@ import type { SessionStatsInfo } from '../stats.js';
 export type StatsPanelProps = SessionStatsInfo;
 
 /**
+ * Rows the panel occupies for `info`: top border, title, one per stats
+ * line, bottom border. `App` subtracts this from the row budget while the
+ * panel is shown.
+ *
+ * @param info - The session figures about to be rendered.
+ * @returns The panel's height in rows.
+ */
+export function statsPanelHeight(info: SessionStatsInfo): number {
+  return 3 + formatStatsLines(info).length;
+}
+
+/**
  * Split-view panel below the aircraft table, toggled by `[T]`, summarizing
  * the session: uptime, current/peak/unique aircraft counts, message totals
  * and rates with a sparkline of the recent rate window, and (with a

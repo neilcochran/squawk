@@ -25,6 +25,12 @@ import { bearingToAircraftDeg, distanceToAircraftNm } from './location.js';
 import { formatAltitudeValue, formatSpeedValue } from './units.js';
 import type { UnitSystem } from './units.js';
 
+/** Rows {@link buildDetailFields} produces without a location - kept in step with the list by a test. */
+const DETAIL_FIELD_COUNT_WITHOUT_LOCATION = 24;
+
+/** Rows the location adds: Distance, Bearing, Closest approach. */
+const LOCATION_FIELD_COUNT = 3;
+
 /** One labeled row in the aircraft detail view. */
 export interface DetailField {
   /** Row label. */
@@ -191,4 +197,16 @@ export function buildDetailFields(
     { label: 'Messages', value: String(messageCount) },
     { label: 'Last seen', value: `${formatAge(aircraft.lastSeenAt, nowMs)} ago` },
   ];
+}
+
+/**
+ * How many rows {@link buildDetailFields} produces, so the detail view's
+ * scroll offset can be clamped without building the fields twice. Only
+ * the location-gated rows vary.
+ *
+ * @param hasLocation - Whether a receiver location is configured.
+ * @returns The row count.
+ */
+export function detailFieldCount(hasLocation: boolean): number {
+  return DETAIL_FIELD_COUNT_WITHOUT_LOCATION + (hasLocation ? LOCATION_FIELD_COUNT : 0);
 }

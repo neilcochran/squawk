@@ -38,25 +38,28 @@ adsbtop --source sbs --host 192.168.1.50
 
 ### Hotkeys
 
-| Key             | Action                                                                                          |
-| --------------- | ----------------------------------------------------------------------------------------------- |
-| `Up` / `Down`   | Move the row cursor                                                                             |
-| `O` / `Shift+O` | Cycle the sort column forward/backward (every column except `Grnd`)                             |
-| `R`             | Reverse the sort direction (ascending/descending)                                               |
-| `C`             | Open the column picker - choose which columns are shown                                         |
-| `P`             | Pause/resume the table - the feed keeps running underneath                                      |
-| `S`             | Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match                    |
-| `N` / `Shift+N` | Jump to the next/previous search match                                                          |
-| `F`             | Filter the table (see [Filtering](#filtering)) - `Escape` on the table clears an active filter  |
-| `M`             | Toggle the messages panel (recent new/update/lost events)                                       |
-| `V`             | Toggle messages panel verbosity (new/lost only vs. every update)                                |
-| `T`             | Toggle the session stats panel (see [Session stats](#session-stats))                            |
-| `B`             | Hide/show the status bar                                                                        |
-| `W`             | Write the table as shown to a timestamped CSV (see [Snapshot and record](#snapshot-and-record)) |
-| `U`             | Toggle units between aviation and metric (see [Units](#units))                                  |
-| `Enter` / `D`   | Show the cursor row's full detail view                                                          |
-| `H`             | Toggle the help overlay                                                                         |
-| `Q`             | Quit                                                                                            |
+| Key              | Action                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| `Up` / `Down`    | Move the row cursor (in the detail view: scroll the fields)                                     |
+| `PgUp` / `PgDn`  | Move the cursor, or scroll the detail view, a page at a time                                    |
+| `Home` / `End`   | Jump to the first/last row, or line of the detail view                                          |
+| `Left` / `Right` | In the detail view: show the previous/next aircraft                                             |
+| `O` / `Shift+O`  | Cycle the sort column forward/backward (every column except `Grnd`)                             |
+| `R`              | Reverse the sort direction (ascending/descending)                                               |
+| `C`              | Open the column picker - choose which columns are shown                                         |
+| `P`              | Pause/resume the table - the feed keeps running underneath                                      |
+| `S`              | Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match                    |
+| `N` / `Shift+N`  | Jump to the next/previous search match                                                          |
+| `F`              | Filter the table (see [Filtering](#filtering)) - `Escape` on the table clears an active filter  |
+| `M`              | Toggle the messages panel (recent new/update/lost events)                                       |
+| `V`              | Toggle messages panel verbosity (new/lost only vs. every update)                                |
+| `T`              | Toggle the session stats panel (see [Session stats](#session-stats))                            |
+| `B`              | Hide/show the status bar                                                                        |
+| `W`              | Write the table as shown to a timestamped CSV (see [Snapshot and record](#snapshot-and-record)) |
+| `U`              | Toggle units between aviation and metric (see [Units](#units))                                  |
+| `Enter` / `D`    | Show the cursor row's full detail view                                                          |
+| `H`              | Toggle the help overlay                                                                         |
+| `Q`              | Quit                                                                                            |
 
 Rows are styled by state - see [Row styling](#row-styling).
 
@@ -125,6 +128,12 @@ Alerts and the filter are deliberately independent: the bell reports what is tra
 ### Connection status
 
 The status bar shows a `RECONNECTING` chip (black on red) whenever the underlying feed's connection isn't currently up - a dropped SBS/Beast socket awaiting automatic reconnect, or (for `--source json`) the most recent poll having failed. Nothing is shown while connected.
+
+### Fitting the terminal
+
+adsbtop never draws more rows than the terminal has. The table and the detail view render only the rows that fit after the status bar, hotkey bar, any open prompt, and any open messages or stats panel, and a dim footer such as `rows 12-40 of 118` says what is hidden. The table's window follows the cursor, so `Up`/`Down` scroll it once the cursor reaches an edge, `PgUp`/`PgDn` move a page at a time, and `Home`/`End` jump to the ends. In the detail view the same keys scroll the field list instead, and `Left`/`Right` step to the previous or next aircraft without leaving it. Resizing the terminal re-fits both immediately.
+
+This is why the terminal's own scrollbar is no use with a live TUI: the whole screen is redrawn every update, so anything scrolled out of view is redrawn back. adsbtop also runs on the terminal's alternate screen, like `top` or `less`, so it leaves no trail in your scrollback and restores what was there when it exits.
 
 ### Detail view
 

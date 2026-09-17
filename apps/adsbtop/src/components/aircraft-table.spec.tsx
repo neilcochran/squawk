@@ -39,6 +39,7 @@ describe('AircraftTable', () => {
         firstSeenAtByHex={new Map()}
         staleAfterMs={60_000}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -62,6 +63,7 @@ describe('AircraftTable', () => {
         firstSeenAtByHex={new Map()}
         staleAfterMs={60_000}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -86,6 +88,7 @@ describe('AircraftTable', () => {
         firstSeenAtByHex={new Map()}
         staleAfterMs={60_000}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -110,6 +113,7 @@ describe('AircraftTable', () => {
         firstSeenAtByHex={new Map()}
         staleAfterMs={60_000}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -133,6 +137,7 @@ describe('AircraftTable', () => {
         firstSeenAtByHex={new Map()}
         staleAfterMs={60_000}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -154,6 +159,7 @@ describe('AircraftTable', () => {
         firstSeenAtByHex={new Map()}
         staleAfterMs={60_000}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -196,6 +202,7 @@ describe('AircraftTable', () => {
         firstSeenAtByHex={new Map()}
         staleAfterMs={60_000}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -221,6 +228,7 @@ describe('AircraftTable', () => {
           firstSeenAtByHex={new Map()}
           staleAfterMs={60_000}
           units="aviation"
+          window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
           sortKey="icaoHex"
           sortDirection="asc"
           selectedIcaoHex={selectedIcaoHex}
@@ -228,6 +236,34 @@ describe('AircraftTable', () => {
       );
       expect(lastFrame()).toContain('UAL123');
     }
+  });
+
+  it('renders only the window with a footer when one is set', () => {
+    const aircraft = Array.from({ length: 5 }, (_, i) =>
+      makeAircraft({ icaoHex: `A0000${i}`, callsign: `CS${i}` }),
+    );
+    const { lastFrame } = render(
+      <AircraftTable
+        aircraft={aircraft}
+        columns={TABLE_COLUMNS}
+        nowMs={0}
+        location={undefined}
+        watchlist={[]}
+        firstSeenAtByHex={new Map()}
+        staleAfterMs={60_000}
+        units="aviation"
+        window={{ start: 1, visibleRows: 2 }}
+        sortKey="icaoHex"
+        sortDirection="asc"
+        selectedIcaoHex={undefined}
+      />,
+    );
+    const frame = lastFrame();
+    expect(frame).not.toContain('A00000');
+    expect(frame).toContain('A00001');
+    expect(frame).toContain('A00002');
+    expect(frame).not.toContain('A00003');
+    expect(frame).toContain('rows 2-3 of 5');
   });
 
   it('renders new and stale rows in full', () => {
@@ -247,6 +283,7 @@ describe('AircraftTable', () => {
         firstSeenAtByHex={new Map([['A0B1C2', 10_000]])}
         staleAfterMs={10_000}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
         sortKey="icaoHex"
         sortDirection="asc"
         selectedIcaoHex={undefined}
@@ -272,6 +309,7 @@ describe('AircraftTable', () => {
           firstSeenAtByHex={new Map()}
           staleAfterMs={60_000}
           units="aviation"
+          window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
           sortKey={sortKey}
           sortDirection="asc"
           selectedIcaoHex={undefined}
@@ -306,6 +344,7 @@ describe('AircraftTable', () => {
           firstSeenAtByHex={new Map()}
           staleAfterMs={60_000}
           units="aviation"
+          window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
           sortKey="icaoHex"
           sortDirection="asc"
           selectedIcaoHex={selectedIcaoHex}

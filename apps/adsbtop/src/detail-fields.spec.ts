@@ -7,7 +7,7 @@ import type {
   TargetStateAndStatus,
 } from '@squawk/types';
 
-import { buildDetailFields } from './detail-fields.js';
+import { buildDetailFields, detailFieldCount } from './detail-fields.js';
 
 function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
   return { icaoHex: 'A0B1C2', lastSeenAt: 0, ...overrides };
@@ -61,6 +61,17 @@ function fieldValue(
 ): string | undefined {
   return fields.find((field) => field.label === label)?.value;
 }
+
+describe('detailFieldCount', () => {
+  it('matches the number of rows buildDetailFields produces, with and without a location', () => {
+    expect(detailFieldCount(false)).toBe(
+      buildDetailFields(makeAircraft(), 0, undefined, 0, 'aviation').length,
+    );
+    expect(detailFieldCount(true)).toBe(
+      buildDetailFields(makeAircraft(), 0, { lat: 0, lon: 0 }, 0, 'aviation').length,
+    );
+  });
+});
 
 describe('buildDetailFields', () => {
   it('shows "-" for every unpopulated field', () => {

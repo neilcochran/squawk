@@ -26,12 +26,13 @@ import { DetailView } from './components/detail-view.js';
 import { FilterBar } from './components/filter-bar.js';
 import { HelpOverlay } from './components/help-overlay.js';
 import { HotkeyBar } from './components/hotkey-bar.js';
-import { MessagesPanel } from './components/messages-panel.js';
+import { MessagesPanel, messagesPanelHeight } from './components/messages-panel.js';
 import type { MessageVerbosity } from './components/messages-panel.js';
 import { SearchBar } from './components/search-bar.js';
-import { StatsPanel } from './components/stats-panel.js';
+import { StatsPanel, statsPanelHeight } from './components/stats-panel.js';
 import { StatusHeader } from './components/status-header.js';
 import type { StatusNotice } from './components/status-header.js';
+import { detailFieldCount } from './detail-fields.js';
 import { filterAircraft, parseFilter } from './filter.js';
 import type { AircraftFilter } from './filter.js';
 import { createEventRecorder, openRecordSink } from './recorder.js';
@@ -47,7 +48,14 @@ import { useAircraftFeed } from './use-aircraft-feed.js';
 import { ringTerminalBell, useAlerts } from './use-alerts.js';
 import { useIcaoRegistry } from './use-icao-registry.js';
 import type { RegistryDataLoader } from './use-icao-registry.js';
-import { useTerminalWidth } from './use-terminal-width.js';
+import { useTerminalSize } from './use-terminal-size.js';
+import {
+  FILTER_BAR_ROWS,
+  mainPanelRows,
+  PANEL_CHROME_ROWS,
+  planWindow,
+  SEARCH_BAR_ROWS,
+} from './viewport.js';
 import { matchesWatchlist } from './watchlist.js';
 
 /** How often the age column and status-header "last update" text refresh. */
@@ -58,6 +66,11 @@ const INITIAL_SORT_KEY: SortKey = 'icaoHex';
 const INITIAL_SORT_DIRECTION: SortDirection = 'asc';
 /** How long a status-bar notice (snapshot saved, record failed) stays up. */
 const NOTICE_MS = 5000;
+
+/** Rows a `PgUp`/`PgDn` press moves by: one window, or ten rows when the table is not windowed. */
+function pageStep(visibleRows: number): number {
+  return Number.isFinite(visibleRows) ? visibleRows : 10;
+}
 
 /** Which content fills the main area below the status header. */
 type Panel = 'table' | 'help' | 'detail' | 'columns';
@@ -123,6 +136,14 @@ export interface AppProps {
  * the picker switches to an explicit list seeded from what was showing;
  * `[F]` in the picker returns to auto-fit.
  *
+ * The terminal's height budgets the main panel: after the status bar,
+ * hotkey bar, any open prompt, and any open messages/stats panel, the table
+ * and detail view render only the rows that fit (see `planWindow`), with
+ * the table's window following the cursor and the detail view's scrolled
+ * by `Up`/`Down`. Both windows are stored as state and adjusted during
+ * render, the same pattern as the cursor auto-select, so the window is
+ * always valid for the current list without an effect-driven extra frame.
+ *
  * `[W]` writes the filtered, sorted rows and visible columns to a CSV and
  * reports the outcome as a status-bar notice for {@link NOTICE_MS}; a
  * `--record` file is fed by an event recorder for the app's lifetime, with
@@ -143,7 +164,7 @@ export function App(props: AppProps): ReactElement {
   const { exit } = useApp();
   const view = useAircraftFeed(props.feed, props.location);
   const registry = useIcaoRegistry(props.registryDataLoader);
-  const terminalWidth = useTerminalWidth();
+  const { columns: terminalWidth, rows: terminalRows } = useTerminalSize();
   const [registrationCache] = useState<RegistrationCache>(() => new Map());
   const enrichedAircraft = useMemo(
     () => enrichAircraftList(view.aircraft, registry, registrationCache),
@@ -172,6 +193,8 @@ export function App(props: AppProps): ReactElement {
   const [activeFilter, setActiveFilter] = useState<AircraftFilter | undefined>(props.filter);
   const [notice, setNotice] = useState<(StatusNotice & { at: number }) | undefined>(undefined);
   const [units, setUnits] = useState<UnitSystem>(props.units);
+  const [tableWindowStart, setTableWindowStart] = useState(0);
+  const [detailScroll, setDetailScroll] = useState(0);
 
   const { recordPath, openRecordSink: openSink = openRecordSink } = props;
   useEffect(() => {
@@ -245,9 +268,52 @@ export function App(props: AppProps): ReactElement {
     setSelectedIcaoHex(firstAircraft.icaoHex);
   }
 
-  const selectedAircraft = filteredAircraft.find(
+  const selectedIndex = filteredAircraft.findIndex(
     (aircraft) => aircraft.icaoHex === selectedIcaoHex,
   );
+  const selectedAircraft = filteredAircraft[selectedIndex];
+
+  const messagesEntries = messageVerbosity === 'newAndLost' ? view.newAndLostLog : view.messageLog;
+  const statsInfo = {
+    startedAt: view.startedAt,
+    nowMs: now,
+    aircraftCount: view.aircraft.length,
+    peakAircraftCount: view.peakAircraftCount,
+    uniqueAircraftCount: view.uniqueAircraftCount,
+    messageCount: view.messageCount,
+    messageRatePerSec: view.messageRatePerSec,
+    rateHistory: view.rateHistory,
+    maxDistance: view.maxDistance,
+    hasLocation: props.location !== undefined,
+    units,
+  };
+  const mainRows = mainPanelRows({
+    terminalRows,
+    showStatus,
+    promptRows: searching ? SEARCH_BAR_ROWS : filtering ? FILTER_BAR_ROWS : 0,
+    messagesRows: showMessages ? messagesPanelHeight(messagesEntries.length) : 0,
+    statsRows: showStats ? statsPanelHeight(statsInfo) : 0,
+  });
+  const panelCapacity =
+    mainRows === undefined ? undefined : Math.max(1, mainRows - PANEL_CHROME_ROWS);
+  const tableWindow = planWindow(
+    filteredAircraft.length,
+    panelCapacity,
+    tableWindowStart,
+    selectedIndex,
+  );
+  if (tableWindow.start !== tableWindowStart) {
+    setTableWindowStart(tableWindow.start);
+  }
+  const detailWindow = planWindow(
+    detailFieldCount(props.location !== undefined),
+    panelCapacity,
+    detailScroll,
+    -1,
+  );
+  if (detailWindow.start !== detailScroll) {
+    setDetailScroll(detailWindow.start);
+  }
 
   function handleSearchSubmit(query: string): void {
     setSearching(false);
@@ -375,6 +441,42 @@ export function App(props: AppProps): ReactElement {
         }
         return;
       }
+      if (panel === 'detail') {
+        // In the detail view the vertical keys scroll the fields; Left/Right
+        // step to the previous/next aircraft instead.
+        if (key.upArrow) {
+          setDetailScroll((prev) => prev - 1);
+          return;
+        }
+        if (key.downArrow) {
+          setDetailScroll((prev) => prev + 1);
+          return;
+        }
+        if (key.pageUp) {
+          setDetailScroll((prev) => prev - detailWindow.visibleRows);
+          return;
+        }
+        if (key.pageDown) {
+          setDetailScroll((prev) => prev + detailWindow.visibleRows);
+          return;
+        }
+        if (key.home) {
+          setDetailScroll(0);
+          return;
+        }
+        if (key.end) {
+          setDetailScroll(Number.MAX_SAFE_INTEGER);
+          return;
+        }
+        if (key.leftArrow) {
+          setSelectedIcaoHex((prev) => moveSelection(filteredAircraft, prev, -1));
+          return;
+        }
+        if (key.rightArrow) {
+          setSelectedIcaoHex((prev) => moveSelection(filteredAircraft, prev, 1));
+          return;
+        }
+      }
       if (key.upArrow) {
         setSelectedIcaoHex((prev) => moveSelection(filteredAircraft, prev, -1));
         return;
@@ -383,8 +485,29 @@ export function App(props: AppProps): ReactElement {
         setSelectedIcaoHex((prev) => moveSelection(filteredAircraft, prev, 1));
         return;
       }
+      if (key.pageUp) {
+        setSelectedIcaoHex((prev) =>
+          moveSelection(filteredAircraft, prev, -pageStep(tableWindow.visibleRows)),
+        );
+        return;
+      }
+      if (key.pageDown) {
+        setSelectedIcaoHex((prev) =>
+          moveSelection(filteredAircraft, prev, pageStep(tableWindow.visibleRows)),
+        );
+        return;
+      }
+      if (key.home) {
+        setSelectedIcaoHex(filteredAircraft[0]?.icaoHex);
+        return;
+      }
+      if (key.end) {
+        setSelectedIcaoHex(filteredAircraft[filteredAircraft.length - 1]?.icaoHex);
+        return;
+      }
       if (key.return) {
         if (selectedAircraft !== undefined) {
+          setDetailScroll(0);
           setPanel((prev) => (prev === 'detail' ? 'table' : 'detail'));
         }
         return;
@@ -420,6 +543,7 @@ export function App(props: AppProps): ReactElement {
         case 'd':
         case 'D':
           if (selectedAircraft !== undefined) {
+            setDetailScroll(0);
             setPanel((prev) => (prev === 'detail' ? 'table' : 'detail'));
           }
           break;
@@ -536,6 +660,7 @@ export function App(props: AppProps): ReactElement {
           location={props.location}
           messageCount={view.messageCountByHex.get(selectedAircraft.icaoHex) ?? 0}
           units={units}
+          window={detailWindow}
         />
       ) : (
         <AircraftTable
@@ -547,31 +672,15 @@ export function App(props: AppProps): ReactElement {
           firstSeenAtByHex={view.firstSeenAtByHex}
           staleAfterMs={props.staleAfterMs}
           units={units}
+          window={tableWindow}
           sortKey={sortKey}
           sortDirection={sortDirection}
           selectedIcaoHex={selectedIcaoHex}
         />
       )}
-      {showStats ? (
-        <StatsPanel
-          startedAt={view.startedAt}
-          nowMs={now}
-          aircraftCount={view.aircraft.length}
-          peakAircraftCount={view.peakAircraftCount}
-          uniqueAircraftCount={view.uniqueAircraftCount}
-          messageCount={view.messageCount}
-          messageRatePerSec={view.messageRatePerSec}
-          rateHistory={view.rateHistory}
-          maxDistance={view.maxDistance}
-          hasLocation={props.location !== undefined}
-          units={units}
-        />
-      ) : undefined}
+      {showStats ? <StatsPanel {...statsInfo} /> : undefined}
       {showMessages ? (
-        <MessagesPanel
-          entries={messageVerbosity === 'newAndLost' ? view.newAndLostLog : view.messageLog}
-          verbosity={messageVerbosity}
-        />
+        <MessagesPanel entries={messagesEntries} verbosity={messageVerbosity} />
       ) : undefined}
       {searching ? (
         <SearchBar query={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} />

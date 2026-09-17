@@ -10,7 +10,10 @@ interface HelpEntry {
 }
 
 const HELP_ENTRIES: readonly HelpEntry[] = [
-  { key: 'Up/Down', description: 'Move the row cursor' },
+  { key: 'Up/Down', description: 'Move the row cursor (in the detail view: scroll the fields)' },
+  { key: 'PgUp/PgDn', description: 'Move the cursor (or scroll the detail view) a page at a time' },
+  { key: 'Home/End', description: 'Jump to the first/last row (or line of the detail view)' },
+  { key: 'Left/Right', description: 'In the detail view: show the previous/next aircraft' },
   {
     key: 'O / Shift+O',
     description: 'Cycle the sort column forward/backward (every column but Grnd)',

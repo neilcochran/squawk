@@ -10,6 +10,8 @@ import { isEmergencyAircraft } from '../format.js';
 import { isFreshRow, isStaleRow, rowTextStyle } from '../row-style.js';
 import type { RowTextStyle } from '../row-style.js';
 import type { UnitSystem } from '../units.js';
+import { isWindowed, windowLabel } from '../viewport.js';
+import type { RowWindow } from '../viewport.js';
 import { matchesWatchlist } from '../watchlist.js';
 
 /** Props for {@link AircraftTable}. */
@@ -30,6 +32,8 @@ export interface AircraftTableProps {
   staleAfterMs: number;
   /** The unit system the unit-bearing columns render in. */
   units: UnitSystem;
+  /** Which rows of `aircraft` to render - everything when the table fits the terminal, a slice with a footer when it does not. See `planWindow`. */
+  window: RowWindow;
   /** The column `aircraft` is currently sorted by - highlighted in the header row so the active sort is visible while cycling with `[O]`. */
   sortKey: SortKey;
   /** Which way `sortKey` is ordered - shown as a `^`/`v` suffix on the highlighted header. */
@@ -198,7 +202,9 @@ function AircraftRow({
  * and {@link AircraftTableProps.sortDirection}. The cursor row is highlighted
  * separately - see {@link AircraftTableProps.selectedIcaoHex}. The whole
  * table sits inside the same round cyan border the detail view and help
- * overlay use, so every main-area panel shares one frame.
+ * overlay use, so every main-area panel shares one frame. When the rows
+ * do not fit the terminal, only {@link AircraftTableProps.window} is
+ * rendered, with a footer saying which rows those are.
  *
  * @param props - The aircraft, columns, active sort key and direction, selected row, current time, and location to render.
  */
@@ -230,19 +236,26 @@ export function AircraftTable(props: AircraftTableProps): ReactElement {
       {props.aircraft.length === 0 ? (
         <Text dimColor>No aircraft tracked yet.</Text>
       ) : (
-        props.aircraft.map((aircraft) => (
-          <AircraftRow
-            key={aircraft.icaoHex}
-            aircraft={aircraft}
-            columns={props.columns}
-            context={context}
-            watchlist={props.watchlist}
-            firstSeenAt={props.firstSeenAtByHex.get(aircraft.icaoHex)}
-            staleAfterMs={props.staleAfterMs}
-            selected={aircraft.icaoHex === props.selectedIcaoHex}
-          />
-        ))
+        props.aircraft
+          .slice(props.window.start, props.window.start + props.window.visibleRows)
+          .map((aircraft) => (
+            <AircraftRow
+              key={aircraft.icaoHex}
+              aircraft={aircraft}
+              columns={props.columns}
+              context={context}
+              watchlist={props.watchlist}
+              firstSeenAt={props.firstSeenAtByHex.get(aircraft.icaoHex)}
+              staleAfterMs={props.staleAfterMs}
+              selected={aircraft.icaoHex === props.selectedIcaoHex}
+            />
+          ))
       )}
+      {isWindowed(props.window, props.aircraft.length) ? (
+        <Text dimColor>
+          {windowLabel(props.window, props.aircraft.length, 'rows')} (Up/Down, PgUp/PgDn, Home/End)
+        </Text>
+      ) : undefined}
     </Box>
   );
 }

@@ -18,6 +18,7 @@ describe('DetailView', () => {
         location={undefined}
         messageCount={0}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
       />,
     );
 
@@ -36,6 +37,7 @@ describe('DetailView', () => {
         location={undefined}
         messageCount={0}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
       />,
     );
 
@@ -52,6 +54,7 @@ describe('DetailView', () => {
         location={undefined}
         messageCount={42}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
       />,
     );
 
@@ -67,6 +70,7 @@ describe('DetailView', () => {
         location={{ lat: 0, lon: 0 }}
         messageCount={0}
         units="aviation"
+        window={{ start: 0, visibleRows: Number.POSITIVE_INFINITY }}
       />,
     );
 
