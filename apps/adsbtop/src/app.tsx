@@ -10,7 +10,6 @@ import type { FeedSource } from './cli-args.js';
 import {
   autoFitColumns,
   availableColumns,
-  COLUMNS,
   minimalColumnKeys,
   nextSortKey,
   selectColumns,
@@ -18,6 +17,7 @@ import {
   sortKeyCycle,
   TABLE_CHROME_WIDTH,
   tableRowWidth,
+  unavailableColumns,
 } from './columns.js';
 import type { ColumnKey, SortDirection, SortKey } from './columns.js';
 import { AircraftTable } from './components/aircraft-table.js';
@@ -170,7 +170,11 @@ export function App(props: AppProps): ReactElement {
     () => filterAircraft(sortedAircraft, activeFilter, props.location),
     [sortedAircraft, activeFilter, props.location],
   );
-  const available = useMemo(() => availableColumns(props.location), [props.location]);
+  const availability = useMemo(
+    () => ({ source: props.source, location: props.location }),
+    [props.source, props.location],
+  );
+  const available = useMemo(() => availableColumns(availability), [availability]);
   const columns = useMemo(
     () =>
       columnKeys === undefined
@@ -439,7 +443,7 @@ export function App(props: AppProps): ReactElement {
       ) : panel === 'columns' ? (
         <ColumnPicker
           availableColumns={available}
-          unavailableColumns={COLUMNS.filter((column) => !available.includes(column))}
+          unavailableColumns={unavailableColumns(availability)}
           selectedKeys={columns.map((column) => column.key)}
           cursorIndex={pickerIndex}
           autoFit={columnKeys === undefined}

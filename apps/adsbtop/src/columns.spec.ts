@@ -16,6 +16,8 @@ import {
   sortKeyCycle,
   TABLE_CHROME_WIDTH,
   tableRowWidth,
+  unavailableColumns,
+  unavailableReason,
 } from './columns.js';
 import type { ColumnDef, ColumnKey, RenderContext, SortKey } from './columns.js';
 
@@ -36,6 +38,8 @@ function keysOf(columns: readonly ColumnDef[]): ColumnKey[] {
 }
 
 const LOCATION: Coordinates = { lat: 0, lon: 0 };
+const BEAST_NO_LOCATION = { source: 'beast', location: undefined } as const;
+const BEAST_WITH_LOCATION = { source: 'beast', location: LOCATION } as const;
 const NO_LOCATION: RenderContext = { nowMs: 0, location: undefined };
 const WITH_LOCATION: RenderContext = { nowMs: 0, location: LOCATION };
 
@@ -58,6 +62,12 @@ describe('COLUMNS', () => {
     const aircraft = makeAircraft({ registration: { icaoHex: 'A0B1C2', registration: 'N12345' } });
     expect(column('registration').render(aircraft, NO_LOCATION)).toBe('N12345');
     expect(column('registration').render(makeAircraft(), NO_LOCATION)).toBe('-');
+  });
+
+  it('renders the category column as a code, with a placeholder for none or unknown', () => {
+    expect(column('category').render(makeAircraft({ category: 'heavy' }), NO_LOCATION)).toBe('HVY');
+    expect(column('category').render(makeAircraft({ category: 'unknown' }), NO_LOCATION)).toBe('-');
+    expect(column('category').render(makeAircraft(), NO_LOCATION)).toBe('-');
   });
 
   it('renders the age column relative to the context time', () => {
@@ -94,15 +104,60 @@ describe('COLUMNS', () => {
   });
 });
 
+describe('unavailableReason', () => {
+  it('names the location gate for the location columns without a location', () => {
+    expect(unavailableReason(column('distance'), BEAST_NO_LOCATION)).toBe('needs --lat/--lon');
+    expect(unavailableReason(column('distance'), BEAST_WITH_LOCATION)).toBeUndefined();
+  });
+
+  it('names the source for a column that source never sends', () => {
+    expect(unavailableReason(column('category'), { source: 'sbs', location: undefined })).toBe(
+      'is not sent by sbs',
+    );
+    expect(
+      unavailableReason(column('category'), { source: 'json', location: undefined }),
+    ).toBeUndefined();
+    expect(unavailableReason(column('category'), BEAST_NO_LOCATION)).toBeUndefined();
+  });
+
+  it('is undefined for an always-available column', () => {
+    expect(
+      unavailableReason(column('icaoHex'), { source: 'sbs', location: undefined }),
+    ).toBeUndefined();
+  });
+});
+
 describe('availableColumns', () => {
   it('omits the location columns without a location', () => {
-    const available = availableColumns(undefined);
+    const available = availableColumns(BEAST_NO_LOCATION);
     expect(available).toHaveLength(COLUMNS.length - 3);
     expect(available.some((candidate) => candidate.requiresLocation)).toBe(false);
   });
 
-  it('includes every column when a location is configured', () => {
-    expect(availableColumns(LOCATION)).toEqual(COLUMNS);
+  it('omits the category column for the sbs source', () => {
+    const available = availableColumns({ source: 'sbs', location: LOCATION });
+    expect(available).toHaveLength(COLUMNS.length - 1);
+    expect(keysOf(available)).not.toContain('category');
+  });
+
+  it('includes every column when a location is configured and the source sends everything', () => {
+    expect(availableColumns(BEAST_WITH_LOCATION)).toEqual(COLUMNS);
+  });
+});
+
+describe('unavailableColumns', () => {
+  it('lists each unavailable column with its reason, in display order', () => {
+    const unavailable = unavailableColumns({ source: 'sbs', location: undefined });
+    expect(unavailable.map(({ column: candidate, reason }) => [candidate.key, reason])).toEqual([
+      ['category', 'is not sent by sbs'],
+      ['distance', 'needs --lat/--lon'],
+      ['bearing', 'needs --lat/--lon'],
+      ['closestApproach', 'needs --lat/--lon'],
+    ]);
+  });
+
+  it('is empty when everything is available', () => {
+    expect(unavailableColumns(BEAST_WITH_LOCATION)).toEqual([]);
   });
 });
 
@@ -118,7 +173,7 @@ describe('tableRowWidth', () => {
 });
 
 describe('autoFitColumns', () => {
-  const all = availableColumns(LOCATION);
+  const all = availableColumns(BEAST_WITH_LOCATION);
 
   it('keeps every column when they fit', () => {
     const width = tableRowWidth(all) + TABLE_CHROME_WIDTH;
@@ -172,7 +227,7 @@ describe('selectColumns', () => {
   });
 
   it('ignores keys that are not available', () => {
-    const selected = selectColumns(availableColumns(undefined), ['icaoHex', 'distance']);
+    const selected = selectColumns(availableColumns(BEAST_NO_LOCATION), ['icaoHex', 'distance']);
     expect(keysOf(selected)).toEqual(['icaoHex']);
   });
 });
@@ -231,10 +286,11 @@ describe('parseColumnList', () => {
 
 describe('sortKeyCycle', () => {
   it('covers every visible column except Grnd, in display order', () => {
-    expect(sortKeyCycle(availableColumns(undefined))).toEqual([
+    expect(sortKeyCycle(availableColumns(BEAST_NO_LOCATION))).toEqual([
       'icaoHex',
       'callsign',
       'registration',
+      'category',
       'squawk',
       'altitude',
       'groundSpeed',
@@ -251,7 +307,7 @@ describe('sortKeyCycle', () => {
 });
 
 describe('nextSortKey', () => {
-  const cycle = sortKeyCycle(availableColumns(undefined));
+  const cycle = sortKeyCycle(availableColumns(BEAST_NO_LOCATION));
 
   it('cycles forward through every sort key back to the start', () => {
     const start: SortKey = 'icaoHex';
@@ -342,6 +398,17 @@ describe('compareAircraft', () => {
     const none = makeAircraft({ icaoHex: 'E5F6A7' });
     expect(compareAircraft(a, b, 'registration', 'asc', undefined)).toBeLessThan(0);
     expect(compareAircraft(none, a, 'registration', 'asc', undefined)).toBeGreaterThan(0);
+  });
+
+  it('sorts by category in weight-class order, with unknown and unreported last', () => {
+    const light = makeAircraft({ category: 'light' });
+    const heavy = makeAircraft({ icaoHex: 'D3E4F5', category: 'heavy' });
+    const unknown = makeAircraft({ icaoHex: 'E5F6A7', category: 'unknown' });
+    const none = makeAircraft({ icaoHex: 'F6A7B8' });
+    expect(compareAircraft(light, heavy, 'category', 'asc', undefined)).toBeLessThan(0);
+    expect(compareAircraft(heavy, unknown, 'category', 'asc', undefined)).toBeLessThan(0);
+    expect(compareAircraft(heavy, none, 'category', 'desc', undefined)).toBeLessThan(0);
+    expect(compareAircraft(unknown, none, 'category', 'asc', undefined)).toBe(0);
   });
 
   it('sorts by squawk code lexicographically', () => {

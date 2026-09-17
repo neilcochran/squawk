@@ -2,8 +2,8 @@ import { parseArgs } from 'node:util';
 
 import type { Coordinates } from '@squawk/types';
 
-import { COLUMNS, parseColumnList } from './columns.js';
-import type { ColumnKey } from './columns.js';
+import { parseColumnList, unavailableReason, COLUMNS } from './columns.js';
+import type { ColumnAvailability, ColumnKey } from './columns.js';
 import { parseFilter } from './filter.js';
 import type { AircraftFilter } from './filter.js';
 import { parseWatchlist } from './watchlist.js';
@@ -147,19 +147,20 @@ function parseLocation(
 }
 
 /**
- * Parses and validates `--columns` against the configured location: every
- * name must be a known column, and the location-gated columns (Dist, Brg,
- * CPA) cannot be requested without `--lat`/`--lon`, since they would have
- * nothing to show. Returns `{ columnKeys: undefined }` when the flag was
- * not passed, which means auto-fit.
+ * Parses and validates `--columns` against what the session can supply:
+ * every name must be a known column, and a column the session cannot
+ * populate - the location-gated ones without `--lat`/`--lon`, or one the
+ * chosen source never sends - is an error, since it would have nothing to
+ * show. Returns `{ columnKeys: undefined }` when the flag was not passed,
+ * which means auto-fit.
  *
  * @param raw - Raw `--columns` value, if passed.
- * @param location - The parsed receiver location, if any.
+ * @param availability - The parsed source and location.
  * @returns The column keys (possibly undefined), or a {@link CliArgsError}.
  */
 function parseColumns(
   raw: string | undefined,
-  location: Coordinates | undefined,
+  availability: ColumnAvailability,
 ): { columnKeys: readonly ColumnKey[] | undefined } | CliArgsError {
   if (raw === undefined) {
     return { columnKeys: undefined };
@@ -168,12 +169,13 @@ function parseColumns(
   if ('message' in parsed) {
     return parsed;
   }
-  if (location === undefined) {
-    const gated = COLUMNS.find(
-      (column) => column.requiresLocation && parsed.keys.includes(column.key),
-    );
-    if (gated !== undefined) {
-      return { message: `--columns includes ${gated.header}, which needs --lat/--lon.` };
+  for (const column of COLUMNS) {
+    if (!parsed.keys.includes(column.key)) {
+      continue;
+    }
+    const reason = unavailableReason(column, availability);
+    if (reason !== undefined) {
+      return { message: `--columns includes ${column.header}, which ${reason}.` };
     }
   }
   return { columnKeys: parsed.keys };
@@ -261,11 +263,6 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     return parsedLocation;
   }
 
-  const parsedColumns = parseColumns(values.columns, parsedLocation.location);
-  if ('message' in parsedColumns) {
-    return parsedColumns;
-  }
-
   const parsedFilter = parseStartupFilter(values.filter, parsedLocation.location !== undefined);
   if ('message' in parsedFilter) {
     return parsedFilter;
@@ -298,6 +295,14 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
 
   if (values.url !== undefined && rawSource !== 'json') {
     return { message: '--url is only valid with --source json.' };
+  }
+
+  const parsedColumns = parseColumns(values.columns, {
+    source: rawSource,
+    location: parsedLocation.location,
+  });
+  if ('message' in parsedColumns) {
+    return parsedColumns;
   }
 
   return {

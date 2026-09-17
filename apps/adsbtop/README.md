@@ -62,10 +62,14 @@ The table sorts by ICAO hex ascending at startup. `O` and `Shift+O` step through
 
 Which columns render is decided in one of two ways:
 
-- **Auto-fit (the default).** With nothing configured, adsbtop reads the terminal width and drops columns until the table fits, so a narrow window shows a sensible subset instead of truncated cells. Columns are dropped least valuable first: `Grnd`, `Reg`, `VS`, `Brg`, `Hdg`, `CPA`, `GS`, `Dist`, `Age`, `Squawk`, `Alt`, `Callsign`. `ICAO` is never dropped. Auto-fit follows the window as you resize it.
+- **Auto-fit (the default).** With nothing configured, adsbtop reads the terminal width and drops columns until the table fits, so a narrow window shows a sensible subset instead of truncated cells. Columns are dropped least valuable first: `Grnd`, `Cat`, `Reg`, `VS`, `Brg`, `Hdg`, `CPA`, `GS`, `Dist`, `Age`, `Squawk`, `Alt`, `Callsign`. `ICAO` is never dropped. Auto-fit follows the window as you resize it.
 - **An explicit set.** `--columns <list>` takes comma-separated column names as they appear in the header, case-insensitive: `--columns icao,callsign,alt,dist,cpa`. Order does not matter - columns always render in their usual display order. An unknown or duplicated name is an error listing the valid names, and `Dist`/`Brg`/`CPA` are an error without `--lat`/`--lon`. Passing `--columns` turns auto-fit off.
 
-`C` opens the column picker once running. It lists every available column with a checkbox, showing both the short header and the full name (`Brg` / `Bearing from receiver`, `CPA` / `Closest point of approach`) so the abbreviations are never ambiguous, plus how wide the current table is against the terminal. `Up`/`Down` move the cursor, `Space` toggles the column under it, `A` selects every column, `M` selects the minimal set (`ICAO`, `Callsign`, `Squawk`, `Alt`, `Age`), `F` returns to auto-fit, and `Escape`, `Enter`, or `C` closes the picker. Toggling any column switches from auto-fit to an explicit set seeded from what was showing, and at least one column always stays selected. Without `--lat`/`--lon`, the location columns are listed dimmed and cannot be selected. The picker's choices last for the session only - use `--columns` for a persistent preference.
+`C` opens the column picker once running. It lists every available column with a checkbox, showing both the short header and the full name (`Brg` / `Bearing from receiver`, `CPA` / `Closest point of approach`) so the abbreviations are never ambiguous, plus how wide the current table is against the terminal. `Up`/`Down` move the cursor, `Space` toggles the column under it, `A` selects every column, `M` selects the minimal set (`ICAO`, `Callsign`, `Squawk`, `Alt`, `Age`), `F` returns to auto-fit, and `Escape`, `Enter`, or `C` closes the picker. Toggling any column switches from auto-fit to an explicit set seeded from what was showing, and at least one column always stays selected. Columns the session cannot populate - `Dist`/`Brg`/`CPA` without `--lat`/`--lon`, and `Cat` with `--source sbs` - are left out of the table and the sort cycle entirely, and the picker lists them dimmed with the reason (`needs --lat/--lon`, `is not sent by sbs`) so they cannot be selected. Asking for one with `--columns` is a startup error for the same reason. The picker's choices last for the session only - use `--columns` for a persistent preference.
+
+### Category
+
+The `Cat` column shows the aircraft's ADS-B emitter category as a three-letter code: `LGT` light, `SML` small, `LRG` large, `HVL` high-vortex large, `HVY` heavy, `HPF` high performance, `ROT` rotorcraft, `GLD` glider, `LTA` lighter than air, `PAR` parachutist, `ULT` ultralight, `UAV` unmanned, `SPC` space vehicle, `SEV`/`SSV` surface emergency/service vehicle, and `OBS`/`OBC`/`OBL` point/cluster/line obstacle. The detail view's `Category` row spells it out with the weight class where the standard defines one, e.g. `Large (75,000 to 300,000 lb)`. Sorting on `Cat` follows the emitter-category table order, so the weight classes ascend from light to heavy rather than sorting by name. An aircraft that reports "no category information" shows `-`, exactly like one that has not reported a category at all, and sorts to the bottom with it; the detail view tells the two apart. The SBS/BaseStation format carries no category at all, so with `--source sbs` the column is unavailable: it is left out of the table, the picker lists it dimmed as `is not sent by sbs`, and `--columns cat` is a startup error. Use `json` or `beast` to see it (see [Field population by source](#field-population-by-source)).
 
 ### Status bar
 
@@ -107,10 +111,11 @@ Selecting a row and pressing `Enter` or `D` opens a full field dump for that air
 
 #### Field population by source
 
-Five detail-view fields have meaningfully different coverage depending on `--source` - see [`@squawk/adsb-feed`'s README](../../packages/libs/adsb-feed/README.md#field-population-by-source) for the decode details behind each:
+Six fields have meaningfully different coverage depending on `--source` - see [`@squawk/adsb-feed`'s README](../../packages/libs/adsb-feed/README.md#field-population-by-source) for the decode details behind each:
 
 | Field               | JSON | SBS | Beast |
 | ------------------- | ---- | --- | ----- |
+| Category            | Yes  | -   | Yes   |
 | Squawk alert        | -    | Yes | Yes   |
 | Ident active        | -    | Yes | Yes   |
 | Emergency state     | Yes  | -   | Yes   |

@@ -1,5 +1,7 @@
 import type { Aircraft, Coordinates } from '@squawk/types';
 
+import { categoryOrdinal, formatCategoryCode } from './category.js';
+import type { FeedSource } from './cli-args.js';
 import { closestPointOfApproach } from './cpa.js';
 import {
   formatAltitude,
@@ -22,6 +24,7 @@ export type ColumnKey =
   | 'icaoHex'
   | 'callsign'
   | 'registration'
+  | 'category'
   | 'squawk'
   | 'altitude'
   | 'groundSpeed'
@@ -66,6 +69,8 @@ export interface ColumnDef {
   minimal: boolean;
   /** Whether the column needs a receiver location to compute at all. Such columns are unavailable (not merely hidden) without `--lat`/`--lon`. */
   requiresLocation: boolean;
+  /** Feed sources that never carry this column's data, making it unavailable for the session - e.g. SBS/BaseStation has no aircraft category field. */
+  unsupportedSources: readonly FeedSource[];
   /**
    * Renders one aircraft's value for this column.
    *
@@ -89,6 +94,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 6,
     minimal: true,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => aircraft.icaoHex,
   },
   {
@@ -98,6 +104,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 10,
     minimal: true,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => aircraft.callsign ?? '-',
   },
   {
@@ -107,7 +114,18 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 7,
     minimal: false,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => aircraft.registration?.registration ?? '-',
+  },
+  {
+    key: 'category',
+    header: 'Cat',
+    name: 'Aircraft category',
+    width: 5,
+    minimal: false,
+    requiresLocation: false,
+    unsupportedSources: ['sbs'],
+    render: (aircraft) => formatCategoryCode(aircraft.category),
   },
   {
     key: 'squawk',
@@ -116,6 +134,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 8,
     minimal: true,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => aircraft.squawk ?? '-',
   },
   {
@@ -125,6 +144,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 7,
     minimal: true,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => formatAltitude(aircraft),
   },
   {
@@ -134,6 +154,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 6,
     minimal: false,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => formatGroundSpeed(aircraft),
   },
   {
@@ -143,6 +164,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 5,
     minimal: false,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => formatHeading(aircraft),
   },
   {
@@ -152,6 +174,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 8,
     minimal: false,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => formatVerticalRate(aircraft),
   },
   {
@@ -161,6 +184,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 4,
     minimal: false,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft) => formatOnGround(aircraft),
   },
   {
@@ -170,6 +194,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 6,
     minimal: true,
     requiresLocation: false,
+    unsupportedSources: [],
     render: (aircraft, context) => formatAge(aircraft.lastSeenAt, context.nowMs),
   },
   {
@@ -179,6 +204,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 6,
     minimal: false,
     requiresLocation: true,
+    unsupportedSources: [],
     render: (aircraft, context) =>
       context.location === undefined
         ? '-'
@@ -191,6 +217,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 5,
     minimal: false,
     requiresLocation: true,
+    unsupportedSources: [],
     render: (aircraft, context) =>
       context.location === undefined
         ? '-'
@@ -203,6 +230,7 @@ export const COLUMNS: readonly ColumnDef[] = [
     width: 14,
     minimal: false,
     requiresLocation: true,
+    unsupportedSources: [],
     render: (aircraft, context) =>
       context.location === undefined
         ? '-'
@@ -231,6 +259,7 @@ export const TABLE_CHROME_WIDTH = 4;
  */
 const AUTO_FIT_DROP_ORDER: readonly ColumnKey[] = [
   'onGround',
+  'category',
   'registration',
   'verticalRate',
   'bearing',
@@ -244,17 +273,73 @@ const AUTO_FIT_DROP_ORDER: readonly ColumnKey[] = [
   'callsign',
 ];
 
+/** What the session can supply to columns: which feed it reads and whether a receiver location is configured. */
+export interface ColumnAvailability {
+  /** The feed source in use - some columns' data is never carried by some sources. */
+  source: FeedSource;
+  /** The configured receiver location, if any - the location-gated columns need one. */
+  location: Coordinates | undefined;
+}
+
+/** A column the session cannot populate, with the reason, for the column picker's dimmed rows. */
+export interface UnavailableColumn {
+  /** The column. */
+  column: ColumnDef;
+  /** Short reason it is unavailable, phrased as a predicate: `"needs --lat/--lon"` or `"is not sent by sbs"`. */
+  reason: string;
+}
+
 /**
- * The columns that can render at all this session: every column, minus the
- * location-gated ones when no receiver location is configured. Those are
- * omitted entirely (not shown blank), and are not selectable in the column
- * picker or by `--columns`.
+ * Why `column` cannot render this session, or undefined if it can. A column
+ * is unavailable when it needs a receiver location and none is configured,
+ * or when the feed source in use never carries its data.
  *
- * @param location - The configured receiver location, if any.
+ * @param column - The column to check.
+ * @param availability - What the session can supply.
+ * @returns A short reason phrased as a predicate ("needs ...", "is not sent by ..."), for the picker and `--columns` errors, or undefined when available.
+ */
+export function unavailableReason(
+  column: ColumnDef,
+  availability: ColumnAvailability,
+): string | undefined {
+  if (column.requiresLocation && availability.location === undefined) {
+    return 'needs --lat/--lon';
+  }
+  if (column.unsupportedSources.includes(availability.source)) {
+    return `is not sent by ${availability.source}`;
+  }
+  return undefined;
+}
+
+/**
+ * The columns that can render at all this session: every column, minus
+ * those the session cannot populate (see {@link unavailableReason}). Those
+ * are omitted entirely (not shown blank), and are not selectable in the
+ * column picker or by `--columns`.
+ *
+ * @param availability - What the session can supply.
  * @returns The available columns, in display order.
  */
-export function availableColumns(location: Coordinates | undefined): readonly ColumnDef[] {
-  return location === undefined ? COLUMNS.filter((column) => !column.requiresLocation) : COLUMNS;
+export function availableColumns(availability: ColumnAvailability): readonly ColumnDef[] {
+  return COLUMNS.filter((column) => unavailableReason(column, availability) === undefined);
+}
+
+/**
+ * The columns the session cannot populate, each with its reason, in display
+ * order - the complement of {@link availableColumns}.
+ *
+ * @param availability - What the session can supply.
+ * @returns The unavailable columns and why.
+ */
+export function unavailableColumns(availability: ColumnAvailability): readonly UnavailableColumn[] {
+  const unavailable: UnavailableColumn[] = [];
+  for (const column of COLUMNS) {
+    const reason = unavailableReason(column, availability);
+    if (reason !== undefined) {
+      unavailable.push({ column, reason });
+    }
+  }
+  return unavailable;
 }
 
 /**
@@ -344,8 +429,8 @@ export interface ColumnListError {
  * Parses a `--columns` value: comma-separated column header names, matched
  * case-insensitively. Unknown names and duplicates are errors rather than
  * silently ignored, so a typo never quietly hides a column. Does not check
- * the location gate - that is the CLI parser's job, since it knows whether
- * a location was configured.
+ * availability - that is the CLI parser's job, since it knows the session's
+ * source and location (see {@link unavailableReason}).
  *
  * @param value - The raw `--columns` value.
  * @returns The parsed keys in the order given, or a {@link ColumnListError}.
@@ -423,7 +508,9 @@ function sortAltitudeFt(aircraft: Aircraft): number | undefined {
  * what is on screen. Age returns the negated last-seen timestamp so that
  * ascending order puts the most recently seen aircraft (smallest age) first.
  * Closest approach orders by the distance at closest approach, so ascending
- * puts the aircraft that will pass nearest the receiver first.
+ * puts the aircraft that will pass nearest the receiver first. Category
+ * orders by emitter-category table position, so the weight classes ascend
+ * rather than sorting alphabetically by name.
  *
  * @param aircraft - The aircraft to read the sort value from.
  * @param sortKey - The field to read.
@@ -442,6 +529,8 @@ function sortValue(
       return aircraft.callsign;
     case 'registration':
       return aircraft.registration?.registration;
+    case 'category':
+      return categoryOrdinal(aircraft.category);
     case 'squawk':
       return aircraft.squawk;
     case 'altitude':

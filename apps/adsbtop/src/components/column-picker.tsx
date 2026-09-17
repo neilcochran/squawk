@@ -1,7 +1,7 @@
 import { Box, Text } from 'ink';
 import type { ReactElement } from 'react';
 
-import type { ColumnDef, ColumnKey } from '../columns.js';
+import type { ColumnDef, ColumnKey, UnavailableColumn } from '../columns.js';
 
 /** Width the short header is padded to in each picker row, so the full names line up in their own column. */
 const HEADER_LABEL_WIDTH = 9;
@@ -10,8 +10,8 @@ const HEADER_LABEL_WIDTH = 9;
 export interface ColumnPickerProps {
   /** Columns that can render this session, in display order - the rows the cursor moves through. */
   availableColumns: readonly ColumnDef[];
-  /** Location-gated columns that cannot render without `--lat`/`--lon`, listed dimmed after the available rows so the user knows they exist. */
-  unavailableColumns: readonly ColumnDef[];
+  /** Columns the session cannot populate, each with its reason, listed dimmed after the available rows so the user knows they exist and why they are missing. */
+  unavailableColumns: readonly UnavailableColumn[];
   /** Keys of the columns currently shown in the table. */
   selectedKeys: readonly ColumnKey[];
   /** Index into `availableColumns` of the cursor row. */
@@ -88,9 +88,9 @@ export function ColumnPicker(props: ColumnPickerProps): ReactElement {
           cursor={index === props.cursorIndex}
         />
       ))}
-      {props.unavailableColumns.map((column) => (
+      {props.unavailableColumns.map(({ column, reason }) => (
         <Text key={column.key} dimColor>
-          {`[ ] ${column.header.padEnd(HEADER_LABEL_WIDTH)} ${column.name} (needs --lat/--lon)`}
+          {`[ ] ${column.header.padEnd(HEADER_LABEL_WIDTH)} ${column.name} (${reason})`}
         </Text>
       ))}
       <Text>

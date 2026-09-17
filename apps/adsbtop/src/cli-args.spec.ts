@@ -141,6 +141,22 @@ describe('parseCliArgs', () => {
     }
   });
 
+  it('rejects a column in --columns that the chosen source never sends', () => {
+    const result = parseCliArgs(['--columns', 'icao,cat']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toBe('--columns includes Cat, which is not sent by sbs.');
+    }
+  });
+
+  it('accepts a source-gated column in --columns with a source that sends it', () => {
+    const result = parseCliArgs(['--columns', 'icao,cat', '--source', 'json']);
+    expect(isError(result)).toBe(false);
+    if (!isError(result)) {
+      expect(result.columnKeys).toEqual(['icaoHex', 'category']);
+    }
+  });
+
   it('rejects an unknown column name in --columns', () => {
     const result = parseCliArgs(['--columns', 'icao,bogus']);
     expect(isError(result)).toBe(true);

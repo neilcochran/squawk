@@ -119,8 +119,8 @@ console.log(feed.getConnectionState()); // 'connected' | 'reconnecting'
 
 Beyond the baseline fields all three sources populate, coverage differs:
 
-- **JSON** additionally populates `emergencyState` (from `aircraft.json`'s `emergency` field). It has no equivalent for `identActive`/`squawkAlert`/`resolutionAdvisory`/`targetState` - `aircraft.json` carries no such fields.
-- **SBS** additionally populates `identActive`/`squawkAlert` (from the BaseStation `SPI`/`Alert` fields). It has no equivalent for `emergencyState`/`resolutionAdvisory`/`targetState`.
-- **Beast** populates all of the above - `emergencyState`, `identActive`, `squawkAlert`, `resolutionAdvisory` (from either a DF16 reply or a type-code-28 subtype-2 broadcast), and `targetState` (from a type-code-29 message) - since it decodes the raw Mode-S/ADS-B messages itself rather than relying on dump1090-fa's own JSON/SBS summaries.
+- **JSON** additionally populates `category` (from `aircraft.json`'s `category` code) and `emergencyState` (from its `emergency` field). It has no equivalent for `identActive`/`squawkAlert`/`resolutionAdvisory`/`targetState` - `aircraft.json` carries no such fields.
+- **SBS** additionally populates `identActive`/`squawkAlert` (from the BaseStation `SPI`/`Alert` fields). It has no equivalent for `category`, `emergencyState`, `resolutionAdvisory`, or `targetState` - the BaseStation format carries none of them.
+- **Beast** populates all of the above - `category` (from type-code 1-4 identification messages), `emergencyState`, `identActive`, `squawkAlert`, `resolutionAdvisory` (from either a DF16 reply or a type-code-28 subtype-2 broadcast), and `targetState` (from a type-code-29 message) - since it decodes the raw Mode-S/ADS-B messages itself rather than relying on dump1090-fa's own JSON/SBS summaries.
 
 `Aircraft.origin` / `Aircraft.destination` are never populated by any source - ADS-B data carries no flight-schedule information, so resolving a live aircraft's actual origin or destination needs a data source outside this package.

@@ -10,6 +10,7 @@ import type {
   TargetStateAndStatus,
 } from '@squawk/types';
 
+import { formatCategoryLabel } from './category.js';
 import { closestPointOfApproach } from './cpa.js';
 import {
   formatAge,
@@ -181,7 +182,7 @@ export function buildDetailFields(
     { label: 'Magnetic heading', value: formatDegrees(aircraft.magneticHeadingDeg) },
     { label: 'Vertical rate', value: formatVerticalRate(aircraft) },
     { label: 'On ground', value: formatOnGround(aircraft) },
-    { label: 'Category', value: aircraft.category ?? '-' },
+    { label: 'Category', value: formatCategoryLabel(aircraft.category) },
     { label: 'Resolution advisory', value: formatResolutionAdvisory(aircraft.resolutionAdvisory) },
     { label: 'Target state', value: formatTargetState(aircraft.targetState) },
     { label: 'Origin', value: formatAirport(aircraft.origin) },

@@ -1,12 +1,13 @@
 import { render } from 'ink-testing-library';
 import { describe, expect, it } from 'vitest';
 
-import { availableColumns, COLUMNS } from '../columns.js';
+import { availableColumns, unavailableColumns } from '../columns.js';
 
 import { ColumnPicker } from './column-picker.js';
 
-const WITHOUT_LOCATION = availableColumns(undefined);
-const LOCATION_GATED = COLUMNS.filter((column) => column.requiresLocation);
+const WITHOUT_LOCATION = availableColumns({ source: 'beast', location: undefined });
+const LOCATION_GATED = unavailableColumns({ source: 'beast', location: undefined });
+const SBS_GATED = unavailableColumns({ source: 'sbs', location: { lat: 0, lon: 0 } });
 
 describe('ColumnPicker', () => {
   it('lists every available column with its short header and full name', () => {
@@ -64,7 +65,7 @@ describe('ColumnPicker', () => {
       />,
     );
 
-    expect(lastFrame()).toContain('Auto-fit on: showing 5 of 10 columns (table 53 of 60 wide)');
+    expect(lastFrame()).toContain('Auto-fit on: showing 5 of 11 columns (table 53 of 60 wide)');
   });
 
   it('summarizes a custom selection and warns when it overflows the terminal', () => {
@@ -81,8 +82,26 @@ describe('ColumnPicker', () => {
     );
 
     const frame = lastFrame();
-    expect(frame).toContain('Custom selection: 10 of 10 columns (table 98 of 80 wide)');
+    expect(frame).toContain('Custom selection: 11 of 11 columns (table 98 of 80 wide)');
     expect(frame).toContain('wider than the terminal');
+  });
+
+  it('lists a column the source never sends dimmed with the source as the reason', () => {
+    const { lastFrame } = render(
+      <ColumnPicker
+        availableColumns={availableColumns({ source: 'sbs', location: { lat: 0, lon: 0 } })}
+        unavailableColumns={SBS_GATED}
+        selectedKeys={['icaoHex']}
+        cursorIndex={0}
+        autoFit={false}
+        terminalWidth={120}
+        tableWidth={10}
+      />,
+    );
+
+    const frame = lastFrame();
+    expect(frame).toContain('Aircraft category (is not sent by sbs)');
+    expect(frame).not.toContain('needs --lat/--lon');
   });
 
   it('lists location-gated columns dimmed with a hint when unavailable', () => {

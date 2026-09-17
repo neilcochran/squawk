@@ -132,8 +132,9 @@ describe('App', () => {
   });
 
   it('auto-fits the columns to the terminal width when a location is configured', async () => {
-    // ink-testing-library reports a 100-column terminal; the full 13-column
-    // table is 128 wide, so auto-fit drops Grnd, Reg, VS, and Brg to fit.
+    // ink-testing-library reports a 100-column terminal; the sbs source has
+    // no Cat column, so the full 13-column table is 128 wide and auto-fit
+    // drops Grnd, Reg, VS, and Brg to fit.
     const feed = createFakeAircraftFeed();
     const { lastFrame } = renderApp(feed, { location: { lat: 0, lon: 0 } });
     await flush();
@@ -143,6 +144,16 @@ describe('App', () => {
     expect(frame).toContain('CPA');
     expect(frame).not.toContain('Brg');
     expect(frame).not.toContain('Grnd');
+    expect(frame).not.toContain('Cat');
+  });
+
+  it('offers the Cat column with a source that sends it', async () => {
+    const feed = createFakeAircraftFeed();
+    const { lastFrame } = renderApp(feed, { source: 'json', columnKeys: ['icaoHex', 'category'] });
+    await flush();
+
+    const frame = lastFrame();
+    expect(frame).toContain('Cat');
   });
 
   it('shows exactly the --columns set instead of auto-fitting', async () => {
@@ -185,6 +196,7 @@ describe('App', () => {
     expect(picker).toContain('adsbtop columns');
     expect(picker).toContain('Auto-fit on');
     expect(picker).toContain('Closest point of approach (needs --lat/--lon)');
+    expect(picker).toContain('Aircraft category (is not sent by sbs)');
 
     stdin.write('\u001B');
     await flush();

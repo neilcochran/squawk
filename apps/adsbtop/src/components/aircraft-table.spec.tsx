@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { Aircraft } from '@squawk/types';
 
 import {
+  autoFitColumns,
   availableColumns,
   COLUMNS,
   minimalColumnKeys,
@@ -12,6 +13,15 @@ import {
 } from '../columns.js';
 
 import { AircraftTable } from './aircraft-table.js';
+
+// ink-testing-library reports a 100-column terminal, and this spec feeds
+// columns straight to the table without App's auto-fit, so use the set
+// auto-fit would pick at that width - the full set no longer fits and Ink
+// would truncate the first cell.
+const TABLE_COLUMNS = autoFitColumns(
+  availableColumns({ source: 'beast', location: undefined }),
+  100,
+);
 
 function makeAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
   return { icaoHex: 'A0B1C2', lastSeenAt: 0, ...overrides };
@@ -22,7 +32,7 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={[]}
-        columns={availableColumns(undefined)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
         location={undefined}
         watchlist={[]}
@@ -42,7 +52,7 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={[]}
-        columns={availableColumns(undefined)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
         location={undefined}
         watchlist={[]}
@@ -63,7 +73,7 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={aircraft}
-        columns={availableColumns(undefined)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
         location={undefined}
         watchlist={[]}
@@ -104,7 +114,7 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={aircraft}
-        columns={availableColumns(undefined)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
         location={undefined}
         watchlist={[]}
@@ -122,7 +132,7 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={aircraft}
-        columns={availableColumns(undefined)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
         location={undefined}
         watchlist={[]}
@@ -161,7 +171,7 @@ describe('AircraftTable', () => {
     const { lastFrame } = render(
       <AircraftTable
         aircraft={aircraft}
-        columns={availableColumns(undefined)}
+        columns={TABLE_COLUMNS}
         nowMs={0}
         location={undefined}
         watchlist={[]}
@@ -183,7 +193,7 @@ describe('AircraftTable', () => {
       const { lastFrame } = render(
         <AircraftTable
           aircraft={aircraft}
-          columns={availableColumns(undefined)}
+          columns={TABLE_COLUMNS}
           nowMs={0}
           location={undefined}
           watchlist={['UAL']}
@@ -201,11 +211,11 @@ describe('AircraftTable', () => {
     // highlight itself isn't assertable here - this covers that switching
     // sortKey doesn't drop or duplicate a header, which is the part that
     // could actually regress.
-    for (const sortKey of sortKeyCycle(availableColumns(undefined))) {
+    for (const sortKey of sortKeyCycle(TABLE_COLUMNS)) {
       const { lastFrame } = render(
         <AircraftTable
           aircraft={[]}
-          columns={availableColumns(undefined)}
+          columns={TABLE_COLUMNS}
           nowMs={0}
           location={undefined}
           watchlist={[]}
@@ -236,7 +246,7 @@ describe('AircraftTable', () => {
       const { lastFrame } = render(
         <AircraftTable
           aircraft={aircraft}
-          columns={availableColumns(undefined)}
+          columns={TABLE_COLUMNS}
           nowMs={0}
           location={undefined}
           watchlist={[]}

@@ -133,6 +133,12 @@ describe('buildDetailFields', () => {
     expect(fieldValue(fields, 'Magnetic heading')).toBe('96°');
   });
 
+  it('spells out the category with its weight class', () => {
+    const fields = buildDetailFields(makeAircraft({ category: 'large' }), 0, undefined, 0);
+
+    expect(fieldValue(fields, 'Category')).toBe('Large (75,000 to 300,000 lb)');
+  });
+
   it('formats registration with make and model when present', () => {
     const fields = buildDetailFields(
       makeAircraft({
