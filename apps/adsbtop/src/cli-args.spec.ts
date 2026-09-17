@@ -222,6 +222,28 @@ describe('parseCliArgs', () => {
     }
   });
 
+  it('parses --record as the file to append events to, defaulting to none', () => {
+    const none = parseCliArgs([]);
+    expect(isError(none)).toBe(false);
+    if (!isError(none)) {
+      expect(none.recordPath).toBeUndefined();
+    }
+
+    const some = parseCliArgs(['--record', 'flights.jsonl']);
+    expect(isError(some)).toBe(false);
+    if (!isError(some)) {
+      expect(some.recordPath).toBe('flights.jsonl');
+    }
+  });
+
+  it('rejects an empty --record path', () => {
+    const result = parseCliArgs(['--record', ' ']);
+    expect(isError(result)).toBe(true);
+    if (isError(result)) {
+      expect(result.message).toContain('--record needs a file path');
+    }
+  });
+
   it('defaults --stale-after to the feed default', () => {
     const result = parseCliArgs([]);
     expect(isError(result)).toBe(false);

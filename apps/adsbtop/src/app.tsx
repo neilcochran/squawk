@@ -31,12 +31,16 @@ import type { MessageVerbosity } from './components/messages-panel.js';
 import { SearchBar } from './components/search-bar.js';
 import { StatsPanel } from './components/stats-panel.js';
 import { StatusHeader } from './components/status-header.js';
+import type { StatusNotice } from './components/status-header.js';
 import { filterAircraft, parseFilter } from './filter.js';
 import type { AircraftFilter } from './filter.js';
+import { createEventRecorder, openRecordSink } from './recorder.js';
+import type { RecordSink } from './recorder.js';
 import { enrichAircraftList } from './registration-cache.js';
 import type { RegistrationCache } from './registration-cache.js';
 import { findMatchIcaoHex } from './search.js';
 import { moveSelection } from './selection.js';
+import { buildSnapshotCsv, snapshotFileName, writeSnapshotFile } from './snapshot.js';
 import { useAircraftFeed } from './use-aircraft-feed.js';
 import { ringTerminalBell, useAlerts } from './use-alerts.js';
 import { useIcaoRegistry } from './use-icao-registry.js';
@@ -50,6 +54,8 @@ const CLOCK_TICK_MS = 1000;
 const INITIAL_SORT_KEY: SortKey = 'icaoHex';
 /** Sort direction adsbtop starts with. */
 const INITIAL_SORT_DIRECTION: SortDirection = 'asc';
+/** How long a status-bar notice (snapshot saved, record failed) stays up. */
+const NOTICE_MS = 5000;
 
 /** Which content fills the main area below the status header. */
 type Panel = 'table' | 'help' | 'detail' | 'columns';
@@ -82,6 +88,12 @@ export interface AppProps {
   bell: boolean;
   /** Rings the terminal bell. Defaults to writing BEL to stdout; overridable in tests. */
   ring?: () => void;
+  /** File to append every feed event to as JSON lines (`--record`), or undefined for no recording. */
+  recordPath: string | undefined;
+  /** Writes a `[W]` snapshot file. Defaults to writing into the working directory; overridable in tests. */
+  writeSnapshot?: (fileName: string, contents: string) => Promise<void>;
+  /** Opens the `--record` sink. Defaults to appending to the file; overridable in tests. */
+  openRecordSink?: (path: string, onError: (error: Error) => void) => RecordSink;
 }
 
 /**
@@ -106,6 +118,12 @@ export interface AppProps {
  * is none, auto-fit against the live terminal width. Picking any column in
  * the picker switches to an explicit list seeded from what was showing;
  * `[F]` in the picker returns to auto-fit.
+ *
+ * `[W]` writes the filtered, sorted rows and visible columns to a CSV and
+ * reports the outcome as a status-bar notice for {@link NOTICE_MS}; a
+ * `--record` file is fed by an event recorder for the app's lifetime, with
+ * write failures reported the same way, since writing to the terminal
+ * would corrupt Ink's output.
  *
  * The `[F]ilter` narrows the sorted rows before anything else sees them:
  * the cursor, search, next-match, and the detail view all operate on the
@@ -148,6 +166,21 @@ export function App(props: AppProps): ReactElement {
   const [filterQuery, setFilterQuery] = useState('');
   const [filterError, setFilterError] = useState<string | undefined>(undefined);
   const [activeFilter, setActiveFilter] = useState<AircraftFilter | undefined>(props.filter);
+  const [notice, setNotice] = useState<(StatusNotice & { at: number }) | undefined>(undefined);
+
+  const { recordPath, openRecordSink: openSink = openRecordSink } = props;
+  useEffect(() => {
+    if (recordPath === undefined) {
+      return undefined;
+    }
+    const sink = openSink(recordPath, (error) => {
+      setNotice({ text: `record failed: ${error.message}`, kind: 'error', at: Date.now() });
+    });
+    const recorder = createEventRecorder(props.feed, sink);
+    return () => {
+      recorder.stop();
+    };
+  }, [props.feed, recordPath, openSink]);
 
   useAlerts({
     aircraft: enrichedAircraft,
@@ -249,6 +282,24 @@ export function App(props: AppProps): ReactElement {
     if (!matches.some((aircraft) => aircraft.icaoHex === selectedIcaoHex)) {
       setSelectedIcaoHex(matches[0]?.icaoHex);
     }
+  }
+
+  function handleSnapshot(): void {
+    const fileName = snapshotFileName(Date.now());
+    const csv = buildSnapshotCsv(filteredAircraft, columns, {
+      nowMs: now,
+      location: props.location,
+    });
+    const write = props.writeSnapshot ?? writeSnapshotFile;
+    write(fileName, csv).then(
+      () => setNotice({ text: `saved ${fileName}`, kind: 'ok', at: Date.now() }),
+      (error: unknown) =>
+        setNotice({
+          text: `snapshot failed: ${error instanceof Error ? error.message : String(error)}`,
+          kind: 'error',
+          at: Date.now(),
+        }),
+    );
   }
 
   function toggleColumnAtCursor(): void {
@@ -385,6 +436,10 @@ export function App(props: AppProps): ReactElement {
         case 'T':
           setShowStats((prev) => !prev);
           break;
+        case 'w':
+        case 'W':
+          handleSnapshot();
+          break;
         case 'v':
         case 'V':
           setMessageVerbosity((prev) => (prev === 'all' ? 'newAndLost' : 'all'));
@@ -443,6 +498,12 @@ export function App(props: AppProps): ReactElement {
             props.watchlist.length === 0
               ? undefined
               : { matchCount: watchedCount, hiddenCount: watchedCount - visibleWatchedCount }
+          }
+          recordPath={props.recordPath}
+          notice={
+            notice !== undefined && now - notice.at < NOTICE_MS
+              ? { text: notice.text, kind: notice.kind }
+              : undefined
           }
         />
       ) : undefined}

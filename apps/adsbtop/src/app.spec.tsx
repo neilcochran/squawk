@@ -89,6 +89,7 @@ function renderApp(
       watchlist={[]}
       alertEmergency={false}
       bell={true}
+      recordPath={undefined}
       {...overrides}
     />,
   );
@@ -773,6 +774,88 @@ describe('App', () => {
     stdin.write('t');
     await flush();
     expect(lastFrame()).not.toContain('Session stats');
+  });
+
+  describe('snapshot and record', () => {
+    it('writes the visible table as CSV on W and confirms in the status bar', async () => {
+      const writeSnapshot = vi.fn<(fileName: string, contents: string) => Promise<void>>(() =>
+        Promise.resolve(),
+      );
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed, {
+        columnKeys: ['icaoHex', 'callsign'],
+        writeSnapshot,
+      });
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL111' }));
+      dispatchNew(feed, makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL222' }));
+      await flush();
+
+      stdin.write('w');
+      await flush();
+
+      expect(writeSnapshot).toHaveBeenCalledTimes(1);
+      const [fileName, csv] = writeSnapshot.mock.calls[0] ?? [];
+      expect(fileName).toMatch(/^adsbtop-\d{8}-\d{6}\.csv$/);
+      expect(csv).toBe('ICAO,Callsign\nA0B1C2,UAL111\nD3E4F5,DAL222\n');
+      expect(lastFrame()).toContain(`saved ${fileName}`);
+    });
+
+    it('reports a failed snapshot in the status bar', async () => {
+      const writeSnapshot = vi.fn<(fileName: string, contents: string) => Promise<void>>(() =>
+        Promise.reject(new Error('EACCES')),
+      );
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, stdin } = renderApp(feed, { writeSnapshot });
+      await flush();
+
+      stdin.write('w');
+      await flush();
+
+      expect(lastFrame()).toContain('snapshot failed: EACCES');
+    });
+
+    it('records feed events to the sink while --record is set and names the file', async () => {
+      const lines: string[] = [];
+      const sink = { write: (line: string) => lines.push(line), end: vi.fn() };
+      const openSink = vi.fn(() => sink);
+      const feed = createFakeAircraftFeed();
+      const { lastFrame, unmount } = renderApp(feed, {
+        recordPath: 'flights.jsonl',
+        openRecordSink: openSink,
+      });
+      await flush();
+      expect(openSink).toHaveBeenCalledWith('flights.jsonl', expect.any(Function));
+      expect(lastFrame()).toContain('rec: flights.jsonl');
+
+      dispatchNew(feed, makeAircraft({ icaoHex: 'A0B1C2' }));
+      await flush();
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0] ?? '')).toMatchObject({
+        type: 'new',
+        aircraft: { icaoHex: 'A0B1C2' },
+      });
+
+      unmount();
+      activeUnmount = undefined;
+      expect(sink.end).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports a record failure in the status bar', async () => {
+      let fail: ((error: Error) => void) | undefined;
+      const feed = createFakeAircraftFeed();
+      const { lastFrame } = renderApp(feed, {
+        recordPath: 'flights.jsonl',
+        openRecordSink: (_path, onError) => {
+          fail = onError;
+          return { write: () => undefined, end: () => undefined };
+        },
+      });
+      await flush();
+
+      fail?.(new Error('ENOSPC'));
+      await flush();
+      expect(lastFrame()).toContain('record failed: ENOSPC');
+    });
   });
 
   describe('filter', () => {

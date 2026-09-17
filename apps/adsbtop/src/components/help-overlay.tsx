@@ -35,6 +35,10 @@ const HELP_ENTRIES: readonly HelpEntry[] = [
       'Toggle the session stats panel (peak/unique aircraft, message rates, max distance)',
   },
   { key: 'B', description: 'Hide/show the status bar' },
+  {
+    key: 'W',
+    description: 'Write the table as shown (visible columns, sort, filter) to a timestamped CSV',
+  },
   { key: 'Enter / D', description: "Show the cursor row's full detail view" },
   { key: 'H', description: 'Toggle this help overlay' },
   { key: 'Q', description: 'Quit adsbtop' },

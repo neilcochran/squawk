@@ -18,6 +18,7 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     watchlist: [],
     alertEmergency: false,
     bell: true,
+    recordPath: undefined,
     ...overrides,
   };
 }

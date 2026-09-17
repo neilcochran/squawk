@@ -32,5 +32,6 @@ render(
     watchlist={parsed.watchlist}
     alertEmergency={parsed.alertEmergency}
     bell={parsed.bell}
+    recordPath={parsed.recordPath}
   />,
 );

@@ -28,6 +28,8 @@ describe('HotkeyBar', () => {
     expect(frame).toContain('[M]');
     expect(frame).toContain('[T]');
     expect(frame).toContain('Stats');
+    expect(frame).toContain('[W]');
+    expect(frame).toContain('Snapshot');
     expect(frame).toContain('[B]');
     expect(frame).toContain('[D]');
     expect(frame).toContain('[H]');

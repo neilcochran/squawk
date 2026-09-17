@@ -32,27 +32,29 @@ adsbtop --source sbs --host 192.168.1.50
 | `--alert-emergency`     | Ring the bell when an aircraft first squawks or declares an emergency                                                                              | off                                           |
 | `--no-bell`             | Never ring the terminal bell; watchlist and emergency highlighting still apply                                                                     | bell on                                       |
 | `--stale-after <ms>`    | Drop an aircraft after this long without an update; rows dim at half this - see [Row styling](#row-styling)                                        | `60000`                                       |
+| `--record <file>`       | Append every new/update/lost feed event to the file as one JSON object per line - see [Snapshot and record](#snapshot-and-record)                  | -                                             |
 | `-h`, `--help`          | Show usage                                                                                                                                         | -                                             |
 
 ### Hotkeys
 
-| Key             | Action                                                                                         |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| `Up` / `Down`   | Move the row cursor                                                                            |
-| `O` / `Shift+O` | Cycle the sort column forward/backward (every column except `Grnd`)                            |
-| `R`             | Reverse the sort direction (ascending/descending)                                              |
-| `C`             | Open the column picker - choose which columns are shown                                        |
-| `P`             | Pause/resume the table - the feed keeps running underneath                                     |
-| `S`             | Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match                   |
-| `N` / `Shift+N` | Jump to the next/previous search match                                                         |
-| `F`             | Filter the table (see [Filtering](#filtering)) - `Escape` on the table clears an active filter |
-| `M`             | Toggle the messages panel (recent new/update/lost events)                                      |
-| `V`             | Toggle messages panel verbosity (new/lost only vs. every update)                               |
-| `T`             | Toggle the session stats panel (see [Session stats](#session-stats))                           |
-| `B`             | Hide/show the status bar                                                                       |
-| `Enter` / `D`   | Show the cursor row's full detail view                                                         |
-| `H`             | Toggle the help overlay                                                                        |
-| `Q`             | Quit                                                                                           |
+| Key             | Action                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------- |
+| `Up` / `Down`   | Move the row cursor                                                                             |
+| `O` / `Shift+O` | Cycle the sort column forward/backward (every column except `Grnd`)                             |
+| `R`             | Reverse the sort direction (ascending/descending)                                               |
+| `C`             | Open the column picker - choose which columns are shown                                         |
+| `P`             | Pause/resume the table - the feed keeps running underneath                                      |
+| `S`             | Search by ICAO hex, callsign, squawk, or N-number - jumps to the first match                    |
+| `N` / `Shift+N` | Jump to the next/previous search match                                                          |
+| `F`             | Filter the table (see [Filtering](#filtering)) - `Escape` on the table clears an active filter  |
+| `M`             | Toggle the messages panel (recent new/update/lost events)                                       |
+| `V`             | Toggle messages panel verbosity (new/lost only vs. every update)                                |
+| `T`             | Toggle the session stats panel (see [Session stats](#session-stats))                            |
+| `B`             | Hide/show the status bar                                                                        |
+| `W`             | Write the table as shown to a timestamped CSV (see [Snapshot and record](#snapshot-and-record)) |
+| `Enter` / `D`   | Show the cursor row's full detail view                                                          |
+| `H`             | Toggle the help overlay                                                                         |
+| `Q`             | Quit                                                                                            |
 
 Rows are styled by state - see [Row styling](#row-styling).
 
@@ -89,7 +91,7 @@ The `Cat` column shows the aircraft's ADS-B emitter category as a three-letter c
 
 ### Status bar
 
-The blue status bar above the table shows the source, host, and port; the number of tracked aircraft (as `matching/total` followed by the filter text while a filter is active - see [Filtering](#filtering)); the number of watched aircraft when `--watch` is set, with how many the filter is hiding (see [Watchlist and alerts](#watchlist-and-alerts)); the total number of feed update events received since adsbtop started (`msgs`); the current rate (`msgs/s`); and the time since the last update. `B` hides and shows it. While paused, a `PAUSED` chip (black on red) sits at the end of the bar. Note that the `PAUSED` and `RECONNECTING` chips live in the status bar, so they are hidden along with it.
+The blue status bar above the table shows the source, host, and port; the number of tracked aircraft (as `matching/total` followed by the filter text while a filter is active - see [Filtering](#filtering)); the number of watched aircraft when `--watch` is set, with how many the filter is hiding (see [Watchlist and alerts](#watchlist-and-alerts)); the total number of feed update events received since adsbtop started (`msgs`); the current rate (`msgs/s`); and the time since the last update. `B` hides and shows it. While paused, a `PAUSED` chip (black on red) appears on the bar's second line, which also carries the `RECONNECTING` chip and the `saved`/failure notices from [Snapshot and record](#snapshot-and-record). Note that all of these live in the status bar, so they are hidden along with it.
 
 ### Filtering
 
@@ -147,6 +149,12 @@ Six fields have meaningfully different coverage depending on `--source` - see [`
 - with `--lat`/`--lon`, the farthest aircraft seen and which one it was, as a rough measure of the receiver's range.
 
 The figures accumulate from the feed events adsbtop already receives, so the panel costs nothing while hidden and is never reset until adsbtop exits.
+
+### Snapshot and record
+
+`W` writes the table exactly as it is shown - the visible columns, in the current sort order, after any active filter - to `adsbtop-YYYYMMDD-HHMMSS.csv` in the working directory, and confirms with a green `saved ...` chip in the status bar for a few seconds. Cells are written as rendered, units and `-` placeholders included, so the file is a faithful copy of the screen rather than a raw export. A failed write shows a red chip with the reason instead.
+
+`--record <file>` appends every `aircraft:new`, `aircraft:update`, and `aircraft:lost` event to the file as one JSON object per line for the whole session: `{"type":"update","at":1758000000000,"aircraft":{...}}`, with `lost` lines carrying `icaoHex` and `lastAircraft`. Events are recorded as the feed reports them, before adsbtop's registration lookup. The file is appended to, so a second session against the same file extends the log, and the status bar shows `rec: <file>` while recording. Note that these files grow quickly: a busy receiver produces tens of update events a second, so expect tens of megabytes per hour. A write failure (a missing directory, a full disk) shows a red chip in the status bar rather than stopping adsbtop.
 
 ### Messages panel
 

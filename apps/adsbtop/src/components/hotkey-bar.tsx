@@ -65,6 +65,7 @@ export function HotkeyBar({
     hotkeys.push({ key: 'V', label: 'Verbosity' });
   }
   hotkeys.push({ key: 'T', label: showStats ? 'Hide stats' : 'Stats' });
+  hotkeys.push({ key: 'W', label: 'Snapshot' });
   hotkeys.push({ key: 'B', label: showStatus ? 'Hide status' : 'Status' });
   hotkeys.push(
     { key: 'D', label: 'Detail' },

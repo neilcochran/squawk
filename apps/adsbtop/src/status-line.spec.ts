@@ -15,6 +15,7 @@ function makeInfo(overrides: Partial<StatusLineInfo> = {}): StatusLineInfo {
     nowMs: 0,
     filter: undefined,
     watch: undefined,
+    recordPath: undefined,
     ...overrides,
   };
 }
@@ -57,6 +58,12 @@ describe('formatStatusLine', () => {
     );
 
     expect(line).toContain('filter: is:air  |  watch: 2 (1 hidden)  |  msgs:');
+  });
+
+  it('names the record file while recording', () => {
+    const line = formatStatusLine(makeInfo({ recordPath: 'flights.jsonl' }));
+
+    expect(line).toContain('|  rec: flights.jsonl  |  msgs:');
   });
 
   it('shows a placeholder before any update has arrived', () => {

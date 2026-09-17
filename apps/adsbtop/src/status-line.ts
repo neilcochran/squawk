@@ -23,6 +23,8 @@ export interface StatusLineInfo {
   filter: { text: string; matchCount: number } | undefined;
   /** The `--watch` list's standing, if one is configured: how many tracked aircraft match it and how many of those the filter is hiding. */
   watch: { matchCount: number; hiddenCount: number } | undefined;
+  /** The `--record` file being appended to, if any. */
+  recordPath: string | undefined;
 }
 
 /**
@@ -52,10 +54,12 @@ export function formatStatusLine(info: StatusLineInfo): string {
       : info.watch.hiddenCount > 0
         ? `watch: ${info.watch.matchCount} (${info.watch.hiddenCount} hidden)  |  `
         : `watch: ${info.watch.matchCount}  |  `;
+  const record = info.recordPath === undefined ? '' : `rec: ${info.recordPath}  |  `;
   return (
     `source: ${info.source} ${info.host}:${info.port}  |  ` +
     `${aircraft}  |  ` +
     watch +
+    record +
     `msgs: ${info.messageCount}  |  ` +
     `msgs/s: ${info.messageRatePerSec}  |  ` +
     `last update: ${lastUpdate}`

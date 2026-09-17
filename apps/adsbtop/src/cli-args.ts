@@ -61,6 +61,8 @@ export interface CliOptions {
   alertEmergency: boolean;
   /** Whether the terminal bell may ring at all. False under `--no-bell`. */
   bell: boolean;
+  /** File to append every feed event to as JSON lines, from `--record`. Undefined when not recording. */
+  recordPath: string | undefined;
 }
 
 /** A `parseCliArgs` failure: the reason `argv` could not be turned into {@link CliOptions}. */
@@ -122,6 +124,7 @@ Options:
   --alert-emergency          Ring the bell when an aircraft first squawks or declares an emergency
   --no-bell                  Never ring the terminal bell (watchlist and emergency highlighting still apply)
   --stale-after <ms>         Drop an aircraft after this long without an update (default: ${DEFAULT_STALE_AFTER_MS}) - rows dim at half this
+  --record <file>            Append every new/update/lost feed event to <file> as one JSON object per line
   -h, --help                 Show this help message
 `;
 
@@ -244,6 +247,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
         'alert-emergency': { type: 'boolean', default: false },
         'no-bell': { type: 'boolean', default: false },
         'stale-after': { type: 'string' },
+        record: { type: 'string' },
         help: { type: 'boolean', short: 'h', default: false },
       },
       strict: true,
@@ -267,6 +271,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       watchlist: [],
       alertEmergency: false,
       bell: true,
+      recordPath: undefined,
     };
   }
 
@@ -289,6 +294,10 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       };
     }
     staleAfterMs = parsedStaleAfter;
+  }
+
+  if (values.record !== undefined && values.record.trim() === '') {
+    return { message: '--record needs a file path.' };
   }
 
   let watchlist: readonly string[] = [];
@@ -341,5 +350,6 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     watchlist,
     alertEmergency: values['alert-emergency'] === true,
     bell: values['no-bell'] !== true,
+    recordPath: values.record,
   };
 }
