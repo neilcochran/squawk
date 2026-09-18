@@ -9,7 +9,7 @@ export default mergeConfig(
       name: '@squawk/adsbtop',
       passWithNoTests: true,
       coverage: {
-        exclude: ['src/cli.tsx'],
+        exclude: ['src/cli.ts', 'src/main.tsx'],
       },
     },
   }),
