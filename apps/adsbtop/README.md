@@ -166,6 +166,8 @@ adsbtop renders in aviation units by default: feet, knots, nautical miles, and f
 
 The figures accumulate from the feed events adsbtop already receives, so the panel costs nothing while hidden and is never reset until adsbtop exits.
 
+The sparkline is drawn with the Unicode block characters U+2581 to U+2588. Terminals that do not fall back to another font for missing glyphs, such as PuTTY with its default Courier New, show most of the bars as hollow boxes; switching the terminal to a font that includes them (Cascadia Mono, DejaVu Sans Mono, Consolas) fixes it.
+
 ### Snapshot and record
 
 `W` writes the table exactly as it is shown - the visible columns, in the current sort order, after any active filter - to `adsbtop-YYYYMMDD-HHMMSS.csv` in the working directory, and confirms with a green `saved ...` chip in the status bar for a few seconds. Cells are written as rendered, units and `-` placeholders included, so the file is a faithful copy of the screen rather than a raw export. A failed write shows a red chip with the reason instead.
