@@ -16,6 +16,6 @@
   },
   "devDependencies": {
     "@types/node": "^26.5.1",
-    "adm-zip": "*"
+    "adm-zip": "^0.6.1"
   }
 }
