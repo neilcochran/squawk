@@ -263,7 +263,7 @@ Examples: `@squawk/weather` (`types/metar.ts`, `types/taf.ts`, etc.), `@squawk/n
 1. Create `packages/libs/<name>/` with `src/index.ts`, `package.json`, `tsconfig.json`, `README.md`. Copy the shape from an existing lib (e.g. `packages/libs/airports/`).
 2. The `tsconfig.json` `extends` path must be `../../../tsconfig.base.json`.
 3. Verify the workspace is picked up - the root `package.json` `packages/libs/*` glob handles it; no edit needed unless the new package lives outside that bucket.
-4. Add the package to the Packages table in the root [README](README.md).
+4. Add the package to the matching group table under Packages in the root [README](README.md). A data package goes directly below the query library it pairs with.
 5. Add the package to [ARCHITECTURE.md](ARCHITECTURE.md) if it introduces a new architectural pattern or design decision.
 6. Ensure all exports have TSDoc comments.
 7. Add tests using Vitest (see **Test conventions** above).

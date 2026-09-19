@@ -37,11 +37,11 @@ Short, kebab-case, intent-describing branch names: `fetch-weather`, `route-dista
 
 ## Reporting bugs
 
-Before filing, check the [project board](https://github.com/users/neilcochran/projects/2) to see what's already tracked. Use the [Bug report](.github/ISSUE_TEMPLATE/bug.yml) template. Include reproduction steps, the package and version, and the Node version.
+Before filing, check the [open issues](https://github.com/neilcochran/squawk/issues) to see whether it has already been reported. Use the [Bug report](.github/ISSUE_TEMPLATE/bug.yml) template. Include reproduction steps, the package and version, and the Node version.
 
 ## Suggesting features
 
-Before filing, check the [project board](https://github.com/users/neilcochran/projects/2) to see what's already tracked. Use the [Enhancement](.github/ISSUE_TEMPLATE/enhancement.yml) template. Motivation and use case context go a long way.
+Before filing, check the [open issues](https://github.com/neilcochran/squawk/issues) to see whether it has already been reported. Use the [Enhancement](.github/ISSUE_TEMPLATE/enhancement.yml) template. Motivation and use case context go a long way.
 
 ## Questions and discussions
 
