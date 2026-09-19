@@ -9,8 +9,13 @@ permissions:
   contents: read
 
 jobs:
-  ci:
+  # The gates are split across three jobs that run side by side. Each job installs
+  # and builds what it needs on its own runner, trading runner minutes for wall time.
+  static:
     runs-on: ubuntu-latest
+    env:
+      # tsc and eslint are single-threaded per task, so every core can take one.
+      TURBO_CONCURRENCY: 100%
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -27,11 +32,41 @@ jobs:
 
       - run: npm run format:check
 
-      - run: npm run build
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # The test:coverage script uses --concurrency=50% to avoid
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build
+        env:
+          TURBO_CONCURRENCY: 100%
+
+      # test:coverage keeps the 50% concurrency from turbo.json to avoid
       # oversubscription with vitest's internal worker pool.
       - run: npm run test:coverage
+
+  package:
+    runs-on: ubuntu-latest
+    env:
+      TURBO_CONCURRENCY: 100%
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build
 
       - run: npm run lint:pack
 
@@ -42,3 +77,24 @@ jobs:
 
       - name: Check MCP pinned-version snippet
         run: node scripts/check-mcp-pin.js
+
+  # The required status check on main is named `ci`, so this job keeps that name
+  # and reports the combined result. `if: always()` plus the explicit comparison
+  # matters: a job skipped because one of its `needs` failed would otherwise
+  # satisfy a required check.
+  ci:
+    if: always()
+    needs: [static, test, package]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require every gate to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "::error::Gate results (static, test, package): $RESULTS"
+              exit 1
+            fi
+          done
