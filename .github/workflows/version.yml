@@ -1,0 +1,71 @@
+name: Version Packages
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+# Two merges in quick succession both rewrite the same changeset-release/main
+# branch, so runs are serialized rather than raced.
+concurrency:
+  group: version-packages
+  cancel-in-progress: false
+
+jobs:
+  pending:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changesets: ${{ steps.changesets.outputs.pending }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .changeset
+
+      - name: Detect pending changesets
+        id: changesets
+        run: |
+          if [ -n "$(find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' -print -quit)" ]; then
+            echo "pending=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pending=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Opens or updates the "Version Packages" PR. Nothing is built or published
+  # here, and the job holds no OIDC permission: the PR it opens still has to pass
+  # the required checks and review like any other.
+  version:
+    needs: pending
+    if: ${{ needs.pending.outputs.changesets == 'true' }}
+    environment: release-pr
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      # Same npm as the publish job, so `version-packages` rewrites the lockfile
+      # with the npm version the release itself runs on.
+      - run: npm install -g npm@11.12
+
+      - run: npm ci --ignore-scripts
+
+      - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          version-script: npm run version-packages
+          github-token: ${{ steps.app-token.outputs.token }}

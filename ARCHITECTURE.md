@@ -174,7 +174,7 @@ The date embedded in each data package's README matches the cycle date inside th
 
 ## Quality gates
 
-The gates that run in [.github/workflows/ci.yml](.github/workflows/ci.yml) on every PR:
+The gates that run in [.github/workflows/ci.yml](.github/workflows/ci.yml) on every PR. They are spread across three parallel jobs - `static` (lint, knip, format), `test` (build, test + coverage), and `package` (build, pack shape, API surface, and the two README checks) - and a final `ci` job that fails unless all three succeeded:
 
 | Gate                     | Tool                                                                                                                                    | What it covers                                                                                                                               |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -190,8 +190,9 @@ The gates that run in [.github/workflows/ci.yml](.github/workflows/ci.yml) on ev
 | MCP pinned version       | [scripts/check-mcp-pin.js](scripts/check-mcp-pin.js)                                                                                    | `packages/libs/mcp/README.md` pin matches the projected publish version (changeset-aware)                                                    |
 | Publishable build output | [scripts/check-publishable-dist.js](scripts/check-publishable-dist.js)                                                                  | Every non-private workspace has a `dist/` with JavaScript in it (Publish workflow only, both jobs)                                           |
 
-Three properties of the gate set:
+Four properties of the gate set:
 
+- **The `ci` job is the required check, not the three gate jobs.** It runs with `if: always()` and compares each upstream result to `success` explicitly, because a job that is skipped when one of its `needs` fails would otherwise satisfy a required status check. Each gate job installs and builds independently; the duplicated build costs runner minutes but roughly halves wall time. Lint, build, pack, and API tasks run at `TURBO_CONCURRENCY=100%`, while `test:coverage` keeps the 50% default from [turbo.json](turbo.json) so turbo does not oversubscribe vitest's own worker pool.
 - **Coverage is layered intentionally.** Vitest's `perFile: true` enforces a per-file floor; the aggregate gate is a thin post-coverage script because Vitest can't express both in one threshold block.
 - **CLI-only packages run `publint` without arethetypeswrong.** [`apps/adsbtop/`](apps/adsbtop/) ships a `bin` and no `main` / `types` / `exports`, so there is nothing for a consumer to import and attw reports every resolution as failed. publint still applies and is the part that matters for a binary - it validates the tarball and that the `bin` target exists. A package that gains an importable entrypoint should pick up the full `publint && attw` line.
 - **Knip and ESLint cover different axes.** Knip handles package-level dead deps and orphaned files; ESLint handles source-level patterns. Source-level dead-export detection isn't part of the gate set.
@@ -202,7 +203,7 @@ CodeQL runs as a separate workflow; it's a required check on `main`.
 
 ## CI/CD overview
 
-Six workflows in [.github/workflows/](.github/workflows/). Every `uses:` is a full commit SHA pinned with a trailing version comment, maintained by Dependabot.
+Seven workflows in [.github/workflows/](.github/workflows/). Every `uses:` is a full commit SHA pinned with a trailing version comment, maintained by Dependabot.
 
 | Workflow                                     | Trigger                                                 | Purpose                                                                                |
 | -------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -210,13 +211,15 @@ Six workflows in [.github/workflows/](.github/workflows/). Every `uses:` is a fu
 | [codeql.yml](.github/workflows/codeql.yml)   | PR + push to `main` + weekly cron                       | Static security analysis with the `security-extended` query suite. Required on `main`. |
 | [lychee.yml](.github/workflows/lychee.yml)   | PR (paths-filtered to `**/*.md`) + weekly cron + manual | Markdown link checker. Report-only; surfaces broken links in the job summary.          |
 | [docs.yml](.github/workflows/docs.yml)       | After CI succeeds on `main`                             | Generate TypeDoc and deploy to GitHub Pages.                                           |
-| [publish.yml](.github/workflows/publish.yml) | After CI succeeds on `main` + manual                    | Run the changesets-driven release flow (see next section).                             |
+| [version.yml](.github/workflows/version.yml) | Push to `main`                                          | Open or update the "Version Packages" PR when changesets are pending.                  |
+| [publish.yml](.github/workflows/publish.yml) | After CI succeeds on `main` + manual                    | Publish to npm once no changesets are pending (see next section).                      |
 | [mirror.yml](.github/workflows/mirror.yml)   | Every push + daily cron + manual                        | Mirror all branches and tags to the GitLab backup mirror. Uses no marketplace actions. |
 
 A few non-obvious properties of these workflows that the YAML doesn't make immediately clear:
 
 - **Workflows gated on `workflow_run` check out `${{ github.event.workflow_run.head_sha }}`**, not the current HEAD of `main`. The deploy / publish operates on the exact commit CI validated, not a slightly later commit. For workflows that also support `workflow_dispatch`, the fallback is `github.sha`.
 - **The publish job is gated by the `production-publish` GitHub Environment.** After the build job uploads dist artifacts, the publish job pauses for one-tap manual approval from a required reviewer before running `changesets/action`. The build job is not gated, so a stuck approval does not waste a runner re-running the build later. The environment also restricts deployments to protected branches, so a `workflow_dispatch` from an unprotected branch cannot bypass the gate.
+- **Opening the "Version Packages" PR does not wait on CI or on approval.** [version.yml](.github/workflows/version.yml) runs on the push to `main`, in parallel with CI, because opening a PR releases nothing: the PR still has to pass the required checks and review. Its job runs in the `release-pr` environment, which has no required reviewers but restricts deployments to protected branches, and it holds no `id-token` permission, so it cannot publish. Both release workflows start with a `pending` job that looks for `.changeset/*.md` files: version.yml proceeds only when there are some, publish.yml only when there are none.
 - **Lychee is intentionally not a required check.** Broken links from upstream reorganization shouldn't block PRs. Findings are visible in the job summary.
 - **The lychee cron runs at Mon 06:37 UTC, just after CodeQL's 05:17 slot**, to avoid runner contention.
 - **Excludes for the link checker live in [lychee.toml](lychee.toml)**, not in the workflow's args, so they apply to local `lychee` runs too.
@@ -234,7 +237,7 @@ Two reasons the publish flow uses `squawk-release-bot` instead of the default `G
 1. **Downstream workflow triggering.** PRs opened by the default `github-actions[bot]` don't retrigger workflows when merged - GitHub blocks that path to prevent recursion. PRs opened with a custom App's installation token do. The App's token is what allows the merged "Version Packages" PR to retrigger CI, which then retriggers Publish, which then runs `npm publish`.
 2. **Auditable scoped permissions.** App permissions (read/write on contents, pull-requests, etc.) are explicit in the App settings and easy to audit, vs. the broader umbrella permission of the default token.
 
-The App's credentials are split between a repo variable and a repo secret: `RELEASE_APP_CLIENT_ID` (variable, since the Client ID is the public half of the OAuth pair) and `RELEASE_APP_PRIVATE_KEY` (secret). The Publish workflow mints a short-lived installation token from them via [actions/create-github-app-token](https://github.com/actions/create-github-app-token).
+The App's credentials are split between a repo variable and an environment secret: `RELEASE_APP_CLIENT_ID` (variable, since the Client ID is the public half of the OAuth pair) and `RELEASE_APP_PRIVATE_KEY` (secret). The private key is stored on the `release-pr` and `production-publish` environments rather than at repo level, so only a job that declares one of those environments - both restricted to protected branches - can read it. The Version Packages and Publish workflows each mint a short-lived installation token from the pair via [actions/create-github-app-token](https://github.com/actions/create-github-app-token).
 
 Commits inside the "Version Packages" PR, and the release commits and tags changesets/action pushes after publish, are attributed to the App: changesets/action pushes via the GitHub API by default (`push-with-git-cli: false`), signing with GitHub's GPG key and attributing to whichever identity owns the `github-token` input passed to it - the App's installation token, not the default `GITHUB_TOKEN`.
 
@@ -246,42 +249,49 @@ Commits inside the "Version Packages" PR, and the release commits and tags chang
         |- CI runs (lint, build, test, coverage, etc.)
         '- Reviewer merges to main
 
-[2] CI runs on main
-        '- On success, triggers publish.yml via workflow_run
+[2] The push to main starts two workflows side by side
+        |- ci.yml runs the quality gates on the merge commit
+        '- version.yml finds pending changesets in .changeset/
+             (squawk-release-bot, release-pr env, no approval, no OIDC)
+             |- Mints an App installation token
+             |- npm install -g npm@11.12, npm ci --ignore-scripts
+             '- changesets/action opens or updates a "Version Packages"
+                PR on branch changeset-release/main, consuming the
+                changesets and bumping versions + writing CHANGELOG.md
+                entries. PR author: app/squawk-release-bot.
 
-[3] publish.yml build job runs (no secrets)
+[3] CI succeeds on main and triggers publish.yml via workflow_run
+        '- Its pending job sees the changesets are still there and
+           skips the build and publish jobs. Nothing to approve.
+
+[4] Reviewer merges the Version Packages PR once its checks pass
+        '- The push starts ci.yml and version.yml again; version.yml
+           finds no pending changesets and stops after its pending job.
+
+[5] CI succeeds on main and triggers publish.yml via workflow_run
+        '- Its pending job finds no changesets, so the release proceeds
+
+[6] publish.yml build job runs (no secrets)
         |- Checks out workflow_run.head_sha
         |- npm ci --ignore-scripts, npm run build
         |- Verifies every publishable workspace has build output
         '- Tars each publishable workspace's dist into one artifact
 
-[4] publish.yml publish job runs (squawk-release-bot, production-publish env)
+[7] publish.yml publish job runs (squawk-release-bot, production-publish env)
         |- Pauses for one-tap approval
         |- Mints an App installation token
         |- Checks out workflow_run.head_sha
-        |- npm install -g npm@11.5, npm ci --ignore-scripts
+        |- npm install -g npm@11.12, npm ci --ignore-scripts
         |- Downloads dist artifact
         |- Re-verifies every publishable workspace has build output
-        '- Hands off to changesets/action
-
-[5] changesets/action behavior depends on whether pending changesets exist
-        |- Pending changesets in .changeset/?
-        |    '- Open or update a "Version Packages" PR on branch
-        |       changeset-release/main, consuming the changesets
-        |       and bumping versions + writing CHANGELOG.md entries.
-        |       PR author: app/squawk-release-bot.
-        |
-        '- No pending changesets (Version Packages PR already merged)?
-             '- Run `npm run publish` (`changeset publish`)
-                -> publishes every bumped package to npm with provenance
-                   (npm Trusted Publisher OIDC + NPM_CONFIG_PROVENANCE=true env)
-
-[6] Reviewer merges the Version Packages PR
-        '- CI runs on the merge commit, publish.yml retriggers,
-           step 5 takes the publish branch this time.
+        '- changesets/action runs `npm run publish` (`changeset publish`)
+           -> publishes every bumped package to npm with provenance
+              (npm Trusted Publisher OIDC + NPM_CONFIG_PROVENANCE=true env)
 ```
 
-The Publish workflow also has `workflow_dispatch` for manual triggering when needed.
+A merge to `main` that carries no changeset (docs, tooling) also reaches steps 5-7: `changeset publish` finds every version already on npm and publishes nothing.
+
+The Publish workflow also has `workflow_dispatch` for manual triggering when needed. A manual run while changesets are pending skips the release the same way step 3 does.
 
 ### Authoring a changeset
 
@@ -304,7 +314,7 @@ The full configuration is in [.changeset/config.json](.changeset/config.json). A
 Two GitHub Rulesets target `main`:
 
 - **"Main - PR + Approval"** - PR required + 1 approval, code-owner review required ([CODEOWNERS](.github/CODEOWNERS) routes everything to `@neilcochran`), dismiss stale reviews on push, conversation resolution required. Bypass: `Repository admin` role with `pull_request` mode (closest available human-bypasser on personal repos; per-username actors are org-only).
-- **"Main - Required Checks"** - blocks force pushes, restricts deletions, requires `ci`, `Code scanning results / CodeQL`, and `CodeQL / Analyze (pull_request)` to pass. Lychee is intentionally not on the list.
+- **"Main - Required Checks"** - blocks force pushes, restricts deletions, requires two status checks to pass, with branches up to date before merging: `ci` (the final job in [ci.yml](.github/workflows/ci.yml), reported by GitHub Actions) and `CodeQL` (the code scanning result, reported by GitHub Advanced Security and shown in the PR UI as "Code scanning results / CodeQL"). The `Analyze` job in [codeql.yml](.github/workflows/codeql.yml) is not required directly, but the `CodeQL` result only appears once that job uploads its analysis. Lychee is intentionally not on the list.
 
 ---
 
@@ -335,9 +345,9 @@ Published packages ship with npm provenance attestations: the Publish workflow s
 
 Beyond provenance, the publish flow is hardened against supply-chain compromise:
 
-- **npm Trusted Publisher (OIDC).** No long-lived `NPM_TOKEN` exists. The publish job exchanges a short-lived GitHub OIDC token (`id-token: write` + `npm@11.5`) for a per-run publish credential scoped to packages whose Trusted Publisher config matches this repo + workflow filename. Every `@squawk/*` package additionally has "Require two-factor authentication and disallow tokens" set on npm.
-- **`--ignore-scripts` on every `npm ci`.** All four workflows (ci, codeql, docs, publish) pass `--ignore-scripts` to neutralise prepare/postinstall script vectors.
-- **Build/publish job split.** The build job (`contents: read`, no secrets) produces the dist artifact; the publish job downloads the artifact and is the only job that holds the App token + OIDC permissions. The publish job deliberately never runs `npm run build`, so the dist artifact is the sole source of build output at publish time - any publishable workspace missing from it would otherwise publish as a tarball containing nothing but `package.json` and `README.md`. The artifact is therefore built from the publishable-workspace list rather than directory globs, and [scripts/check-publishable-dist.js](scripts/check-publishable-dist.js) re-runs after the download to make that failure loud instead of silent. Bundling through `tar` also keeps the `bin` entry's executable bit, which the artifact upload's zip step would drop.
+- **npm Trusted Publisher (OIDC).** No long-lived `NPM_TOKEN` exists. The publish job exchanges a short-lived GitHub OIDC token (`id-token: write` + `npm@11.12`) for a per-run publish credential scoped to packages whose Trusted Publisher config matches this repo + workflow filename. Every `@squawk/*` package additionally has "Require two-factor authentication and disallow tokens" set on npm.
+- **`--ignore-scripts` on every `npm ci`.** All five workflows that install dependencies (ci, codeql, docs, version, publish) pass `--ignore-scripts` to neutralise prepare/postinstall script vectors.
+- **Build/publish job split.** The build job (`contents: read`, no secrets) produces the dist artifact; the publish job downloads the artifact and is the only job that holds OIDC permissions. The App token is also minted by the version job in [version.yml](.github/workflows/version.yml), which can open a PR but has no `id-token` permission and no path to npm. The publish job deliberately never runs `npm run build`, so the dist artifact is the sole source of build output at publish time - any publishable workspace missing from it would otherwise publish as a tarball containing nothing but `package.json` and `README.md`. The artifact is therefore built from the publishable-workspace list rather than directory globs, and [scripts/check-publishable-dist.js](scripts/check-publishable-dist.js) re-runs after the download to make that failure loud instead of silent. Bundling through `tar` also keeps the `bin` entry's executable bit, which the artifact upload's zip step would drop.
 - **Curated Actions allowlist + SHA pinning.** Repo Actions settings allow only `actions/*` (via the GitHub-authored toggle), `changesets/action@*`, and `lycheeverse/lychee-action@*`. "Require actions to be pinned to a full-length commit SHA" is enforced; Dependabot keeps the trailing version comments in sync.
 
 The disclosure process for vulnerability reports lives in [SECURITY.md](SECURITY.md). The repo is a one-maintainer project, so response times are measured in days rather than hours.
