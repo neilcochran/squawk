@@ -83,9 +83,30 @@ DF0/4/5/16/20/21 replies (ACAS/TCAS and Mode-S surveillance replies) carry an IC
 
 All three factories return the same `AircraftFeed` shape, so switching sources for a given consumer is a one-line change - `getAircraft`, `getAllAircraft`, `getPositionHistory`, and the event names are identical either way.
 
+### Choosing the source at runtime
+
+When the source comes from a CLI flag or a config value, `createAircraftFeedForSource` dispatches to the matching factory so there is one call site instead of a switch. Node-only, since the SBS and Beast sources are.
+
+```typescript
+import { createAircraftFeedForSource } from '@squawk/adsb-feed';
+import type { FeedSource } from '@squawk/adsb-feed';
+
+const source: FeedSource = 'beast'; // or 'json' / 'sbs', e.g. from a --source flag
+
+const feed = createAircraftFeedForSource({
+  source,
+  host: '192.168.1.50',
+  receiverPosition: { lat: 40.6413, lon: -73.7781 },
+});
+
+feed.start();
+```
+
+`port` defaults per source from the exported `DEFAULT_PORT_BY_SOURCE` (`8080` json, `30003` sbs, `30005` beast), matching dump1090-fa's own defaults. For the `json` source the endpoint is dump1090-fa's standard `http://<host>:<port>/data/aircraft.json`, or `url` when given. Options that do not apply to the selected source (`receiverPosition` for anything but `beast`, `url` for anything but `json`, and so on) are ignored, so the same options object works whichever source is chosen.
+
 ## Browser / SPA usage
 
-Import `createJsonAircraftFeed` from the `/browser` subpath. `createSbsAircraftFeed` and `createBeastAircraftFeed` depend on Node's `net` module (raw TCP sockets have no browser API) and are not exported there.
+Import `createJsonAircraftFeed` from the `/browser` subpath. `createSbsAircraftFeed`, `createBeastAircraftFeed`, and `createAircraftFeedForSource` depend on Node's `net` module (raw TCP sockets have no browser API) and are not exported there.
 
 ```typescript
 import { createJsonAircraftFeed } from '@squawk/adsb-feed/browser';
@@ -98,8 +119,10 @@ dump1090-fa does not send CORS headers, so a browser fetching `aircraft.json` di
 - `createJsonAircraftFeed({ url, pollIntervalMs?, fetch?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by HTTP-polled `aircraft.json`.
 - `createSbsAircraftFeed({ host, port?, reconnectDelayMs?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by a persistent SBS/BaseStation socket connection. Node-only.
 - `createBeastAircraftFeed({ host, port?, reconnectDelayMs?, receiverPosition?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed backed by a persistent Beast binary socket connection, decoding raw Mode-S/ADS-B messages itself. Node-only.
+- `createAircraftFeedForSource({ source, host, port?, url?, pollIntervalMs?, fetch?, reconnectDelayMs?, receiverPosition?, staleAfterMs?, sweepIntervalMs?, positionHistoryRetention? })` - creates a feed for a `FeedSource` (`'json' | 'sbs' | 'beast'`) chosen at runtime, dispatching to one of the three factories above. Node-only.
+- `DEFAULT_PORT_BY_SOURCE` - dump1090-fa's default port for each `FeedSource`.
 
-All three accept `staleAfterMs` (how long an aircraft may go without an update before `aircraft:lost`, default 60000) and `sweepIntervalMs` (how often the staleness sweep runs, default 1000). An aircraft is dropped on the first sweep after its window elapses, so `aircraft:lost` can fire up to one sweep interval late; the one-second default keeps that negligible, and the sweep is a single pass over the tracked aircraft, so it costs next to nothing. Lengthen it only if you would rather sweep less often.
+All factories accept `staleAfterMs` (how long an aircraft may go without an update before `aircraft:lost`, default 60000) and `sweepIntervalMs` (how often the staleness sweep runs, default 1000). An aircraft is dropped on the first sweep after its window elapses, so `aircraft:lost` can fire up to one sweep interval late; the one-second default keeps that negligible, and the sweep is a single pass over the tracked aircraft, so it costs next to nothing. Lengthen it only if you would rather sweep less often.
 
 - `feed.start()` / `feed.stop()` - begin or end polling/connecting. `stop()` clears all tracked state.
 - `feed.getAircraft(icaoHex)` / `feed.getAllAircraft()` - current normalized `Aircraft` state.

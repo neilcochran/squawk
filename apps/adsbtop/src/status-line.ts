@@ -1,4 +1,5 @@
-import type { FeedSource } from './cli-args.js';
+import type { FeedSource } from '@squawk/adsb-feed';
+
 import { formatAge } from './format.js';
 
 /** Inputs for {@link formatStatusLine}. */

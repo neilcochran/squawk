@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_PORT_BY_SOURCE, DEFAULT_STALE_AFTER_MS, parseCliArgs } from './cli-args.js';
+import { DEFAULT_PORT_BY_SOURCE } from '@squawk/adsb-feed';
+
+import { DEFAULT_STALE_AFTER_MS, parseCliArgs } from './cli-args.js';
 import type { CliArgsError, CliOptions } from './cli-args.js';
 
 function isError(result: CliOptions | CliArgsError): result is CliArgsError {
@@ -8,14 +10,14 @@ function isError(result: CliOptions | CliArgsError): result is CliArgsError {
 }
 
 describe('parseCliArgs', () => {
-  it('defaults to the sbs source on localhost with no arguments', () => {
+  it('defaults to the beast source on localhost with no arguments', () => {
     const result = parseCliArgs([]);
     expect(isError(result)).toBe(false);
     if (!isError(result)) {
       expect(result.help).toBe(false);
-      expect(result.source).toBe('sbs');
+      expect(result.source).toBe('beast');
       expect(result.host).toBe('localhost');
-      expect(result.port).toBe(DEFAULT_PORT_BY_SOURCE.sbs);
+      expect(result.port).toBe(DEFAULT_PORT_BY_SOURCE.beast);
       expect(result.url).toBeUndefined();
     }
   });
@@ -142,7 +144,7 @@ describe('parseCliArgs', () => {
   });
 
   it('rejects a column in --columns that the chosen source never sends', () => {
-    const result = parseCliArgs(['--columns', 'icao,cat']);
+    const result = parseCliArgs(['--columns', 'icao,cat', '--source', 'sbs']);
     expect(isError(result)).toBe(true);
     if (isError(result)) {
       expect(result.message).toBe('--columns includes Cat, which is not sent by sbs.');

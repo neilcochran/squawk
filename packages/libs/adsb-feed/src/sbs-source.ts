@@ -1,12 +1,11 @@
 import { connect } from 'node:net';
 import type { Socket } from 'node:net';
 
+import { DEFAULT_PORT_BY_SOURCE } from './default-ports.js';
 import { parseSbsLine } from './sbs-mapping.js';
 import { createTracker } from './tracker.js';
 import type { AircraftFeed, SbsFeedOptions } from './types/index.js';
 
-/** Default SBS/BaseStation TCP port. */
-const DEFAULT_PORT = 30003;
 /** Default delay before attempting to reconnect after the connection closes. */
 const DEFAULT_RECONNECT_DELAY_MS = 5000;
 
@@ -36,7 +35,7 @@ const DEFAULT_RECONNECT_DELAY_MS = 5000;
  */
 export function createSbsAircraftFeed(options: SbsFeedOptions): AircraftFeed {
   const tracker = createTracker(options);
-  const port = options.port ?? DEFAULT_PORT;
+  const port = options.port ?? DEFAULT_PORT_BY_SOURCE.sbs;
   const reconnectDelayMs = options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
 
   let socket: Socket | undefined;

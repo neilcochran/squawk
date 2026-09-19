@@ -13,14 +13,16 @@ npm install -g @squawk/adsbtop
 ## Usage
 
 ```bash
-adsbtop --source sbs --host 192.168.1.50
+adsbtop --host 192.168.1.50 --lat 40.6413 --lon -73.7781
 ```
+
+With no `--source`, adsbtop connects to the station's raw Beast output and decodes the Mode-S/ADS-B messages itself, which populates the most fields (see [Field population by source](#field-population-by-source)). `--lat`/`--lon` are optional, but with the Beast source they are also what lets aircraft on the ground resolve a position (see [Location](#location-distance-bearing-and-closest-approach)).
 
 ### Options
 
 | Flag                    | Description                                                                                                                                        | Default                                       |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `--source <source>`     | Feed to connect to: `json`, `sbs`, or `beast`                                                                                                      | `sbs`                                         |
+| `--source <source>`     | Feed to connect to: `json`, `sbs`, or `beast`                                                                                                      | `beast`                                       |
 | `--host <host>`         | dump1090-fa station hostname/IP                                                                                                                    | `localhost`                                   |
 | `--port <port>`         | Port to connect to                                                                                                                                 | `8080` (json), `30003` (sbs), `30005` (beast) |
 | `--url <url>`           | Full `aircraft.json` URL, overriding `--host`/`--port` (`--source json` only)                                                                      | -                                             |

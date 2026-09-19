@@ -64,3 +64,34 @@ export interface BeastFeedOptions extends AircraftFeedOptions {
    */
   receiverPosition?: Pick<Position, 'lat' | 'lon'>;
 }
+
+/**
+ * Which dump1090-fa output a feed connects to: the HTTP-polled
+ * `aircraft.json`, the SBS/BaseStation socket, or the raw Beast binary socket.
+ */
+export type FeedSource = 'json' | 'sbs' | 'beast';
+
+/**
+ * Options for `createAircraftFeedForSource`. A flat bag covering all three
+ * sources, so a caller that picks the source at runtime (a CLI flag, a config
+ * file) can pass one object regardless of which source was chosen. Options
+ * that do not apply to the selected `source` are ignored.
+ */
+export interface SourceFeedOptions extends AircraftFeedOptions {
+  /** Which dump1090-fa output to connect to. */
+  source: FeedSource;
+  /** Hostname or IP address of the dump1090-fa station. */
+  host: string;
+  /** Port to connect to. Defaults to the selected source's entry in `DEFAULT_PORT_BY_SOURCE`. */
+  port?: number;
+  /** Full `aircraft.json` URL, used as-is instead of one assembled from `host`/`port`. Applies to the `json` source only. */
+  url?: string;
+  /** Polling interval in ms. Applies to the `json` source only - see `JsonFeedOptions.pollIntervalMs`. */
+  pollIntervalMs?: number;
+  /** Override for the global `fetch`. Applies to the `json` source only. */
+  fetch?: typeof fetch;
+  /** Delay in ms before reconnecting after the connection closes or errors. Applies to the `sbs` and `beast` sources only. */
+  reconnectDelayMs?: number;
+  /** The receiving station's own position. Applies to the `beast` source only - see `BeastFeedOptions.receiverPosition`. */
+  receiverPosition?: Pick<Position, 'lat' | 'lon'>;
+}
