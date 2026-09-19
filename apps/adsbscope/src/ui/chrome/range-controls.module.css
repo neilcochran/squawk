@@ -1,0 +1,41 @@
+.rangeControls {
+  position: absolute;
+  right: var(--scope-inset-inline);
+  bottom: var(--scope-inset-block);
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-sm);
+}
+
+/* Mobile first: a full-size touch target. The compact size is restored at the desktop breakpoint. */
+.button {
+  width: var(--scope-touch-target);
+  height: var(--scope-touch-target);
+  padding: 0;
+  border: var(--scope-border-width) solid var(--scope-chrome-control-border);
+  border-radius: var(--scope-radius);
+  background: var(--scope-chrome-control-background);
+  color: var(--scope-chrome-emphasis);
+  font: inherit;
+  font-size: var(--scope-control-font-size);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.button:focus-visible {
+  outline: var(--scope-focus-ring-width) solid var(--scope-chrome-emphasis);
+  outline-offset: var(--scope-space-xs);
+}
+
+.button:disabled {
+  opacity: var(--scope-disabled-opacity);
+  cursor: default;
+}
+
+/* 48rem is the one breakpoint between phone and desktop layouts (custom properties cannot be used in media queries). */
+@media (min-width: 48rem) {
+  .button {
+    width: var(--scope-control-size);
+    height: var(--scope-control-size);
+  }
+}
