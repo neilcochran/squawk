@@ -38,7 +38,7 @@
     "@squawk/units": "^0.4.8",
     "ink": "^7.1.1",
     "ink-text-input": "^6.0.0",
-    "react": "^19.2.8"
+    "react": "^19.3.0"
   },
   "keywords": [
     "aviation",
@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.5.1",
-    "@types/react": "^19.2.18",
+    "@types/react": "^19.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "ink-testing-library": "^4.0.0"
   }
