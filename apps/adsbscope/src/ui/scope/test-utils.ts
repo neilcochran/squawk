@@ -29,6 +29,7 @@ export interface RecordingContext {
 const RECORDED_METHODS = [
   'arc',
   'beginPath',
+  'closePath',
   'fill',
   'fillRect',
   'fillText',
@@ -56,17 +57,26 @@ export function createRecordingContext(): RecordingContext {
     textAlign: 'start',
     textBaseline: 'alphabetic',
   };
-  for (const method of RECORDED_METHODS) {
-    state[method] = (...args: unknown[]): void => {
-      calls.push({
-        method,
-        args,
-        fillStyle: String(state.fillStyle),
-        strokeStyle: String(state.strokeStyle),
-        globalAlpha: Number(state.globalAlpha),
-      });
-    };
+  function record(method: string, args: unknown[]): void {
+    calls.push({
+      method,
+      args,
+      fillStyle: String(state.fillStyle),
+      strokeStyle: String(state.strokeStyle),
+      globalAlpha: Number(state.globalAlpha),
+    });
   }
+  for (const method of RECORDED_METHODS) {
+    state[method] = (...args: unknown[]): void => record(method, args);
+  }
+  state.createConicGradient = (
+    ...args: unknown[]
+  ): { addColorStop: (...stop: unknown[]) => void } => {
+    record('createConicGradient', args);
+    return {
+      addColorStop: (...stop: unknown[]): void => record('addColorStop', stop),
+    };
+  };
   return {
     context: state as unknown as CanvasRenderingContext2D,
     calls,

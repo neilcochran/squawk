@@ -1,0 +1,10 @@
+.segmentedControl {
+  display: flex;
+  align-items: center;
+  gap: var(--scope-space-xs);
+}
+
+.caption {
+  min-width: var(--scope-caption-width);
+  margin-right: var(--scope-space-sm);
+}

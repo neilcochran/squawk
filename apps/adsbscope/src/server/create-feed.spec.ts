@@ -14,6 +14,7 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     port: 30005,
     url: undefined,
     location: { lat: 40.6413, lon: -73.7781 },
+    mode: 'digital',
     rangeNm: 60,
     listenPort: 8090,
     bindAddress: '127.0.0.1',

@@ -13,7 +13,6 @@ import {
   COASTING_AFTER_MS,
   createDigitalRenderer,
   DIGITAL_LAYOUT_REM,
-  formatCompassLabel,
   isNearCanvas,
 } from './digital-renderer.js';
 import { DIGITAL_THEME } from './digital-theme.js';
@@ -35,18 +34,11 @@ function renderFrame(
     rangeNm,
     snapshot,
     frameTimeMs: 0,
+    settings: {},
   };
   createDigitalRenderer(theme).render(recording.context, frame);
   return recording;
 }
-
-describe('formatCompassLabel', () => {
-  it('pads headings to three digits and shows north as 360', () => {
-    expect(formatCompassLabel(0)).toBe('360');
-    expect(formatCompassLabel(30)).toBe('030');
-    expect(formatCompassLabel(270)).toBe('270');
-  });
-});
 
 describe('isNearCanvas', () => {
   const marginPx = DIGITAL_LAYOUT_REM.offscreenMargin * DEFAULT_PX_PER_REM;

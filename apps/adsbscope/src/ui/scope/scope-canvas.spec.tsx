@@ -7,6 +7,8 @@ import { ScopeCanvas } from './scope-canvas.js';
 import { createRecordingContext, makeSnapshot } from './test-utils.js';
 import { DEFAULT_PX_PER_REM } from './units.js';
 
+const SETTINGS = { tags: 'off' };
+
 let frameCallbacks: Map<number, FrameRequestCallback>;
 let nextFrameHandle: number;
 
@@ -62,7 +64,9 @@ describe('ScopeCanvas', () => {
     const renderer = makeRenderer();
     const snapshot = makeSnapshot();
 
-    render(<ScopeCanvas renderer={renderer} rangeNm={60} snapshot={snapshot} />);
+    render(
+      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={snapshot} settings={SETTINGS} />,
+    );
     runFrame(16);
     runFrame(32);
 
@@ -74,13 +78,35 @@ describe('ScopeCanvas', () => {
     expect(frame?.viewport.widthPx).toBe(800);
     expect(frame?.viewport.heightPx).toBe(600);
     expect(frame?.viewport.pxPerRem).toBe(DEFAULT_PX_PER_REM);
+    expect(frame?.settings).toBe(SETTINGS);
+  });
+
+  it('hands a changed setting to the renderer without restarting the frame loop', () => {
+    stubContext();
+    const renderer = makeRenderer();
+    const view = render(
+      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+    );
+    runFrame(16);
+    const changed = { tags: 'on' };
+
+    view.rerender(
+      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={changed} />,
+    );
+    runFrame(32);
+
+    expect(lastFrame(renderer)?.settings).toBe(changed);
+    expect(window.cancelAnimationFrame).not.toHaveBeenCalled();
+    expect(renderer.reset).toHaveBeenCalledTimes(1);
   });
 
   it('draws at the scale of the root font size, and picks up a change on resize', () => {
     stubContext();
     const renderer = makeRenderer();
     document.documentElement.style.fontSize = '20px';
-    render(<ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} />);
+    render(
+      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+    );
     runFrame(16);
     expect(lastFrame(renderer)?.viewport.pxPerRem).toBe(20);
 
@@ -94,12 +120,16 @@ describe('ScopeCanvas', () => {
   it('picks up a new range and snapshot without restarting the frame loop', () => {
     stubContext();
     const renderer = makeRenderer();
-    const view = render(<ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} />);
+    const view = render(
+      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+    );
     runFrame(16);
     const scheduledBefore = vi.mocked(window.requestAnimationFrame).mock.calls.length;
     const snapshot = makeSnapshot();
 
-    view.rerender(<ScopeCanvas renderer={renderer} rangeNm={40} snapshot={snapshot} />);
+    view.rerender(
+      <ScopeCanvas renderer={renderer} rangeNm={40} snapshot={snapshot} settings={SETTINGS} />,
+    );
     runFrame(32);
 
     expect(lastFrame(renderer)?.rangeNm).toBe(40);
@@ -112,10 +142,14 @@ describe('ScopeCanvas', () => {
     stubContext();
     const first = makeRenderer();
     const second = makeRenderer();
-    const view = render(<ScopeCanvas renderer={first} rangeNm={60} snapshot={undefined} />);
+    const view = render(
+      <ScopeCanvas renderer={first} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+    );
     runFrame(16);
 
-    view.rerender(<ScopeCanvas renderer={second} rangeNm={60} snapshot={undefined} />);
+    view.rerender(
+      <ScopeCanvas renderer={second} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+    );
     runFrame(32);
 
     expect(first.reset).toHaveBeenCalledTimes(1);
@@ -127,7 +161,9 @@ describe('ScopeCanvas', () => {
   it('re-fits the canvas and resets the renderer when the window is resized', () => {
     stubContext();
     const renderer = makeRenderer();
-    render(<ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} />);
+    render(
+      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+    );
     vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
 
     window.dispatchEvent(new Event('resize'));
@@ -140,7 +176,9 @@ describe('ScopeCanvas', () => {
   it('stops painting and listening once unmounted', () => {
     stubContext();
     const renderer = makeRenderer();
-    const view = render(<ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} />);
+    const view = render(
+      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+    );
 
     view.unmount();
     runFrame(16);
@@ -154,7 +192,9 @@ describe('ScopeCanvas', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     const renderer = makeRenderer();
 
-    const view = render(<ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} />);
+    const view = render(
+      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+    );
     runFrame(16);
 
     expect(view.container).not.toBeEmptyDOMElement();

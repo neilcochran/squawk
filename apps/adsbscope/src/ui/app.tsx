@@ -2,10 +2,9 @@ import type { ReactElement } from 'react';
 
 import type { ScopeConfig } from '../shared/protocol.js';
 
-import { Notice } from './chrome/notice.js';
 import { fetchScopeConfig } from './data/scope-config.js';
 import { useScopeConfig } from './data/use-scope-config.js';
-import { DEFAULT_SCOPE_MODE } from './modes/registry.js';
+import { Notice } from './notice.js';
 import { ScopeView } from './scope-view.js';
 
 /** Props for {@link App}. */
@@ -24,6 +23,6 @@ export function App({ loadConfig = fetchScopeConfig }: AppProps): ReactElement {
     case 'error':
       return <Notice kind="alert">Could not load the scope configuration from the server.</Notice>;
     case 'loaded':
-      return <ScopeView config={configState.config} mode={DEFAULT_SCOPE_MODE} />;
+      return <ScopeView config={configState.config} />;
   }
 }

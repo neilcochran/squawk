@@ -3,8 +3,8 @@
  * components as CSS Modules.
  *
  * Colors and type come from the active theme (styles/theme.ts), which
- * publishes them as the --scope-chrome-* and --scope-font-* custom
- * properties. The stylesheets only define layout tokens, in rem so the chrome
+ * publishes them as the --scope-ui-* and --scope-font-* custom
+ * properties. The stylesheets only define layout tokens, in rem so the UI
  * follows the user's font-size setting, and contain no literal colors or font
  * names - theme.spec.ts enforces both directions of that contract.
  */
@@ -21,6 +21,7 @@
   --scope-touch-target: 2.75rem;
   --scope-control-size: 1.75rem;
   --scope-control-font-size: 1rem;
+  --scope-caption-width: 2.75rem;
   --scope-disabled-opacity: 0.4;
 }
 
@@ -37,8 +38,8 @@ body,
 }
 
 body {
-  background: var(--scope-chrome-background);
-  color: var(--scope-chrome-text);
+  background: var(--scope-ui-background);
+  color: var(--scope-ui-text);
   font-family: var(--scope-font-family);
   font-size: var(--scope-font-size);
   overflow: hidden;

@@ -4,20 +4,34 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ScopeConfig } from '../shared/protocol.js';
 
-import { LINK_STATUS_LABELS } from './chrome/link-status.js';
-import type { ScopeModeDefinition } from './modes/mode.js';
-import { DEFAULT_SCOPE_MODE } from './modes/registry.js';
+import { LINK_STATUS_LABELS } from './hud/link-status.js';
+import { SCOPE_MODES_BY_ID } from './modes/registry.js';
 import { makeSnapshot, makeTarget } from './scope/test-utils.js';
 import { ScopeView } from './scope-view.js';
 import { themeCssVariables } from './styles/theme.js';
+import type { ScopeTheme } from './styles/theme.js';
 import { FakeEventSource } from './test-utils.js';
 
 const CONFIG: ScopeConfig = {
   receiver: { lat: 40.6413, lon: -73.7781 },
   source: 'beast',
   station: '192.168.1.50:30005',
+  mode: 'digital',
   rangeNm: 60,
 };
+
+const { digital: DIGITAL, analog: ANALOG } = SCOPE_MODES_BY_ID;
+
+function expectThemeApplied(theme: ScopeTheme): void {
+  for (const [name, value] of Object.entries(themeCssVariables(theme))) {
+    expect(document.documentElement.style.getPropertyValue(name)).toBe(value);
+  }
+}
+
+/** Asserts that the named option is the selected one of its control. */
+function expectSelected(name: string): void {
+  expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true');
+}
 
 beforeEach(() => {
   FakeEventSource.reset();
@@ -32,46 +46,163 @@ afterEach(() => {
 });
 
 describe('ScopeView', () => {
-  it('renders the scope canvas, the status readout, and the range controls', () => {
-    render(<ScopeView config={CONFIG} mode={DEFAULT_SCOPE_MODE} />);
+  it('renders the scope canvas, the status readout, and both groups of controls', () => {
+    render(<ScopeView config={CONFIG} />);
 
     expect(screen.getByLabelText('Radar scope')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('range 60 nm');
     expect(screen.getByRole('group', { name: 'Scope range' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'View style' })).toBeInTheDocument();
   });
 
-  it("publishes the mode's theme on the document root, and the new one when the mode changes", () => {
-    const otherMode: ScopeModeDefinition = {
-      ...DEFAULT_SCOPE_MODE,
-      id: 'other',
-      theme: {
-        ...DEFAULT_SCOPE_MODE.theme,
-        chrome: { ...DEFAULT_SCOPE_MODE.theme.chrome, text: '#33ff66' },
-      },
-    };
-    const root = document.documentElement;
+  describe('view style', () => {
+    it('starts in the configured view style, themed to match', () => {
+      render(<ScopeView config={{ ...CONFIG, mode: 'analog' }} />);
 
-    const view = render(<ScopeView config={CONFIG} mode={DEFAULT_SCOPE_MODE} />);
-    for (const [name, value] of Object.entries(themeCssVariables(DEFAULT_SCOPE_MODE.theme))) {
-      expect(root.style.getPropertyValue(name)).toBe(value);
-    }
+      expectSelected('View style: Analog');
+      expectThemeApplied(ANALOG.theme);
+    });
 
-    view.rerender(<ScopeView config={CONFIG} mode={otherMode} />);
-    expect(root.style.getPropertyValue('--scope-chrome-text')).toBe('#33ff66');
+    it('selects the view style whose button is pressed, re-theming the page and swapping the settings', () => {
+      render(<ScopeView config={CONFIG} />);
+      expectSelected('View style: Digital');
+      expectThemeApplied(DIGITAL.theme);
+      expect(screen.queryByRole('group', { name: 'Tags' })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'View style: Analog' }));
+
+      expectSelected('View style: Analog');
+      expect(screen.getByRole('group', { name: 'Tags' })).toBeInTheDocument();
+      expectThemeApplied(ANALOG.theme);
+
+      fireEvent.click(screen.getByRole('button', { name: 'View style: Digital' }));
+
+      expectSelected('View style: Digital');
+      expectThemeApplied(DIGITAL.theme);
+    });
+
+    it('stays put when the view style already selected is pressed again', () => {
+      const createDigital = vi.spyOn(DIGITAL, 'createRenderer');
+      render(<ScopeView config={CONFIG} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'View style: Digital' }));
+
+      expectSelected('View style: Digital');
+      expect(createDigital).toHaveBeenCalledTimes(1);
+    });
+
+    it('steps to the next view style from the keyboard', () => {
+      render(<ScopeView config={CONFIG} />);
+
+      fireEvent.keyDown(window, { key: 'm' });
+      expectSelected('View style: Analog');
+
+      fireEvent.keyDown(window, { key: 'm' });
+      expectSelected('View style: Digital');
+    });
+
+    it('creates a fresh renderer each time a view style is switched to, not on every render', () => {
+      const createAnalog = vi.spyOn(ANALOG, 'createRenderer');
+      const createDigital = vi.spyOn(DIGITAL, 'createRenderer');
+      render(<ScopeView config={CONFIG} />);
+      expect(createDigital).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(window, { key: '+' });
+      expect(createDigital).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(window, { key: 'm' });
+      fireEvent.keyDown(window, { key: 't' });
+      expect(createAnalog).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(window, { key: 'm' });
+      fireEvent.keyDown(window, { key: 'm' });
+      expect(createAnalog).toHaveBeenCalledTimes(2);
+    });
   });
 
-  it('creates one renderer per mode, not one per render', () => {
-    const createRenderer = vi.fn(DEFAULT_SCOPE_MODE.createRenderer);
-    const mode: ScopeModeDefinition = { ...DEFAULT_SCOPE_MODE, createRenderer };
+  describe('mode settings', () => {
+    it('selects a setting value from its button', () => {
+      render(<ScopeView config={{ ...CONFIG, mode: 'analog' }} />);
+      expectSelected('Tags: Off');
 
-    const view = render(<ScopeView config={CONFIG} mode={mode} />);
-    view.rerender(<ScopeView config={CONFIG} mode={mode} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Tags: On' }));
+      expectSelected('Tags: On');
 
-    expect(createRenderer).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole('button', { name: 'Sweep: 12 s' }));
+      expectSelected('Sweep: 12 s');
+      expectSelected('Tags: On');
+    });
+
+    it("steps a setting to its next value from the setting's hotkey", () => {
+      render(<ScopeView config={{ ...CONFIG, mode: 'analog' }} />);
+
+      fireEvent.keyDown(window, { key: 't' });
+      expectSelected('Tags: On');
+
+      fireEvent.keyDown(window, { key: 't' });
+      expectSelected('Tags: Off');
+
+      fireEvent.keyDown(window, { key: 'r' });
+      expectSelected('Sweep: 12 s');
+    });
+
+    it("ignores a setting's hotkey in a mode that does not declare it, and with Ctrl held", () => {
+      render(<ScopeView config={CONFIG} />);
+
+      fireEvent.keyDown(window, { key: 't' });
+      fireEvent.keyDown(window, { key: 'm' });
+      fireEvent.keyDown(window, { key: 'r', ctrlKey: true });
+
+      expectSelected('Tags: Off');
+      expectSelected('Sweep: 4.8 s');
+    });
+
+    it("keeps a mode's settings while another mode is showing", () => {
+      render(<ScopeView config={{ ...CONFIG, mode: 'analog' }} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Tags: On' }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'View style: Digital' }));
+      fireEvent.click(screen.getByRole('button', { name: 'View style: Analog' }));
+
+      expectSelected('Tags: On');
+    });
+  });
+
+  describe('range', () => {
+    it('steps from the on-screen buttons', () => {
+      render(<ScopeView config={CONFIG} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+      expect(screen.getByRole('status')).toHaveTextContent('range 40 nm');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+      expect(screen.getByRole('status')).toHaveTextContent('range 80 nm');
+    });
+
+    it('steps from the keyboard and ignores keys that mean nothing', () => {
+      render(<ScopeView config={CONFIG} />);
+
+      fireEvent.keyDown(window, { key: '+' });
+      expect(screen.getByRole('status')).toHaveTextContent('range 40 nm');
+
+      fireEvent.keyDown(window, { key: 'x' });
+      expect(screen.getByRole('status')).toHaveTextContent('range 40 nm');
+    });
+
+    it('starts from a configured range that is not one of the steps, and survives a mode switch', () => {
+      render(<ScopeView config={{ ...CONFIG, rangeNm: 25 }} />);
+      expect(screen.getByRole('status')).toHaveTextContent('range 25 nm');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+      fireEvent.keyDown(window, { key: 'm' });
+
+      expect(screen.getByRole('status')).toHaveTextContent('range 20 nm');
+    });
   });
 
   it('reflects the stream in the status readout', () => {
-    render(<ScopeView config={CONFIG} mode={DEFAULT_SCOPE_MODE} />);
+    render(<ScopeView config={CONFIG} />);
     const snapshot = makeSnapshot([
       makeTarget({ position: { trueBearingDeg: 90, rangeNm: 12 } }),
       makeTarget({ icaoHex: 'c0ffee' }),
@@ -85,35 +216,5 @@ describe('ScopeView', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(LINK_STATUS_LABELS.live);
     expect(screen.getByRole('status')).toHaveTextContent('2 targets (1 plotted)');
-  });
-
-  it('steps the range from the on-screen buttons', () => {
-    render(<ScopeView config={CONFIG} mode={DEFAULT_SCOPE_MODE} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expect(screen.getByRole('status')).toHaveTextContent('range 40 nm');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
-    expect(screen.getByRole('status')).toHaveTextContent('range 80 nm');
-  });
-
-  it('steps the range from the keyboard', () => {
-    render(<ScopeView config={CONFIG} mode={DEFAULT_SCOPE_MODE} />);
-
-    fireEvent.keyDown(window, { key: '+' });
-    expect(screen.getByRole('status')).toHaveTextContent('range 40 nm');
-
-    fireEvent.keyDown(window, { key: 'x' });
-    expect(screen.getByRole('status')).toHaveTextContent('range 40 nm');
-  });
-
-  it('starts from a configured range that is not one of the steps', () => {
-    render(<ScopeView config={{ ...CONFIG, rangeNm: 25 }} mode={DEFAULT_SCOPE_MODE} />);
-    expect(screen.getByRole('status')).toHaveTextContent('range 25 nm');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-
-    expect(screen.getByRole('status')).toHaveTextContent('range 20 nm');
   });
 });

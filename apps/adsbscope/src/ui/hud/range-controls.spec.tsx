@@ -15,6 +15,12 @@ describe('RangeControls', () => {
     expect(screen.getByRole('button', { name: 'Zoom out' })).toBeEnabled();
   });
 
+  it('presents its buttons as plain actions, not as options of a choice', () => {
+    render(<RangeControls rangeNm={60} onStep={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Zoom in' })).not.toHaveAttribute('aria-pressed');
+  });
+
   it('reports the direction of the button pressed', () => {
     const onStep = vi.fn();
     render(<RangeControls rangeNm={60} onStep={onStep} />);

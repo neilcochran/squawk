@@ -17,26 +17,33 @@ export interface ScopeCanvasProps {
   rangeNm: number;
   /** The most recent snapshot from the server, or undefined before the first one arrives. */
   snapshot: ScopeSnapshot | undefined;
+  /** The current value of each of the active mode's settings, handed to the renderer with every frame. */
+  settings: Readonly<Record<string, string>>;
 }
 
 /**
  * The scope itself: a canvas that fills its container and repaints every
  * animation frame with the current renderer. The frame loop is started once,
  * when the canvas element mounts, and reads the latest props through a ref,
- * so a new snapshot or range never restarts it.
+ * so a new snapshot, range, or setting never restarts it.
  *
  * Whenever the window is resized the canvas is re-fitted to its new size and
  * pixel density, the rem scale is re-read, and the renderer is reset - so the
  * scope follows a window resize, a device rotation, a browser zoom, or a
  * change of font size without any of them being handled specially.
  */
-export function ScopeCanvas({ renderer, rangeNm, snapshot }: ScopeCanvasProps): ReactElement {
+export function ScopeCanvas({
+  renderer,
+  rangeNm,
+  snapshot,
+  settings,
+}: ScopeCanvasProps): ReactElement {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
-  const latest = useRef({ renderer, rangeNm, snapshot });
+  const latest = useRef({ renderer, rangeNm, snapshot, settings });
 
   useEffect(() => {
-    latest.current = { renderer, rangeNm, snapshot };
-  }, [renderer, rangeNm, snapshot]);
+    latest.current = { renderer, rangeNm, snapshot, settings };
+  }, [renderer, rangeNm, snapshot, settings]);
 
   useEffect(() => {
     renderer.reset();
@@ -67,6 +74,7 @@ export function ScopeCanvas({ renderer, rangeNm, snapshot }: ScopeCanvasProps): 
         rangeNm: current.rangeNm,
         snapshot: current.snapshot,
         frameTimeMs,
+        settings: current.settings,
       });
       frameHandle = window.requestAnimationFrame(paint);
     }

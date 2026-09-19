@@ -9,14 +9,14 @@
 }
 
 .name {
-  color: var(--scope-chrome-emphasis);
+  color: var(--scope-ui-emphasis);
   font-weight: bold;
 }
 
 .statusOk {
-  color: var(--scope-chrome-ok);
+  color: var(--scope-ui-ok);
 }
 
 .statusAlert {
-  color: var(--scope-chrome-alert);
+  color: var(--scope-ui-alert);
 }

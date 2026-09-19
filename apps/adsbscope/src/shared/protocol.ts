@@ -4,6 +4,25 @@ import type { Coordinates } from '@squawk/types';
 /** The app's name, as shown in the UI and printed by the CLI. */
 export const APP_NAME = 'adsbscope';
 
+/** The scope's view styles, in the order they are offered: a modern digital scope, and a sweep-era analog PPI. */
+export const SCOPE_MODE_IDS = ['digital', 'analog'] as const;
+
+/** Identifies one of the scope's view styles. */
+export type ScopeModeId = (typeof SCOPE_MODE_IDS)[number];
+
+/** The view style the scope opens in unless told otherwise. */
+export const DEFAULT_SCOPE_MODE_ID: ScopeModeId = 'digital';
+
+/**
+ * Narrows a string to a {@link ScopeModeId}.
+ *
+ * @param value - The candidate, e.g. a CLI flag value or a decoded config field.
+ * @returns True if it names a view style.
+ */
+export function isScopeModeId(value: unknown): value is ScopeModeId {
+  return SCOPE_MODE_IDS.some((id) => id === value);
+}
+
 /** Where the scope's traffic comes from: a live dump1090-fa output, or a recorded session being replayed. */
 export type ScopeSource = FeedSource | 'replay';
 
@@ -81,6 +100,8 @@ export interface ScopeConfig {
   source: ScopeSource;
   /** Human-readable description of the station or replay file, for the status bar. */
   station: string;
+  /** The view style to start in. */
+  mode: ScopeModeId;
   /** The scope range to start at: nautical miles from the center to the edge of the scope. */
   rangeNm: number;
 }

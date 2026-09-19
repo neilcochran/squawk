@@ -167,7 +167,7 @@ describe('run', () => {
     const harness = makeHarness();
 
     const result = await run(
-      [...LOCATION, '--host', '192.168.1.50', '--range', '40'],
+      [...LOCATION, '--host', '192.168.1.50', '--range', '40', '--mode', 'analog'],
       harness.io,
       harness.dependencies,
     );
@@ -183,6 +183,7 @@ describe('run', () => {
         receiver: { lat: 40.6413, lon: -73.7781 },
         source: 'beast',
         station: '192.168.1.50:30005',
+        mode: 'analog',
         rangeNm: 40,
       },
       publicDir: '/ui',

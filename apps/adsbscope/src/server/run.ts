@@ -122,6 +122,7 @@ async function start(
       receiver: cli.location,
       source: cli.replayPath !== undefined ? 'replay' : cli.source,
       station,
+      mode: cli.mode,
       rangeNm: cli.rangeNm,
     },
     publicDir: dependencies.publicDir,

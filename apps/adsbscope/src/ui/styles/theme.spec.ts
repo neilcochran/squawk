@@ -22,7 +22,7 @@ const THEME: ScopeTheme = {
     history: '#555555',
     vector: '#666666',
   },
-  chrome: {
+  ui: {
     background: '#001100',
     text: '#33ff66',
     emphasis: '#aaffbb',
@@ -43,15 +43,15 @@ describe('canvasFont', () => {
 });
 
 describe('themeCssVariables', () => {
-  it('publishes every chrome color and the font fields, with the font size in rem', () => {
+  it('publishes every UI color and the font fields, with the font size in rem', () => {
     expect(themeCssVariables(THEME)).toEqual({
-      '--scope-chrome-background': '#001100',
-      '--scope-chrome-text': '#33ff66',
-      '--scope-chrome-emphasis': '#aaffbb',
-      '--scope-chrome-ok': '#33ff67',
-      '--scope-chrome-alert': '#ffee55',
-      '--scope-chrome-control-background': '#002200',
-      '--scope-chrome-control-border': '#116611',
+      '--scope-ui-background': '#001100',
+      '--scope-ui-text': '#33ff66',
+      '--scope-ui-emphasis': '#aaffbb',
+      '--scope-ui-ok': '#33ff67',
+      '--scope-ui-alert': '#ffee55',
+      '--scope-ui-control-background': '#002200',
+      '--scope-ui-control-border': '#116611',
       '--scope-font-family': 'Courier New, monospace',
       '--scope-font-size': '0.875rem',
     });

@@ -8,6 +8,7 @@ const CONFIG: ScopeConfig = {
   receiver: { lat: 40.6413, lon: -73.7781 },
   source: 'beast',
   station: '192.168.1.50:30005',
+  mode: 'digital',
   rangeNm: 60,
 };
 
@@ -17,6 +18,7 @@ describe('parseScopeConfig', () => {
     for (const source of ['json', 'sbs', 'replay'] as const) {
       expect(parseScopeConfig({ ...CONFIG, source })).toEqual({ ...CONFIG, source });
     }
+    expect(parseScopeConfig({ ...CONFIG, mode: 'analog' })).toEqual({ ...CONFIG, mode: 'analog' });
   });
 
   it('drops unknown fields', () => {
@@ -31,6 +33,8 @@ describe('parseScopeConfig', () => {
     expect(parseScopeConfig({ ...CONFIG, receiver: { lat: 40 } })).toBeUndefined();
     expect(parseScopeConfig({ ...CONFIG, source: 'radar' })).toBeUndefined();
     expect(parseScopeConfig({ ...CONFIG, station: 5 })).toBeUndefined();
+    expect(parseScopeConfig({ ...CONFIG, mode: 'retro' })).toBeUndefined();
+    expect(parseScopeConfig({ ...CONFIG, mode: undefined })).toBeUndefined();
     expect(parseScopeConfig({ ...CONFIG, rangeNm: '60' })).toBeUndefined();
     expect(parseScopeConfig({ ...CONFIG, rangeNm: 0 })).toBeUndefined();
     expect(parseScopeConfig({ ...CONFIG, rangeNm: Number.NaN })).toBeUndefined();

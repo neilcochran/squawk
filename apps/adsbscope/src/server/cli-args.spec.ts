@@ -43,6 +43,7 @@ describe('parseCliArgs', () => {
       port: DEFAULT_PORT_BY_SOURCE.beast,
       url: undefined,
       location: { lat: 40.6413, lon: -73.7781 },
+      mode: 'digital',
       rangeNm: DEFAULT_RANGE_NM,
       listenPort: DEFAULT_LISTEN_PORT,
       bindAddress: DEFAULT_BIND_ADDRESS,
@@ -143,6 +144,13 @@ describe('parseCliArgs', () => {
   });
 
   describe('scope and server', () => {
+    it('parses --mode and rejects an unknown one', () => {
+      expect(parseOk([...LOCATION, '--mode', 'analog']).mode).toBe('analog');
+      expect(parseError([...LOCATION, '--mode', 'retro'])).toBe(
+        'Invalid --mode "retro" - expected digital or analog.',
+      );
+    });
+
     it('parses --range and rejects a non-positive, oversized, or non-numeric one', () => {
       expect(parseOk([...LOCATION, '--range', '25']).rangeNm).toBe(25);
       expect(parseError([...LOCATION, '--range', '0'])).toContain('Invalid --range "0"');

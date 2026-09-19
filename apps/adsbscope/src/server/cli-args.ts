@@ -4,7 +4,14 @@ import { DEFAULT_PORT_BY_SOURCE } from '@squawk/adsb-feed';
 import type { FeedSource } from '@squawk/adsb-feed';
 import type { Coordinates } from '@squawk/types';
 
-import { APP_NAME, DEFAULT_LISTEN_PORT } from '../shared/protocol.js';
+import {
+  APP_NAME,
+  DEFAULT_LISTEN_PORT,
+  DEFAULT_SCOPE_MODE_ID,
+  isScopeModeId,
+  SCOPE_MODE_IDS,
+} from '../shared/protocol.js';
+import type { ScopeModeId } from '../shared/protocol.js';
 
 /**
  * Default for `--stale-after`: how long an aircraft may go without an
@@ -37,6 +44,8 @@ export interface CliOptions {
    * surface CPR decoding.
    */
   location: Coordinates;
+  /** The view style the UI starts in, from `--mode`. */
+  mode: ScopeModeId;
   /** The scope range in nautical miles the UI starts at, from `--range`. */
   rangeNm: number;
   /** The port the scope UI is served on, from `--listen-port`. */
@@ -104,6 +113,7 @@ Options:
   --port <port>              Station port to connect to (default: 8080 json, 30003 sbs, 30005 beast)
   --url <url>                Full aircraft.json URL, overriding --host/--port (source=json only)
   --replay <file>            Play back an "adsbtop --record" file instead of connecting to a station
+  --mode <${SCOPE_MODE_IDS.join('|')}>    View style to start in (default: ${DEFAULT_SCOPE_MODE_ID}) - switchable while running
   --range <nm>               Scope range to start at, in nautical miles (default: ${DEFAULT_RANGE_NM})
   --listen-port <port>       Port to serve the scope UI on (default: ${DEFAULT_LISTEN_PORT})
   --bind <address>           Local address to serve the scope UI on (default: ${DEFAULT_BIND_ADDRESS}) - use 0.0.0.0 to allow other devices on the network
@@ -176,6 +186,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
         lat: { type: 'string' },
         lon: { type: 'string' },
         replay: { type: 'string' },
+        mode: { type: 'string', default: DEFAULT_SCOPE_MODE_ID },
         range: { type: 'string' },
         'listen-port': { type: 'string' },
         bind: { type: 'string', default: DEFAULT_BIND_ADDRESS },
@@ -197,6 +208,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       port: DEFAULT_PORT_BY_SOURCE[DEFAULT_SOURCE],
       url: undefined,
       location: { lat: 0, lon: 0 },
+      mode: DEFAULT_SCOPE_MODE_ID,
       rangeNm: DEFAULT_RANGE_NM,
       listenPort: DEFAULT_LISTEN_PORT,
       bindAddress: DEFAULT_BIND_ADDRESS,
@@ -230,6 +242,13 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
 
   if (values.replay !== undefined && values.replay.trim() === '') {
     return { message: '--replay needs a file path.' };
+  }
+
+  const rawMode = values.mode ?? DEFAULT_SCOPE_MODE_ID;
+  if (!isScopeModeId(rawMode)) {
+    return {
+      message: `Invalid --mode "${rawMode}" - expected ${SCOPE_MODE_IDS.join(' or ')}.`,
+    };
   }
 
   let rangeNm = DEFAULT_RANGE_NM;
@@ -275,6 +294,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     port,
     url: values.url,
     location: parsedLocation.location,
+    mode: rawMode,
     rangeNm,
     listenPort,
     bindAddress,

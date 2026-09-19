@@ -1,0 +1,57 @@
+/* Mobile first: a full-size touch target. The compact size is restored at the desktop breakpoint. */
+.button {
+  min-width: var(--scope-touch-target);
+  height: var(--scope-touch-target);
+  border: var(--scope-border-width) solid var(--scope-ui-control-border);
+  border-radius: var(--scope-radius);
+  background: var(--scope-ui-control-background);
+  color: var(--scope-ui-emphasis);
+  font: inherit;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.button:focus-visible {
+  outline: var(--scope-focus-ring-width) solid var(--scope-ui-emphasis);
+  outline-offset: var(--scope-space-xs);
+}
+
+.button:disabled {
+  opacity: var(--scope-disabled-opacity);
+  cursor: default;
+}
+
+/* One option of a choice: the selected option is filled, the others recede to body text. */
+.button[aria-pressed='true'] {
+  background: var(--scope-ui-control-border);
+  cursor: default;
+}
+
+.button[aria-pressed='false'] {
+  color: var(--scope-ui-text);
+}
+
+.square {
+  composes: button;
+  width: var(--scope-touch-target);
+  padding: 0;
+  font-size: var(--scope-control-font-size);
+}
+
+.text {
+  composes: button;
+  padding: 0 var(--scope-space-sm);
+}
+
+/* 48rem is the one breakpoint between phone and desktop layouts (custom properties cannot be used in media queries). */
+@media (min-width: 48rem) {
+  .button {
+    min-width: var(--scope-control-size);
+    height: var(--scope-control-size);
+  }
+
+  .square {
+    width: var(--scope-control-size);
+  }
+}

@@ -11,6 +11,7 @@ const CONFIG: ScopeConfig = {
   receiver: { lat: 40.6413, lon: -73.7781 },
   source: 'beast',
   station: '192.168.1.50:30005',
+  mode: 'digital',
   rangeNm: 60,
 };
 

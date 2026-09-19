@@ -1,3 +1,9 @@
+/** The monospace font stack every built-in view style uses, so data blocks and readouts align in columns. */
+export const SCOPE_FONT_FAMILY = 'ui-monospace, Menlo, Consolas, monospace';
+
+/** The font size, in rem, every built-in view style uses. */
+export const SCOPE_FONT_SIZE_REM = 0.75;
+
 /** Colors a renderer paints the scope canvas with. Named for what they mean, not what they look like. */
 export interface ScopeCanvasPalette {
   /** The scope's backdrop. */
@@ -16,8 +22,8 @@ export interface ScopeCanvasPalette {
   vector: string;
 }
 
-/** Colors of the HTML chrome drawn over and around the canvas. */
-export interface ScopeChromePalette {
+/** Colors of the HTML UI drawn over and around the canvas: the page, the HUD, and notices. */
+export interface ScopeUiPalette {
   /** Page background, visible around the canvas and behind notices. */
   background: string;
   /** Default text. */
@@ -38,18 +44,18 @@ export interface ScopeChromePalette {
  * Everything visual about one view style, in one place. This is the single
  * source of truth for color and type: renderers read `canvas` and the font
  * fields directly (a canvas cannot cheaply read CSS custom properties), and
- * {@link applyTheme} publishes `chrome` and the font fields as CSS custom
+ * {@link applyTheme} publishes `ui` and the font fields as CSS custom
  * properties for the stylesheets, which contain no literal colors or fonts
  * of their own.
  */
 export interface ScopeTheme {
   /** Colors for the scope canvas. */
   canvas: ScopeCanvasPalette;
-  /** Colors for the HTML chrome. */
-  chrome: ScopeChromePalette;
-  /** CSS font-family list shared by the canvas and the chrome. */
+  /** Colors for the HTML UI. */
+  ui: ScopeUiPalette;
+  /** CSS font-family list shared by the canvas and the HTML UI. */
   fontFamily: string;
-  /** Font size in rem shared by the canvas and the chrome, so both follow the user's browser font-size setting. */
+  /** Font size in rem shared by the canvas and the HTML UI, so both follow the user's browser font-size setting. */
   fontSizeRem: number;
 }
 
@@ -75,13 +81,13 @@ export function canvasFont(theme: ScopeTheme, pxPerRem: number): string {
  */
 export function themeCssVariables(theme: ScopeTheme): Record<string, string> {
   return {
-    '--scope-chrome-background': theme.chrome.background,
-    '--scope-chrome-text': theme.chrome.text,
-    '--scope-chrome-emphasis': theme.chrome.emphasis,
-    '--scope-chrome-ok': theme.chrome.ok,
-    '--scope-chrome-alert': theme.chrome.alert,
-    '--scope-chrome-control-background': theme.chrome.controlBackground,
-    '--scope-chrome-control-border': theme.chrome.controlBorder,
+    '--scope-ui-background': theme.ui.background,
+    '--scope-ui-text': theme.ui.text,
+    '--scope-ui-emphasis': theme.ui.emphasis,
+    '--scope-ui-ok': theme.ui.ok,
+    '--scope-ui-alert': theme.ui.alert,
+    '--scope-ui-control-background': theme.ui.controlBackground,
+    '--scope-ui-control-border': theme.ui.controlBorder,
     '--scope-font-family': theme.fontFamily,
     '--scope-font-size': `${theme.fontSizeRem}rem`,
   };

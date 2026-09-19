@@ -3,7 +3,8 @@ import type { ReactElement } from 'react';
 import { canStepRange } from '../scope/range.js';
 import type { RangeDirection } from '../scope/range.js';
 
-import styles from './range-controls.module.css';
+import { ControlButton } from './control-button.js';
+import styles from './control-group.module.css';
 
 /** Props for {@link RangeControls}. */
 export interface RangeControlsProps {
@@ -15,30 +16,29 @@ export interface RangeControlsProps {
 
 /**
  * On-screen zoom buttons, so the range can be changed without a keyboard.
- * Each button is a full-size touch target on small screens and compact on
- * larger ones, and disables itself at the end of the range steps.
+ * Each button disables itself at the end of the range steps.
  */
 export function RangeControls({ rangeNm, onStep }: RangeControlsProps): ReactElement {
   return (
-    <div className={styles.rangeControls} role="group" aria-label="Scope range">
-      <button
-        type="button"
-        className={styles.button}
-        aria-label="Zoom in"
+    <div className={styles.bottomRight} role="group" aria-label="Scope range">
+      <ControlButton
+        label="Zoom in"
+        shape="square"
+        hint="Zoom in (+)"
         disabled={!canStepRange(rangeNm, 'in')}
-        onClick={() => onStep('in')}
+        onPress={() => onStep('in')}
       >
         +
-      </button>
-      <button
-        type="button"
-        className={styles.button}
-        aria-label="Zoom out"
+      </ControlButton>
+      <ControlButton
+        label="Zoom out"
+        shape="square"
+        hint="Zoom out (-)"
         disabled={!canStepRange(rangeNm, 'out')}
-        onClick={() => onStep('out')}
+        onPress={() => onStep('out')}
       >
         -
-      </button>
+      </ControlButton>
     </div>
   );
 }

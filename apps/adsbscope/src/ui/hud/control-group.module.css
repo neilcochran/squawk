@@ -1,0 +1,20 @@
+/* A stack of controls pinned to a corner of the scope, where the circular display leaves room. */
+.group {
+  position: absolute;
+  bottom: var(--scope-inset-block);
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-sm);
+}
+
+.bottomRight {
+  composes: group;
+  right: var(--scope-inset-inline);
+  align-items: flex-end;
+}
+
+.bottomLeft {
+  composes: group;
+  left: var(--scope-inset-inline);
+  align-items: flex-start;
+}

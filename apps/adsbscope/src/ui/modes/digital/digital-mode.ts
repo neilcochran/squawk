@@ -8,5 +8,6 @@ export const DIGITAL_MODE: ScopeModeDefinition = {
   id: 'digital',
   label: 'Digital',
   theme: DIGITAL_THEME,
+  settings: [],
   createRenderer: () => createDigitalRenderer(DIGITAL_THEME),
 };

@@ -1,4 +1,4 @@
-import { CONFIG_PATH } from '../../shared/protocol.js';
+import { CONFIG_PATH, isScopeModeId } from '../../shared/protocol.js';
 import type { ScopeConfig } from '../../shared/protocol.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -15,18 +15,19 @@ export function parseScopeConfig(value: unknown): ScopeConfig | undefined {
   if (!isRecord(value) || !isRecord(value.receiver)) {
     return undefined;
   }
-  const { receiver, source, station, rangeNm } = value;
+  const { receiver, source, station, mode, rangeNm } = value;
   if (
     typeof receiver.lat !== 'number' ||
     typeof receiver.lon !== 'number' ||
     (source !== 'json' && source !== 'sbs' && source !== 'beast' && source !== 'replay') ||
     typeof station !== 'string' ||
+    !isScopeModeId(mode) ||
     typeof rangeNm !== 'number' ||
     !(rangeNm > 0)
   ) {
     return undefined;
   }
-  return { receiver: { lat: receiver.lat, lon: receiver.lon }, source, station, rangeNm };
+  return { receiver: { lat: receiver.lat, lon: receiver.lon }, source, station, mode, rangeNm };
 }
 
 /**

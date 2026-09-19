@@ -1,3 +1,4 @@
+import { SCOPE_FONT_FAMILY, SCOPE_FONT_SIZE_REM } from '../../styles/theme.js';
 import type { ScopeTheme } from '../../styles/theme.js';
 
 /** The `digital` view style's colors and type: a modern scope, white-green targets on near-black. */
@@ -11,7 +12,7 @@ export const DIGITAL_THEME: ScopeTheme = {
     history: '#3f7fe0',
     vector: '#c8d4c8',
   },
-  chrome: {
+  ui: {
     background: '#02060a',
     text: '#9fc4ad',
     emphasis: '#e6f2e6',
@@ -20,6 +21,6 @@ export const DIGITAL_THEME: ScopeTheme = {
     controlBackground: '#0b1712',
     controlBorder: '#4f7a63',
   },
-  fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
-  fontSizeRem: 0.75,
+  fontFamily: SCOPE_FONT_FAMILY,
+  fontSizeRem: SCOPE_FONT_SIZE_REM,
 };
