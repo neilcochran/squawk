@@ -1,15 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CliOptions } from './cli-args.js';
-import { buildFeed, buildJsonUrl } from './create-feed.js';
-import type { FeedFactories } from './create-feed.js';
+import { buildFeed } from './create-feed.js';
 
 function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
   return {
     help: false,
-    source: 'sbs',
+    source: 'beast',
     host: 'localhost',
-    port: 30003,
+    port: 30005,
     url: undefined,
     location: undefined,
     columnKeys: undefined,
@@ -24,143 +23,60 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
   };
 }
 
-function makeFakeFactories(): FeedFactories & {
-  createJsonAircraftFeed: ReturnType<typeof vi.fn>;
-  createSbsAircraftFeed: ReturnType<typeof vi.fn>;
-  createBeastAircraftFeed: ReturnType<typeof vi.fn>;
-} {
-  return {
-    createJsonAircraftFeed: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
-    createSbsAircraftFeed: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
-    createBeastAircraftFeed: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
-  } as unknown as FeedFactories & {
-    createJsonAircraftFeed: ReturnType<typeof vi.fn>;
-    createSbsAircraftFeed: ReturnType<typeof vi.fn>;
-    createBeastAircraftFeed: ReturnType<typeof vi.fn>;
-  };
-}
-
-describe('buildJsonUrl', () => {
-  it('assembles the standard aircraft.json path from host and port', () => {
-    expect(buildJsonUrl('192.168.1.50', 8080)).toBe('http://192.168.1.50:8080/data/aircraft.json');
-  });
-});
-
 describe('buildFeed', () => {
-  it('passes a custom --stale-after through to every source', () => {
-    for (const source of ['json', 'sbs', 'beast'] as const) {
-      const factories = makeFakeFactories();
-      buildFeed(makeCliOptions({ source, staleAfterMs: 15_000 }), factories);
-      const factory = {
-        json: factories.createJsonAircraftFeed,
-        sbs: factories.createSbsAircraftFeed,
-        beast: factories.createBeastAircraftFeed,
-      }[source];
-      expect(factory).toHaveBeenCalledWith(expect.objectContaining({ staleAfterMs: 15_000 }));
+  it('returns the feed the factory created', () => {
+    const feed = Object.assign(new EventTarget(), {
+      start: vi.fn(),
+      stop: vi.fn(),
+      getAircraft: vi.fn(() => undefined),
+      getAllAircraft: vi.fn(() => []),
+      getPositionHistory: vi.fn(() => []),
+      getConnectionState: vi.fn(() => 'reconnecting' as const),
+    });
+
+    expect(buildFeed(makeCliOptions(), () => feed)).toBe(feed);
+  });
+
+  it('passes the source, connection options, stale threshold, and history bound for every source', () => {
+    for (const [source, port] of [
+      ['json', 8080],
+      ['sbs', 30003],
+      ['beast', 30005],
+    ] as const) {
+      const createFeed = vi.fn();
+      buildFeed(
+        makeCliOptions({ source, host: '192.168.1.50', port, staleAfterMs: 15_000 }),
+        createFeed,
+      );
+
+      expect(createFeed).toHaveBeenCalledWith({
+        source,
+        host: '192.168.1.50',
+        port,
+        staleAfterMs: 15_000,
+        positionHistoryRetention: { maxEntries: 300 },
+      });
     }
   });
 
-  it('builds a json feed from --host/--port when no --url is given', () => {
-    const factories = makeFakeFactories();
-    buildFeed(makeCliOptions({ source: 'json', host: '192.168.1.50', port: 8080 }), factories);
-
-    expect(factories.createJsonAircraftFeed).toHaveBeenCalledWith({
-      url: 'http://192.168.1.50:8080/data/aircraft.json',
-      staleAfterMs: 60_000,
-      positionHistoryRetention: { maxEntries: 300 },
-    });
-    expect(factories.createSbsAircraftFeed).not.toHaveBeenCalled();
-    expect(factories.createBeastAircraftFeed).not.toHaveBeenCalled();
-  });
-
-  it('prefers an explicit --url for the json source', () => {
-    const factories = makeFakeFactories();
+  it('passes an explicit --url through', () => {
+    const createFeed = vi.fn();
     buildFeed(
-      makeCliOptions({ source: 'json', url: 'http://example.com/aircraft.json' }),
-      factories,
+      makeCliOptions({ source: 'json', port: 8080, url: 'http://example.com/aircraft.json' }),
+      createFeed,
     );
 
-    expect(factories.createJsonAircraftFeed).toHaveBeenCalledWith({
-      url: 'http://example.com/aircraft.json',
-      staleAfterMs: 60_000,
-      positionHistoryRetention: { maxEntries: 300 },
-    });
-  });
-
-  it('builds an sbs feed with host/port', () => {
-    const factories = makeFakeFactories();
-    buildFeed(makeCliOptions({ source: 'sbs', host: '192.168.1.50', port: 30003 }), factories);
-
-    expect(factories.createSbsAircraftFeed).toHaveBeenCalledWith({
-      host: '192.168.1.50',
-      port: 30003,
-      staleAfterMs: 60_000,
-      positionHistoryRetention: { maxEntries: 300 },
-    });
-  });
-
-  it('builds a beast feed with host/port', () => {
-    const factories = makeFakeFactories();
-    buildFeed(makeCliOptions({ source: 'beast', host: '192.168.1.50', port: 30005 }), factories);
-
-    expect(factories.createBeastAircraftFeed).toHaveBeenCalledWith({
-      host: '192.168.1.50',
-      port: 30005,
-      staleAfterMs: 60_000,
-      positionHistoryRetention: { maxEntries: 300 },
-    });
-  });
-
-  it('passes the configured location as receiverPosition for the beast source', () => {
-    const factories = makeFakeFactories();
-    buildFeed(
-      makeCliOptions({
-        source: 'beast',
-        host: '192.168.1.50',
-        port: 30005,
-        location: { lat: 40.6413, lon: -73.7781 },
-      }),
-      factories,
+    expect(createFeed).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'http://example.com/aircraft.json' }),
     );
-
-    expect(factories.createBeastAircraftFeed).toHaveBeenCalledWith({
-      host: '192.168.1.50',
-      port: 30005,
-      receiverPosition: { lat: 40.6413, lon: -73.7781 },
-      staleAfterMs: 60_000,
-      positionHistoryRetention: { maxEntries: 300 },
-    });
   });
 
-  it('omits receiverPosition for the beast source when no location is configured', () => {
-    const factories = makeFakeFactories();
-    buildFeed(makeCliOptions({ source: 'beast', host: '192.168.1.50', port: 30005 }), factories);
+  it('passes the configured location as receiverPosition', () => {
+    const createFeed = vi.fn();
+    buildFeed(makeCliOptions({ location: { lat: 40.6413, lon: -73.7781 } }), createFeed);
 
-    expect(factories.createBeastAircraftFeed).toHaveBeenCalledWith({
-      host: '192.168.1.50',
-      port: 30005,
-      staleAfterMs: 60_000,
-      positionHistoryRetention: { maxEntries: 300 },
-    });
-  });
-
-  it('does not apply the configured location to the json or sbs sources', () => {
-    const factories = makeFakeFactories();
-    buildFeed(
-      makeCliOptions({
-        source: 'sbs',
-        host: '192.168.1.50',
-        port: 30003,
-        location: { lat: 40.6413, lon: -73.7781 },
-      }),
-      factories,
+    expect(createFeed).toHaveBeenCalledWith(
+      expect.objectContaining({ receiverPosition: { lat: 40.6413, lon: -73.7781 } }),
     );
-
-    expect(factories.createSbsAircraftFeed).toHaveBeenCalledWith({
-      host: '192.168.1.50',
-      port: 30003,
-      staleAfterMs: 60_000,
-      positionHistoryRetention: { maxEntries: 300 },
-    });
   });
 });

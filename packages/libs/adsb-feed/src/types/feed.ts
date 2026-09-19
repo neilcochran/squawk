@@ -70,8 +70,9 @@ export interface ConnectionStateEventDetail {
  * {@link ConnectionStateEventDetail}) for the underlying transport's
  * connection lifecycle.
  *
- * Create one with `createJsonAircraftFeed` or `createSbsAircraftFeed` rather
- * than implementing this interface directly.
+ * Create one with `createJsonAircraftFeed`, `createSbsAircraftFeed`,
+ * `createBeastAircraftFeed`, or `createAircraftFeedForSource` rather than
+ * implementing this interface directly.
  */
 export interface AircraftFeed extends EventTarget {
   /** Starts polling or connecting to the underlying source. No-op if already started. */

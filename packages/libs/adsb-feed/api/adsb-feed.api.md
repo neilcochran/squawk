@@ -52,6 +52,9 @@ export interface ConnectionStateEventDetail {
 }
 
 // @public
+export function createAircraftFeedForSource(options: SourceFeedOptions): AircraftFeed;
+
+// @public
 export function createBeastAircraftFeed(options: BeastFeedOptions): AircraftFeed;
 
 // @public
@@ -59,6 +62,12 @@ export function createJsonAircraftFeed(options: JsonFeedOptions): AircraftFeed;
 
 // @public
 export function createSbsAircraftFeed(options: SbsFeedOptions): AircraftFeed;
+
+// @public
+export const DEFAULT_PORT_BY_SOURCE: Record<FeedSource, number>;
+
+// @public
+export type FeedSource = 'json' | 'sbs' | 'beast';
 
 // @public
 export interface JsonFeedOptions extends AircraftFeedOptions {
@@ -84,6 +93,18 @@ export interface SbsFeedOptions extends AircraftFeedOptions {
     host: string;
     port?: number;
     reconnectDelayMs?: number;
+}
+
+// @public
+export interface SourceFeedOptions extends AircraftFeedOptions {
+    fetch?: typeof fetch;
+    host: string;
+    pollIntervalMs?: number;
+    port?: number;
+    receiverPosition?: Pick<Position, 'lat' | 'lon'>;
+    reconnectDelayMs?: number;
+    source: FeedSource;
+    url?: string;
 }
 
 ```

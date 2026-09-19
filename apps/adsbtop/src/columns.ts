@@ -1,7 +1,7 @@
+import type { FeedSource } from '@squawk/adsb-feed';
 import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { categoryOrdinal, formatCategoryCode } from './category.js';
-import type { FeedSource } from './cli-args.js';
 import { closestPointOfApproach } from './cpa.js';
 import {
   formatAltitude,

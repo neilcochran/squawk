@@ -3,10 +3,9 @@ import type { Key } from 'ink';
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { AircraftFeed } from '@squawk/adsb-feed';
+import type { AircraftFeed, FeedSource } from '@squawk/adsb-feed';
 import type { Aircraft, Coordinates } from '@squawk/types';
 
-import type { FeedSource } from './cli-args.js';
 import {
   autoFitColumns,
   availableColumns,

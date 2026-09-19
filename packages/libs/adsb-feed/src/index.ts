@@ -2,15 +2,20 @@
  * @packageDocumentation
  * Node entry point. Exposes all three aircraft feed factories - the
  * browser-safe, HTTP-polling JSON source, and the Node-only persistent
- * SBS/BaseStation and Beast binary socket sources.
+ * SBS/BaseStation and Beast binary socket sources - plus
+ * `createAircraftFeedForSource`, which dispatches to one of them for a
+ * source chosen at runtime.
  *
  * Browser and edge consumers should use the `./browser` entry point instead,
- * which omits `createSbsAircraftFeed` and `createBeastAircraftFeed` (both
- * depend on Node's `net` module and have no browser equivalent).
+ * which omits `createSbsAircraftFeed`, `createBeastAircraftFeed`, and
+ * `createAircraftFeedForSource` (all depend on Node's `net` module and have
+ * no browser equivalent).
  */
 export { createBeastAircraftFeed } from './beast-source.js';
 export { createJsonAircraftFeed } from './json-source.js';
 export { createSbsAircraftFeed } from './sbs-source.js';
+export { createAircraftFeedForSource } from './source-feed.js';
+export { DEFAULT_PORT_BY_SOURCE } from './default-ports.js';
 export type {
   AircraftFeed,
   AircraftFeedOptions,
@@ -19,8 +24,10 @@ export type {
   BeastFeedOptions,
   ConnectionState,
   ConnectionStateEventDetail,
+  FeedSource,
   JsonFeedOptions,
   PositionHistoryEntry,
   PositionHistoryRetention,
   SbsFeedOptions,
+  SourceFeedOptions,
 } from './types/index.js';

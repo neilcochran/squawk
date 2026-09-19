@@ -1,5 +1,7 @@
 import { parseArgs } from 'node:util';
 
+import { DEFAULT_PORT_BY_SOURCE } from '@squawk/adsb-feed';
+import type { FeedSource } from '@squawk/adsb-feed';
 import type { Coordinates } from '@squawk/types';
 
 import { parseColumnList, unavailableReason, COLUMNS } from './columns.js';
@@ -9,16 +11,6 @@ import type { AircraftFilter } from './filter.js';
 import { DEFAULT_UNIT_SYSTEM, isUnitSystem } from './units.js';
 import type { UnitSystem } from './units.js';
 import { parseWatchlist } from './watchlist.js';
-
-/** Which dump1090-fa output adsbtop connects to. */
-export type FeedSource = 'json' | 'sbs' | 'beast';
-
-/** Default TCP/HTTP port per {@link FeedSource}, matching dump1090-fa's own defaults. */
-export const DEFAULT_PORT_BY_SOURCE: Record<FeedSource, number> = {
-  json: 8080,
-  sbs: 30003,
-  beast: 30005,
-};
 
 /**
  * Default for `--stale-after`: how long an aircraft may go without an
@@ -35,7 +27,7 @@ export interface CliOptions {
   source: FeedSource;
   /** Hostname or IP address of the dump1090-fa station. */
   host: string;
-  /** TCP/HTTP port to connect to. Defaults to {@link DEFAULT_PORT_BY_SOURCE} for the selected source. */
+  /** TCP/HTTP port to connect to. Defaults to `DEFAULT_PORT_BY_SOURCE` from `@squawk/adsb-feed` for the selected source. */
   port: number;
   /** Full override URL for the `json` source's `aircraft.json` endpoint. Undefined for `sbs`/`beast`, and undefined for `json` unless `--url` was passed explicitly. */
   url: string | undefined;
@@ -76,7 +68,7 @@ export interface CliArgsError {
 }
 
 const DEFAULT_HOST = 'localhost';
-const DEFAULT_SOURCE: FeedSource = 'sbs';
+const DEFAULT_SOURCE: FeedSource = 'beast';
 const NEGATIVE_NUMBER = /^-\d+(\.\d+)?$/;
 
 function isFeedSource(value: string): value is FeedSource {
