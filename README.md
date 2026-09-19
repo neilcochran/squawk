@@ -2,64 +2,143 @@
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white) [![npm](https://img.shields.io/badge/npm-@squawk-cb3837?logo=npm&logoColor=white)](https://www.npmjs.com/org/squawk)
 
-TypeScript libraries for building aviation applications - airspace geometry, weather parsing, flight planning, aircraft registry lookup, and more.
+TypeScript libraries for building aviation applications - weather and NOTAM parsing, FAA airport, airspace, and navigation data, flight plan routing and E6B math, live ADS-B decoding and feeds, aircraft registry lookup, and an MCP server that exposes it all to LLM clients.
 
-**[Documentation](https://neilcochran.github.io/squawk/)**
+**[Documentation](https://neilcochran.github.io/squawk/)** | **[Architecture](ARCHITECTURE.md)** | **[Conventions](CONVENTIONS.md)** | **[Contributing](CONTRIBUTING.md)** | **[Security](SECURITY.md)** | **[Discussions](https://github.com/neilcochran/squawk/discussions)**
 
-**[Architecture & conventions](ARCHITECTURE.md)**
+## Quick start
 
-**[Discussions](https://github.com/neilcochran/squawk/discussions)**
+Every package is published independently under the `@squawk` scope, so install only what you need. Parsing libraries work on their own:
 
-**[Project board](https://github.com/users/neilcochran/projects/2)**
+```bash
+npm install @squawk/weather
+```
+
+```typescript
+import { parseMetar } from '@squawk/weather';
+
+const metar = parseMetar('METAR KJFK 041853Z 21010KT 10SM FEW250 18/06 A3012');
+
+console.log(metar.stationId); // "KJFK"
+console.log(metar.flightCategory); // "VFR"
+```
+
+Query libraries are pure logic with no bundled data. Each has a companion `*-data` package holding a pre-processed FAA snapshot - pair them for zero-config use, or supply your own records:
+
+```bash
+npm install @squawk/airports @squawk/airport-data
+```
+
+```typescript
+import { usBundledAirports } from '@squawk/airport-data';
+import { createAirportResolver } from '@squawk/airports';
+
+const resolver = createAirportResolver({ data: usBundledAirports.records });
+
+const jfk = resolver.byIcao('KJFK');
+console.log(jfk?.name);
+
+const nearby = resolver.nearest({ lat: 40.6413, lon: -73.7781 });
+for (const result of nearby) {
+  console.log(result.airport.name, result.distanceNm, 'nm');
+}
+```
+
+To try the whole suite with no code, point an MCP-compatible LLM client at `npx @squawk/mcp`. See the [`@squawk/mcp` README](packages/libs/mcp) for client setup.
 
 ## Layout
 
 The repo splits into three top-level directories:
 
-- [`apps/`](https://github.com/neilcochran/squawk/tree/main/apps) - runnable applications built on the squawk libraries: [Atlas](https://github.com/neilcochran/squawk/tree/main/apps/atlas), the official chart-first viewer, and [adsbtop](https://github.com/neilcochran/squawk/tree/main/apps/adsbtop), a terminal dashboard for live aircraft tracking.
-- [`packages/libs/`](https://github.com/neilcochran/squawk/tree/main/packages/libs) - the published `@squawk/*` libraries listed below.
-- [`tools/`](https://github.com/neilcochran/squawk/tree/main/tools) - internal data-build pipelines that produce the bundled snapshots in the `*-data` libraries.
+- [`apps/`](https://github.com/neilcochran/squawk/tree/main/apps) - runnable applications built on the squawk libraries, listed under [Apps](#apps).
+- [`packages/libs/`](https://github.com/neilcochran/squawk/tree/main/packages/libs) - the published `@squawk/*` libraries, listed under [Packages](#packages).
+- [`tools/`](https://github.com/neilcochran/squawk/tree/main/tools) - internal data-build pipelines that produce the bundled snapshots in the `*-data` libraries, listed under [Tools](#tools).
 
 ## Packages
 
+### Weather and NOTAMs
+
+| Package                                    | Description                                                                                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| [`@squawk/weather`](packages/libs/weather) | Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP, FD winds aloft), with an opt-in live AWC fetch layer |
+| [`@squawk/notams`](packages/libs/notams)   | Parse raw ICAO-format and FAA domestic NOTAM strings into structured objects                                                       |
+
+### AI integration
+
+| Package                            | Description                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------- |
+| [`@squawk/mcp`](packages/libs/mcp) | Model Context Protocol server exposing the squawk libraries as tools for LLMs |
+
+### Aeronautical data
+
+Each query library is listed with its companion data package. The bundled snapshots are built from FAA sources and cover US data only.
+
+| Package                                                  | Description                                                                                                                             |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@squawk/airports`](packages/libs/airports)             | Airport queries by identifier, location, or fuzzy search                                                                                |
+| [`@squawk/airport-data`](packages/libs/airport-data)     | Pre-processed FAA NASR airport snapshot with runways, frequencies, and ILS data                                                         |
+| [`@squawk/airspace`](packages/libs/airspace)             | Airspace queries by position and altitude, identifier, or fuzzy search across Class B/C/D/E, Special Use Airspace, and ARTCC boundaries |
+| [`@squawk/airspace-data`](packages/libs/airspace-data)   | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`                                                        |
+| [`@squawk/navaids`](packages/libs/navaids)               | Navaid queries by identifier, frequency, type, location, or fuzzy search                                                                |
+| [`@squawk/navaid-data`](packages/libs/navaid-data)       | Pre-processed FAA NASR navaid snapshot for use with `@squawk/navaids`                                                                   |
+| [`@squawk/fixes`](packages/libs/fixes)                   | Fix/waypoint queries by identifier, location, or fuzzy search                                                                           |
+| [`@squawk/fix-data`](packages/libs/fix-data)             | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`                                                               |
+| [`@squawk/airways`](packages/libs/airways)               | Airway lookup, traversal, and expansion by designation, fix, or search                                                                  |
+| [`@squawk/airway-data`](packages/libs/airway-data)       | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`                                                                   |
+| [`@squawk/procedures`](packages/libs/procedures)         | Instrument procedure lookup and expansion for SIDs, STARs, and IAPs (CIFP)                                                              |
+| [`@squawk/procedure-data`](packages/libs/procedure-data) | Pre-processed FAA CIFP procedure snapshot for use with `@squawk/procedures`                                                             |
+
+### Flight planning
+
+| Package                                            | Description                                                                   |
+| -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [`@squawk/flightplan`](packages/libs/flightplan)   | Flight plan route string parsing and resolution using composed resolvers      |
+| [`@squawk/flight-math`](packages/libs/flight-math) | Aviation flight computer calculations (E6B wind triangle, altitude, airspeed) |
+
+### ADS-B and surveillance
+
 | Package                                                          | Description                                                                        |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [`@squawk/types`](packages/libs/types)                           | Shared type definitions used across all packages                                   |
-| [`@squawk/units`](packages/libs/units)                           | Aviation-aware unit conversion and formatting utilities                            |
-| [`@squawk/geo`](packages/libs/geo)                               | Geospatial utilities: great-circle distance, bearing, midpoint, point-in-polygon   |
-| [`@squawk/flight-math`](packages/libs/flight-math)               | Aviation flight computer calculations (E6B wind triangle, altitude, airspeed)      |
-| [`@squawk/search`](packages/libs/search)                         | Domain-agnostic fuzzy string matching and ranked search scoring                    |
-| [`@squawk/icao-registry`](packages/libs/icao-registry)           | ICAO hex to N-number and aircraft info lookup with FAA parsing utilities           |
-| [`@squawk/icao-registry-data`](packages/libs/icao-registry-data) | Pre-processed FAA ReleasableAircraft snapshot for use with `@squawk/icao-registry` |
-| [`@squawk/airspace`](packages/libs/airspace)                     | Point-in-airspace queries for Class B/C/D/E and Special Use Airspace               |
-| [`@squawk/airspace-data`](packages/libs/airspace-data)           | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`   |
-| [`@squawk/airports`](packages/libs/airports)                     | Airport queries by identifier, location, or fuzzy search                           |
-| [`@squawk/airport-data`](packages/libs/airport-data)             | Pre-processed FAA NASR airport snapshot with runways, frequencies, and ILS data    |
-| [`@squawk/navaids`](packages/libs/navaids)                       | Navaid queries by identifier, frequency, type, location, or fuzzy search           |
-| [`@squawk/navaid-data`](packages/libs/navaid-data)               | Pre-processed FAA NASR navaid snapshot for use with `@squawk/navaids`              |
-| [`@squawk/fixes`](packages/libs/fixes)                           | Fix/waypoint queries by identifier, location, or fuzzy search                      |
-| [`@squawk/fix-data`](packages/libs/fix-data)                     | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`          |
-| [`@squawk/airways`](packages/libs/airways)                       | Airway lookup, traversal, and expansion by designation, fix, or search             |
-| [`@squawk/airway-data`](packages/libs/airway-data)               | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`              |
-| [`@squawk/procedures`](packages/libs/procedures)                 | Instrument procedure lookup and expansion for SIDs, STARs, and IAPs (CIFP)         |
-| [`@squawk/procedure-data`](packages/libs/procedure-data)         | Pre-processed FAA CIFP procedure snapshot for use with `@squawk/procedures`        |
-| [`@squawk/flightplan`](packages/libs/flightplan)                 | Flight plan route string parsing and resolution using composed resolvers           |
-| [`@squawk/weather`](packages/libs/weather)                       | Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP)      |
-| [`@squawk/notams`](packages/libs/notams)                         | Parse raw ICAO-format and FAA domestic NOTAM strings into structured objects       |
+| [`@squawk/adsb-feed`](packages/libs/adsb-feed)                   | Live ADS-B aircraft feed from a local dump1090-fa station (JSON, SBS, or Beast)    |
 | [`@squawk/mode-s`](packages/libs/mode-s)                         | Decode raw Mode-S/ADS-B messages: CRC, CPR position, velocity, altitude, identity  |
 | [`@squawk/beast`](packages/libs/beast)                           | Parse the Beast binary format into decoded Mode-S messages, with live streaming    |
-| [`@squawk/adsb-feed`](packages/libs/adsb-feed)                   | Live ADS-B aircraft feed from a local dump1090-fa station (JSON, SBS, or Beast)    |
-| [`@squawk/mcp`](packages/libs/mcp)                               | Model Context Protocol server exposing the squawk libraries as tools for LLMs      |
+| [`@squawk/icao-registry`](packages/libs/icao-registry)           | ICAO hex to N-number and aircraft info lookup with FAA parsing utilities           |
+| [`@squawk/icao-registry-data`](packages/libs/icao-registry-data) | Pre-processed FAA ReleasableAircraft snapshot for use with `@squawk/icao-registry` |
+
+### Foundations
+
+| Package                                  | Description                                                                      |
+| ---------------------------------------- | -------------------------------------------------------------------------------- |
+| [`@squawk/geo`](packages/libs/geo)       | Geospatial utilities: great-circle distance, bearing, midpoint, point-in-polygon |
+| [`@squawk/units`](packages/libs/units)   | Aviation-aware unit conversion and formatting utilities                          |
+| [`@squawk/search`](packages/libs/search) | Domain-agnostic fuzzy string matching and ranked search scoring                  |
+| [`@squawk/types`](packages/libs/types)   | Shared type definitions used across all packages                                 |
+
+## Apps
+
+| App                                                                               | Description                                                                                                                     |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| [Atlas](https://github.com/neilcochran/squawk/tree/main/apps/atlas)               | The official Squawk viewer - a chart-first web app for browsing aeronautical data. Not published to npm; run it from this repo. |
+| [`@squawk/adsbtop`](https://github.com/neilcochran/squawk/tree/main/apps/adsbtop) | Terminal dashboard for live ADS-B aircraft tracking, built on `@squawk/adsb-feed`. Published to npm.                            |
+
+```bash
+npm install -g @squawk/adsbtop
+```
 
 ## Development
 
+Requires Node.js 22 or newer.
+
 ```bash
 npm install
-npm run build    # build all packages
-npm run test     # run all tests
-npm run lint     # lint all packages
-npm run docs     # generate documentation
+npm run build        # build all packages
+npm run test         # run all tests
+npm run lint         # lint all packages
+npm run docs         # generate documentation
+npm run build:data   # rebuild the *-data snapshots from FAA source files (see Tools)
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.
 
 ## Tools
 
@@ -74,6 +153,8 @@ The `tools/` directory contains the build pipelines that produce the data packag
 | [`build-fix-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-fix-data)                     | Processes FAA NASR FIX CSVs into fix/waypoint JSON                    |
 | [`build-airway-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-airway-data)               | Processes FAA NASR AWY.txt and ATS.txt into airway JSON               |
 | [`build-procedure-data`](https://github.com/neilcochran/squawk/tree/main/tools/build-procedure-data)         | Processes FAA CIFP into SID / STAR / IAP procedure JSON               |
+
+The tools share CSV parsing, CLI argument handling, and input resolution helpers through the private [`build-shared`](https://github.com/neilcochran/squawk/tree/main/tools/build-shared) workspace package.
 
 ## License
 
