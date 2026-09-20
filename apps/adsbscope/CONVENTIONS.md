@@ -28,7 +28,6 @@ The package is a Node CLI and server (`src/server/`) and a browser UI (`src/ui/`
 ### Structure
 
 - **Pure logic lives in `.ts`, components in `.tsx`, one component per file.** Anything that can be a pure function is one - data-block formatting and placement, hit-testing, range steps, hotkey resolution, URL state, list contents - and is unit-tested without rendering.
-- **The heads-up display is `hud/`.** The HTML drawn over the canvas - readouts, lists, panels, controls - lives there. Do not name anything in the UI "chrome" or "shell"; both read as something else.
 - **Data loading follows one shape.** A `data/<thing>.ts` module holds the URL builder, a lenient parser, and a fetch that resolves to `undefined` rather than throwing; a `data/use-<thing>.ts` hook owns the request lifecycle and ignores a response that arrives after its input has changed. `ScopeView` takes each loader as a prop so specs never touch the network.
 
 ### View styles
@@ -50,4 +49,3 @@ The package is a Node CLI and server (`src/server/`) and a browser UI (`src/ui/`
 
 - Query by role and accessible name in component specs, as a user of assistive technology would find the element; lists and panels are labelled regions, and the emergency list is an alert.
 - A recording stand-in for the 2D context (`scope/test-utils.ts`) lets renderer specs assert on what was drawn. It models `save` and `restore`, because `restore()` resets styles on a real canvas and a spec should catch a style that was only ever set inside a saved block.
-- Every file meets the repo's per-file coverage gate. Prefer restructuring code so that a branch cannot exist over leaving an unreachable fallback that no test can cover.
