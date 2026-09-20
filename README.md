@@ -46,14 +46,6 @@ for (const result of nearby) {
 
 To try the whole suite with no code, point an MCP-compatible LLM client at `npx @squawk/mcp`. See the [`@squawk/mcp` README](packages/libs/mcp) for client setup.
 
-## Layout
-
-The repo splits into three top-level directories:
-
-- [`apps/`](https://github.com/neilcochran/squawk/tree/main/apps) - runnable applications built on the squawk libraries, listed under [Apps](#apps).
-- [`packages/libs/`](https://github.com/neilcochran/squawk/tree/main/packages/libs) - the published `@squawk/*` libraries, listed under [Packages](#packages).
-- [`tools/`](https://github.com/neilcochran/squawk/tree/main/tools) - internal data-build pipelines that produce the bundled snapshots in the `*-data` libraries, listed under [Tools](#tools).
-
 ## Packages
 
 ### Weather and NOTAMs

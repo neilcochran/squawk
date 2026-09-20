@@ -33,24 +33,6 @@ A **Reset to defaults** row at the foot of the menu returns every layer, airspac
 
 **Theme switcher** - light, dark, or follow OS, persisted in `localStorage`.
 
-## Architecture
-
-Atlas is structured as a shell + per-mode component tree. The shell handles app-level chrome (header, mode switcher, theme switcher); each mode under `src/modes/<name>/` owns its layers, URL state schema, and inspector wiring. Modes are loosely coupled - adding one means adding a new directory under `src/modes/`, a new TanStack Router file under `src/routes/`, and an entry in the shell's mode switcher.
-
-Cross-mode reusable code (data loaders, shared map primitives, the inspector, UI primitives, style tokens) lives under `src/shared/`. The detailed app-specific conventions (pure-helper extraction, tiny pub/sub buses for cross-tree side effects, mobile-first responsive rules, etc.) are in the [Atlas at a glance](../../ARCHITECTURE.md#atlas-at-a-glance) section of ARCHITECTURE.md.
-
-Data flows through the data packages' `/browser` entries, which use `fetch` + `DecompressionStream('gzip')` to load the gzipped snapshots asynchronously. Each dataset is wrapped in a module-level cached promise so N components subscribing to it trigger one fetch.
-
-## Stack
-
-- React 19 + Vite 8
-- TanStack Router with file-based routes and zod-validated URL search params
-- Tailwind CSS v4
-- MapLibre GL via `@vis.gl/react-maplibre`
-- Protomaps hosted vector tiles for the basemap
-- Radix UI primitives (dropdown menus)
-- Vitest + jsdom + `@testing-library/react`
-
 ## Local development
 
 The basemap tiles come from the [Protomaps Hosted API](https://protomaps.com/api), which requires an API key. Create a free key and restrict its allowed CORS origins to `http://localhost:5173` (the Vite dev server), then provide it via a `VITE_PROTOMAPS_API_KEY` environment variable. The simplest place is a local `apps/atlas/.env.local` file (gitignored):
@@ -67,6 +49,8 @@ npm run dev
 ```
 
 Without a key the app still runs and the chart overlays render, but the basemap stays blank.
+
+The stack and the patterns the code follows are in the [Atlas at a glance](../../ARCHITECTURE.md#atlas-at-a-glance) section of ARCHITECTURE.md.
 
 ## Scripts
 

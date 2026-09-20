@@ -19,10 +19,10 @@ The root [.npmrc](.npmrc) sets `min-release-age=7`, a supply-chain cooldown: npm
 
 Before opening a non-trivial PR, skim:
 
-- [README](README.md) - what's published and how the repo is organized.
+- [README](README.md) - what's published and how to install it.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - the principles, processes, and architectural decisions that shape the codebase.
 - [CONVENTIONS.md](CONVENTIONS.md) - the code-style, naming, TSDoc, test, and changeset conventions that PR review enforces.
-- For atlas work, also [`apps/atlas/README.md`](apps/atlas/README.md) - the user-facing surface and app-specific stack.
+- For atlas work, also [`apps/atlas/README.md`](apps/atlas/README.md) for the user-facing surface, and the **Atlas at a glance** section of [ARCHITECTURE.md](ARCHITECTURE.md#atlas-at-a-glance) for its stack and code organization.
 
 ## Branch names
 

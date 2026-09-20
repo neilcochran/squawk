@@ -43,12 +43,3 @@ All input files come from the NASR subscription CSV data ZIP (e.g.
 | `APT_RWY.csv`     | Runway dimensions, surface, condition, lighting     |
 | `APT_RWY_END.csv` | Per-end headings, ILS, declared distances, lighting |
 | `FRQ.csv`         | Communication frequencies and usage                 |
-
-## Dependencies
-
-| Package                | Purpose                                                  |
-| ---------------------- | -------------------------------------------------------- |
-| `@squawk/build-shared` | Shared NASR build utilities (CLI args, input resolution) |
-| `@squawk/types`        | `Airport` and related type definitions                   |
-| `adm-zip`              | ZIP extraction                                           |
-| `geo-tz`               | IANA timezone resolution from airport coordinates        |

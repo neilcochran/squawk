@@ -32,9 +32,3 @@ Gzipped JSON file written to `packages/libs/navaid-data/data/navaids.json.gz`.
 npm run build
 node dist/index.js --local /path/to/28DaySubscription_Effective_YYYY-MM-DD
 ```
-
-## Dependencies
-
-- `@squawk/build-shared` - Shared NASR build utilities (CLI args, input resolution)
-- `@squawk/types` - Navaid type definitions and mapping constants
-- `adm-zip` - ZIP file extraction

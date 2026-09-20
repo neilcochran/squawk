@@ -60,7 +60,7 @@ const dataset = await loadUsBundledAirways();
 const resolver = createAirwayResolver({ data: dataset.records });
 ```
 
-The `/browser` entry is identical to the main entry; the separate subpath exists so browser support is an explicit, `publint`-verified part of the public API surface.
+The `/browser` entry is identical to the main entry.
 
 ## API
 
