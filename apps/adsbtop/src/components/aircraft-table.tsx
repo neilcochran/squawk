@@ -2,11 +2,11 @@ import { Box, Text } from 'ink';
 import { Fragment } from 'react';
 import type { ReactElement } from 'react';
 
+import { isEmergencyAircraft } from '@squawk/adsb-feed';
 import type { Aircraft, Coordinates } from '@squawk/types';
 
 import { COLUMN_SEPARATOR_WIDTH } from '../columns.js';
 import type { ColumnDef, RenderContext, SortDirection, SortKey } from '../columns.js';
-import { isEmergencyAircraft } from '../format.js';
 import { isFreshRow, isStaleRow, rowTextStyle } from '../row-style.js';
 import type { RowTextStyle } from '../row-style.js';
 import type { UnitSystem } from '../units.js';
