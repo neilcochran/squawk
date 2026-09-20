@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 
 import { parseFaaRegistryZip } from '@squawk/icao-registry';
 
+import { parseCliArgs } from './cli-args.js';
 import { writeOutput } from './write-output.js';
 
 /** Direct download URL for the FAA ReleasableAircraft database. */
@@ -22,21 +23,6 @@ const FAA_USER_AGENT =
 
 /** Relative path from the script root to the default output file. */
 const DEFAULT_OUTPUT_PATH = '../../../packages/libs/icao-registry-data/data/icao-registry.json.gz';
-
-/**
- * Prints usage instructions to stderr and exits with code 1.
- */
-function printUsageAndExit(): never {
-  process.stderr.write(
-    'Usage: node dist/index.js (--fetch | --local <path-to-zip>) [--output <output-path>]\n\n' +
-      'Options:\n' +
-      '  --fetch           Download the latest ReleasableAircraft.zip from the FAA.\n' +
-      '  --local <path>    Path to an already-downloaded ReleasableAircraft.zip.\n' +
-      '  --output <path>   Path to write the output .json.gz file.\n' +
-      `                    Defaults to: ${DEFAULT_OUTPUT_PATH}\n`,
-  );
-  process.exit(1);
-}
 
 /**
  * Downloads the FAA ReleasableAircraft.zip into a private temporary
@@ -66,48 +52,26 @@ async function downloadFaaZip(): Promise<{ zipPath: string; tempDir: string }> {
  * data pipeline, and writes the output.
  */
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-
-  let mode: 'fetch' | 'local' | undefined;
-  let localPath: string | undefined;
-  let outputPath: string = resolve(import.meta.dirname, DEFAULT_OUTPUT_PATH);
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    const next = args[i + 1];
-    if (arg === '--fetch') {
-      mode = 'fetch';
-    } else if (arg === '--local' && next) {
-      mode = 'local';
-      localPath = resolve(next);
-      i++;
-    } else if (arg === '--output' && next) {
-      outputPath = resolve(next);
-      i++;
-    } else {
-      process.stderr.write(`Unknown argument: ${arg}\n`);
-      printUsageAndExit();
-    }
+  const parsed = parseCliArgs(
+    process.argv.slice(2),
+    resolve(import.meta.dirname, DEFAULT_OUTPUT_PATH),
+  );
+  if ('message' in parsed) {
+    process.stderr.write(parsed.message);
+    process.exitCode = 1;
+    return;
   }
-
-  if (!mode) {
-    process.stderr.write('Error: either --fetch or --local <path> is required.\n');
-    printUsageAndExit();
-  }
+  const { outputPath } = parsed;
 
   let zipPath: string;
   let tempDir: string | undefined;
 
-  if (mode === 'fetch') {
+  if (parsed.mode === 'fetch') {
     const downloaded = await downloadFaaZip();
     zipPath = downloaded.zipPath;
     tempDir = downloaded.tempDir;
   } else {
-    if (!localPath) {
-      process.stderr.write('Error: --local requires a path argument.\n');
-      printUsageAndExit();
-    }
-    zipPath = localPath;
+    zipPath = parsed.localPath;
   }
 
   try {
@@ -126,5 +90,6 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   console.error('[index] Fatal error:', err instanceof Error ? err.message : String(err));
+  // eslint-disable-next-line n/no-process-exit -- last-resort fatal handler; exiting guarantees a non-zero status even when a pending download or file handle would otherwise hold the process open.
   process.exit(1);
 });

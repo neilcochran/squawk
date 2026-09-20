@@ -51,5 +51,6 @@ async function main(): Promise<void> {
 
 main().catch((err: unknown) => {
   console.error('[squawk-mcp] fatal error:', err);
+  // eslint-disable-next-line n/no-process-exit -- a failed stdio connect can leave the transport holding stdin; exiting beats hanging the host that spawned us.
   process.exit(1);
 });

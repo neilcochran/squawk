@@ -29,12 +29,19 @@ function fixKey(fixId: string, icaoRegionCode: string): string {
  * runs the data pipeline, and writes the output.
  */
 async function main(): Promise<void> {
-  const { subscriptionDir, nasrCycleDate, outputPath, cleanup } = parseNasrArgs({
+  const parsed = parseNasrArgs({
+    argv: process.argv.slice(2),
     defaultOutputPath: resolve(
       import.meta.dirname,
       '../../../packages/libs/fix-data/data/fixes.json.gz',
     ),
   });
+  if ('message' in parsed) {
+    process.stderr.write(parsed.message);
+    process.exitCode = 1;
+    return;
+  }
+  const { subscriptionDir, nasrCycleDate, outputPath, cleanup } = parsed;
 
   try {
     // Locate and open the CSV data ZIP.
@@ -149,5 +156,6 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   console.error('[index] Fatal error:', err instanceof Error ? err.message : String(err));
+  // eslint-disable-next-line n/no-process-exit -- last-resort fatal handler; exiting guarantees a non-zero status even when a pending download or file handle would otherwise hold the process open.
   process.exit(1);
 });

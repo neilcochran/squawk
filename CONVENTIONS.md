@@ -281,8 +281,10 @@ The actual config lives in `eslint.config.mjs` (root, covers libs / tools / scri
 - `typescript-eslint` recommended rules
 - `eslint-config-prettier` to disable formatting conflicts
 - `eslint-plugin-import` (shared via `eslint.shared.mjs`): `import/order`, `import/no-cycle`, `import/no-duplicates`, `import/no-self-import`, plus typescript / node resolver settings
-- `eslint-plugin-n` (root only - Node-specific, not applied to atlas browser code): `n/no-deprecated-api`, `n/no-process-exit` (warn, not error - build tools and the mcp `bin.ts` legitimately exit), `n/no-unsupported-features/{es,node}-builtins`, `n/prefer-node-protocol`
+- `eslint-plugin-n` (root only - Node-specific, not applied to atlas browser code): `n/no-deprecated-api`, `n/no-process-exit` (error), `n/no-unsupported-features/{es,node}-builtins`, `n/prefer-node-protocol`
 - Ignores: `**/dist/**`, `**/node_modules/**`, `scripts/*.js`
+
+On `n/no-process-exit`: the rule's "throw instead" advice is wrong for a CLI's expected failures - a typo'd flag should not produce a stack trace, and throwing fights the result-type convention in **Code style** below. Those paths return a result that the entry point turns into `process.exitCode`, so output is never cut short by the process ending mid-write. Within the globs above, the only calls left are the `main().catch()` fatal handlers in the build tools and the mcp `bin.ts`, where exiting guarantees a non-zero status even when a pending download or file handle would otherwise hold the process open. Each carries an inline disable naming that reason, which is what the rule now requires: it is an error, so a new `process.exit` fails lint until it is either reworked into an exit code or justified inline.
 
 Cross-config rule blocks (rules that apply to both libs/tools and atlas) live in `eslint.shared.mjs`. New rules that apply to both surfaces go there to prevent drift; atlas-only or libs/tools-only rules stay in their respective config files.
 
