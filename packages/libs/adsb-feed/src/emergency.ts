@@ -17,7 +17,7 @@ export function isEmergencySquawk(squawk: string | undefined): boolean {
 
 /**
  * Whether `emergencyState` declares an emergency. `'none'` and `'reserved'`
- * do not; every other {@link EmergencyState} value does.
+ * do not; every other `EmergencyState` value does.
  *
  * @param emergencyState - The aircraft's broadcast emergency/priority state, if known.
  * @returns True if the state is a declared emergency.
