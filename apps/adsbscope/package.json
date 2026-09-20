@@ -1,6 +1,6 @@
 {
   "name": "@squawk/adsbscope",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "ATC-style radar scope web UI for live ADS-B traffic, built on @squawk/adsb-feed",
   "license": "MIT",
