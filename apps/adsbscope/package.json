@@ -32,7 +32,7 @@
     "lint:pack": "publint"
   },
   "dependencies": {
-    "@squawk/adsb-feed": "^0.6.0",
+    "@squawk/adsb-feed": "^0.7.0",
     "@squawk/airport-data": "^0.7.12",
     "@squawk/airspace-data": "^0.5.10",
     "@squawk/fix-data": "^0.6.12",

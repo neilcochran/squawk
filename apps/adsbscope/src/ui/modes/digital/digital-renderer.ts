@@ -1,5 +1,5 @@
 import type { ScopeSnapshot, ScopeTarget } from '../../../shared/protocol.js';
-import { placeDataBlocks } from '../../scope/data-block-placement.js';
+import { leaderBearingsOf, placeDataBlocks } from '../../scope/data-block-placement.js';
 import type {
   DataBlockGeometry,
   DataBlockPlacement,
@@ -269,13 +269,10 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       pxPerRem: viewport.pxPerRem,
     };
     if (placedFor === undefined || !isSameInputs(placedFor, inputs)) {
-      const previousBearings = new Map(
-        placed.map(({ request, placement }) => [request.id, placement.leaderBearingDeg]),
-      );
       placed = placeDataBlocks(
         plotTargets(context, viewport, snapshot),
         dataBlockGeometry(viewport),
-        previousBearings,
+        leaderBearingsOf(placed),
       );
       placedFor = inputs;
     }

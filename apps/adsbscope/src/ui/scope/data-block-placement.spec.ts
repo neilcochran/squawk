@@ -4,6 +4,7 @@ import {
   dataBlockPlacementAt,
   DEFAULT_LEADER_BEARING_DEG,
   LEADER_BEARINGS_DEG,
+  leaderBearingsOf,
   overlapAreaPx,
   placeDataBlocks,
 } from './data-block-placement.js';
@@ -163,6 +164,18 @@ describe('placeDataBlocks', () => {
     expect(
       bearingsById([request('a', 400, 300), request('b', 405, 300)], GEOMETRY, previous),
     ).toEqual({ a: 45, b: 135 });
+  });
+
+  it('reads its own result back as where the blocks were last time', () => {
+    const requests = [request('a', 400, 300), request('b', 405, 300)];
+
+    const bearings = leaderBearingsOf(placeDataBlocks(requests, GEOMETRY, NO_HISTORY));
+
+    expect([...bearings]).toEqual([
+      ['a', 45],
+      ['b', 135],
+    ]);
+    expect(bearingsById([request('b', 405, 300)], GEOMETRY, bearings)).toEqual({ b: 135 });
   });
 
   it('takes the direction that covers the least when none is clear', () => {

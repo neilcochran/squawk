@@ -87,7 +87,7 @@ Switching to the analog style starts from a dark scope that fills in over one ro
 
 The analog style has two settings:
 
-- **Tags** (`T`) - on by default: each aircraft's newest blip gets a faint two-line tag in the same format as the digital data block. The scopes of the era had none - identity was tracked on paper strips - so turn them off for the authentic picture of anonymous blips.
+- **Tags** (`T`) - on by default: each aircraft's newest blip gets a faint two-line tag in the same format as the digital data block, on a short leader line. Tags are kept off one another the same way the digital data blocks are, so a leader runs whichever way leaves its tag readable. The scopes of the era had none - identity was tracked on paper strips - so turn them off for the authentic picture of anonymous blips.
 - **Sweep** (`R`) - 4.8 s per rotation, like a terminal approach radar, or 12 s, like a long-range en-route radar.
 
 ### Video map

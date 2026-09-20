@@ -69,6 +69,19 @@ export interface PlacedDataBlock<T extends DataBlockRequest> {
 
 const DEG_TO_RAD = Math.PI / 180;
 
+/**
+ * Reads back the leader direction each block was given, to hand to the next
+ * {@link placeDataBlocks} call as where the blocks were last time.
+ *
+ * @param placed - The result of an earlier placement.
+ * @returns Each block's leader direction, by id.
+ */
+export function leaderBearingsOf(
+  placed: readonly PlacedDataBlock<DataBlockRequest>[],
+): Map<string, number> {
+  return new Map(placed.map(({ request, placement }) => [request.id, placement.leaderBearingDeg]));
+}
+
 /** Below this, a bearing's sine or cosine counts as zero: the leader runs straight along an axis. */
 const AXIS_TOLERANCE = 1e-6;
 

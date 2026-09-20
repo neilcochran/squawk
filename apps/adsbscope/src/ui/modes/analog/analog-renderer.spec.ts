@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ScopeSnapshot, ScopeVideoMap } from '../../../shared/protocol.js';
 import { FULL_CIRCLE_RAD } from '../../scope/furniture.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
-import type { ScopeRenderer } from '../../scope/renderer.js';
+import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
 import { createRecordingContext, makeSnapshot, makeTarget } from '../../scope/test-utils.js';
 import type { RecordedCall, RecordingContext } from '../../scope/test-utils.js';
 import { DEFAULT_PX_PER_REM } from '../../scope/units.js';
@@ -289,6 +289,123 @@ describe('createAnalogRenderer', () => {
         position,
       );
       expect(Number(tag?.args[1])).toBeGreaterThan(at.xPx);
+    });
+
+    describe('tag placement', () => {
+      const CENTER = { trueBearingDeg: 45, rangeNm: 30 };
+      const lead = makeTarget({ icaoHex: 'aaaaaa', callsign: 'LEAD1', position: CENTER });
+      const wing = makeTarget({
+        icaoHex: 'bbbbbb',
+        callsign: 'WING2',
+        position: { trueBearingDeg: 45, rangeNm: 31 },
+      });
+      const blipYPx = polarToScreen(
+        createViewport(WIDTH_PX, HEIGHT_PX, 60, DEFAULT_PX_PER_REM),
+        CENTER,
+      ).yPx;
+
+      function tagTopOf(recording: RecordingContext, callsign: string): number {
+        return Number(
+          recording.callsTo('fillText').find((call) => call.args[0] === callsign)?.args[2],
+        );
+      }
+
+      it('joins each tag to its blip with a leader line as faint as the tag', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        const snapshot = makeSnapshot([lead]);
+        renderAt(renderer, 0, { snapshot });
+
+        const recording = renderAt(renderer, QUARTER_TURN_MS, { snapshot });
+
+        const tag = recording.callsTo('fillText').find((call) => call.args[0] === 'LEAD1');
+        const leaders = recording
+          .callsTo('stroke')
+          .filter((call) => call.globalAlpha === tag?.globalAlpha && call.globalAlpha < 1);
+        expect(leaders).toHaveLength(1);
+        expect(leaders[0]?.strokeStyle).toBe(COLORS.target);
+      });
+
+      it('moves one of two crowded tags aside, so that both can be read', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        const snapshot = makeSnapshot([lead, wing]);
+        renderAt(renderer, 0, { snapshot });
+
+        const recording = renderAt(renderer, QUARTER_TURN_MS, { snapshot });
+
+        expect(tagTopOf(recording, 'LEAD1')).toBeLessThan(blipYPx);
+        expect(tagTopOf(recording, 'WING2')).toBeGreaterThan(blipYPx);
+      });
+
+      it('leaves a tag where it was put once the crowd has gone, until the renderer is reset', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        const crowded = makeSnapshot([lead, wing]);
+        const alone = makeSnapshot([wing]);
+        renderAt(renderer, 0, { snapshot: crowded });
+        renderAt(renderer, QUARTER_TURN_MS, { snapshot: crowded });
+
+        const afterCrowd = renderAt(renderer, QUARTER_TURN_MS + 16, { snapshot: alone });
+        renderer.reset();
+        renderAt(renderer, 0, { snapshot: alone });
+        const afterReset = renderAt(renderer, QUARTER_TURN_MS, { snapshot: alone });
+
+        expect(tagTopOf(afterCrowd, 'WING2')).toBeGreaterThan(blipYPx);
+        expect(tagTopOf(afterReset, 'WING2')).toBeLessThan(blipYPx);
+      });
+
+      it('works the placement out again only when a blip is painted, or the snapshot or viewport changes', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        const { context } = createRecordingContext();
+        const measured = vi.spyOn(context, 'measureText');
+        const viewport = createViewport(WIDTH_PX, HEIGHT_PX, 60, DEFAULT_PX_PER_REM);
+        const frame: ScopeFrame = {
+          viewport,
+          rangeNm: 60,
+          snapshot: makeSnapshot([lead]),
+          videoMap: undefined,
+          frameTimeMs: 0,
+          settings: {},
+        };
+
+        renderer.render(context, frame);
+        expect(measured).not.toHaveBeenCalled();
+
+        renderer.render(context, { ...frame, frameTimeMs: QUARTER_TURN_MS });
+        const callsPerPlacement = measured.mock.calls.length;
+        expect(callsPerPlacement).toBeGreaterThan(0);
+
+        renderer.render(context, { ...frame, frameTimeMs: QUARTER_TURN_MS + 16 });
+        expect(measured).toHaveBeenCalledTimes(callsPerPlacement);
+
+        renderer.render(context, {
+          ...frame,
+          frameTimeMs: QUARTER_TURN_MS + 32,
+          snapshot: makeSnapshot([lead]),
+        });
+        expect(measured).toHaveBeenCalledTimes(callsPerPlacement * 2);
+
+        const unchangedSnapshot = { ...frame, snapshot: makeSnapshot([lead]) };
+        renderer.render(context, { ...unchangedSnapshot, frameTimeMs: QUARTER_TURN_MS + 48 });
+        const changedViewports = [
+          { ...viewport, widthPx: WIDTH_PX + 100 },
+          { ...viewport, widthPx: WIDTH_PX + 100, heightPx: HEIGHT_PX + 100 },
+          { ...viewport, widthPx: WIDTH_PX + 100, heightPx: HEIGHT_PX + 100, pxPerNm: 9 },
+          {
+            ...viewport,
+            widthPx: WIDTH_PX + 100,
+            heightPx: HEIGHT_PX + 100,
+            pxPerNm: 9,
+            pxPerRem: 32,
+          },
+        ];
+        changedViewports.forEach((changed, index) => {
+          renderer.render(context, {
+            ...unchangedSnapshot,
+            frameTimeMs: QUARTER_TURN_MS + 64 + index * 16,
+            viewport: changed,
+          });
+          expect(measured).toHaveBeenCalledTimes(callsPerPlacement * (4 + index));
+        });
+      });
     });
 
     it('drops the tag of a target that is no longer in the snapshot', () => {
