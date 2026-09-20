@@ -9,6 +9,7 @@ import type { CliOptions } from './cli-args.js';
 import { buildFeed, describeStation } from './create-feed.js';
 import { buildAllowedHostnames } from './host-check.js';
 import { createScopeServer } from './http-server.js';
+import { createVideoMapProvider } from './video-map/provider.js';
 
 /** Exit code for a run that ended normally, including `--help`. */
 export const EXIT_OK = 0;
@@ -36,6 +37,8 @@ export interface RunDependencies {
   buildFeed: typeof buildFeed;
   /** Creates the scope's HTTP server. */
   createScopeServer: typeof createScopeServer;
+  /** Creates the source of video maps. */
+  createVideoMapProvider: typeof createVideoMapProvider;
   /** Resolves whether a file exists and can be read. */
   canRead(path: string): Promise<boolean>;
   /** Returns this machine's hostname. */
@@ -80,6 +83,7 @@ async function canReadFile(path: string): Promise<boolean> {
 export const DEFAULT_RUN_DEPENDENCIES: RunDependencies = {
   buildFeed,
   createScopeServer,
+  createVideoMapProvider,
   canRead: canReadFile,
   machineHostname: hostname,
   publicDir: fileURLToPath(new URL('../public/', import.meta.url)),
@@ -116,8 +120,10 @@ async function start(
 
   const station = describeStation(cli);
   const feed = dependencies.buildFeed(cli);
+  const videoMaps = dependencies.createVideoMapProvider({ receiver: cli.location });
   const server = dependencies.createScopeServer({
     feed,
+    getVideoMap: (rangeNm) => videoMaps.get(rangeNm),
     config: {
       receiver: cli.location,
       source: cli.replayPath !== undefined ? 'replay' : cli.source,
@@ -139,6 +145,9 @@ async function start(
   }
 
   feed.start();
+  // Warm the map data now, while nothing is connected, rather than during the first map
+  // request. A failure here is not fatal: that request will try the load again.
+  void videoMaps.preload().catch(() => undefined);
 
   const url = formatScopeUrl(cli.bindAddress, port);
   io.stdout(`${APP_NAME}: ${station} -> ${url}\n`);

@@ -65,7 +65,13 @@ describe('ScopeCanvas', () => {
     const snapshot = makeSnapshot();
 
     render(
-      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={snapshot} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={snapshot}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     runFrame(16);
     runFrame(32);
@@ -85,13 +91,25 @@ describe('ScopeCanvas', () => {
     stubContext();
     const renderer = makeRenderer();
     const view = render(
-      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     runFrame(16);
     const changed = { tags: 'on' };
 
     view.rerender(
-      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={changed} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={changed}
+      />,
     );
     runFrame(32);
 
@@ -105,7 +123,13 @@ describe('ScopeCanvas', () => {
     const renderer = makeRenderer();
     document.documentElement.style.fontSize = '20px';
     render(
-      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     runFrame(16);
     expect(lastFrame(renderer)?.viewport.pxPerRem).toBe(20);
@@ -117,18 +141,49 @@ describe('ScopeCanvas', () => {
     expect(lastFrame(renderer)?.viewport.pxPerRem).toBe(24);
   });
 
+  it('hands the video map to the renderer', () => {
+    stubContext();
+    const renderer = makeRenderer();
+    const videoMap = { rangeNm: 60, points: [], lines: [] };
+
+    render(
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={videoMap}
+        settings={SETTINGS}
+      />,
+    );
+    runFrame(16);
+
+    expect(lastFrame(renderer)?.videoMap).toBe(videoMap);
+  });
+
   it('picks up a new range and snapshot without restarting the frame loop', () => {
     stubContext();
     const renderer = makeRenderer();
     const view = render(
-      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     runFrame(16);
     const scheduledBefore = vi.mocked(window.requestAnimationFrame).mock.calls.length;
     const snapshot = makeSnapshot();
 
     view.rerender(
-      <ScopeCanvas renderer={renderer} rangeNm={40} snapshot={snapshot} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={40}
+        snapshot={snapshot}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     runFrame(32);
 
@@ -143,12 +198,24 @@ describe('ScopeCanvas', () => {
     const first = makeRenderer();
     const second = makeRenderer();
     const view = render(
-      <ScopeCanvas renderer={first} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={first}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     runFrame(16);
 
     view.rerender(
-      <ScopeCanvas renderer={second} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={second}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     runFrame(32);
 
@@ -162,7 +229,13 @@ describe('ScopeCanvas', () => {
     stubContext();
     const renderer = makeRenderer();
     render(
-      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
 
@@ -177,7 +250,13 @@ describe('ScopeCanvas', () => {
     stubContext();
     const renderer = makeRenderer();
     const view = render(
-      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
 
     view.unmount();
@@ -193,7 +272,13 @@ describe('ScopeCanvas', () => {
     const renderer = makeRenderer();
 
     const view = render(
-      <ScopeCanvas renderer={renderer} rangeNm={60} snapshot={undefined} settings={SETTINGS} />,
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+      />,
     );
     runFrame(16);
 

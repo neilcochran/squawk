@@ -15,7 +15,8 @@ export interface AnalogTheme extends ScopeTheme {
 
 /**
  * The `analog` view style's colors and type: a monochrome green phosphor
- * tube. Every canvas color is six-digit hex, because the renderer derives
+ * tube. Every class of airspace is the same green; it is their dashes that
+ * tell a boundary from a range ring here. Every canvas color is six-digit hex, because the renderer derives
  * the afterglow's translucent variants from them.
  */
 export const ANALOG_THEME: AnalogTheme = {
@@ -23,6 +24,12 @@ export const ANALOG_THEME: AnalogTheme = {
     background: '#020a04',
     map: '#0f3d1f',
     mapLabel: '#1f6b38',
+    airspaceClassB: '#0f4522',
+    airspaceClassC: '#0f4522',
+    airspaceClassD: '#0f4522',
+    airspaceSpecialUse: '#0f4522',
+    videoMapFeature: '#1a5c30',
+    videoMapLabel: '#164d29',
     target: '#7dffa0',
     coasting: '#7dffa0',
     history: '#7dffa0',

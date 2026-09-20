@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { createViewport, offsetByBearing, polarToScreen, SCOPE_MARGIN_REM } from './projection.js';
+import {
+  createViewport,
+  isNearCanvas,
+  offsetByBearing,
+  polarToScreen,
+  SCOPE_MARGIN_REM,
+} from './projection.js';
 import { DEFAULT_PX_PER_REM } from './units.js';
 
 const MARGIN_PX = SCOPE_MARGIN_REM * DEFAULT_PX_PER_REM;
@@ -46,6 +52,32 @@ describe('offsetByBearing', () => {
     expect(offsetByBearing(origin, 90, 50).xPx).toBeCloseTo(150);
     expect(offsetByBearing(origin, 270, 50).xPx).toBeCloseTo(50);
     expect(offsetByBearing(origin, 90, 50).yPx).toBeCloseTo(100);
+  });
+});
+
+describe('isNearCanvas', () => {
+  const viewport = createViewport(800, 600, 60, DEFAULT_PX_PER_REM);
+  const marginPx = 40;
+
+  it('accepts points on the canvas and just off any edge', () => {
+    expect(isNearCanvas(viewport, { xPx: 400, yPx: 300 }, marginPx)).toBe(true);
+    expect(isNearCanvas(viewport, { xPx: -marginPx, yPx: -marginPx }, marginPx)).toBe(true);
+    expect(isNearCanvas(viewport, { xPx: 800 + marginPx, yPx: 600 + marginPx }, marginPx)).toBe(
+      true,
+    );
+  });
+
+  it('rejects points beyond the margin off each edge', () => {
+    const beyondPx = marginPx + 1;
+    expect(isNearCanvas(viewport, { xPx: -beyondPx, yPx: 300 }, marginPx)).toBe(false);
+    expect(isNearCanvas(viewport, { xPx: 800 + beyondPx, yPx: 300 }, marginPx)).toBe(false);
+    expect(isNearCanvas(viewport, { xPx: 400, yPx: -beyondPx }, marginPx)).toBe(false);
+    expect(isNearCanvas(viewport, { xPx: 400, yPx: 600 + beyondPx }, marginPx)).toBe(false);
+  });
+
+  it('accepts only the canvas itself with no margin', () => {
+    expect(isNearCanvas(viewport, { xPx: 0, yPx: 0 }, 0)).toBe(true);
+    expect(isNearCanvas(viewport, { xPx: -1, yPx: 0 }, 0)).toBe(false);
   });
 });
 

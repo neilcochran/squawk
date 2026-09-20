@@ -26,6 +26,7 @@ const GRID: ModeSetting = {
 };
 
 const MODE: ScopeModeDefinition = { ...DIGITAL_MODE, settings: [SPEED, GRID] };
+const BARE_MODE: ScopeModeDefinition = { ...DIGITAL_MODE, settings: [] };
 
 describe('defaultSettingValues', () => {
   it('selects the first choice of every setting', () => {
@@ -33,7 +34,7 @@ describe('defaultSettingValues', () => {
   });
 
   it('is empty for a mode with nothing to adjust', () => {
-    expect(defaultSettingValues(DIGITAL_MODE)).toEqual({});
+    expect(defaultSettingValues(BARE_MODE)).toEqual({});
   });
 });
 

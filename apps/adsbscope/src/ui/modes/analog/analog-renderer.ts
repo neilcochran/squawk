@@ -13,7 +13,10 @@ import type { FurnitureColors } from '../../scope/furniture.js';
 import { offsetByBearing, polarToScreen } from '../../scope/projection.js';
 import type { ScopeViewport } from '../../scope/projection.js';
 import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
+import { drawVideoMap } from '../../scope/video-map-draw.js';
+import type { VideoMapColors } from '../../scope/video-map-draw.js';
 import { canvasFont } from '../../styles/theme.js';
+import { mapDetail } from '../shared-settings.js';
 
 import { areTagsVisible, sweepPeriodMs } from './analog-settings.js';
 import type { AnalogTheme } from './analog-theme.js';
@@ -197,6 +200,16 @@ function drawTags(
 export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
   const palette = theme.canvas;
   const furnitureColors: FurnitureColors = { line: palette.map, label: palette.mapLabel };
+  const videoMapColors: VideoMapColors = {
+    airspace: {
+      classB: palette.airspaceClassB,
+      classC: palette.airspaceClassC,
+      classD: palette.airspaceClassD,
+      specialUse: palette.airspaceSpecialUse,
+    },
+    feature: palette.videoMapFeature,
+    label: palette.videoMapLabel,
+  };
   let sweepDeg = 0;
   let lastFrameTimeMs: number | undefined;
   let blips: Blip[] = [];
@@ -218,6 +231,10 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
       context.fillStyle = palette.background;
       context.fillRect(0, 0, viewport.widthPx, viewport.heightPx);
       context.font = canvasFont(theme, viewport.pxPerRem);
+      const detail = mapDetail(frame.settings);
+      if (frame.videoMap !== undefined && detail !== 'off') {
+        drawVideoMap(context, videoMapColors, viewport, frame.videoMap, detail);
+      }
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
       drawCompassRose(context, furnitureColors, viewport);
       drawReceiverMarker(context, furnitureColors, viewport);

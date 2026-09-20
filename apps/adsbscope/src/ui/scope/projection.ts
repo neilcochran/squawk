@@ -80,6 +80,29 @@ export function offsetByBearing(
 }
 
 /**
+ * Decides whether a point is worth drawing: on the canvas, give or take a
+ * margin, so something whose label or tag trails in from just off-screen is
+ * still drawn.
+ *
+ * @param viewport - The current viewport.
+ * @param point - The canvas position to test.
+ * @param marginPx - How far off any edge still counts, in CSS pixels.
+ * @returns True if the point is on or near the canvas.
+ */
+export function isNearCanvas(
+  viewport: ScopeViewport,
+  point: ScreenPoint,
+  marginPx: number,
+): boolean {
+  return (
+    point.xPx >= -marginPx &&
+    point.xPx <= viewport.widthPx + marginPx &&
+    point.yPx >= -marginPx &&
+    point.yPx <= viewport.heightPx + marginPx
+  );
+}
+
+/**
  * Projects a receiver-relative polar point onto the canvas.
  *
  * @param viewport - The current viewport.

@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-An ATC-style radar scope for live ADS-B traffic, in your browser. `adsbscope` is a small command-line tool: it connects to a local [dump1090-fa](https://github.com/flightaware/dump1090) station through [`@squawk/adsb-feed`](../../packages/libs/adsb-feed), and serves a web page that plots every tracked aircraft on a scope centered on your receiver. The scope has two view styles you can switch between while it runs: a modern **digital** scope with data blocks, and a sweep-era **analog** scope with a rotating beam and fading returns.
+An ATC-style radar scope for live ADS-B traffic, in your browser. `adsbscope` is a small command-line tool: it connects to a local [dump1090-fa](https://github.com/flightaware/dump1090) station through [`@squawk/adsb-feed`](../../packages/libs/adsb-feed), and serves a web page that plots every tracked aircraft on a scope centered on your receiver, over a video map of the airports, runways, navaids, fixes, and airspace around it. The scope has two view styles you can switch between while it runs: a modern **digital** scope with data blocks, and a sweep-era **analog** scope with a rotating beam and fading returns.
 
 ## Running it
 
@@ -49,6 +49,7 @@ Everything you can change while the scope is running has both an on-screen contr
 | `+`, `=`, or `]` | Zoom in to the next smaller scope range           |
 | `-`, `_`, or `[` | Zoom out to the next larger scope range           |
 | `M`              | Step to the next view style                       |
+| `V`              | Step the video map: basic, full, off              |
 | `T`              | Analog only: step the Tags setting (off, on)      |
 | `R`              | Analog only: step the Sweep setting (4.8 s, 12 s) |
 
@@ -60,7 +61,7 @@ The scope fits whatever window it is given - the range circle always fills the s
 
 ## View styles
 
-Both view styles share the same scope furniture, so nothing moves when you switch: north is up and the receiver is the cross at the center, range rings are labeled in nautical miles and spaced so that no more than six are drawn at any range, and a compass rose around the outermost ring is marked every 10 degrees and labeled every 30 in degrees true. The range, and each view style's own settings, are kept when you switch.
+Both view styles share the same scope furniture and the same [video map](#video-map), so nothing moves when you switch: north is up and the receiver is the cross at the center, range rings are labeled in nautical miles and spaced so that no more than six are drawn at any range, and a compass rose around the outermost ring is marked every 10 degrees and labeled every 30 in degrees true. The range, and each view style's own settings, are kept when you switch.
 
 ### Digital
 
@@ -84,6 +85,21 @@ The analog style has two settings:
 - **Tags** (`T`) - off by default, as on the scopes of the era, where identity was tracked on paper strips. Turned on, each aircraft's newest blip gets a faint two-line tag in the same format as the digital data block.
 - **Sweep** (`R`) - 4.8 s per rotation, like a terminal approach radar, or 12 s, like a long-range en-route radar.
 
+### Video map
+
+Under the traffic, both view styles draw a map of what is around the receiver, built from the FAA snapshots bundled with the `@squawk/*-data` packages:
+
+- **Airspace boundaries** - Class B and C at every range, Class D out to 100 nm, restricted and prohibited areas out to 150 nm. Boundaries are always dashed: most of them are circles, and so are the range rings, so near an airport the two would otherwise be easy to confuse. The `digital` style also colors them by class, after the sectional chart - Class B blue, Class C magenta, Class D teal, restricted and prohibited areas amber.
+- **Airports** - labeled with their ICAO code (or FAA identifier). Within 60 nm their runways are drawn to scale, end to end; beyond that an airport is a small ring.
+- **Navaids** - diamonds: VORs, VORTACs, VOR/DMEs, and TACANs out to 150 nm, NDBs out to 40 nm.
+- **Fixes** - triangles: the fixes charted on enroute charts, SIDs, and STARs, out to 40 nm, labeled only within 20 nm. Approach-only fixes are left out; there are several times as many of them.
+
+Those distances are scope ranges, not distances from the receiver: the map is rebuilt for each range, and thins out as you zoom out so it never turns into a smear of overlapping labels. Towered airports are shown at every range, airports with an ICAO code out to 80 nm, and small public-use airports only within 20 nm; heliports, seaplane bases, and private fields are never shown. While the map for a new range loads, the previous one stays on screen.
+
+The `Map` selector, or `V`, chooses how much of this is drawn. `Basic`, the default, is airspace and airports only, which keeps the map well behind the traffic. `Full` adds the navaids and fixes, and `Off` draws no map. Each view style remembers its own choice.
+
+The bundled data covers the United States only, so a receiver elsewhere gets an empty map. It is also a snapshot: it is as current as the installed data packages, not a live feed of airspace changes.
+
 ### The readout
 
 The readout in the top-left corner shows the source and station, link health, how many aircraft are tracked and how many of those have a position to plot, and the current range. Link health reads `LIVE`, `STATION RECONNECTING` when `adsbscope` has lost its connection to dump1090-fa, or `NO LINK TO SERVER` when the browser has lost its connection to `adsbscope`; both reconnect on their own.
@@ -103,7 +119,8 @@ adsbscope --replay session.jsonl --lat 40.6413 --lon -73.7781
 
 - It binds to `127.0.0.1` by default, so only the machine running it can open the scope. Pass `--bind 0.0.0.0` (or a specific local address) to view it from another device on your network; anyone who can reach that address can then see it, and `adsbscope` prints a reminder when started that way. It has no authentication, so do not expose it to the internet.
 - It refuses any request whose `Host` header is not an IP address, `localhost`, or the machine's own hostname (with or without `.local`). This blocks DNS rebinding, where a hostile web page points its own domain at your machine to read the responses.
-- It only ever reads from the station (or recording) it was started with. It makes no other outbound requests and cannot be used as a proxy.
+- It only ever reads from the station (or recording) it was started with, and the video map comes from data bundled with the install. It makes no other outbound requests and cannot be used as a proxy.
+- The one endpoint that takes input, the video map's range, accepts only a number up to 500 nm, and keeps at most 16 ranges' maps in memory, so requests cannot grow it without bound.
 - It answers `GET` and `HEAD` only, serves nothing outside its own bundled UI files, and sends a `Content-Security-Policy` that limits the page to its own origin.
 
 ## Development
@@ -117,6 +134,23 @@ node apps/adsbscope/dist/server/cli.js --replay session.jsonl --lat 40.6413 --lo
 
 For UI work, `npm run dev:ui -w @squawk/adsbscope` serves the UI with hot reload and proxies `/api` to an `adsbscope` instance running on its default port.
 
+### Server layout
+
+```
+src/server/
+  cli.ts, run.ts, shutdown.ts   # Entry point, startup, and signal handling
+  cli-args.ts, create-feed.ts   # Flags, and the live or replayed aircraft feed
+  http-server.ts                # Static UI, /api/config, /api/stream, /api/videomap
+  snapshot.ts                   # Aircraft -> scope targets, in receiver-relative polar coordinates
+  video-map/
+    layers.ts                   # Which features are shown at which range: the knobs for map density
+    build.ts                    # Pure: source records + receiver + range -> the map
+    load-data.ts                # Loads the bundled FAA snapshots, on first use
+    provider.ts                 # One map per range, built once, in a bounded cache
+```
+
+Everything geographic is resolved on the server: aircraft and map features alike reach the browser as bearing and range from the receiver, so the browser bundle contains no geodesy and none of the FAA data.
+
 ### UI layout
 
 ```
@@ -128,6 +162,7 @@ src/ui/
   hud/                      # The heads-up display over the canvas: status readout, controls, hotkeys
   scope/                    # Canvas host, projection, range steps, data-block formatting
   scope/furniture.ts        # Range rings, compass rose, receiver marker - shared by every view style
+  scope/video-map-draw.ts   # The video map - shared by every view style
   modes/<mode>/             # One directory per view style: its renderer, theme, settings, and mode definition
   modes/mode.ts             # The ScopeModeDefinition contract, and declarative mode settings
   modes/registry.ts         # The view styles, keyed by id

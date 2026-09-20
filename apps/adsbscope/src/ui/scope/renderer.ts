@@ -1,4 +1,4 @@
-import type { ScopeSnapshot } from '../../shared/protocol.js';
+import type { ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
 
 import type { ScopeViewport } from './projection.js';
 
@@ -10,6 +10,8 @@ export interface ScopeFrame {
   rangeNm: number;
   /** The most recent snapshot from the server, or undefined before the first one arrives. */
   snapshot: ScopeSnapshot | undefined;
+  /** The video map for the current range, or undefined until one has loaded. Whether it is drawn is up to the renderer's settings. */
+  videoMap: ScopeVideoMap | undefined;
   /** Monotonic time of this frame in ms, as passed to `requestAnimationFrame` callbacks. */
   frameTimeMs: number;
   /** The current value of each of the active mode's settings, keyed by setting id. */

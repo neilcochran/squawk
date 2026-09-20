@@ -9,9 +9,10 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import type { AircraftFeed } from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
-import type { ScopeConfig } from '../shared/protocol.js';
+import { MAX_RANGE_NM } from '../shared/protocol.js';
+import type { ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
 
-import { createScopeServer, STREAM_RETRY_MS } from './http-server.js';
+import { createScopeServer, parseVideoMapRange, STREAM_RETRY_MS } from './http-server.js';
 import type { ScopeServer } from './http-server.js';
 
 const CONFIG: ScopeConfig = {
@@ -31,6 +32,7 @@ interface SimpleResponse {
 let publicDir: string;
 let server: ScopeServer | undefined;
 let aircraft: Aircraft[] = [];
+const getVideoMap = vi.fn<(rangeNm: number) => Promise<ScopeVideoMap>>();
 
 function makeFeed(): AircraftFeed {
   return Object.assign(new EventTarget(), {
@@ -47,6 +49,7 @@ async function startServer(snapshotIntervalMs = 1000): Promise<number> {
   server = createScopeServer({
     feed: makeFeed(),
     config: CONFIG,
+    getVideoMap,
     publicDir,
     allowedHostnames: ['localhost'],
     snapshotIntervalMs,
@@ -124,8 +127,28 @@ afterAll(async () => {
 
 afterEach(async () => {
   aircraft = [];
+  getVideoMap.mockReset();
   await server?.close();
   server = undefined;
+});
+
+describe('parseVideoMapRange', () => {
+  it('reads a positive range up to the maximum', () => {
+    expect(parseVideoMapRange('rangeNm=60')).toBe(60);
+    expect(parseVideoMapRange('other=1&rangeNm=12.5')).toBe(12.5);
+    expect(parseVideoMapRange(`rangeNm=${MAX_RANGE_NM}`)).toBe(MAX_RANGE_NM);
+  });
+
+  it('rejects a missing, blank, non-numeric, non-positive, or oversized range', () => {
+    expect(parseVideoMapRange('')).toBeUndefined();
+    expect(parseVideoMapRange('rangeNm=')).toBeUndefined();
+    expect(parseVideoMapRange('rangeNm=%20')).toBeUndefined();
+    expect(parseVideoMapRange('rangeNm=far')).toBeUndefined();
+    expect(parseVideoMapRange('rangeNm=0')).toBeUndefined();
+    expect(parseVideoMapRange('rangeNm=-5')).toBeUndefined();
+    expect(parseVideoMapRange('rangeNm=Infinity')).toBeUndefined();
+    expect(parseVideoMapRange(`rangeNm=${MAX_RANGE_NM + 1}`)).toBeUndefined();
+  });
 });
 
 describe('createScopeServer', () => {
@@ -179,6 +202,56 @@ describe('createScopeServer', () => {
     expect((await send(port, '/missing.js')).status).toBe(404);
     expect((await send(port, '/assets')).status).toBe(404);
     expect((await send(port, '/%2e%2e/%2e%2e/etc/passwd')).status).toBe(404);
+  });
+
+  describe('video map', () => {
+    const MAP: ScopeVideoMap = {
+      rangeNm: 40,
+      points: [{ kind: 'airport', label: 'KTST', position: { trueBearingDeg: 10, rangeNm: 5 } }],
+      lines: [],
+    };
+
+    it('serves the map for the requested range as JSON the browser must not reuse unchecked', async () => {
+      getVideoMap.mockResolvedValue(MAP);
+      const port = await startServer();
+
+      const response = await send(port, '/api/videomap?rangeNm=40');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe('application/json; charset=utf-8');
+      expect(response.headers['cache-control']).toBe('no-cache');
+      expect(JSON.parse(response.body)).toEqual(MAP);
+      expect(getVideoMap).toHaveBeenCalledWith(40);
+    });
+
+    it('answers HEAD without a body', async () => {
+      getVideoMap.mockResolvedValue(MAP);
+      const port = await startServer();
+
+      const response = await send(port, '/api/videomap?rangeNm=40', { method: 'HEAD' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toBe('');
+    });
+
+    it('refuses a missing or unusable range without building anything', async () => {
+      const port = await startServer();
+
+      expect((await send(port, '/api/videomap')).status).toBe(400);
+      expect((await send(port, '/api/videomap?rangeNm=99999')).status).toBe(400);
+      expect(getVideoMap).not.toHaveBeenCalled();
+    });
+
+    it('reports a map that could not be built, without leaking why, and keeps serving', async () => {
+      getVideoMap.mockRejectedValue(new Error('snapshot unreadable'));
+      const port = await startServer();
+
+      const response = await send(port, '/api/videomap?rangeNm=40');
+
+      expect(response.status).toBe(500);
+      expect(response.body).not.toContain('snapshot unreadable');
+      expect((await send(port, '/api/config')).status).toBe(200);
+    });
   });
 
   it('refuses methods other than GET and HEAD', async () => {
@@ -257,6 +330,7 @@ describe('createScopeServer', () => {
     const second = createScopeServer({
       feed: makeFeed(),
       config: CONFIG,
+      getVideoMap,
       publicDir,
       allowedHostnames: [],
     });

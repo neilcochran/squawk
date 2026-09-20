@@ -9,6 +9,7 @@ import {
   DEFAULT_LISTEN_PORT,
   DEFAULT_SCOPE_MODE_ID,
   isScopeModeId,
+  MAX_RANGE_NM,
   SCOPE_MODE_IDS,
 } from '../shared/protocol.js';
 import type { ScopeModeId } from '../shared/protocol.js';
@@ -67,7 +68,6 @@ export interface CliArgsError {
 const DEFAULT_HOST = 'localhost';
 const DEFAULT_SOURCE: FeedSource = 'beast';
 const NEGATIVE_NUMBER = /^-\d+(\.\d+)?$/;
-const MAX_RANGE_NM = 500;
 
 function isFeedSource(value: string): value is FeedSource {
   return value === 'json' || value === 'sbs' || value === 'beast';

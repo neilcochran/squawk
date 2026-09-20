@@ -1,9 +1,11 @@
 import type { ReactElement } from 'react';
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 
-import type { ScopeConfig, ScopeModeId } from '../shared/protocol.js';
+import type { ScopeConfig, ScopeModeId, ScopeVideoMap } from '../shared/protocol.js';
 
 import { useScopeStream } from './data/use-scope-stream.js';
+import { useVideoMap } from './data/use-video-map.js';
+import { fetchVideoMap } from './data/video-map.js';
 import { resolveHotkey } from './hud/hotkeys.js';
 import type { KeyPress } from './hud/hotkeys.js';
 import { ModeControls } from './hud/mode-controls.js';
@@ -23,6 +25,8 @@ import { applyTheme } from './styles/theme.js';
 export interface ScopeViewProps {
   /** The session config, which supplies the view style and range to start in. */
   config: ScopeConfig;
+  /** Loads the video map for a range. Injectable for tests; defaults to fetching it from the scope server. Must be stable across renders. */
+  loadVideoMap?: (rangeNm: number) => Promise<ScopeVideoMap | undefined>;
 }
 
 /**
@@ -41,15 +45,17 @@ function initialSettingValues(): Record<ScopeModeId, ModeSettingValues> {
  * The working scope: the canvas in the active view style, with the status
  * readout and the on-screen controls over it. Owns everything the user can
  * change while running - the view style, that style's settings, and the range
- * - along with the live snapshot stream. Every change is reachable both from
+ * - along with the live snapshot stream and the video map for the current
+ * range. Every change is reachable both from
  * an on-screen control, which selects an option directly, and from a hotkey,
  * which steps to the next one.
  */
-export function ScopeView({ config }: ScopeViewProps): ReactElement {
+export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewProps): ReactElement {
   const [modeId, setModeId] = useState<ScopeModeId>(config.mode);
   const [rangeNm, setRangeNm] = useState(config.rangeNm);
   const [settingValuesByMode, setSettingValuesByMode] = useState(initialSettingValues);
   const stream = useScopeStream();
+  const videoMap = useVideoMap(rangeNm, loadVideoMap);
 
   const mode = SCOPE_MODES_BY_ID[modeId];
   const settingValues = settingValuesByMode[modeId];
@@ -114,6 +120,7 @@ export function ScopeView({ config }: ScopeViewProps): ReactElement {
         renderer={renderer}
         rangeNm={rangeNm}
         snapshot={stream.snapshot}
+        videoMap={videoMap}
         settings={settingValues}
       />
       <StatusBar

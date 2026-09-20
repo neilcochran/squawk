@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ScopeSnapshot } from '../../../shared/protocol.js';
+import type { ScopeSnapshot, ScopeVideoMap } from '../../../shared/protocol.js';
 import { FULL_CIRCLE_RAD } from '../../scope/furniture.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
 import type { ScopeRenderer } from '../../scope/renderer.js';
@@ -8,6 +8,7 @@ import { createRecordingContext, makeSnapshot, makeTarget } from '../../scope/te
 import type { RecordedCall, RecordingContext } from '../../scope/test-utils.js';
 import { DEFAULT_PX_PER_REM } from '../../scope/units.js';
 import { canvasFont } from '../../styles/theme.js';
+import { MAP_SETTING_ID } from '../shared-settings.js';
 
 import {
   AFTERGLOW_ALPHA,
@@ -28,6 +29,7 @@ const COLORS = ANALOG_THEME.canvas;
 
 interface FrameOptions {
   snapshot?: ScopeSnapshot | undefined;
+  videoMap?: ScopeVideoMap;
   rangeNm?: number;
   settings?: Record<string, string>;
 }
@@ -44,6 +46,7 @@ function renderAt(
     viewport: createViewport(WIDTH_PX, HEIGHT_PX, rangeNm, DEFAULT_PX_PER_REM),
     rangeNm,
     snapshot: options.snapshot,
+    videoMap: options.videoMap,
     frameTimeMs,
     settings: options.settings ?? {},
   });
@@ -233,6 +236,7 @@ describe('createAnalogRenderer', () => {
         viewport: createViewport(WIDTH_PX, HEIGHT_PX, 60, DEFAULT_PX_PER_REM),
         rangeNm: 60,
         snapshot: undefined,
+        videoMap: undefined,
         frameTimeMs: 0,
         settings: {},
       });
@@ -312,6 +316,47 @@ describe('createAnalogRenderer', () => {
 
       const later = renderAt(renderer, QUARTER_TURN_MS * 2, { snapshot, settings });
       expect(blipArcs(later)).toHaveLength(1);
+    });
+  });
+
+  describe('video map', () => {
+    const videoMap: ScopeVideoMap = {
+      rangeNm: 60,
+      points: [
+        { kind: 'airport', label: 'KTST', position: { trueBearingDeg: 270, rangeNm: 20 } },
+        { kind: 'navaid', label: 'ENE', position: { trueBearingDeg: 90, rangeNm: 20 } },
+      ],
+      lines: [],
+    };
+
+    it('draws the map in the analog colors, under the furniture', () => {
+      const recording = renderAt(createAnalogRenderer(ANALOG_THEME), 0, { videoMap });
+
+      const mapLabel = recording.calls.findIndex((call) => call.args[0] === 'KTST');
+      const firstRingLabel = recording.calls.findIndex((call) => call.args[0] === '10');
+      expect(mapLabel).toBeGreaterThan(0);
+      expect(mapLabel).toBeLessThan(firstRingLabel);
+      expect(recording.calls[mapLabel]?.fillStyle).toBe(COLORS.videoMapLabel);
+    });
+
+    it('draws the basic map by default, and navaids and fixes only on the full map', () => {
+      const basic = renderAt(createAnalogRenderer(ANALOG_THEME), 0, { videoMap });
+      const full = renderAt(createAnalogRenderer(ANALOG_THEME), 0, {
+        videoMap,
+        settings: { [MAP_SETTING_ID]: 'full' },
+      });
+
+      expect(basic.texts()).not.toContain('ENE');
+      expect(full.texts()).toContain('ENE');
+    });
+
+    it('leaves the map out when it is turned off', () => {
+      const recording = renderAt(createAnalogRenderer(ANALOG_THEME), 0, {
+        videoMap,
+        settings: { [MAP_SETTING_ID]: 'off' },
+      });
+
+      expect(recording.texts()).not.toContain('KTST');
     });
   });
 

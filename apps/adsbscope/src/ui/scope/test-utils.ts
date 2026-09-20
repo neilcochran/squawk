@@ -35,6 +35,7 @@ const RECORDED_METHODS = [
   'fillText',
   'lineTo',
   'moveTo',
+  'setLineDash',
   'setTransform',
   'stroke',
   'strokeRect',

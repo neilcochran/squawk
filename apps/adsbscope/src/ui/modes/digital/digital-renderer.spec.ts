@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ScopeSnapshot } from '../../../shared/protocol.js';
+import type { ScopeSnapshot, ScopeVideoMap } from '../../../shared/protocol.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
 import type { ScopeFrame } from '../../scope/renderer.js';
 import { createRecordingContext, makeSnapshot, makeTarget } from '../../scope/test-utils.js';
@@ -8,12 +8,12 @@ import type { RecordingContext } from '../../scope/test-utils.js';
 import { DEFAULT_PX_PER_REM } from '../../scope/units.js';
 import { canvasFont } from '../../styles/theme.js';
 import type { ScopeTheme } from '../../styles/theme.js';
+import { MAP_SETTING_ID } from '../shared-settings.js';
 
 import {
   COASTING_AFTER_MS,
   createDigitalRenderer,
   DIGITAL_LAYOUT_REM,
-  isNearCanvas,
 } from './digital-renderer.js';
 import { DIGITAL_THEME } from './digital-theme.js';
 
@@ -27,38 +27,20 @@ function renderFrame(
   rangeNm = 60,
   pxPerRem = DEFAULT_PX_PER_REM,
   theme: ScopeTheme = DIGITAL_THEME,
+  extras: { videoMap?: ScopeVideoMap; settings?: Record<string, string> } = {},
 ): RecordingContext {
   const recording = createRecordingContext();
   const frame: ScopeFrame = {
     viewport: createViewport(WIDTH_PX, HEIGHT_PX, rangeNm, pxPerRem),
     rangeNm,
     snapshot,
+    videoMap: extras.videoMap,
     frameTimeMs: 0,
-    settings: {},
+    settings: extras.settings ?? {},
   };
   createDigitalRenderer(theme).render(recording.context, frame);
   return recording;
 }
-
-describe('isNearCanvas', () => {
-  const marginPx = DIGITAL_LAYOUT_REM.offscreenMargin * DEFAULT_PX_PER_REM;
-
-  it('accepts points on the canvas and just off any edge', () => {
-    expect(isNearCanvas(VIEWPORT, { xPx: 400, yPx: 300 })).toBe(true);
-    expect(isNearCanvas(VIEWPORT, { xPx: -marginPx, yPx: -marginPx })).toBe(true);
-    expect(isNearCanvas(VIEWPORT, { xPx: WIDTH_PX + marginPx, yPx: HEIGHT_PX + marginPx })).toBe(
-      true,
-    );
-  });
-
-  it('rejects points well off each edge', () => {
-    const beyondPx = marginPx + 1;
-    expect(isNearCanvas(VIEWPORT, { xPx: -beyondPx, yPx: 300 })).toBe(false);
-    expect(isNearCanvas(VIEWPORT, { xPx: WIDTH_PX + beyondPx, yPx: 300 })).toBe(false);
-    expect(isNearCanvas(VIEWPORT, { xPx: 400, yPx: -beyondPx })).toBe(false);
-    expect(isNearCanvas(VIEWPORT, { xPx: 400, yPx: HEIGHT_PX + beyondPx })).toBe(false);
-  });
-});
 
 describe('createDigitalRenderer', () => {
   it('clears the whole canvas to the background color first', () => {
@@ -245,6 +227,64 @@ describe('createDigitalRenderer', () => {
 
     expect(recording.calls[0]?.fillStyle).toBe('#001100');
     expect(recording.callsTo('fillRect').at(-1)?.fillStyle).toBe('#33ff66');
+  });
+
+  describe('video map', () => {
+    const videoMap: ScopeVideoMap = {
+      rangeNm: 60,
+      points: [
+        { kind: 'airport', label: 'KTST', position: { trueBearingDeg: 270, rangeNm: 20 } },
+        { kind: 'navaid', label: 'ENE', position: { trueBearingDeg: 90, rangeNm: 20 } },
+      ],
+      lines: [
+        {
+          kind: 'airspace',
+          airspaceClass: 'classC',
+          points: [
+            [0, 10],
+            [90, 10],
+          ],
+        },
+      ],
+    };
+
+    it('draws the map in its own colors, under the furniture and the traffic', () => {
+      const recording = renderFrame(makeSnapshot(), 60, DEFAULT_PX_PER_REM, DIGITAL_THEME, {
+        videoMap,
+      });
+
+      const mapLabel = recording.calls.findIndex((call) => call.args[0] === 'KTST');
+      const firstRingLabel = recording.calls.findIndex((call) => call.args[0] === '10');
+      expect(mapLabel).toBeGreaterThan(0);
+      expect(mapLabel).toBeLessThan(firstRingLabel);
+      expect(recording.calls[mapLabel]?.fillStyle).toBe(COLORS.videoMapLabel);
+      expect(recording.callsTo('stroke')[0]?.strokeStyle).toBe(COLORS.airspaceClassC);
+    });
+
+    it('draws the basic map by default, and navaids and fixes only on the full map', () => {
+      const basic = renderFrame(makeSnapshot(), 60, DEFAULT_PX_PER_REM, DIGITAL_THEME, {
+        videoMap,
+      });
+      const full = renderFrame(makeSnapshot(), 60, DEFAULT_PX_PER_REM, DIGITAL_THEME, {
+        videoMap,
+        settings: { [MAP_SETTING_ID]: 'full' },
+      });
+
+      expect(basic.texts()).toContain('KTST');
+      expect(basic.texts()).not.toContain('ENE');
+      expect(full.texts()).toContain('ENE');
+    });
+
+    it('leaves the map out when it is turned off, or has not loaded yet', () => {
+      const off = renderFrame(makeSnapshot(), 60, DEFAULT_PX_PER_REM, DIGITAL_THEME, {
+        videoMap,
+        settings: { [MAP_SETTING_ID]: 'off' },
+      });
+      const notLoaded = renderFrame(makeSnapshot());
+
+      expect(off.texts()).not.toContain('KTST');
+      expect(off.calls).toEqual(notLoaded.calls);
+    });
   });
 
   it('has no state to reset', () => {

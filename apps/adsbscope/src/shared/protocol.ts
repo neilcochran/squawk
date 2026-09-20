@@ -41,6 +41,15 @@ export const CONFIG_PATH = `${API_PREFIX}/config`;
 /** Path of the server-sent events endpoint streaming {@link ScopeSnapshot}s. */
 export const STREAM_PATH = `${API_PREFIX}/stream`;
 
+/** Path of the endpoint serving the {@link ScopeVideoMap} for a range, given as the {@link VIDEO_MAP_RANGE_PARAM} query parameter. */
+export const VIDEO_MAP_PATH = `${API_PREFIX}/videomap`;
+
+/** Query parameter of {@link VIDEO_MAP_PATH}: the scope range, in nautical miles, the map is wanted for. */
+export const VIDEO_MAP_RANGE_PARAM = 'rangeNm';
+
+/** The largest scope range, in nautical miles, that can be asked for - on the command line or of the video map endpoint. */
+export const MAX_RANGE_NM = 500;
+
 /** Name of the server-sent event carrying a {@link ScopeSnapshot} as its JSON data. */
 export const SNAPSHOT_EVENT = 'snapshot';
 
@@ -104,4 +113,60 @@ export interface ScopeConfig {
   mode: ScopeModeId;
   /** The scope range to start at: nautical miles from the center to the edge of the scope. */
   rangeNm: number;
+}
+
+/**
+ * A {@link PolarPoint} as a `[trueBearingDeg, rangeNm]` pair. Used for the
+ * vertices of video map lines, where an airspace boundary can run to hundreds
+ * of points and the compact form keeps the map a fraction of the size.
+ */
+export type PolarTuple = readonly [trueBearingDeg: number, rangeNm: number];
+
+/** What a {@link VideoMapPoint} marks. */
+export type VideoMapPointKind = 'airport' | 'navaid' | 'fix';
+
+/** A labeled point feature of the video map. */
+export interface VideoMapPoint {
+  /** What the point marks, which decides the symbol it is drawn with. */
+  kind: VideoMapPointKind;
+  /** The identifier drawn beside it, e.g. `KPWM`, `ENE`, `AASUM`. Absent when the feature is shown as a bare symbol, as fixes are beyond close range. */
+  label?: string;
+  /** Where it is, relative to the receiver. */
+  position: PolarPoint;
+  /** True when the feature's own outline is also sent as lines (an airport's runways), so no stand-in symbol is needed. */
+  outlined?: boolean;
+}
+
+/** The classes of airspace whose boundaries the video map draws, which decides the color of the boundary. */
+export type VideoMapAirspaceClass = 'classB' | 'classC' | 'classD' | 'specialUse';
+
+/** A line feature of the video map: a runway, or the boundary of an airspace. */
+export type VideoMapLine =
+  | {
+      /** A runway, drawn to scale from end to end. */
+      kind: 'runway';
+      /** The runway's two ends. */
+      points: PolarTuple[];
+    }
+  | {
+      /** The boundary of an airspace. */
+      kind: 'airspace';
+      /** The class of the airspace. */
+      airspaceClass: VideoMapAirspaceClass;
+      /** The boundary's vertices, in order, repeating the first at the end to close. */
+      points: PolarTuple[];
+    };
+
+/**
+ * The fixed background of the scope - airports, runways, navaids, fixes, and
+ * airspace boundaries around the receiver - already resolved into scope
+ * coordinates and thinned to what is worth drawing at one range.
+ */
+export interface ScopeVideoMap {
+  /** The scope range, in nautical miles, the map was built for. It covers well beyond that range, to the corners of a wide screen. */
+  rangeNm: number;
+  /** Labeled point features. */
+  points: VideoMapPoint[];
+  /** Line features. */
+  lines: VideoMapLine[];
 }

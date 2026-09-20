@@ -9,12 +9,14 @@ import {
   TAGS_SETTING_ID,
 } from '../modes/analog/analog-settings.js';
 import { defaultSettingValues } from '../modes/mode.js';
+import type { ScopeModeDefinition } from '../modes/mode.js';
 import { SCOPE_MODES, SCOPE_MODES_BY_ID } from '../modes/registry.js';
 
 import { ModeControls } from './mode-controls.js';
 
 const ANALOG = SCOPE_MODES_BY_ID.analog;
 const DIGITAL = SCOPE_MODES_BY_ID.digital;
+const BARE_MODE: ScopeModeDefinition = { ...DIGITAL, settings: [] };
 
 describe('ModeControls', () => {
   it('offers every view style side by side, with the active one marked as selected', () => {
@@ -44,7 +46,7 @@ describe('ModeControls', () => {
     render(
       <ModeControls
         modes={SCOPE_MODES}
-        mode={DIGITAL}
+        mode={BARE_MODE}
         settingValues={{}}
         onSelectMode={vi.fn()}
         onSelectSetting={vi.fn()}

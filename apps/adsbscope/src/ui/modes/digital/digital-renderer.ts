@@ -9,11 +9,14 @@ import {
   FURNITURE_LINE_WIDTH_PX,
 } from '../../scope/furniture.js';
 import type { FurnitureColors } from '../../scope/furniture.js';
-import { offsetByBearing, polarToScreen } from '../../scope/projection.js';
+import { isNearCanvas, offsetByBearing, polarToScreen } from '../../scope/projection.js';
 import type { ScopeViewport, ScreenPoint } from '../../scope/projection.js';
 import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
+import { drawVideoMap } from '../../scope/video-map-draw.js';
+import type { VideoMapColors } from '../../scope/video-map-draw.js';
 import { canvasFont } from '../../styles/theme.js';
 import type { ScopeCanvasPalette, ScopeTheme } from '../../styles/theme.js';
+import { mapDetail } from '../shared-settings.js';
 
 /** How long a target may go unheard, as of its snapshot, before it is drawn dimmed as coasting. */
 export const COASTING_AFTER_MS = 15_000;
@@ -48,24 +51,6 @@ export const DIGITAL_LAYOUT_REM = {
 } as const;
 
 const MINUTES_PER_HOUR = 60;
-
-/**
- * Decides whether a point is worth drawing: inside the canvas, give or take
- * the layout's off-screen margin.
- *
- * @param viewport - The current viewport.
- * @param point - The canvas position to test.
- * @returns True if the point is on or near the canvas.
- */
-export function isNearCanvas(viewport: ScopeViewport, point: ScreenPoint): boolean {
-  const marginPx = DIGITAL_LAYOUT_REM.offscreenMargin * viewport.pxPerRem;
-  return (
-    point.xPx >= -marginPx &&
-    point.xPx <= viewport.widthPx + marginPx &&
-    point.yPx >= -marginPx &&
-    point.yPx <= viewport.heightPx + marginPx
-  );
-}
 
 function drawHistory(
   context: CanvasRenderingContext2D,
@@ -162,7 +147,7 @@ function drawTarget(
     return;
   }
   const at = polarToScreen(viewport, target.position);
-  if (!isNearCanvas(viewport, at)) {
+  if (!isNearCanvas(viewport, at, DIGITAL_LAYOUT_REM.offscreenMargin * viewport.pxPerRem)) {
     return;
   }
   const coasting = snapshot.at - target.lastSeenAt > COASTING_AFTER_MS;
@@ -174,8 +159,8 @@ function drawTarget(
 
 /**
  * Creates the `digital` view style's renderer: a modern ATC scope with no
- * sweep. Every frame is drawn from scratch - range rings, a compass rose, and
- * for each target a position symbol (hollow when on the ground), fading
+ * sweep. Every frame is drawn from scratch - the video map, range rings, a
+ * compass rose, and for each target a position symbol (hollow when on the ground), fading
  * history dots, a one-minute velocity vector, and a leader line to its data
  * block. A target not heard from for {@link COASTING_AFTER_MS} is drawn
  * dimmed.
@@ -186,6 +171,16 @@ function drawTarget(
 export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
   const palette = theme.canvas;
   const furnitureColors: FurnitureColors = { line: palette.map, label: palette.mapLabel };
+  const videoMapColors: VideoMapColors = {
+    airspace: {
+      classB: palette.airspaceClassB,
+      classC: palette.airspaceClassC,
+      classD: palette.airspaceClassD,
+      specialUse: palette.airspaceSpecialUse,
+    },
+    feature: palette.videoMapFeature,
+    label: palette.videoMapLabel,
+  };
   return {
     render(context: CanvasRenderingContext2D, frame: ScopeFrame): void {
       const { viewport, snapshot } = frame;
@@ -193,6 +188,10 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       context.fillStyle = palette.background;
       context.fillRect(0, 0, viewport.widthPx, viewport.heightPx);
       context.font = canvasFont(theme, viewport.pxPerRem);
+      const detail = mapDetail(frame.settings);
+      if (frame.videoMap !== undefined && detail !== 'off') {
+        drawVideoMap(context, videoMapColors, viewport, frame.videoMap, detail);
+      }
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
       drawCompassRose(context, furnitureColors, viewport);
       drawReceiverMarker(context, furnitureColors, viewport);

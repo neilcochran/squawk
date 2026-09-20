@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
-import type { ScopeSnapshot } from '../../shared/protocol.js';
+import type { ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
 
 import { fitCanvas } from './fit-canvas.js';
 import { createViewport } from './projection.js';
@@ -17,6 +17,8 @@ export interface ScopeCanvasProps {
   rangeNm: number;
   /** The most recent snapshot from the server, or undefined before the first one arrives. */
   snapshot: ScopeSnapshot | undefined;
+  /** The video map for the current range, or undefined until one has loaded. */
+  videoMap: ScopeVideoMap | undefined;
   /** The current value of each of the active mode's settings, handed to the renderer with every frame. */
   settings: Readonly<Record<string, string>>;
 }
@@ -25,7 +27,7 @@ export interface ScopeCanvasProps {
  * The scope itself: a canvas that fills its container and repaints every
  * animation frame with the current renderer. The frame loop is started once,
  * when the canvas element mounts, and reads the latest props through a ref,
- * so a new snapshot, range, or setting never restarts it.
+ * so a new snapshot, map, range, or setting never restarts it.
  *
  * Whenever the window is resized the canvas is re-fitted to its new size and
  * pixel density, the rem scale is re-read, and the renderer is reset - so the
@@ -36,14 +38,15 @@ export function ScopeCanvas({
   renderer,
   rangeNm,
   snapshot,
+  videoMap,
   settings,
 }: ScopeCanvasProps): ReactElement {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
-  const latest = useRef({ renderer, rangeNm, snapshot, settings });
+  const latest = useRef({ renderer, rangeNm, snapshot, videoMap, settings });
 
   useEffect(() => {
-    latest.current = { renderer, rangeNm, snapshot, settings };
-  }, [renderer, rangeNm, snapshot, settings]);
+    latest.current = { renderer, rangeNm, snapshot, videoMap, settings };
+  }, [renderer, rangeNm, snapshot, videoMap, settings]);
 
   useEffect(() => {
     renderer.reset();
@@ -73,6 +76,7 @@ export function ScopeCanvas({
         viewport: createViewport(size.widthPx, size.heightPx, current.rangeNm, pxPerRem),
         rangeNm: current.rangeNm,
         snapshot: current.snapshot,
+        videoMap: current.videoMap,
         frameTimeMs,
         settings: current.settings,
       });

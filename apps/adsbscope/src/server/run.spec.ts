@@ -9,6 +9,7 @@ import { USAGE } from './cli-args.js';
 import type { ScopeServer, ScopeServerOptions } from './http-server.js';
 import { DEFAULT_RUN_DEPENDENCIES, EXIT_FAILURE, EXIT_OK, formatScopeUrl, run } from './run.js';
 import type { RunDependencies, RunResult, RunningScope } from './run.js';
+import type { VideoMapProvider } from './video-map/provider.js';
 
 const LOCATION = ['--lat', '40.6413', '--lon', '-73.7781'];
 
@@ -17,6 +18,7 @@ interface Harness {
   feed: AircraftFeed & { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> };
   server: { listen: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
   serverOptions: ScopeServerOptions[];
+  videoMaps: { preload: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
   out: string[];
   err: string[];
   io: { stdout(text: string): void; stderr(text: string): void };
@@ -36,12 +38,17 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
     close: vi.fn(() => Promise.resolve()),
   };
   const serverOptions: ScopeServerOptions[] = [];
+  const videoMaps = {
+    preload: vi.fn(() => Promise.resolve()),
+    get: vi.fn((rangeNm: number) => Promise.resolve({ rangeNm, points: [], lines: [] })),
+  };
   const out: string[] = [];
   const err: string[] = [];
   return {
     feed,
     server,
     serverOptions,
+    videoMaps,
     out,
     err,
     io: { stdout: (text) => out.push(text), stderr: (text) => err.push(text) },
@@ -51,6 +58,7 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
         serverOptions.push(options);
         return server;
       }),
+      createVideoMapProvider: vi.fn((): VideoMapProvider => videoMaps),
       canRead: vi.fn(() => Promise.resolve(true)),
       machineHostname: () => 'MyPC',
       publicDir: '/ui',
@@ -189,6 +197,29 @@ describe('run', () => {
       publicDir: '/ui',
       allowedHostnames: ['localhost', 'mypc', 'mypc.local'],
     });
+  });
+
+  it('centers the video maps on the receiver, serves them from the scope server, and warms them up', async () => {
+    const harness = makeHarness();
+
+    await run(LOCATION, harness.io, harness.dependencies);
+
+    expect(harness.dependencies.createVideoMapProvider).toHaveBeenCalledWith({
+      receiver: { lat: 40.6413, lon: -73.7781 },
+    });
+    expect(harness.videoMaps.preload).toHaveBeenCalledTimes(1);
+    await expect(harness.serverOptions[0]?.getVideoMap(60)).resolves.toMatchObject({ rangeNm: 60 });
+    expect(harness.videoMaps.get).toHaveBeenCalledWith(60);
+  });
+
+  it('starts anyway when warming the video maps fails', async () => {
+    const harness = makeHarness();
+    harness.videoMaps.preload.mockRejectedValue(new Error('snapshot unreadable'));
+
+    const result = await run(LOCATION, harness.io, harness.dependencies);
+
+    expectRunning(result);
+    expect(harness.err).toEqual([]);
   });
 
   it('reports the port the server actually bound', async () => {

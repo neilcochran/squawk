@@ -5,8 +5,15 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 
 import type { AircraftFeed } from '@squawk/adsb-feed';
 
-import { CONFIG_PATH, SNAPSHOT_EVENT, STREAM_PATH } from '../shared/protocol.js';
-import type { ScopeConfig } from '../shared/protocol.js';
+import {
+  CONFIG_PATH,
+  MAX_RANGE_NM,
+  SNAPSHOT_EVENT,
+  STREAM_PATH,
+  VIDEO_MAP_PATH,
+  VIDEO_MAP_RANGE_PARAM,
+} from '../shared/protocol.js';
+import type { ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
 
 import { isAllowedHost } from './host-check.js';
 import { buildSnapshot } from './snapshot.js';
@@ -23,6 +30,15 @@ const PLAIN_TEXT_CONTENT = 'text/plain; charset=utf-8';
 const JSON_CONTENT = 'application/json; charset=utf-8';
 const EVENT_STREAM_CONTENT = 'text/event-stream';
 
+/**
+ * The browser may keep a response but must check back before reusing it. Used
+ * for the live event stream, and for what a newer install serves differently -
+ * the UI's files and the video map - so an upgrade is never masked by a stale
+ * copy. The map is cheap to ask for again: the server keeps each range's map
+ * once built.
+ */
+const REVALIDATE_CACHE_CONTROL = 'no-cache';
+
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Content-Security-Policy': "default-src 'self'",
@@ -35,6 +51,8 @@ export interface ScopeServerOptions {
   feed: AircraftFeed;
   /** Session settings served to the UI at startup. */
   config: ScopeConfig;
+  /** Builds the video map for a scope range, given in nautical miles. */
+  getVideoMap: (rangeNm: number) => Promise<ScopeVideoMap>;
   /** Absolute path of the directory the UI was built into. */
   publicDir: string;
   /** Lowercased hostnames accepted in the `Host` header besides IP literals - see `isAllowedHost`. */
@@ -69,9 +87,24 @@ function sendNotFound(response: ServerResponse): void {
 }
 
 /**
+ * Reads the scope range out of a video map request's query string.
+ *
+ * @param query - The request URL's query string, without the leading `?`.
+ * @returns The range in nautical miles, or undefined if it is missing, not a number, or outside `(0, MAX_RANGE_NM]`.
+ */
+export function parseVideoMapRange(query: string): number | undefined {
+  const raw = new URLSearchParams(query).get(VIDEO_MAP_RANGE_PARAM);
+  if (raw === null || raw.trim() === '') {
+    return undefined;
+  }
+  const rangeNm = Number(raw);
+  return Number.isFinite(rangeNm) && rangeNm > 0 && rangeNm <= MAX_RANGE_NM ? rangeNm : undefined;
+}
+
+/**
  * Creates the HTTP server behind the scope UI. It serves the built UI as
- * static files, the session {@link ScopeConfig} as JSON, and a server-sent
- * events stream that pushes a fresh snapshot of the feed to every connected
+ * static files, the session {@link ScopeConfig} and the video map for a
+ * range as JSON, and a server-sent events stream that pushes a fresh snapshot of the feed to every connected
  * browser on a fixed interval (and one immediately on connect, so a new tab
  * never starts blank).
  *
@@ -108,7 +141,7 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
     response.writeHead(200, {
       ...SECURITY_HEADERS,
       'Content-Type': EVENT_STREAM_CONTENT,
-      'Cache-Control': 'no-cache',
+      'Cache-Control': REVALIDATE_CACHE_CONTROL,
       Connection: 'keep-alive',
     });
     response.write(`retry: ${STREAM_RETRY_MS}\n\n${formatSnapshotMessage()}`);
@@ -116,6 +149,35 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
     request.on('close', () => {
       streamClients.delete(response);
     });
+  }
+
+  async function handleVideoMap(
+    query: string,
+    headOnly: boolean,
+    response: ServerResponse,
+  ): Promise<void> {
+    const rangeNm = parseVideoMapRange(query);
+    if (rangeNm === undefined) {
+      sendPlain(
+        response,
+        400,
+        `Bad request: ${VIDEO_MAP_RANGE_PARAM} must be a number of nautical miles up to ${MAX_RANGE_NM}`,
+      );
+      return;
+    }
+    let body: string;
+    try {
+      body = JSON.stringify(await options.getVideoMap(rangeNm));
+    } catch {
+      sendPlain(response, 500, 'The video map could not be built');
+      return;
+    }
+    response.writeHead(200, {
+      ...SECURITY_HEADERS,
+      'Content-Type': JSON_CONTENT,
+      'Cache-Control': REVALIDATE_CACHE_CONTROL,
+    });
+    response.end(headOnly ? undefined : body);
   }
 
   async function handleStatic(
@@ -144,7 +206,7 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
       ...SECURITY_HEADERS,
       'Content-Type': contentTypeFor(filePath),
       'Content-Length': size,
-      'Cache-Control': 'no-cache',
+      'Cache-Control': REVALIDATE_CACHE_CONTROL,
     });
     if (headOnly) {
       response.end();
@@ -166,7 +228,7 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
       sendPlain(response, 405, 'Method not allowed');
       return;
     }
-    const urlPath = (request.url ?? '/').split('?')[0] ?? '/';
+    const [urlPath = '/', query = ''] = (request.url ?? '/').split('?');
     if (urlPath === CONFIG_PATH) {
       response.writeHead(200, {
         ...SECURITY_HEADERS,
@@ -174,6 +236,10 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
         'Cache-Control': 'no-store',
       });
       response.end(method === 'HEAD' ? undefined : JSON.stringify(options.config));
+      return;
+    }
+    if (urlPath === VIDEO_MAP_PATH) {
+      void handleVideoMap(query, method === 'HEAD', response);
       return;
     }
     if (urlPath === STREAM_PATH && method === 'GET') {

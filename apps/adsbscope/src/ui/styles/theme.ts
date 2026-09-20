@@ -12,6 +12,18 @@ export interface ScopeCanvasPalette {
   map: string;
   /** Labels on the scope furniture, and the receiver marker. */
   mapLabel: string;
+  /** Video map: Class B airspace boundaries. */
+  airspaceClassB: string;
+  /** Video map: Class C airspace boundaries. */
+  airspaceClassC: string;
+  /** Video map: Class D airspace boundaries. */
+  airspaceClassD: string;
+  /** Video map: restricted and prohibited area boundaries. */
+  airspaceSpecialUse: string;
+  /** Video map runways and the symbols of airports, navaids, and fixes. */
+  videoMapFeature: string;
+  /** Video map labels. */
+  videoMapLabel: string;
   /** A live target's symbol, leader line, and data block. */
   target: string;
   /** A target that has not been heard from recently. */
