@@ -21,10 +21,9 @@
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(import.meta.dirname, '..');
 const libsDir = resolve(root, 'packages/libs');
 
 const failures = [];
@@ -69,23 +68,21 @@ for (const pkgDir of readdirSync(libsDir)) {
   });
 }
 
-if (failures.length === 0) {
-  process.exit(0);
+if (failures.length > 0) {
+  console.error(
+    'check-browser-api-coverage: divergent browser entry without a browser API report.\n',
+  );
+  for (const failure of failures) {
+    console.error(`  ${failure.pkg}`);
+    console.error(`    "." types:        ${failure.defaultTypes}`);
+    console.error(`    "./browser" types: ${failure.browserTypes}`);
+    console.error(`    Expected baseline: ${failure.expectedReport}`);
+    console.error('');
+  }
+  console.error(
+    'When a package introduces a divergent browser entry, add a second api-extractor config\n' +
+      '(e.g. `api-extractor.browser.json` pointing at the browser `.d.ts`) and commit the\n' +
+      'generated browser baseline.\n',
+  );
+  process.exitCode = 1;
 }
-
-console.error(
-  'check-browser-api-coverage: divergent browser entry without a browser API report.\n',
-);
-for (const failure of failures) {
-  console.error(`  ${failure.pkg}`);
-  console.error(`    "." types:        ${failure.defaultTypes}`);
-  console.error(`    "./browser" types: ${failure.browserTypes}`);
-  console.error(`    Expected baseline: ${failure.expectedReport}`);
-  console.error('');
-}
-console.error(
-  'When a package introduces a divergent browser entry, add a second api-extractor config\n' +
-    '(e.g. `api-extractor.browser.json` pointing at the browser `.d.ts`) and commit the\n' +
-    'generated browser baseline.\n',
-);
-process.exit(1);

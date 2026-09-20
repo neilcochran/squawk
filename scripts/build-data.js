@@ -22,6 +22,8 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
+const root = resolve(import.meta.dirname, '..');
+
 const NASR_SCRIPTS = [
   { name: 'airports', pkg: 'tools/build-airport-data' },
   { name: 'navaids', pkg: 'tools/build-navaid-data' },
@@ -32,7 +34,7 @@ const NASR_SCRIPTS = [
 
 const ALL_NAMES = NASR_SCRIPTS.map((s) => s.name);
 
-function printUsageAndExit() {
+function printUsage() {
   process.stderr.write(
     'Usage: npm run build:data -- --local <nasr-zip-or-dir> [--only name,...]\n' +
       '       npm run build:data -- --icao-fetch\n' +
@@ -50,122 +52,138 @@ function printUsageAndExit() {
       '  --cifp-fetch         Download and build procedures from the latest FAA CIFP release.\n' +
       '  --cifp-local <path>  Build from a local CIFP zip or extracted FAACIFP18 file.\n',
   );
-  process.exit(1);
 }
 
-const args = process.argv.slice(2);
+/**
+ * Runs the selected data build pipelines.
+ *
+ * @returns The exit code: 0 when every selected pipeline succeeded, 1 otherwise.
+ */
+function main() {
+  const args = process.argv.slice(2);
 
-if (args.length === 0) {
-  printUsageAndExit();
-}
-
-let nasrInput = undefined;
-let only = undefined;
-let icaoMode = undefined;
-let icaoPath = undefined;
-let cifpMode = undefined;
-let cifpPath = undefined;
-
-for (let i = 0; i < args.length; i++) {
-  const arg = args[i];
-  const next = args[i + 1];
-  if (arg === '--local' && next) {
-    nasrInput = resolve(next);
-    i++;
-  } else if (arg === '--only' && next) {
-    only = next.split(',').map((s) => s.trim());
-    i++;
-  } else if (arg === '--icao-fetch') {
-    icaoMode = 'fetch';
-  } else if (arg === '--icao-local' && next) {
-    icaoMode = 'local';
-    icaoPath = resolve(next);
-    i++;
-  } else if (arg === '--cifp-fetch') {
-    cifpMode = 'fetch';
-  } else if (arg === '--cifp-local' && next) {
-    cifpMode = 'local';
-    cifpPath = resolve(next);
-    i++;
-  } else {
-    process.stderr.write(`Unknown argument: ${arg}\n`);
-    printUsageAndExit();
+  if (args.length === 0) {
+    printUsage();
+    return 1;
   }
-}
 
-if (!nasrInput && !icaoMode && !cifpMode) {
-  process.stderr.write(
-    'Error: at least one of --local, --icao-fetch/--icao-local, or --cifp-fetch/--cifp-local is required.\n',
-  );
-  printUsageAndExit();
-}
+  let nasrInput = undefined;
+  let only = undefined;
+  let icaoMode = undefined;
+  let icaoPath = undefined;
+  let cifpMode = undefined;
+  let cifpPath = undefined;
 
-if (only) {
-  const invalid = only.filter((n) => !ALL_NAMES.includes(n));
-  if (invalid.length > 0) {
-    process.stderr.write(`Unknown pipeline name(s): ${invalid.join(', ')}\n`);
-    process.stderr.write(`Available: ${ALL_NAMES.join(', ')}\n`);
-    process.exit(1);
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === '--local' && next) {
+      nasrInput = resolve(next);
+      i++;
+    } else if (arg === '--only' && next) {
+      only = next.split(',').map((s) => s.trim());
+      i++;
+    } else if (arg === '--icao-fetch') {
+      icaoMode = 'fetch';
+    } else if (arg === '--icao-local' && next) {
+      icaoMode = 'local';
+      icaoPath = resolve(next);
+      i++;
+    } else if (arg === '--cifp-fetch') {
+      cifpMode = 'fetch';
+    } else if (arg === '--cifp-local' && next) {
+      cifpMode = 'local';
+      cifpPath = resolve(next);
+      i++;
+    } else {
+      process.stderr.write(`Unknown argument: ${arg}\n`);
+      printUsage();
+      return 1;
+    }
   }
-}
 
-let failures = 0;
+  if (!nasrInput && !icaoMode && !cifpMode) {
+    process.stderr.write(
+      'Error: at least one of --local, --icao-fetch/--icao-local, or --cifp-fetch/--cifp-local is required.\n',
+    );
+    printUsage();
+    return 1;
+  }
 
-if (nasrInput) {
-  const scripts = only ? NASR_SCRIPTS.filter((s) => only.includes(s.name)) : NASR_SCRIPTS;
+  if (only) {
+    const invalid = only.filter((n) => !ALL_NAMES.includes(n));
+    if (invalid.length > 0) {
+      process.stderr.write(`Unknown pipeline name(s): ${invalid.join(', ')}\n`);
+      process.stderr.write(`Available: ${ALL_NAMES.join(', ')}\n`);
+      return 1;
+    }
+  }
 
-  for (const script of scripts) {
+  let failures = 0;
+
+  if (nasrInput) {
+    const scripts = only ? NASR_SCRIPTS.filter((s) => only.includes(s.name)) : NASR_SCRIPTS;
+
+    for (const script of scripts) {
+      console.log(`\n${'='.repeat(60)}`);
+      console.log(`Building ${script.name}...`);
+      console.log('='.repeat(60));
+      try {
+        execFileSync(process.execPath, [`${script.pkg}/dist/index.js`, '--local', nasrInput], {
+          stdio: 'inherit',
+          cwd: root,
+        });
+      } catch {
+        console.error(`FAILED: ${script.name}`);
+        failures++;
+      }
+    }
+  }
+
+  if (icaoMode) {
     console.log(`\n${'='.repeat(60)}`);
-    console.log(`Building ${script.name}...`);
+    console.log('Building ICAO registry...');
     console.log('='.repeat(60));
+    const icaoArgs = icaoMode === 'fetch' ? ['--fetch'] : ['--local', icaoPath];
     try {
-      execFileSync(process.execPath, [`${script.pkg}/dist/index.js`, '--local', nasrInput], {
-        stdio: 'inherit',
-        cwd: resolve(import.meta.dirname, '..'),
-      });
+      execFileSync(
+        process.execPath,
+        ['tools/build-icao-registry-data/dist/index.js', ...icaoArgs],
+        {
+          stdio: 'inherit',
+          cwd: root,
+        },
+      );
     } catch {
-      console.error(`FAILED: ${script.name}`);
+      console.error('FAILED: icao-registry');
       failures++;
     }
   }
-}
 
-if (icaoMode) {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log('Building ICAO registry...');
-  console.log('='.repeat(60));
-  const icaoArgs = icaoMode === 'fetch' ? ['--fetch'] : ['--local', icaoPath];
-  try {
-    execFileSync(process.execPath, ['tools/build-icao-registry-data/dist/index.js', ...icaoArgs], {
-      stdio: 'inherit',
-      cwd: resolve(import.meta.dirname, '..'),
-    });
-  } catch {
-    console.error('FAILED: icao-registry');
-    failures++;
+  if (cifpMode) {
+    console.log(`\n${'='.repeat(60)}`);
+    console.log('Building procedures (CIFP)...');
+    console.log('='.repeat(60));
+    const cifpArgs = cifpMode === 'fetch' ? ['--cifp-fetch'] : ['--cifp-local', cifpPath];
+    try {
+      execFileSync(process.execPath, ['tools/build-procedure-data/dist/index.js', ...cifpArgs], {
+        stdio: 'inherit',
+        cwd: root,
+      });
+    } catch {
+      console.error('FAILED: procedures');
+      failures++;
+    }
   }
-}
 
-if (cifpMode) {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log('Building procedures (CIFP)...');
-  console.log('='.repeat(60));
-  const cifpArgs = cifpMode === 'fetch' ? ['--cifp-fetch'] : ['--cifp-local', cifpPath];
-  try {
-    execFileSync(process.execPath, ['tools/build-procedure-data/dist/index.js', ...cifpArgs], {
-      stdio: 'inherit',
-      cwd: resolve(import.meta.dirname, '..'),
-    });
-  } catch {
-    console.error('FAILED: procedures');
-    failures++;
+  console.log('');
+  if (failures > 0) {
+    console.error(`${failures} pipeline(s) failed.`);
+    return 1;
+  } else {
+    console.log('All pipelines completed successfully.');
   }
+  return 0;
 }
 
-console.log('');
-if (failures > 0) {
-  console.error(`${failures} pipeline(s) failed.`);
-  process.exit(1);
-} else {
-  console.log('All pipelines completed successfully.');
-}
+process.exitCode = main();
