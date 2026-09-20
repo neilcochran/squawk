@@ -350,6 +350,23 @@ describe('createAnalogRenderer', () => {
       expect(full.texts()).toContain('ENE');
     });
 
+    it('ends the map at the outermost ring, as the face of a round tube did', () => {
+      const beyond: ScopeVideoMap = {
+        rangeNm: 60,
+        points: [
+          ...videoMap.points,
+          { kind: 'airport', label: 'KOUT', position: { trueBearingDeg: 90, rangeNm: 70 } },
+        ],
+        lines: [],
+      };
+
+      const recording = renderAt(createAnalogRenderer(ANALOG_THEME), 0, { videoMap: beyond });
+
+      expect(recording.callsTo('clip')).toHaveLength(1);
+      expect(recording.texts()).toContain('KTST');
+      expect(recording.texts()).not.toContain('KOUT');
+    });
+
     it('leaves the map out when it is turned off', () => {
       const recording = renderAt(createAnalogRenderer(ANALOG_THEME), 0, {
         videoMap,

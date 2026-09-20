@@ -14,7 +14,7 @@ import {
   VIDEO_MAP_LAYOUT_REM,
   VIDEO_MAP_POINT_KINDS_BY_DETAIL,
 } from './video-map-draw.js';
-import type { VideoMapColors, VideoMapDetail } from './video-map-draw.js';
+import type { VideoMapColors, VideoMapDetail, VideoMapExtent } from './video-map-draw.js';
 
 const COLORS: VideoMapColors = {
   airspace: {
@@ -29,9 +29,13 @@ const COLORS: VideoMapColors = {
 const VIEWPORT = createViewport(800, 600, 60, DEFAULT_PX_PER_REM);
 const EMPTY: ScopeVideoMap = { rangeNm: 60, points: [], lines: [] };
 
-function draw(map: ScopeVideoMap, detail: VideoMapDetail = 'full'): RecordingContext {
+function draw(
+  map: ScopeVideoMap,
+  detail: VideoMapDetail = 'full',
+  extent: VideoMapExtent = 'canvas',
+): RecordingContext {
   const recording = createRecordingContext();
-  drawVideoMap(recording.context, COLORS, VIEWPORT, map, detail);
+  drawVideoMap(recording.context, COLORS, VIEWPORT, map, { detail, extent });
   return recording;
 }
 
@@ -275,6 +279,75 @@ describe('drawVideoMap', () => {
     expect(recording.texts()).toEqual(['NEARR']);
   });
 
+  describe('extent', () => {
+    const map: ScopeVideoMap = {
+      ...EMPTY,
+      points: [
+        { kind: 'airport', label: 'KINN', position: { trueBearingDeg: 90, rangeNm: 59 } },
+        { kind: 'airport', label: 'KOUT', position: { trueBearingDeg: 90, rangeNm: 70 } },
+      ],
+      lines: [
+        {
+          kind: 'airspace',
+          airspaceClass: 'classB',
+          points: [
+            [90, 50],
+            [90, 80],
+          ],
+        },
+        {
+          kind: 'runway',
+          points: [
+            [90, 69],
+            [90, 71],
+          ],
+        },
+      ],
+    };
+
+    it('fills the canvas, clipping nothing, with the canvas extent', () => {
+      const recording = draw(map, 'basic', 'canvas');
+
+      expect(recording.callsTo('clip')).toHaveLength(0);
+      expect(recording.callsTo('save')).toHaveLength(0);
+      expect(recording.texts()).toEqual(['KINN', 'KOUT']);
+    });
+
+    it('clips the lines to the range circle with the rangeCircle extent', () => {
+      const recording = draw(map, 'basic', 'rangeCircle');
+
+      const methods = recording.calls.map((call) => call.method);
+      const clipAt = methods.indexOf('clip');
+      expect(methods.slice(0, clipAt + 1)).toEqual(['save', 'beginPath', 'arc', 'clip']);
+      expect(recording.callsTo('arc')[0]?.args).toEqual([
+        VIEWPORT.center.xPx,
+        VIEWPORT.center.yPx,
+        VIEWPORT.radiusPx,
+        0,
+        FULL_CIRCLE_RAD,
+      ]);
+      const strokes = methods.flatMap((method, index) => (method === 'stroke' ? [index] : []));
+      const restoreAt = methods.indexOf('restore');
+      expect(restoreAt).toBeGreaterThan(strokes[1] ?? Infinity);
+      expect(restoreAt).toBeLessThan(strokes[2] ?? -1);
+    });
+
+    it('leaves out point features beyond the range circle, and keeps the labels of those inside whole', () => {
+      const recording = draw(map, 'basic', 'rangeCircle');
+
+      expect(recording.texts()).toEqual(['KINN']);
+      const labelAt = recording.calls.findIndex((call) => call.method === 'fillText');
+      const restoreAt = recording.calls.findIndex((call) => call.method === 'restore');
+      expect(labelAt).toBeGreaterThan(restoreAt);
+    });
+
+    it('still strokes the symbols in the feature color once the clip is lifted', () => {
+      const recording = draw(map, 'basic', 'rangeCircle');
+
+      expect(recording.callsTo('stroke').at(-1)?.strokeStyle).toBe(COLORS.feature);
+    });
+  });
+
   it('scales its symbols and dashes with the root font size', () => {
     const position = { trueBearingDeg: 90, rangeNm: 20 };
     const recording = createRecordingContext();
@@ -284,7 +357,7 @@ describe('drawVideoMap', () => {
       COLORS,
       createViewport(800, 600, 60, 32),
       { ...EMPTY, points: [{ kind: 'airport', label: 'KTST', position }] },
-      'basic',
+      { detail: 'basic', extent: 'canvas' },
     );
 
     expect(recording.callsTo('arc')[0]?.args[2]).toBe(VIDEO_MAP_LAYOUT_REM.airportRadius * 32);

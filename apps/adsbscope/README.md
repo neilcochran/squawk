@@ -96,6 +96,8 @@ Under the traffic, both view styles draw a map of what is around the receiver, b
 
 Those distances are scope ranges, not distances from the receiver: the map is rebuilt for each range, and thins out as you zoom out so it never turns into a smear of overlapping labels. Towered airports are shown at every range, airports with an ICAO code out to 80 nm, and small public-use airports only within 20 nm; heliports, seaplane bases, and private fields are never shown. While the map for a new range loads, the previous one stays on screen.
 
+How far the map reaches depends on the view style. The `digital` style fills the whole window with it, as a modern scope's rectangular display does, so features beyond the outermost range ring are drawn wherever there is room. The `analog` style ends it at the outermost ring, as the face of a round tube did: boundaries and runways are cut off there, and airports, navaids, and fixes beyond it are left out.
+
 The `Map` selector, or `V`, chooses how much of this is drawn. `Basic`, the default, is airspace and airports only, which keeps the map well behind the traffic. `Full` adds the navaids and fixes, and `Off` draws no map. Each view style remembers its own choice.
 
 The bundled data covers the United States only, so a receiver elsewhere gets an empty map. It is also a snapshot: it is as current as the installed data packages, not a live feed of airspace changes.

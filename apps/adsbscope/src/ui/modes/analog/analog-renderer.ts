@@ -233,7 +233,10 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
       context.font = canvasFont(theme, viewport.pxPerRem);
       const detail = mapDetail(frame.settings);
       if (frame.videoMap !== undefined && detail !== 'off') {
-        drawVideoMap(context, videoMapColors, viewport, frame.videoMap, detail);
+        drawVideoMap(context, videoMapColors, viewport, frame.videoMap, {
+          detail,
+          extent: 'rangeCircle',
+        });
       }
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
       drawCompassRose(context, furnitureColors, viewport);

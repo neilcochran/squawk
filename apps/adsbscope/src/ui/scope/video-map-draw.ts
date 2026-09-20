@@ -23,6 +23,22 @@ export interface VideoMapColors {
 /** How much of the map to draw: `basic` is airspace and airports, `full` adds navaids and fixes. */
 export type VideoMapDetail = 'basic' | 'full';
 
+/**
+ * How far the map reaches. `canvas` fills the whole canvas, as the map of a
+ * modern scope's rectangular display does. `rangeCircle` stops at the circle
+ * of the selected range, as everything did on a round tube, whose face ended
+ * there.
+ */
+export type VideoMapExtent = 'canvas' | 'rangeCircle';
+
+/** How a view style wants the video map drawn. */
+export interface VideoMapDrawOptions {
+  /** How much of the map to draw. */
+  detail: VideoMapDetail;
+  /** How far the map reaches. */
+  extent: VideoMapExtent;
+}
+
 /** The point features drawn at each detail level. Navaids and fixes are numerous enough to compete with the traffic, so they are opt-in. */
 export const VIDEO_MAP_POINT_KINDS_BY_DETAIL: Readonly<
   Record<VideoMapDetail, readonly VideoMapPointKind[]>
@@ -132,6 +148,10 @@ function traceSymbol(
  * left to the canvas to clip, since a boundary can cross the screen with no
  * vertex on it.
  *
+ * With the `rangeCircle` extent, lines are clipped at the range circle, and
+ * point features beyond it are left out whole rather than clipped, so a label
+ * is never cut off mid-word.
+ *
  * The map's positions are relative to the receiver, so a map built for one
  * range is still drawn correctly at another - it just carries that other
  * range's level of detail until the right one arrives.
@@ -140,16 +160,24 @@ function traceSymbol(
  * @param colors - The colors to draw in.
  * @param viewport - The current viewport.
  * @param map - The map to draw.
- * @param detail - How much of the map to draw.
+ * @param options - How much of the map to draw, and how far it reaches.
  */
 export function drawVideoMap(
   context: CanvasRenderingContext2D,
   colors: VideoMapColors,
   viewport: ScopeViewport,
   map: ScopeVideoMap,
-  detail: VideoMapDetail,
+  options: VideoMapDrawOptions,
 ): void {
   const { pxPerRem } = viewport;
+  const isWithinRangeCircle = options.extent === 'rangeCircle';
+
+  if (isWithinRangeCircle) {
+    context.save();
+    context.beginPath();
+    context.arc(viewport.center.xPx, viewport.center.yPx, viewport.radiusPx, 0, FULL_CIRCLE_RAD);
+    context.clip();
+  }
 
   context.lineWidth = AIRSPACE_LINE_WIDTH_PX;
   context.setLineDash([
@@ -175,11 +203,18 @@ export function drawVideoMap(
     map.lines.filter((line) => line.kind === 'runway'),
   );
 
-  const shownKinds = VIDEO_MAP_POINT_KINDS_BY_DETAIL[detail];
+  if (isWithinRangeCircle) {
+    context.restore();
+  }
+
+  const shownKinds = VIDEO_MAP_POINT_KINDS_BY_DETAIL[options.detail];
   const marginPx = VIDEO_MAP_LAYOUT_REM.offscreenMargin * pxPerRem;
   const visible: { point: VideoMapPoint; at: ScreenPoint }[] = [];
   for (const point of map.points) {
     if (!shownKinds.includes(point.kind)) {
+      continue;
+    }
+    if (isWithinRangeCircle && point.position.rangeNm * viewport.pxPerNm > viewport.radiusPx) {
       continue;
     }
     const at = polarToScreen(viewport, point.position);
@@ -188,6 +223,7 @@ export function drawVideoMap(
     }
   }
 
+  context.strokeStyle = colors.feature;
   context.lineWidth = AIRSPACE_LINE_WIDTH_PX;
   context.beginPath();
   for (const { point, at } of visible) {

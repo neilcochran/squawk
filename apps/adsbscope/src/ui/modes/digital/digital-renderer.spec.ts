@@ -275,6 +275,21 @@ describe('createDigitalRenderer', () => {
       expect(full.texts()).toContain('ENE');
     });
 
+    it('draws the map across the whole canvas, beyond the outermost ring', () => {
+      const beyond: ScopeVideoMap = {
+        rangeNm: 60,
+        points: [{ kind: 'airport', label: 'KOUT', position: { trueBearingDeg: 90, rangeNm: 70 } }],
+        lines: [],
+      };
+
+      const recording = renderFrame(makeSnapshot(), 60, DEFAULT_PX_PER_REM, DIGITAL_THEME, {
+        videoMap: beyond,
+      });
+
+      expect(recording.callsTo('clip')).toHaveLength(0);
+      expect(recording.texts()).toContain('KOUT');
+    });
+
     it('leaves the map out when it is turned off, or has not loaded yet', () => {
       const off = renderFrame(makeSnapshot(), 60, DEFAULT_PX_PER_REM, DIGITAL_THEME, {
         videoMap,

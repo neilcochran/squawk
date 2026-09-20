@@ -29,6 +29,7 @@ export interface RecordingContext {
 const RECORDED_METHODS = [
   'arc',
   'beginPath',
+  'clip',
   'closePath',
   'fill',
   'fillRect',
@@ -43,7 +44,9 @@ const RECORDED_METHODS = [
 
 /**
  * Creates a recording stand-in for `CanvasRenderingContext2D`, so renderer
- * specs can assert on what was drawn without a real canvas.
+ * specs can assert on what was drawn without a real canvas. `save` and
+ * `restore` put back the drawing state as a real context does, so a spec
+ * catches a style that was only ever set inside a saved block.
  *
  * @returns The stand-in and its call log.
  */
@@ -70,6 +73,17 @@ export function createRecordingContext(): RecordingContext {
   for (const method of RECORDED_METHODS) {
     state[method] = (...args: unknown[]): void => record(method, args);
   }
+  const savedStates: Record<string, unknown>[] = [];
+  state.save = (): void => {
+    record('save', []);
+    savedStates.push(
+      Object.fromEntries(Object.entries(state).filter(([, value]) => typeof value !== 'function')),
+    );
+  };
+  state.restore = (): void => {
+    record('restore', []);
+    Object.assign(state, savedStates.pop());
+  };
   state.createConicGradient = (
     ...args: unknown[]
   ): { addColorStop: (...stop: unknown[]) => void } => {

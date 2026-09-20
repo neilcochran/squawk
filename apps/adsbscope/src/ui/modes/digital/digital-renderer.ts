@@ -190,7 +190,10 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       context.font = canvasFont(theme, viewport.pxPerRem);
       const detail = mapDetail(frame.settings);
       if (frame.videoMap !== undefined && detail !== 'off') {
-        drawVideoMap(context, videoMapColors, viewport, frame.videoMap, detail);
+        drawVideoMap(context, videoMapColors, viewport, frame.videoMap, {
+          detail,
+          extent: 'canvas',
+        });
       }
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
       drawCompassRose(context, furnitureColors, viewport);
