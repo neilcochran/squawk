@@ -6,7 +6,12 @@ import type {
   DataBlockRequest,
   PlacedDataBlock,
 } from '../../scope/data-block-placement.js';
-import { formatDataBlock } from '../../scope/data-block.js';
+import {
+  formatAlternateDataBlock,
+  formatDataBlock,
+  isTimeShareAlternate,
+} from '../../scope/data-block.js';
+import type { DataBlockLines } from '../../scope/data-block.js';
 import {
   drawCompassRose,
   drawRangeRings,
@@ -105,7 +110,9 @@ interface PlottedTarget extends DataBlockRequest {
   /** The target. */
   target: ScopeTarget;
   /** Its data block's lines, top first. */
-  lines: string[];
+  lines: DataBlockLines;
+  /** The lines shown in their place during the alternate part of the time-share, if the target has any. */
+  alternateLines: DataBlockLines | undefined;
 }
 
 function drawSymbolAndDataBlock(
@@ -114,6 +121,7 @@ function drawSymbolAndDataBlock(
   pxPerRem: number,
   plotted: PlottedTarget,
   placement: DataBlockPlacement,
+  lines: DataBlockLines,
 ): void {
   const { target, at } = plotted;
   const halfSizePx = DIGITAL_LAYOUT_REM.symbolHalfSize * pxPerRem;
@@ -139,7 +147,7 @@ function drawSymbolAndDataBlock(
 
   drawTextLines(
     context,
-    plotted.lines,
+    lines,
     placement.rect.leftPx,
     placement.rect.bottomPx,
     DIGITAL_LAYOUT_REM.dataBlockLineHeight * pxPerRem,
@@ -161,13 +169,16 @@ function plotTargets(
     const at = polarToScreen(viewport, target.position);
     if (isNearCanvas(viewport, at, marginPx)) {
       const lines = formatDataBlock(target);
+      const alternateLines = formatAlternateDataBlock(target);
+      const everyLine = [...lines, ...(alternateLines ?? [])];
       plotted.push({
         id: target.icaoHex,
         at,
-        widthPx: Math.max(...lines.map((line) => context.measureText(line).width)),
+        widthPx: Math.max(...everyLine.map((line) => context.measureText(line).width)),
         heightPx: lines.length * lineHeightPx,
         target,
         lines,
+        alternateLines,
       });
     }
   }
@@ -215,6 +226,10 @@ function isSameInputs(a: PlacementInputs, b: PlacementInputs): boolean {
  * history dots, a one-minute velocity vector, and a leader line to its data
  * block. A target not heard from for {@link COASTING_AFTER_MS} is drawn
  * dimmed.
+ *
+ * A target whose registered model is known time-shares the second line of
+ * its block with it; a block is sized for the wider of the two, so it does
+ * not move as they alternate.
  *
  * Data blocks are kept off one another: each leader line takes whichever of
  * eight directions leaves its block clear. The directions are worked out once
@@ -287,6 +302,7 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       if (snapshot === undefined) {
         return;
       }
+      const showAlternate = isTimeShareAlternate(frame.frameTimeMs);
       for (const { request, placement } of placedTargets(context, viewport, snapshot)) {
         const coasting = snapshot.at - request.target.lastSeenAt > COASTING_AFTER_MS;
         drawHistory(context, palette, viewport, request.target);
@@ -297,6 +313,7 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
           viewport.pxPerRem,
           request,
           placement,
+          showAlternate ? (request.alternateLines ?? request.lines) : request.lines,
         );
       }
     },

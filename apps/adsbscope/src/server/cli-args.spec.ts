@@ -49,6 +49,7 @@ describe('parseCliArgs', () => {
       bindAddress: DEFAULT_BIND_ADDRESS,
       replayPath: undefined,
       staleAfterMs: DEFAULT_STALE_AFTER_MS,
+      registry: true,
     });
   });
 
@@ -130,6 +131,11 @@ describe('parseCliArgs', () => {
       expect(parseOk([...LOCATION, '--stale-after', '15000']).staleAfterMs).toBe(15_000);
       expect(parseError([...LOCATION, '--stale-after', '0'])).toContain('Invalid --stale-after');
       expect(parseError([...LOCATION, '--stale-after', '1.5'])).toContain('Invalid --stale-after');
+    });
+
+    it('turns the aircraft registry off with --no-registry', () => {
+      expect(parseOk(LOCATION).registry).toBe(true);
+      expect(parseOk([...LOCATION, '--no-registry']).registry).toBe(false);
     });
   });
 

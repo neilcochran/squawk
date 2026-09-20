@@ -17,7 +17,7 @@ import {
   createAnalogRenderer,
   TAG_ALPHA,
 } from './analog-renderer.js';
-import { SWEEP_SETTING_ID, TAGS_ON, TAGS_SETTING_ID } from './analog-settings.js';
+import { SWEEP_SETTING_ID, TAGS_OFF, TAGS_ON, TAGS_SETTING_ID } from './analog-settings.js';
 import { ANALOG_THEME } from './analog-theme.js';
 import { blipAlpha } from './sweep.js';
 
@@ -247,14 +247,20 @@ describe('createAnalogRenderer', () => {
   });
 
   describe('settings', () => {
-    it('draws no tags by default', () => {
-      const renderer = createAnalogRenderer(ANALOG_THEME);
+    it('draws tags by default, and none once they are turned off', () => {
       const snapshot = makeSnapshot([
         makeTarget({ callsign: 'UAL123', position: { trueBearingDeg: 45, rangeNm: 30 } }),
       ]);
-      renderAt(renderer, 0, { snapshot });
+      const byDefault = createAnalogRenderer(ANALOG_THEME);
+      const turnedOff = createAnalogRenderer(ANALOG_THEME);
+      const settings = { [TAGS_SETTING_ID]: TAGS_OFF };
+      renderAt(byDefault, 0, { snapshot });
+      renderAt(turnedOff, 0, { snapshot, settings });
 
-      expect(renderAt(renderer, QUARTER_TURN_MS, { snapshot }).texts()).not.toContain('UAL123');
+      expect(renderAt(byDefault, QUARTER_TURN_MS, { snapshot }).texts()).toContain('UAL123');
+      expect(renderAt(turnedOff, QUARTER_TURN_MS, { snapshot, settings }).texts()).not.toContain(
+        'UAL123',
+      );
     });
 
     it('draws a faint tag beside the newest blip of each target when tags are on', () => {

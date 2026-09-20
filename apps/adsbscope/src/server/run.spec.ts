@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AircraftFeed } from '@squawk/adsb-feed';
 
+import type { AircraftModelProvider } from './aircraft-model.js';
 import { USAGE } from './cli-args.js';
 import type { ScopeServer, ScopeServerOptions } from './http-server.js';
 import { DEFAULT_RUN_DEPENDENCIES, EXIT_FAILURE, EXIT_OK, formatScopeUrl, run } from './run.js';
@@ -19,6 +20,7 @@ interface Harness {
   server: { listen: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
   serverOptions: ScopeServerOptions[];
   videoMaps: { preload: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
+  aircraftModels: { load: ReturnType<typeof vi.fn>; lookup: ReturnType<typeof vi.fn> };
   out: string[];
   err: string[];
   io: { stdout(text: string): void; stderr(text: string): void };
@@ -42,6 +44,10 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
     preload: vi.fn(() => Promise.resolve()),
     get: vi.fn((rangeNm: number) => Promise.resolve({ rangeNm, points: [], lines: [] })),
   };
+  const aircraftModels = {
+    load: vi.fn(() => Promise.resolve()),
+    lookup: vi.fn((icaoHex: string) => (icaoHex === 'a1b2c3' ? 'PA-28-181' : undefined)),
+  };
   const out: string[] = [];
   const err: string[] = [];
   return {
@@ -49,6 +55,7 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
     server,
     serverOptions,
     videoMaps,
+    aircraftModels,
     out,
     err,
     io: { stdout: (text) => out.push(text), stderr: (text) => err.push(text) },
@@ -58,6 +65,7 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
         serverOptions.push(options);
         return server;
       }),
+      createAircraftModelProvider: vi.fn((): AircraftModelProvider => aircraftModels),
       createVideoMapProvider: vi.fn((): VideoMapProvider => videoMaps),
       canRead: vi.fn(() => Promise.resolve(true)),
       machineHostname: () => 'MyPC',
@@ -220,6 +228,38 @@ describe('run', () => {
 
     expectRunning(result);
     expect(harness.err).toEqual([]);
+  });
+
+  it('loads the aircraft registry once serving, and looks models up for the scope server', async () => {
+    const harness = makeHarness();
+
+    await run(LOCATION, harness.io, harness.dependencies);
+
+    expect(harness.aircraftModels.load).toHaveBeenCalledTimes(1);
+    expect(harness.serverOptions[0]?.getAircraftModel('a1b2c3')).toBe('PA-28-181');
+    expect(harness.aircraftModels.lookup).toHaveBeenCalledWith('a1b2c3');
+  });
+
+  it('does not load the aircraft registry with --no-registry', async () => {
+    const harness = makeHarness();
+
+    const result = await run([...LOCATION, '--no-registry'], harness.io, harness.dependencies);
+
+    expectRunning(result);
+    expect(harness.aircraftModels.load).not.toHaveBeenCalled();
+  });
+
+  it('starts anyway, with a warning, when the aircraft registry cannot be loaded', async () => {
+    const harness = makeHarness();
+    harness.aircraftModels.load.mockRejectedValue(new Error('snapshot unreadable'));
+
+    const result = await run(LOCATION, harness.io, harness.dependencies);
+    await Promise.resolve();
+
+    expectRunning(result);
+    expect(harness.err).toEqual([
+      'Could not load the aircraft registry - aircraft models will not be shown.\n',
+    ]);
   });
 
   it('reports the port the server actually bound', async () => {

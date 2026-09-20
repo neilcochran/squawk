@@ -8,6 +8,9 @@ export const TAGS_SETTING_ID = 'tags';
 /** Value of {@link TAGS_SETTING_ID} that draws the tags. */
 export const TAGS_ON = 'on';
 
+/** Value of {@link TAGS_SETTING_ID} that leaves the scope to its blips alone. */
+export const TAGS_OFF = 'off';
+
 /** Setting id: how fast the antenna rotates. */
 export const SWEEP_SETTING_ID = 'sweep';
 
@@ -22,15 +25,16 @@ export const DEFAULT_SWEEP_PERIOD_MS = 4800;
 
 /**
  * Data tags. A sweep-era scope had none - controllers tracked identity on
- * paper strips - so they are off until asked for.
+ * paper strips - but a scope of anonymous blips says little to anyone who is
+ * not also holding the strips, so they are on until turned off.
  */
 export const TAGS_SETTING: ModeSetting = {
   id: TAGS_SETTING_ID,
   label: 'Tags',
   hotkey: 't',
   choices: [
-    { value: 'off', label: 'Off' },
     { value: TAGS_ON, label: 'On' },
+    { value: TAGS_OFF, label: 'Off' },
   ],
 };
 

@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DATA_BLOCK_MODEL_MAX_CHARS,
+  formatAlternateDataBlock,
   formatAltitudeHundreds,
   formatDataBlock,
   formatGroundSpeedTens,
+  isTimeShareAlternate,
+  TIME_SHARE_ALTERNATE_MS,
+  TIME_SHARE_CYCLE_MS,
   verticalTrendMarker,
 } from './data-block.js';
 import { makeTarget } from './test-utils.js';
@@ -70,5 +75,54 @@ describe('formatDataBlock', () => {
     const target = makeTarget({ onGround: true, altitudeFt: 75, groundSpeedKt: 14 });
 
     expect(formatDataBlock(target)[1]).toBe('GND 01');
+  });
+});
+
+describe('formatAlternateDataBlock', () => {
+  it('shows the registered model under the same first line', () => {
+    const target = makeTarget({ callsign: 'N409CC ', aircraftModel: 'PA-28-181' });
+
+    expect(formatAlternateDataBlock(target)).toEqual(['N409CC', 'PA-28-181']);
+    expect(formatAlternateDataBlock(target)?.[0]).toBe(formatDataBlock(target)[0]);
+  });
+
+  it('identifies the aircraft by its ICAO hex until it has sent a callsign', () => {
+    expect(formatAlternateDataBlock(makeTarget({ aircraftModel: 'SR22' }))).toEqual([
+      'A1B2C3',
+      'SR22',
+    ]);
+  });
+
+  it('shows a model up to the limit whole, and cuts a longer one, without a trailing space', () => {
+    const modelOf = (aircraftModel: string): string | undefined =>
+      formatAlternateDataBlock(makeTarget({ aircraftModel }))?.[1];
+
+    expect(modelOf('BD-100-1A10')).toBe('BD-100-1A10');
+    expect(modelOf('CL-600-2C10X')).toBe('CL-600-2C10X');
+    expect(modelOf('GULFSTREAM G280')).toBe('GULFSTREAM G');
+    expect(modelOf('GULFSTREAM G280')?.length).toBe(DATA_BLOCK_MODEL_MAX_CHARS);
+    expect(modelOf('ERJ 170-200 LR')).toBe('ERJ 170-200');
+    expect(modelOf('FALCON 2000 EX')).toBe('FALCON 2000');
+  });
+
+  it('has nothing to show for an aircraft whose model is not known', () => {
+    expect(formatAlternateDataBlock(makeTarget())).toBeUndefined();
+  });
+});
+
+describe('isTimeShareAlternate', () => {
+  it('shows the usual line for the first part of each cycle and the alternate for the rest', () => {
+    const switchAtMs = TIME_SHARE_CYCLE_MS - TIME_SHARE_ALTERNATE_MS;
+
+    expect(isTimeShareAlternate(0)).toBe(false);
+    expect(isTimeShareAlternate(switchAtMs - 1)).toBe(false);
+    expect(isTimeShareAlternate(switchAtMs)).toBe(true);
+    expect(isTimeShareAlternate(TIME_SHARE_CYCLE_MS - 1)).toBe(true);
+  });
+
+  it('repeats every cycle, and shows the usual line for longer than the alternate', () => {
+    expect(isTimeShareAlternate(TIME_SHARE_CYCLE_MS)).toBe(false);
+    expect(isTimeShareAlternate(TIME_SHARE_CYCLE_MS * 7 - 1)).toBe(true);
+    expect(TIME_SHARE_ALTERNATE_MS).toBeLessThan(TIME_SHARE_CYCLE_MS / 2);
   });
 });

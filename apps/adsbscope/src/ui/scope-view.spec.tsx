@@ -128,24 +128,24 @@ describe('ScopeView', () => {
   describe('mode settings', () => {
     it('selects a setting value from its button', () => {
       render(<ScopeView config={{ ...CONFIG, mode: 'analog' }} loadVideoMap={loadVideoMap} />);
-      expectSelected('Tags: Off');
-
-      fireEvent.click(screen.getByRole('button', { name: 'Tags: On' }));
       expectSelected('Tags: On');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Tags: Off' }));
+      expectSelected('Tags: Off');
 
       fireEvent.click(screen.getByRole('button', { name: 'Sweep: 12 s' }));
       expectSelected('Sweep: 12 s');
-      expectSelected('Tags: On');
+      expectSelected('Tags: Off');
     });
 
     it("steps a setting to its next value from the setting's hotkey", () => {
       render(<ScopeView config={{ ...CONFIG, mode: 'analog' }} loadVideoMap={loadVideoMap} />);
 
       fireEvent.keyDown(window, { key: 't' });
-      expectSelected('Tags: On');
+      expectSelected('Tags: Off');
 
       fireEvent.keyDown(window, { key: 't' });
-      expectSelected('Tags: Off');
+      expectSelected('Tags: On');
 
       fireEvent.keyDown(window, { key: 'r' });
       expectSelected('Sweep: 12 s');
@@ -158,18 +158,18 @@ describe('ScopeView', () => {
       fireEvent.keyDown(window, { key: 'm' });
       fireEvent.keyDown(window, { key: 'r', ctrlKey: true });
 
-      expectSelected('Tags: Off');
+      expectSelected('Tags: On');
       expectSelected('Sweep: 4.8 s');
     });
 
     it("keeps a mode's settings while another mode is showing", () => {
       render(<ScopeView config={{ ...CONFIG, mode: 'analog' }} loadVideoMap={loadVideoMap} />);
-      fireEvent.click(screen.getByRole('button', { name: 'Tags: On' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Tags: Off' }));
 
       fireEvent.click(screen.getByRole('button', { name: 'View style: Digital' }));
       fireEvent.click(screen.getByRole('button', { name: 'View style: Analog' }));
 
-      expectSelected('Tags: On');
+      expectSelected('Tags: Off');
     });
   });
 

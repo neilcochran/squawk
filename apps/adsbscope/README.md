@@ -36,13 +36,14 @@ Then open the address it prints (`http://127.0.0.1:8090` by default). The exampl
 | `--listen-port <port>` | Port to serve the scope on                                                                      | `8090`                                        |
 | `--bind <address>`     | Local address to serve the scope on - see [Network exposure](#network-exposure)                 | `127.0.0.1`                                   |
 | `--stale-after <ms>`   | Drop an aircraft after this long without an update                                              | `60000`                                       |
+| `--no-registry`        | Do not load the aircraft registry - see [Aircraft models](#aircraft-models)                     | registry on                                   |
 | `-h`, `--help`         | Show usage                                                                                      | -                                             |
 
 The three sources are the same ones `@squawk/adsb-feed` and [`adsbtop`](../adsbtop) offer; see [`@squawk/adsb-feed`'s README](../../packages/libs/adsb-feed/README.md) for how they differ.
 
 ### Controls
 
-Everything you can change while the scope is running has both an on-screen control and a key. The zoom buttons sit in the bottom-right corner. In the bottom-left is the view style selector, followed by a selector for each setting the current view style has. A selector shows all of its options side by side with the active one filled in - `Digital | Analog`, `Tags Off | On` - so it always shows both what is selected and what else can be; press an option to select it. The keys step to the next option instead.
+Everything you can change while the scope is running has both an on-screen control and a key. The zoom buttons sit in the bottom-right corner. In the bottom-left is the view style selector, followed by a selector for each setting the current view style has. A selector shows all of its options side by side with the active one filled in - `Digital | Analog`, `Tags On | Off` - so it always shows both what is selected and what else can be; press an option to select it. The keys step to the next option instead.
 
 | Key              | Action                                            |
 | ---------------- | ------------------------------------------------- |
@@ -50,7 +51,7 @@ Everything you can change while the scope is running has both an on-screen contr
 | `-`, `_`, or `[` | Zoom out to the next larger scope range           |
 | `M`              | Step to the next view style                       |
 | `V`              | Step the video map: basic, full, off              |
-| `T`              | Analog only: step the Tags setting (off, on)      |
+| `T`              | Analog only: step the Tags setting (on, off)      |
 | `R`              | Analog only: step the Sweep setting (4.8 s, 12 s) |
 
 The range steps are 5, 10, 20, 40, 60, 80, 100, 150, 200, and 250 nm, and each zoom button disables itself at the end of its travel. Keys held with Ctrl, Alt, or Cmd are left to the browser, so `Ctrl+R` still reloads the page.
@@ -72,7 +73,7 @@ A modern scope: no sweep, and every aircraft is redrawn at its latest position a
 - a **position symbol** - a filled square, or a hollow one for an aircraft on the ground;
 - a **history trail** - up to five fading dots at five-second intervals behind it;
 - a **velocity vector** - a line showing where it will be in one minute at its current track and ground speed (not drawn on the ground);
-- a **data block** on a leader line. Line one is the callsign, or the ICAO hex until the aircraft has sent one. Line two is altitude in hundreds of feet, a climb (`^`) or descent (`v`) marker when the vertical rate is beyond 300 ft/min, and ground speed in tens of knots - so `236v42` is descending through 23,600 ft at 420 kt. An aircraft on the ground shows `GND` for altitude, and unknown values show as dashes.
+- a **data block** on a leader line. Line one is the callsign, or the ICAO hex until the aircraft has sent one. Line two is altitude in hundreds of feet, a climb (`^`) or descent (`v`) marker when the vertical rate is beyond 300 ft/min, and ground speed in tens of knots - so `236v42` is descending through 23,600 ft at 420 kt. An aircraft on the ground shows `GND` for altitude, and unknown values show as dashes. When the aircraft's [model](#aircraft-models) is known, line two time-shares with it, as the type does on a real scope: every block shows altitude and speed for 2.5 seconds, then the model for 1.5, in unison. A block is sized for the wider of the two, so it does not move as they alternate.
 
 Data blocks are kept off one another. A leader line normally runs up and to the right, but when its block would cover another block, another aircraft's symbol, or hang off the edge of the window, it takes whichever of the eight compass directions leaves the block clear - or, in a real crowd, the one that covers the least. A block only moves when it has to, and one that has been moved aside stays there, as it does on a real scope when a controller moves it, so blocks do not flicker between directions as traffic shifts.
 
@@ -86,7 +87,7 @@ Switching to the analog style starts from a dark scope that fills in over one ro
 
 The analog style has two settings:
 
-- **Tags** (`T`) - off by default, as on the scopes of the era, where identity was tracked on paper strips. Turned on, each aircraft's newest blip gets a faint two-line tag in the same format as the digital data block.
+- **Tags** (`T`) - on by default: each aircraft's newest blip gets a faint two-line tag in the same format as the digital data block. The scopes of the era had none - identity was tracked on paper strips - so turn them off for the authentic picture of anonymous blips.
 - **Sweep** (`R`) - 4.8 s per rotation, like a terminal approach radar, or 12 s, like a long-range en-route radar.
 
 ### Video map
@@ -105,6 +106,12 @@ How far the map reaches depends on the view style. The `digital` style fills the
 The `Map` selector, or `V`, chooses how much of this is drawn. `Basic`, the default, is airspace and airports only, which keeps the map well behind the traffic. `Full` adds the navaids and fixes, and `Off` draws no map. Each view style remembers its own choice.
 
 The bundled data covers the United States only, so a receiver elsewhere gets an empty map. It is also a snapshot: it is as current as the installed data packages, not a live feed of airspace changes.
+
+### Aircraft models
+
+The model in a data block comes from the FAA aircraft registry bundled with [`@squawk/icao-registry-data`](../../packages/libs/icao-registry-data), looked up by the aircraft's ICAO hex. It is the model the aircraft is registered as - `PA-28-181`, `737-8H4` - cut to twelve characters. Registered models run to twenty; twelve shows more than nine in ten of them whole, and only the blocks that need the width take it. That is not the four-character ICAO type designator (`P28A`, `B738`) a real scope shows; the FAA registry does not carry designators. It covers aircraft on the US register only, and is as current as the installed data package.
+
+The registry is loaded in the background once the scope is serving, so models appear a second or so after the first aircraft do. It holds over 300,000 records: parsing them briefly needs several hundred megabytes of memory, and the records then stay in memory for as long as `adsbscope` runs. On a small host, `--no-registry` skips it: the scope runs exactly the same, and data blocks simply never show a model. If the registry cannot be loaded, `adsbscope` says so once and carries on without it.
 
 ### The readout
 
@@ -125,7 +132,7 @@ adsbscope --replay session.jsonl --lat 40.6413 --lon -73.7781
 
 - It binds to `127.0.0.1` by default, so only the machine running it can open the scope. Pass `--bind 0.0.0.0` (or a specific local address) to view it from another device on your network; anyone who can reach that address can then see it, and `adsbscope` prints a reminder when started that way. It has no authentication, so do not expose it to the internet.
 - It refuses any request whose `Host` header is not an IP address, `localhost`, or the machine's own hostname (with or without `.local`). This blocks DNS rebinding, where a hostile web page points its own domain at your machine to read the responses.
-- It only ever reads from the station (or recording) it was started with, and the video map comes from data bundled with the install. It makes no other outbound requests and cannot be used as a proxy.
+- It only ever reads from the station (or recording) it was started with, and the video map and aircraft models come from data bundled with the install. It makes no other outbound requests and cannot be used as a proxy.
 - The one endpoint that takes input, the video map's range, accepts only a number up to 500 nm, and keeps at most 16 ranges' maps in memory, so requests cannot grow it without bound.
 - It answers `GET` and `HEAD` only, serves nothing outside its own bundled UI files, and sends a `Content-Security-Policy` that limits the page to its own origin.
 
@@ -148,6 +155,7 @@ src/server/
   cli-args.ts, create-feed.ts   # Flags, and the live or replayed aircraft feed
   http-server.ts                # Static UI, /api/config, /api/stream, /api/videomap
   snapshot.ts                   # Aircraft -> scope targets, in receiver-relative polar coordinates
+  aircraft-model.ts             # Registered model by ICAO hex, from the bundled FAA registry, loaded on demand
   video-map/
     layers.ts                   # Which features are shown at which range: the knobs for map density
     build.ts                    # Pure: source records + receiver + range -> the map

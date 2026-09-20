@@ -57,6 +57,8 @@ export interface CliOptions {
   replayPath: string | undefined;
   /** How long an aircraft may go without an update before the feed drops it, from `--stale-after`. */
   staleAfterMs: number;
+  /** Whether aircraft models are looked up in the bundled registry. False with `--no-registry`. */
+  registry: boolean;
 }
 
 /** A `parseCliArgs` failure: the reason `argv` could not be turned into {@link CliOptions}. */
@@ -118,6 +120,7 @@ Options:
   --listen-port <port>       Port to serve the scope UI on (default: ${DEFAULT_LISTEN_PORT})
   --bind <address>           Local address to serve the scope UI on (default: ${DEFAULT_BIND_ADDRESS}) - use 0.0.0.0 to allow other devices on the network
   --stale-after <ms>         Drop an aircraft after this long without an update (default: ${DEFAULT_STALE_AFTER_MS})
+  --no-registry              Do not load the aircraft registry: no aircraft models, but less memory and a lighter start
   -h, --help                 Show this help message
 `;
 
@@ -191,6 +194,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
         'listen-port': { type: 'string' },
         bind: { type: 'string', default: DEFAULT_BIND_ADDRESS },
         'stale-after': { type: 'string' },
+        'no-registry': { type: 'boolean', default: false },
         help: { type: 'boolean', short: 'h', default: false },
       },
       strict: true,
@@ -214,6 +218,7 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
       bindAddress: DEFAULT_BIND_ADDRESS,
       replayPath: undefined,
       staleAfterMs: DEFAULT_STALE_AFTER_MS,
+      registry: true,
     };
   }
 
@@ -300,5 +305,6 @@ export function parseCliArgs(argv: string[]): CliOptions | CliArgsError {
     bindAddress,
     replayPath: values.replay,
     staleAfterMs,
+    registry: values['no-registry'] !== true,
   };
 }

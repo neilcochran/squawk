@@ -33,6 +33,8 @@ let publicDir: string;
 let server: ScopeServer | undefined;
 let aircraft: Aircraft[] = [];
 const getVideoMap = vi.fn<(rangeNm: number) => Promise<ScopeVideoMap>>();
+const getAircraftModel = (icaoHex: string): string | undefined =>
+  icaoHex === 'a1b2c3' ? 'PA-28-181' : undefined;
 
 function makeFeed(): AircraftFeed {
   return Object.assign(new EventTarget(), {
@@ -49,6 +51,7 @@ async function startServer(snapshotIntervalMs = 1000): Promise<number> {
   server = createScopeServer({
     feed: makeFeed(),
     config: CONFIG,
+    getAircraftModel,
     getVideoMap,
     publicDir,
     allowedHostnames: ['localhost'],
@@ -285,7 +288,15 @@ describe('createScopeServer', () => {
     expect(JSON.parse(firstData?.slice('data: '.length) ?? 'null')).toEqual({
       at: 1_000_000,
       connection: 'connected',
-      targets: [{ icaoHex: 'a1b2c3', callsign: 'UAL123', history: [], lastSeenAt: 999_000 }],
+      targets: [
+        {
+          icaoHex: 'a1b2c3',
+          callsign: 'UAL123',
+          aircraftModel: 'PA-28-181',
+          history: [],
+          lastSeenAt: 999_000,
+        },
+      ],
     });
   });
 
@@ -330,6 +341,7 @@ describe('createScopeServer', () => {
     const second = createScopeServer({
       feed: makeFeed(),
       config: CONFIG,
+      getAircraftModel,
       getVideoMap,
       publicDir,
       allowedHostnames: [],

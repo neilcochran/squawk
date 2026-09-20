@@ -73,6 +73,8 @@ export interface ScopeTarget {
   callsign?: string;
   /** Squawk transponder code. */
   squawk?: string;
+  /** The model the aircraft is registered as (`PA-28-181`, `737-8H4`), when the registry knows it. */
+  aircraftModel?: string;
   /** Altitude in feet MSL: barometric when available, otherwise geometric. */
   altitudeFt?: number;
   /** Ground speed in knots. */

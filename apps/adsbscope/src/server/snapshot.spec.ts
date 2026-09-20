@@ -83,7 +83,9 @@ describe('sampleHistory', () => {
 
 describe('toScopeTarget', () => {
   it('carries only the identity and timestamp for a bare aircraft', () => {
-    expect(toScopeTarget({ icaoHex: 'a1b2c3', lastSeenAt: NOW }, [], RECEIVER, NOW)).toEqual({
+    expect(
+      toScopeTarget({ icaoHex: 'a1b2c3', lastSeenAt: NOW }, [], RECEIVER, NOW, undefined),
+    ).toEqual({
       icaoHex: 'a1b2c3',
       history: [],
       lastSeenAt: NOW,
@@ -103,7 +105,7 @@ describe('toScopeTarget', () => {
       lastSeenAt: NOW,
     };
 
-    const target = toScopeTarget(aircraft, [entryAt(NOW - 6000, 41.01)], RECEIVER, NOW);
+    const target = toScopeTarget(aircraft, [entryAt(NOW - 6000, 41.01)], RECEIVER, NOW, undefined);
 
     expect(target).toMatchObject({
       icaoHex: 'a1b2c3',
@@ -134,6 +136,7 @@ describe('toScopeTarget', () => {
       [],
       RECEIVER,
       NOW,
+      undefined,
     );
 
     expect(target.altitudeFt).toBe(36_000);
@@ -148,9 +151,19 @@ describe('toScopeTarget', () => {
       [],
       RECEIVER,
       NOW,
+      undefined,
     );
 
     expect(target.altitudeFt).toBe(5500);
+  });
+
+  it('carries the registered model when one is known', () => {
+    const aircraft: Aircraft = { icaoHex: 'a1b2c3', lastSeenAt: NOW };
+
+    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, 'PA-28-181').aircraftModel).toBe('PA-28-181');
+    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined)).not.toHaveProperty(
+      'aircraftModel',
+    );
   });
 });
 
@@ -170,12 +183,20 @@ describe('buildSnapshot', () => {
       getConnectionState: vi.fn(() => 'connected' as const),
     });
 
-    const snapshot = buildSnapshot(feed, RECEIVER, NOW);
+    const lookupModel = vi.fn((icaoHex: string) =>
+      icaoHex === 'a1b2c3' ? 'PA-28-181' : undefined,
+    );
+
+    const snapshot = buildSnapshot(feed, RECEIVER, NOW, lookupModel);
 
     expect(snapshot.at).toBe(NOW);
     expect(snapshot.connection).toBe('connected');
     expect(snapshot.targets.map((target) => target.icaoHex)).toEqual(['a1b2c3', 'c0ffee']);
     expect(getPositionHistory).toHaveBeenCalledWith('a1b2c3');
     expect(getPositionHistory).toHaveBeenCalledWith('c0ffee');
+    expect(snapshot.targets.map((target) => target.aircraftModel)).toEqual([
+      'PA-28-181',
+      undefined,
+    ]);
   });
 });

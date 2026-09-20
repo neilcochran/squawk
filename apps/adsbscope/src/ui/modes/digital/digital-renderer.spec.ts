@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ScopeSnapshot, ScopeTarget, ScopeVideoMap } from '../../../shared/protocol.js';
+import { TIME_SHARE_ALTERNATE_MS, TIME_SHARE_CYCLE_MS } from '../../scope/data-block.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
 import type { ScopeFrame } from '../../scope/renderer.js';
 import { createRecordingContext, makeSnapshot, makeTarget } from '../../scope/test-utils.js';
@@ -352,6 +353,64 @@ describe('createDigitalRenderer', () => {
 
       expect(blockTopOf(alone, 'WING2')).toBeGreaterThan(symbolYPx);
       expect(blockTopOf(afterReset, 'WING2')).toBeLessThan(symbolYPx);
+    });
+
+    it('time-shares the second line of a block with the registered model, when it is known', () => {
+      const known = makeTarget({
+        icaoHex: 'aaaaaa',
+        callsign: 'N409CC',
+        aircraftModel: 'PA-28-181',
+        altitudeFt: 4500,
+        groundSpeedKt: 110,
+        position: CENTER,
+      });
+      const unknown = makeTarget({
+        icaoHex: 'bbbbbb',
+        callsign: 'UAL123',
+        altitudeFt: 12_000,
+        groundSpeedKt: 300,
+        position: { trueBearingDeg: 270, rangeNm: 30 },
+      });
+      const renderer = createDigitalRenderer(DIGITAL_THEME);
+      const usual = createRecordingContext();
+      const alternate = createRecordingContext();
+      const frame = frameOf([known, unknown]);
+
+      renderer.render(usual.context, frame);
+      renderer.render(alternate.context, {
+        ...frame,
+        frameTimeMs: TIME_SHARE_CYCLE_MS - TIME_SHARE_ALTERNATE_MS,
+      });
+
+      expect(usual.texts()).toEqual(expect.arrayContaining(['N409CC', '045 11', '120 30']));
+      expect(usual.texts()).not.toContain('PA-28-181');
+      expect(alternate.texts()).toEqual(expect.arrayContaining(['N409CC', 'PA-28-181', '120 30']));
+      expect(alternate.texts()).not.toContain('045 11');
+    });
+
+    it('sizes a block for the wider of its two second lines, so it does not move as they alternate', () => {
+      const target = makeTarget({
+        icaoHex: 'aaaaaa',
+        callsign: 'N1',
+        aircraftModel: 'PA-28-181',
+        position: CENTER,
+      });
+      const renderer = createDigitalRenderer(DIGITAL_THEME);
+      const usual = createRecordingContext();
+      const alternate = createRecordingContext();
+      const frame = frameOf([target]);
+      const measured = vi.spyOn(usual.context, 'measureText');
+
+      renderer.render(usual.context, frame);
+      renderer.render(alternate.context, {
+        ...frame,
+        frameTimeMs: TIME_SHARE_CYCLE_MS - TIME_SHARE_ALTERNATE_MS,
+      });
+
+      expect(measured).toHaveBeenCalledWith('PA-28-181');
+      const callsignAt = (recording: RecordingContext): unknown[] | undefined =>
+        recording.callsTo('fillText').find((call) => call.args[0] === 'N1')?.args;
+      expect(callsignAt(alternate)).toEqual(callsignAt(usual));
     });
 
     it('works the placement out once per snapshot and viewport, not once per frame', () => {

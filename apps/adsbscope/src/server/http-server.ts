@@ -15,6 +15,7 @@ import {
 } from '../shared/protocol.js';
 import type { ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
 
+import type { AircraftModelLookup } from './aircraft-model.js';
 import { isAllowedHost } from './host-check.js';
 import { buildSnapshot } from './snapshot.js';
 import { contentTypeFor, resolveStaticPath } from './static-files.js';
@@ -51,6 +52,8 @@ export interface ScopeServerOptions {
   feed: AircraftFeed;
   /** Session settings served to the UI at startup. */
   config: ScopeConfig;
+  /** Looks up the model an aircraft is registered as, for the snapshots. */
+  getAircraftModel: AircraftModelLookup;
   /** Builds the video map for a scope range, given in nautical miles. */
   getVideoMap: (rangeNm: number) => Promise<ScopeVideoMap>;
   /** Absolute path of the directory the UI was built into. */
@@ -123,7 +126,12 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
   let snapshotTimer: ReturnType<typeof setInterval> | undefined;
 
   function formatSnapshotMessage(): string {
-    const snapshot = buildSnapshot(options.feed, options.config.receiver, now());
+    const snapshot = buildSnapshot(
+      options.feed,
+      options.config.receiver,
+      now(),
+      options.getAircraftModel,
+    );
     return `event: ${SNAPSHOT_EVENT}\ndata: ${JSON.stringify(snapshot)}\n\n`;
   }
 

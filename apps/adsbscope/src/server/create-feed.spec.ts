@@ -20,6 +20,7 @@ function makeCliOptions(overrides: Partial<CliOptions> = {}): CliOptions {
     bindAddress: '127.0.0.1',
     replayPath: undefined,
     staleAfterMs: 60_000,
+    registry: true,
     ...overrides,
   };
 }

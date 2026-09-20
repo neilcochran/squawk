@@ -70,11 +70,11 @@ describe('ModeControls', () => {
     expect(screen.getAllByRole('group')).toHaveLength(1 + ANALOG.settings.length);
     const tags = screen.getByRole('group', { name: 'Tags' });
     expect(tags).toHaveTextContent('Tags');
-    expect(within(tags).getByRole('button', { name: 'Tags: Off' })).toHaveAttribute(
+    expect(within(tags).getByRole('button', { name: 'Tags: On' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(within(tags).getByRole('button', { name: 'Tags: On' })).toHaveAttribute(
+    expect(within(tags).getByRole('button', { name: 'Tags: Off' })).toHaveAttribute(
       'aria-pressed',
       'false',
     );

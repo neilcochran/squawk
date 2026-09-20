@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { APP_NAME } from '../shared/protocol.js';
 
+import { createAircraftModelProvider } from './aircraft-model.js';
 import { parseCliArgs, USAGE } from './cli-args.js';
 import type { CliOptions } from './cli-args.js';
 import { buildFeed, describeStation } from './create-feed.js';
@@ -37,6 +38,8 @@ export interface RunDependencies {
   buildFeed: typeof buildFeed;
   /** Creates the scope's HTTP server. */
   createScopeServer: typeof createScopeServer;
+  /** Creates the source of aircraft models. */
+  createAircraftModelProvider: typeof createAircraftModelProvider;
   /** Creates the source of video maps. */
   createVideoMapProvider: typeof createVideoMapProvider;
   /** Resolves whether a file exists and can be read. */
@@ -83,6 +86,7 @@ async function canReadFile(path: string): Promise<boolean> {
 export const DEFAULT_RUN_DEPENDENCIES: RunDependencies = {
   buildFeed,
   createScopeServer,
+  createAircraftModelProvider,
   createVideoMapProvider,
   canRead: canReadFile,
   machineHostname: hostname,
@@ -121,8 +125,10 @@ async function start(
   const station = describeStation(cli);
   const feed = dependencies.buildFeed(cli);
   const videoMaps = dependencies.createVideoMapProvider({ receiver: cli.location });
+  const aircraftModels = dependencies.createAircraftModelProvider();
   const server = dependencies.createScopeServer({
     feed,
+    getAircraftModel: (icaoHex) => aircraftModels.lookup(icaoHex),
     getVideoMap: (rangeNm) => videoMaps.get(rangeNm),
     config: {
       receiver: cli.location,
@@ -148,6 +154,12 @@ async function start(
   // Warm the map data now, while nothing is connected, rather than during the first map
   // request. A failure here is not fatal: that request will try the load again.
   void videoMaps.preload().catch(() => undefined);
+  // The registry is optional too: without it the scope runs, and data blocks just show no model.
+  if (cli.registry) {
+    void aircraftModels.load().catch(() => {
+      io.stderr('Could not load the aircraft registry - aircraft models will not be shown.\n');
+    });
+  }
 
   const url = formatScopeUrl(cli.bindAddress, port);
   io.stdout(`${APP_NAME}: ${station} -> ${url}\n`);

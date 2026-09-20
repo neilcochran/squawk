@@ -11,6 +11,7 @@ import {
   SWEEP_SETTING,
   SWEEP_SETTING_ID,
   sweepPeriodMs,
+  TAGS_OFF,
   TAGS_ON,
   TAGS_SETTING_ID,
 } from './analog-settings.js';
@@ -31,13 +32,14 @@ describe('the analog settings', () => {
 });
 
 describe('areTagsVisible', () => {
-  it('is off by default, as on a sweep-era scope', () => {
-    expect(areTagsVisible(defaultSettingValues(ANALOG_MODE))).toBe(false);
-    expect(areTagsVisible({})).toBe(false);
+  it('is on by default', () => {
+    expect(areTagsVisible(defaultSettingValues(ANALOG_MODE))).toBe(true);
+    expect(areTagsVisible({})).toBe(true);
   });
 
-  it('is on when the tags setting says so', () => {
+  it('follows the tags setting', () => {
     expect(areTagsVisible({ [TAGS_SETTING_ID]: TAGS_ON })).toBe(true);
+    expect(areTagsVisible({ [TAGS_SETTING_ID]: TAGS_OFF })).toBe(false);
   });
 });
 

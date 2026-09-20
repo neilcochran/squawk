@@ -4,6 +4,8 @@ import type { Aircraft, Coordinates } from '@squawk/types';
 
 import type { PolarPoint, ScopeSnapshot, ScopeTarget } from '../shared/protocol.js';
 
+import type { AircraftModelLookup } from './aircraft-model.js';
+
 /** Minimum time between two points of a target's history trail. */
 export const HISTORY_SPACING_MS = 5000;
 
@@ -73,6 +75,7 @@ export function sampleHistory(
  * @param history - The aircraft's retained position history, oldest first.
  * @param receiver - The receiving station's position.
  * @param now - Unix epoch ms the snapshot is being taken.
+ * @param aircraftModel - The model the aircraft is registered as, if known.
  * @returns The scope target.
  */
 export function toScopeTarget(
@@ -80,12 +83,14 @@ export function toScopeTarget(
   history: readonly PositionHistoryEntry[],
   receiver: Coordinates,
   now: number,
+  aircraftModel: string | undefined,
 ): ScopeTarget {
   const altitudeFt = aircraft.position?.baroAltitudeFt ?? aircraft.position?.geoAltitudeFt;
   return {
     icaoHex: aircraft.icaoHex,
     ...(aircraft.callsign !== undefined && { callsign: aircraft.callsign }),
     ...(aircraft.squawk !== undefined && { squawk: aircraft.squawk }),
+    ...(aircraftModel !== undefined && { aircraftModel }),
     ...(altitudeFt !== undefined && { altitudeFt: roundTo(altitudeFt, 0) }),
     ...(aircraft.groundSpeedKt !== undefined && {
       groundSpeedKt: roundTo(aircraft.groundSpeedKt, 0),
@@ -109,17 +114,25 @@ export function toScopeTarget(
  * @param feed - The feed to read.
  * @param receiver - The receiving station's position.
  * @param now - Unix epoch ms the snapshot is being taken.
+ * @param lookupModel - Looks up the model an aircraft is registered as.
  * @returns The snapshot, with targets ordered by ICAO hex so consecutive snapshots are stable.
  */
 export function buildSnapshot(
   feed: AircraftFeed,
   receiver: Coordinates,
   now: number,
+  lookupModel: AircraftModelLookup,
 ): ScopeSnapshot {
   const targets = feed
     .getAllAircraft()
     .map((aircraft) =>
-      toScopeTarget(aircraft, feed.getPositionHistory(aircraft.icaoHex), receiver, now),
+      toScopeTarget(
+        aircraft,
+        feed.getPositionHistory(aircraft.icaoHex),
+        receiver,
+        now,
+        lookupModel(aircraft.icaoHex),
+      ),
     )
     .sort((a, b) => a.icaoHex.localeCompare(b.icaoHex));
   return { at: now, connection: feed.getConnectionState(), targets };
