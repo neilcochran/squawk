@@ -30,6 +30,8 @@ export interface ScopeCanvasPalette {
   coasting: string;
   /** A target in an emergency, during the lit half of its flash. */
   emergency: string;
+  /** The ring around the selected target. */
+  selected: string;
   /** History trail dots. */
   history: string;
   /** Velocity vector lines. */

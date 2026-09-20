@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ScopeVideoMap } from '../../shared/protocol.js';
 
+import type { ScopeExtent } from './extent.js';
 import { FULL_CIRCLE_RAD } from './furniture.js';
 import { createViewport, polarToScreen } from './projection.js';
 import { createRecordingContext } from './test-utils.js';
@@ -14,7 +15,7 @@ import {
   VIDEO_MAP_LAYOUT_REM,
   VIDEO_MAP_POINT_KINDS_BY_DETAIL,
 } from './video-map-draw.js';
-import type { VideoMapColors, VideoMapDetail, VideoMapExtent } from './video-map-draw.js';
+import type { VideoMapColors, VideoMapDetail } from './video-map-draw.js';
 
 const COLORS: VideoMapColors = {
   airspace: {
@@ -32,7 +33,7 @@ const EMPTY: ScopeVideoMap = { rangeNm: 60, points: [], lines: [] };
 function draw(
   map: ScopeVideoMap,
   detail: VideoMapDetail = 'full',
-  extent: VideoMapExtent = 'canvas',
+  extent: ScopeExtent = 'canvas',
 ): RecordingContext {
   const recording = createRecordingContext();
   drawVideoMap(recording.context, COLORS, VIEWPORT, map, { detail, extent });

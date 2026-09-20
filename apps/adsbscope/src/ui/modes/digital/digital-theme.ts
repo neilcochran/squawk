@@ -21,6 +21,7 @@ export const DIGITAL_THEME: ScopeTheme = {
     target: '#e6f2e6',
     coasting: '#7d8a7d',
     emergency: '#ff4d4d',
+    selected: '#4dd2ff',
     history: '#3f7fe0',
     vector: '#c8d4c8',
   },

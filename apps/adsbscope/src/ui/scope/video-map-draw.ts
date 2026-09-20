@@ -6,6 +6,8 @@ import type {
   VideoMapPointKind,
 } from '../../shared/protocol.js';
 
+import { isWithinExtent } from './extent.js';
+import type { ScopeExtent } from './extent.js';
 import { FULL_CIRCLE_RAD } from './furniture.js';
 import { isNearCanvas, offsetByBearing, polarToScreen } from './projection.js';
 import type { ScopeViewport, ScreenPoint } from './projection.js';
@@ -23,20 +25,12 @@ export interface VideoMapColors {
 /** How much of the map to draw: `basic` is airspace and airports, `full` adds navaids and fixes. */
 export type VideoMapDetail = 'basic' | 'full';
 
-/**
- * How far the map reaches. `canvas` fills the whole canvas, as the map of a
- * modern scope's rectangular display does. `rangeCircle` stops at the circle
- * of the selected range, as everything did on a round tube, whose face ended
- * there.
- */
-export type VideoMapExtent = 'canvas' | 'rangeCircle';
-
 /** How a view style wants the video map drawn. */
 export interface VideoMapDrawOptions {
   /** How much of the map to draw. */
   detail: VideoMapDetail;
   /** How far the map reaches. */
-  extent: VideoMapExtent;
+  extent: ScopeExtent;
 }
 
 /** The point features drawn at each detail level. Navaids and fixes are numerous enough to compete with the traffic, so they are opt-in. */
@@ -214,7 +208,7 @@ export function drawVideoMap(
     if (!shownKinds.includes(point.kind)) {
       continue;
     }
-    if (isWithinRangeCircle && point.position.rangeNm * viewport.pxPerNm > viewport.radiusPx) {
+    if (!isWithinExtent(viewport, point.position, options.extent)) {
       continue;
     }
     const at = polarToScreen(viewport, point.position);

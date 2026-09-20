@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_SCOPE_MODE_ID, SCOPE_MODE_IDS } from '../../shared/protocol.js';
-import { MODE_HOTKEY } from '../hud/hotkeys.js';
+import {
+  CONTROLS_HOTKEY,
+  MODE_HOTKEY,
+  SELECT_NEXT_HOTKEY,
+  SELECT_PREVIOUS_HOTKEY,
+} from '../hud/hotkeys.js';
 import { RANGE_KEYS } from '../hud/range-keys.js';
 import { isHexColor } from '../scope/color.js';
 
@@ -17,6 +22,11 @@ describe('the mode registry', () => {
 
   it('includes the default mode', () => {
     expect(SCOPE_MODES_BY_ID[DEFAULT_SCOPE_MODE_ID]).toBeDefined();
+  });
+
+  it('reaches as far as its scope does: the digital one fills the canvas, the analog one is round', () => {
+    expect(SCOPE_MODES_BY_ID.digital.extent).toBe('canvas');
+    expect(SCOPE_MODES_BY_ID.analog.extent).toBe('rangeCircle');
   });
 
   it('gives every mode a distinct label and a working renderer factory', () => {
@@ -37,7 +47,15 @@ describe('the mode registry', () => {
   });
 
   it('keeps setting hotkeys lowercase, distinct within a mode, and clear of the global keys', () => {
-    const reserved = [MODE_HOTKEY, ...RANGE_KEYS.in, ...RANGE_KEYS.out];
+    const reserved = [
+      MODE_HOTKEY,
+      CONTROLS_HOTKEY,
+      SELECT_NEXT_HOTKEY,
+      SELECT_PREVIOUS_HOTKEY,
+      ...RANGE_KEYS.in,
+      ...RANGE_KEYS.out,
+    ];
+    expect(new Set(reserved).size).toBe(reserved.length);
     for (const mode of SCOPE_MODES) {
       const hotkeys = mode.settings.map((setting) => setting.hotkey);
       expect(new Set(hotkeys).size).toBe(hotkeys.length);

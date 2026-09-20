@@ -39,6 +39,7 @@ function renderFrame(
     videoMap: extras.videoMap,
     frameTimeMs: 0,
     settings: extras.settings ?? {},
+    selectedIcaoHex: undefined,
   };
   createDigitalRenderer(theme).render(recording.context, frame);
   return recording;
@@ -304,6 +305,80 @@ describe('createDigitalRenderer', () => {
     });
   });
 
+  describe('selection', () => {
+    const position = { trueBearingDeg: 90, rangeNm: 30 };
+    const snapshot = makeSnapshot([
+      makeTarget({ icaoHex: 'aaaaaa', position }),
+      makeTarget({ icaoHex: 'bbbbbb', position: { trueBearingDeg: 270, rangeNm: 30 } }),
+    ]);
+
+    function selectionRings(selectedIcaoHex: string | undefined): unknown[][] {
+      const recording = createRecordingContext();
+      createDigitalRenderer(DIGITAL_THEME).render(recording.context, {
+        viewport: VIEWPORT,
+        rangeNm: 60,
+        snapshot,
+        videoMap: undefined,
+        frameTimeMs: 0,
+        settings: {},
+        selectedIcaoHex,
+      });
+      const ringAt = recording.calls.findIndex(
+        (call) => call.method === 'stroke' && call.strokeStyle === COLORS.selected,
+      );
+      return ringAt === -1
+        ? []
+        : recording.calls
+            .slice(0, ringAt)
+            .filter((call) => call.method === 'arc')
+            .slice(-1)
+            .map((call) => call.args);
+    }
+
+    it('rings the selected target, and only it', () => {
+      const at = polarToScreen(VIEWPORT, position);
+
+      expect(selectionRings('aaaaaa')).toEqual([
+        [
+          at.xPx,
+          at.yPx,
+          DIGITAL_LAYOUT_REM.selectionRadius * DEFAULT_PX_PER_REM,
+          0,
+          expect.any(Number),
+        ],
+      ]);
+    });
+
+    it('lets a click on a data block pick its aircraft, once it has been drawn', () => {
+      const renderer = createDigitalRenderer(DIGITAL_THEME);
+      const recording = createRecordingContext();
+      expect(renderer.pickDataBlock({ xPx: 0, yPx: 0 })).toBeUndefined();
+
+      renderer.render(recording.context, {
+        viewport: VIEWPORT,
+        rangeNm: 60,
+        snapshot,
+        videoMap: undefined,
+        frameTimeMs: 0,
+        settings: {},
+        selectedIcaoHex: undefined,
+      });
+
+      const label = recording.callsTo('fillText').find((call) => call.args[0] === 'AAAAAA');
+      const onTheLabel = { xPx: Number(label?.args[1]) + 2, yPx: Number(label?.args[2]) - 2 };
+      expect(renderer.pickDataBlock(onTheLabel)).toBe('aaaaaa');
+      expect(renderer.pickDataBlock({ xPx: 5, yPx: 5 })).toBeUndefined();
+
+      renderer.reset();
+      expect(renderer.pickDataBlock(onTheLabel)).toBeUndefined();
+    });
+
+    it('rings nothing when nothing is selected, or the selected aircraft is not plotted', () => {
+      expect(selectionRings(undefined)).toEqual([]);
+      expect(selectionRings('ffffff')).toEqual([]);
+    });
+  });
+
   describe('emergencies', () => {
     const position = { trueBearingDeg: 90, rangeNm: 30 };
 
@@ -316,6 +391,7 @@ describe('createDigitalRenderer', () => {
         videoMap: undefined,
         frameTimeMs,
         settings: {},
+        selectedIcaoHex: undefined,
       });
       return recording.callsTo('fillRect').at(-1)?.fillStyle;
     }
@@ -364,6 +440,7 @@ describe('createDigitalRenderer', () => {
         videoMap: undefined,
         frameTimeMs: 0,
         settings: {},
+        selectedIcaoHex: undefined,
         ...overrides,
       };
     }

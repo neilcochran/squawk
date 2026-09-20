@@ -1,10 +1,23 @@
 import type { ModeSetting, ScopeModeDefinition } from '../modes/mode.js';
 import type { RangeDirection } from '../scope/range.js';
+import type { SelectionDirection } from '../scope/selection.js';
 
 import { rangeKeyDirection } from './range-keys.js';
 
 /** The key that switches to the next view style. */
 export const MODE_HOTKEY = 'm';
+
+/** The `KeyboardEvent.key`, lowercase, that hides and shows the view style and setting controls. */
+export const CONTROLS_HOTKEY = 'h';
+
+/** The `KeyboardEvent.key` that selects the next aircraft. */
+export const SELECT_NEXT_HOTKEY = '.';
+
+/** The `KeyboardEvent.key` that selects the previous aircraft. */
+export const SELECT_PREVIOUS_HOTKEY = ',';
+
+/** The `KeyboardEvent.key` that clears the selection. */
+export const DESELECT_HOTKEY = 'Escape';
 
 /** What a key press asks the scope to do. */
 export type HotkeyAction =
@@ -17,6 +30,20 @@ export type HotkeyAction =
   | {
       /** Switch to the next view style. */
       type: 'nextMode';
+    }
+  | {
+      /** Move the selection to another aircraft. */
+      type: 'select';
+      /** Which way to move it. */
+      direction: SelectionDirection;
+    }
+  | {
+      /** Clear the selection. */
+      type: 'deselect';
+    }
+  | {
+      /** Hide the view style and setting controls, or show them again. */
+      type: 'toggleControls';
     }
   | {
       /** Step one of the active mode's settings to its next choice. */
@@ -62,9 +89,21 @@ export function resolveHotkey(
   if (direction !== undefined) {
     return { type: 'range', direction };
   }
+  if (press.key === SELECT_NEXT_HOTKEY) {
+    return { type: 'select', direction: 'next' };
+  }
+  if (press.key === SELECT_PREVIOUS_HOTKEY) {
+    return { type: 'select', direction: 'previous' };
+  }
+  if (press.key === DESELECT_HOTKEY) {
+    return { type: 'deselect' };
+  }
   const key = press.key.toLowerCase();
   if (key === MODE_HOTKEY) {
     return { type: 'nextMode' };
+  }
+  if (key === CONTROLS_HOTKEY) {
+    return { type: 'toggleControls' };
   }
   const setting = mode.settings.find((candidate) => candidate.hotkey === key);
   return setting === undefined ? undefined : { type: 'setting', setting };

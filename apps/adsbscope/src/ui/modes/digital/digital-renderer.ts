@@ -1,5 +1,9 @@
 import type { ScopeSnapshot, ScopeTarget } from '../../../shared/protocol.js';
-import { leaderBearingsOf, placeDataBlocks } from '../../scope/data-block-placement.js';
+import {
+  leaderBearingsOf,
+  pickPlacedDataBlock,
+  placeDataBlocks,
+} from '../../scope/data-block-placement.js';
 import type {
   DataBlockGeometry,
   DataBlockPlacement,
@@ -13,6 +17,7 @@ import {
 } from '../../scope/data-block.js';
 import type { DataBlockLines } from '../../scope/data-block.js';
 import { isEmergencyFlashOn } from '../../scope/emergency.js';
+import type { ScopeExtent } from '../../scope/extent.js';
 import {
   drawCompassRose,
   drawRangeRings,
@@ -30,6 +35,9 @@ import type { VideoMapColors } from '../../scope/video-map-draw.js';
 import { canvasFont } from '../../styles/theme.js';
 import type { ScopeCanvasPalette, ScopeTheme } from '../../styles/theme.js';
 import { mapDetail } from '../shared-settings.js';
+
+/** How far the digital scope reaches: the whole canvas, as a modern scope's rectangular display does. */
+export const DIGITAL_EXTENT: ScopeExtent = 'canvas';
 
 /** How long a target may go unheard, as of its snapshot, before it is drawn dimmed as coasting. */
 export const COASTING_AFTER_MS = 15_000;
@@ -60,6 +68,8 @@ export const DIGITAL_LAYOUT_REM = {
   dataBlockLineHeight: 0.875,
   /** Half the side of the square around every target's symbol that data blocks are kept off. */
   symbolClearance: 0.375,
+  /** Radius of the ring around the selected target. */
+  selectionRadius: 0.5625,
 } as const;
 
 const MINUTES_PER_HOUR = 60;
@@ -304,7 +314,7 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       if (frame.videoMap !== undefined && detail !== 'off') {
         drawVideoMap(context, videoMapColors, viewport, frame.videoMap, {
           detail,
-          extent: 'canvas',
+          extent: DIGITAL_EXTENT,
         });
       }
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
@@ -316,6 +326,19 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       const showAlternate = isTimeShareAlternate(frame.frameTimeMs);
       const isFlashOn = isEmergencyFlashOn(frame.frameTimeMs);
       for (const { request, placement } of placedTargets(context, viewport, snapshot)) {
+        if (request.id === frame.selectedIcaoHex) {
+          context.strokeStyle = palette.selected;
+          context.lineWidth = FURNITURE_LINE_WIDTH_PX;
+          context.beginPath();
+          context.arc(
+            request.at.xPx,
+            request.at.yPx,
+            DIGITAL_LAYOUT_REM.selectionRadius * viewport.pxPerRem,
+            0,
+            FULL_CIRCLE_RAD,
+          );
+          context.stroke();
+        }
         drawHistory(context, palette, viewport, request.target);
         drawVelocityVector(context, palette, viewport, request.target, request.at);
         drawSymbolAndDataBlock(
@@ -331,6 +354,9 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
     reset(): void {
       placedFor = undefined;
       placed = [];
+    },
+    pickDataBlock(point: ScreenPoint): string | undefined {
+      return pickPlacedDataBlock(placed, point);
     },
   };
 }

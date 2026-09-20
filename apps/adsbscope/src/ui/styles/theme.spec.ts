@@ -26,6 +26,7 @@ const THEME: ScopeTheme = {
     target: '#333333',
     coasting: '#444444',
     emergency: '#444445',
+    selected: '#444446',
     history: '#555555',
     vector: '#666666',
   },

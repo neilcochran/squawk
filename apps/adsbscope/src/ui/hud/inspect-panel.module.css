@@ -1,0 +1,63 @@
+/*
+ * The panel sits in the bottom-right corner, stacked on top of the two zoom
+ * buttons: its offset is their combined height, which is the touch target
+ * size on a narrow screen and the compact control size from the breakpoint up.
+ */
+.inspectPanel {
+  position: absolute;
+  right: var(--scope-inset-inline);
+  bottom: calc(
+    var(--scope-inset-block) + 2 * var(--scope-touch-target) + 3 * var(--scope-space-sm)
+  );
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-sm);
+  padding: var(--scope-space-sm);
+  border: var(--scope-border-width) solid var(--scope-ui-control-border);
+  border-radius: var(--scope-radius);
+  background: var(--scope-ui-control-background);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--scope-space-sm);
+}
+
+.title {
+  margin: 0;
+  color: var(--scope-ui-emphasis);
+  font-size: inherit;
+  font-weight: bold;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-xs);
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--scope-space-sm);
+}
+
+.label {
+  opacity: var(--scope-label-opacity);
+}
+
+.value {
+  margin: 0;
+  text-align: right;
+}
+
+@media (min-width: 48rem) {
+  .inspectPanel {
+    bottom: calc(
+      var(--scope-inset-block) + 2 * var(--scope-control-size) + 3 * var(--scope-space-sm)
+    );
+  }
+}

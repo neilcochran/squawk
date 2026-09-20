@@ -18,3 +18,11 @@
   left: var(--scope-inset-inline);
   align-items: flex-start;
 }
+
+/*
+ * Lines a control up with the options of the selectors above it, rather than
+ * with their captions: the caption column, its margin, and the gap after it.
+ */
+.underOptions {
+  margin-left: calc(var(--scope-caption-width) + var(--scope-space-sm) + var(--scope-space-xs));
+}

@@ -33,6 +33,7 @@ export const ANALOG_THEME: AnalogTheme = {
     target: '#7dffa0',
     coasting: '#7dffa0',
     emergency: '#d6ffe0',
+    selected: '#d6ffe0',
     history: '#7dffa0',
     vector: '#7dffa0',
     sweep: '#3dff7a',

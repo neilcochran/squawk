@@ -34,6 +34,7 @@ interface FrameOptions {
   videoMap?: ScopeVideoMap;
   rangeNm?: number;
   settings?: Record<string, string>;
+  selectedIcaoHex?: string;
 }
 
 /** Renders one frame at `frameTimeMs` and returns only what that frame drew. */
@@ -51,6 +52,7 @@ function renderAt(
     videoMap: options.videoMap,
     frameTimeMs,
     settings: options.settings ?? {},
+    selectedIcaoHex: options.selectedIcaoHex,
   });
   return recording;
 }
@@ -241,6 +243,7 @@ describe('createAnalogRenderer', () => {
         videoMap: undefined,
         frameTimeMs: 0,
         settings: {},
+        selectedIcaoHex: undefined,
       });
 
       expect(recording.callsTo('closePath')).toHaveLength(0);
@@ -291,6 +294,78 @@ describe('createAnalogRenderer', () => {
         position,
       );
       expect(Number(tag?.args[1])).toBeGreaterThan(at.xPx);
+    });
+
+    describe('selection', () => {
+      const position = { trueBearingDeg: 45, rangeNm: 30 };
+      const snapshot = makeSnapshot([makeTarget({ icaoHex: 'aaaaaa', position })]);
+
+      function ringStrokes(recording: RecordingContext): RecordedCall[] {
+        return recording
+          .callsTo('stroke')
+          .filter((call) => call.strokeStyle === COLORS.selected && call.globalAlpha === 1);
+      }
+
+      it("rings the selected aircraft's newest blip at full brightness", () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        const settings = { [TAGS_SETTING_ID]: TAGS_OFF };
+        renderAt(renderer, 0, { snapshot, settings });
+
+        const selected = renderAt(renderer, QUARTER_TURN_MS, {
+          snapshot,
+          settings,
+          selectedIcaoHex: 'aaaaaa',
+        });
+        const unselected = renderAt(renderer, QUARTER_TURN_MS + 16, { snapshot, settings });
+
+        const at = polarToScreen(
+          createViewport(WIDTH_PX, HEIGHT_PX, 60, DEFAULT_PX_PER_REM),
+          position,
+        );
+        const ring = selected
+          .callsTo('arc')
+          .find((call) => call.args[0] === at.xPx && call.args[1] === at.yPx);
+        expect(ring?.args[4]).toBe(FULL_CIRCLE_RAD);
+        expect(ringStrokes(selected)).toHaveLength(1);
+        expect(ringStrokes(unselected)).toHaveLength(0);
+        expect(blipArcs(unselected)).toHaveLength(1);
+        expect(unselected.callsTo('arc').filter((call) => call.args[0] === at.xPx)).toEqual([]);
+      });
+
+      it('lets a click on a tag pick its aircraft, but only while tags are showing', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        renderAt(renderer, 0, { snapshot });
+        const drawn = renderAt(renderer, QUARTER_TURN_MS, { snapshot });
+
+        const label = drawn.callsTo('fillText').find((call) => call.args[0] === 'AAAAAA');
+        const onTheTag = { xPx: Number(label?.args[1]) + 2, yPx: Number(label?.args[2]) - 2 };
+        expect(renderer.pickDataBlock(onTheTag)).toBe('aaaaaa');
+        expect(renderer.pickDataBlock({ xPx: 5, yPx: 5 })).toBeUndefined();
+
+        renderAt(renderer, QUARTER_TURN_MS + 16, {
+          snapshot,
+          settings: { [TAGS_SETTING_ID]: TAGS_OFF },
+        });
+        expect(renderer.pickDataBlock(onTheTag)).toBeUndefined();
+      });
+
+      it('rings nothing until the beam has painted the selected aircraft', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+
+        const beforeTheBeam = renderAt(renderer, 0, { snapshot, selectedIcaoHex: 'aaaaaa' });
+        const noSuchAircraft = renderAt(renderer, QUARTER_TURN_MS, {
+          snapshot,
+          selectedIcaoHex: 'ffffff',
+        });
+
+        const at = polarToScreen(
+          createViewport(WIDTH_PX, HEIGHT_PX, 60, DEFAULT_PX_PER_REM),
+          position,
+        );
+        for (const recording of [beforeTheBeam, noSuchAircraft]) {
+          expect(recording.callsTo('arc').filter((call) => call.args[0] === at.xPx)).toEqual([]);
+        }
+      });
     });
 
     describe('emergencies', () => {
@@ -420,6 +495,7 @@ describe('createAnalogRenderer', () => {
           videoMap: undefined,
           frameTimeMs: 0,
           settings: {},
+          selectedIcaoHex: undefined,
         };
 
         renderer.render(context, frame);

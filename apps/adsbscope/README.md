@@ -45,6 +45,8 @@ The three sources are the same ones `@squawk/adsb-feed` and [`adsbtop`](../adsbt
 
 Everything you can change while the scope is running has both an on-screen control and a key. The zoom buttons sit in the bottom-right corner. In the bottom-left is the view style selector, followed by a selector for each setting the current view style has. A selector shows all of its options side by side with the active one filled in - `Digital | Analog`, `Tags On | Off` - so it always shows both what is selected and what else can be; press an option to select it. The keys step to the next option instead.
 
+Under the selectors is a `Hide controls` button (`H`). It folds the view style and setting selectors away, leaving just a `Show controls` button and the zoom buttons, which makes room on a small screen; the keys all keep working while the selectors are hidden. On a screen narrower than 48rem the scope starts with them hidden.
+
 | Key              | Action                                            |
 | ---------------- | ------------------------------------------------- |
 | `+`, `=`, or `]` | Zoom in to the next smaller scope range           |
@@ -53,6 +55,9 @@ Everything you can change while the scope is running has both an on-screen contr
 | `V`              | Step the video map: basic, full, off              |
 | `T`              | Analog only: step the Tags setting (on, off)      |
 | `R`              | Analog only: step the Sweep setting (4.8 s, 12 s) |
+| `H`              | Hide or show the view style and setting controls  |
+| `.` and `,`      | Select the next or previous aircraft              |
+| `Esc`            | Clear the selection                               |
 
 The range steps are 5, 10, 20, 40, 60, 80, 100, 150, 200, and 250 nm, and each zoom button disables itself at the end of its travel. Keys held with Ctrl, Alt, or Cmd are left to the browser, so `Ctrl+R` still reloads the page.
 
@@ -106,6 +111,14 @@ How far the map reaches depends on the view style. The `digital` style fills the
 The `Map` selector, or `V`, chooses how much of this is drawn. `Basic`, the default, is airspace and airports only, which keeps the map well behind the traffic. `Full` adds the navaids and fixes, and `Off` draws no map. Each view style remembers its own choice.
 
 The bundled data covers the United States only, so a receiver elsewhere gets an empty map. It is also a snapshot: it is as current as the installed data packages, not a live feed of airspace changes.
+
+### Inspecting an aircraft
+
+Click or tap an aircraft - its symbol or return, or its data block or tag - to select it. It is ringed on the scope, and a panel in the bottom-right corner writes out what its data block abbreviates or has no room for: ICAO hex, registered model in full, squawk, altitude in feet, vertical rate, ground speed, track, bearing and range from the receiver, and how long ago it was last heard from. Only what the aircraft has actually reported gets a row.
+
+Click empty scope, press `Esc`, or use the panel's close button to clear the selection. `.` and `,` step forwards and backwards through every tracked aircraft in order of callsign, which is also the only way to select one that has no position and so is not on the scope. The selection is kept when you switch view styles, and the panel closes by itself when the aircraft stops being tracked.
+
+Only aircraft the view style draws can be clicked: the digital scope fills the window, so an aircraft beyond the outermost ring can be picked there, while the analog scope ends at it. In the analog style the ring sits on the aircraft's most recent return, which is where the aircraft was when the beam last crossed it.
 
 ### Emergencies
 
@@ -185,11 +198,12 @@ src/ui/
   styles/                   # theme.ts (theme types + CSS variable publishing), global.css (layout tokens)
   data/                     # Config loading and the snapshot stream hook
   notice.tsx                # Full-page message shown while the scope loads, or if it cannot
-  hud/                      # The heads-up display over the canvas: status readout, tab and emergency lists, controls, hotkeys
+  hud/                      # The heads-up display over the canvas: status readout, tab and emergency lists, inspect panel, controls, hotkeys
   scope/                    # Canvas host, projection, range steps, data-block formatting
   scope/furniture.ts        # Range rings, compass rose, receiver marker - shared by every view style
   scope/video-map-draw.ts   # The video map - shared by every view style
   scope/data-block-placement.ts  # Pure: which way each leader line runs, so data blocks stay readable
+  scope/selection.ts, extent.ts  # Pure: which aircraft a click picked, stepping the selection, how far a scope reaches
   modes/<mode>/             # One directory per view style: its renderer, theme, settings, and mode definition
   modes/mode.ts             # The ScopeModeDefinition contract, and declarative mode settings
   modes/registry.ts         # The view styles, keyed by id

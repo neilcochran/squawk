@@ -17,6 +17,8 @@ export interface ControlButtonProps {
    * option currently selected. Leave undefined for a plain action button.
    */
   pressed?: boolean;
+  /** For a button that shows and hides something: whether it is showing. Sets `aria-expanded`. */
+  expanded?: boolean;
   /** Tooltip, e.g. naming the hotkey that does the same thing. */
   hint?: string;
   /** The visible content. */
@@ -34,6 +36,7 @@ export function ControlButton({
   onPress,
   disabled = false,
   pressed,
+  expanded,
   hint,
   children,
 }: ControlButtonProps): ReactElement {
@@ -43,6 +46,7 @@ export function ControlButton({
       className={shape === 'square' ? styles.square : styles.text}
       aria-label={label}
       aria-pressed={pressed}
+      aria-expanded={expanded}
       title={hint}
       disabled={disabled}
       onClick={onPress}

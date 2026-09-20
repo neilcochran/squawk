@@ -12,7 +12,8 @@ import { defaultSettingValues } from '../modes/mode.js';
 import type { ScopeModeDefinition } from '../modes/mode.js';
 import { SCOPE_MODES, SCOPE_MODES_BY_ID } from '../modes/registry.js';
 
-import { ModeControls } from './mode-controls.js';
+import { HIDE_CONTROLS_LABEL, SHOW_CONTROLS_LABEL } from './controls-visibility.js';
+import { ModeControls, VIEW_STYLE_CAPTION } from './mode-controls.js';
 
 const ANALOG = SCOPE_MODES_BY_ID.analog;
 const DIGITAL = SCOPE_MODES_BY_ID.digital;
@@ -27,10 +28,13 @@ describe('ModeControls', () => {
         settingValues={{}}
         onSelectMode={vi.fn()}
         onSelectSetting={vi.fn()}
+        expanded
+        onToggleExpanded={vi.fn()}
       />,
     );
 
     const group = screen.getByRole('group', { name: 'View style' });
+    expect(group).toHaveTextContent(VIEW_STYLE_CAPTION);
     expect(within(group).getAllByRole('button')).toHaveLength(SCOPE_MODES.length);
     expect(screen.getByRole('button', { name: 'View style: Digital' })).toHaveAttribute(
       'aria-pressed',
@@ -50,6 +54,8 @@ describe('ModeControls', () => {
         settingValues={{}}
         onSelectMode={vi.fn()}
         onSelectSetting={vi.fn()}
+        expanded
+        onToggleExpanded={vi.fn()}
       />,
     );
 
@@ -64,6 +70,8 @@ describe('ModeControls', () => {
         settingValues={defaultSettingValues(ANALOG)}
         onSelectMode={vi.fn()}
         onSelectSetting={vi.fn()}
+        expanded
+        onToggleExpanded={vi.fn()}
       />,
     );
 
@@ -92,6 +100,8 @@ describe('ModeControls', () => {
         settingValues={{ ...defaultSettingValues(ANALOG), [TAGS_SETTING_ID]: TAGS_ON }}
         onSelectMode={vi.fn()}
         onSelectSetting={vi.fn()}
+        expanded
+        onToggleExpanded={vi.fn()}
       />,
     );
 
@@ -115,6 +125,8 @@ describe('ModeControls', () => {
         settingValues={defaultSettingValues(ANALOG)}
         onSelectMode={onSelectMode}
         onSelectSetting={onSelectSetting}
+        expanded
+        onToggleExpanded={vi.fn()}
       />,
     );
 
@@ -137,6 +149,8 @@ describe('ModeControls', () => {
         settingValues={defaultSettingValues(ANALOG)}
         onSelectMode={vi.fn()}
         onSelectSetting={vi.fn()}
+        expanded
+        onToggleExpanded={vi.fn()}
       />,
     );
 
@@ -148,5 +162,48 @@ describe('ModeControls', () => {
       'title',
       'T changes tags',
     );
+  });
+
+  describe('hiding and showing', () => {
+    it('offers to hide the selectors while they are showing, naming its key', () => {
+      const onToggleExpanded = vi.fn();
+      render(
+        <ModeControls
+          modes={SCOPE_MODES}
+          mode={ANALOG}
+          settingValues={defaultSettingValues(ANALOG)}
+          onSelectMode={vi.fn()}
+          onSelectSetting={vi.fn()}
+          expanded
+          onToggleExpanded={onToggleExpanded}
+        />,
+      );
+
+      const toggle = screen.getByRole('button', { name: HIDE_CONTROLS_LABEL });
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      expect(toggle).toHaveAttribute('title', 'H hides and shows the controls');
+      fireEvent.click(toggle);
+      expect(onToggleExpanded).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves only the button that shows them again once they are hidden', () => {
+      render(
+        <ModeControls
+          modes={SCOPE_MODES}
+          mode={ANALOG}
+          settingValues={defaultSettingValues(ANALOG)}
+          onSelectMode={vi.fn()}
+          onSelectSetting={vi.fn()}
+          expanded={false}
+          onToggleExpanded={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryAllByRole('group')).toHaveLength(0);
+      const buttons = screen.getAllByRole('button');
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0]).toHaveAccessibleName(SHOW_CONTROLS_LABEL);
+      expect(buttons[0]).toHaveAttribute('aria-expanded', 'false');
+    });
   });
 });

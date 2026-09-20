@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ScopeConfig } from '../shared/protocol.js';
 
+import { HIDE_CONTROLS_LABEL, SHOW_CONTROLS_LABEL } from './hud/controls-visibility.js';
 import { EMERGENCY_LIST_LABEL } from './hud/emergency-list.js';
+import { DESELECT_LABEL, INSPECT_PANEL_LABEL } from './hud/inspect-panel.js';
 import { LINK_STATUS_LABELS } from './hud/link-status.js';
 import { TAB_LIST_LABEL } from './hud/tab-list.js';
 import { SCOPE_MODES_BY_ID } from './modes/registry.js';
@@ -269,6 +271,116 @@ describe('ScopeView', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(LINK_STATUS_LABELS.live);
     expect(screen.getByRole('status')).toHaveTextContent('2 targets (1 plotted)');
+  });
+
+  describe('hiding and showing the controls', () => {
+    it('hides the selectors from the button or the H key, and shows them again', () => {
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+      expect(screen.getByRole('group', { name: 'View style' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: HIDE_CONTROLS_LABEL }));
+      expect(screen.queryByRole('group', { name: 'View style' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Zoom in' })).toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: 'h' });
+      expect(screen.getByRole('group', { name: 'View style' })).toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: 'h' });
+      expect(screen.getByRole('button', { name: SHOW_CONTROLS_LABEL })).toBeInTheDocument();
+    });
+
+    it('still takes the view style and setting keys while the selectors are hidden', () => {
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+      fireEvent.keyDown(window, { key: 'h' });
+
+      fireEvent.keyDown(window, { key: 'm' });
+      fireEvent.keyDown(window, { key: 'h' });
+
+      expectSelected('View style: Analog');
+    });
+
+    it('starts with the selectors hidden on a narrow screen', () => {
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(() => ({ matches: false })),
+      );
+
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+
+      expect(screen.queryByRole('group', { name: 'View style' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: SHOW_CONTROLS_LABEL })).toBeInTheDocument();
+    });
+  });
+
+  describe('selection', () => {
+    const snapshot = makeSnapshot([
+      makeTarget({ icaoHex: 'bbbbbb', callsign: 'DAL45' }),
+      makeTarget({ icaoHex: 'aaaaaa', callsign: 'AAL7', squawk: '1200' }),
+    ]);
+
+    function renderWithTraffic(): void {
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+      act(() => {
+        FakeEventSource.latest().emitOpen();
+        FakeEventSource.latest().emit('snapshot', JSON.stringify(snapshot));
+      });
+    }
+
+    function panelTitle(): string | undefined {
+      const panel = screen.queryByRole('region', { name: INSPECT_PANEL_LABEL });
+      return panel === null ? undefined : within(panel).getByRole('heading').textContent;
+    }
+
+    it('inspects nothing until an aircraft is selected', () => {
+      renderWithTraffic();
+
+      expect(panelTitle()).toBeUndefined();
+    });
+
+    it('steps through the aircraft with the selection keys, and clears with Escape', () => {
+      renderWithTraffic();
+
+      fireEvent.keyDown(window, { key: '.' });
+      expect(panelTitle()).toBe('AAL7');
+
+      fireEvent.keyDown(window, { key: '.' });
+      expect(panelTitle()).toBe('DAL45');
+
+      fireEvent.keyDown(window, { key: ',' });
+      expect(panelTitle()).toBe('AAL7');
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(panelTitle()).toBeUndefined();
+    });
+
+    it('clears the selection from the inspect panel', () => {
+      renderWithTraffic();
+      fireEvent.keyDown(window, { key: '.' });
+
+      fireEvent.click(screen.getByRole('button', { name: DESELECT_LABEL }));
+
+      expect(panelTitle()).toBeUndefined();
+    });
+
+    it('keeps the selection across a change of view style', () => {
+      renderWithTraffic();
+      fireEvent.keyDown(window, { key: '.' });
+
+      fireEvent.keyDown(window, { key: 'm' });
+
+      expect(panelTitle()).toBe('AAL7');
+    });
+
+    it('stops inspecting an aircraft that is no longer tracked', () => {
+      renderWithTraffic();
+      fireEvent.keyDown(window, { key: '.' });
+
+      act(() => {
+        FakeEventSource.latest().emit('snapshot', JSON.stringify(makeSnapshot()));
+      });
+
+      expect(panelTitle()).toBeUndefined();
+    });
   });
 
   it('raises an aircraft in an emergency in the emergency list', () => {

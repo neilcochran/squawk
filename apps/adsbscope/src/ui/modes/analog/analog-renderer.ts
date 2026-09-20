@@ -1,6 +1,10 @@
 import type { ScopeSnapshot, ScopeTarget } from '../../../shared/protocol.js';
 import { hexWithAlpha } from '../../scope/color.js';
-import { leaderBearingsOf, placeDataBlocks } from '../../scope/data-block-placement.js';
+import {
+  leaderBearingsOf,
+  pickPlacedDataBlock,
+  placeDataBlocks,
+} from '../../scope/data-block-placement.js';
 import type {
   DataBlockGeometry,
   DataBlockRequest,
@@ -9,6 +13,7 @@ import type {
 import { formatDataBlock } from '../../scope/data-block.js';
 import type { DataBlockLines } from '../../scope/data-block.js';
 import { isEmergencyFlashOn } from '../../scope/emergency.js';
+import type { ScopeExtent } from '../../scope/extent.js';
 import {
   drawCompassRose,
   drawRangeRings,
@@ -20,7 +25,7 @@ import {
 } from '../../scope/furniture.js';
 import type { FurnitureColors } from '../../scope/furniture.js';
 import { offsetByBearing, polarToScreen } from '../../scope/projection.js';
-import type { ScopeViewport } from '../../scope/projection.js';
+import type { ScopeViewport, ScreenPoint } from '../../scope/projection.js';
 import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
 import { drawVideoMap } from '../../scope/video-map-draw.js';
 import type { VideoMapColors } from '../../scope/video-map-draw.js';
@@ -40,6 +45,9 @@ export const AFTERGLOW_DEG = 45;
 
 /** Brightness of the afterglow right behind the beam, from which it fades to nothing. */
 export const AFTERGLOW_ALPHA = 0.3;
+
+/** How far the analog scope reaches: the range circle, the face of a round tube. */
+export const ANALOG_EXTENT: ScopeExtent = 'rangeCircle';
 
 /** Brightness of a data tag relative to the blip it labels, so tags stay secondary to the returns. */
 export const TAG_ALPHA = 0.6;
@@ -74,6 +82,8 @@ export const ANALOG_LAYOUT_REM = {
   tagClearance: 0.375,
   /** Height of one tag line. */
   tagLineHeight: 0.875,
+  /** Radius of the ring around the selected aircraft's newest blip. */
+  selectionRadius: 0.6875,
 } as const;
 
 /**
@@ -399,7 +409,7 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
       if (frame.videoMap !== undefined && detail !== 'off') {
         drawVideoMap(context, videoMapColors, viewport, frame.videoMap, {
           detail,
-          extent: 'rangeCircle',
+          extent: ANALOG_EXTENT,
         });
       }
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
@@ -411,6 +421,25 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
         const alpha = blipAlpha(frameTimeMs - blip.paintedAtMs, periodMs);
         drawBlip(context, palette.target, viewport, blip, alpha);
       }
+      const selectedBlip =
+        frame.selectedIcaoHex === undefined
+          ? undefined
+          : newestBlipsByHex(blips).get(frame.selectedIcaoHex);
+      if (selectedBlip !== undefined) {
+        const at = polarToScreen(viewport, selectedBlip.position);
+        context.globalAlpha = 1;
+        context.strokeStyle = palette.selected;
+        context.lineWidth = FURNITURE_LINE_WIDTH_PX;
+        context.beginPath();
+        context.arc(
+          at.xPx,
+          at.yPx,
+          ANALOG_LAYOUT_REM.selectionRadius * viewport.pxPerRem,
+          0,
+          FULL_CIRCLE_RAD,
+        );
+        context.stroke();
+      }
       if (snapshot !== undefined && areTagsVisible(frame.settings)) {
         drawTags(
           context,
@@ -421,6 +450,9 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
           frameTimeMs,
           periodMs,
         );
+      } else {
+        tagsPlacedFor = undefined;
+        tags = [];
       }
       context.globalAlpha = 1;
     },
@@ -430,6 +462,9 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
       blips = [];
       tagsPlacedFor = undefined;
       tags = [];
+    },
+    pickDataBlock(point: ScreenPoint): string | undefined {
+      return pickPlacedDataBlock(tags, point);
     },
   };
 }

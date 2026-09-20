@@ -6,9 +6,11 @@ import type { ScopeConfig, ScopeModeId, ScopeVideoMap } from '../shared/protocol
 import { useScopeStream } from './data/use-scope-stream.js';
 import { useVideoMap } from './data/use-video-map.js';
 import { fetchVideoMap } from './data/video-map.js';
+import { startsWithControlsShowing } from './hud/controls-visibility.js';
 import { EmergencyList } from './hud/emergency-list.js';
 import { resolveHotkey } from './hud/hotkeys.js';
 import type { KeyPress } from './hud/hotkeys.js';
+import { InspectPanel } from './hud/inspect-panel.js';
 import { ModeControls } from './hud/mode-controls.js';
 import { RangeControls } from './hud/range-controls.js';
 import { StatusBar } from './hud/status-bar.js';
@@ -20,6 +22,8 @@ import { nextScopeMode, SCOPE_MODES, SCOPE_MODES_BY_ID } from './modes/registry.
 import { stepRange } from './scope/range.js';
 import type { RangeDirection } from './scope/range.js';
 import { ScopeCanvas } from './scope/scope-canvas.js';
+import { findSelectedTarget, stepSelection } from './scope/selection.js';
+import type { SelectionDirection } from './scope/selection.js';
 import styles from './scope-view.module.css';
 import { applyTheme } from './styles/theme.js';
 
@@ -36,6 +40,12 @@ export interface ScopeViewProps {
  * they survive switching away and back. Typed as a complete record, so a new
  * mode id that is not given its defaults here fails to compile.
  */
+function initialControlsShowing(): boolean {
+  return startsWithControlsShowing(
+    typeof window.matchMedia === 'function' ? (query) => window.matchMedia(query) : undefined,
+  );
+}
+
 function initialSettingValues(): Record<ScopeModeId, ModeSettingValues> {
   return {
     digital: defaultSettingValues(SCOPE_MODES_BY_ID.digital),
@@ -56,6 +66,8 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
   const [modeId, setModeId] = useState<ScopeModeId>(config.mode);
   const [rangeNm, setRangeNm] = useState(config.rangeNm);
   const [settingValuesByMode, setSettingValuesByMode] = useState(initialSettingValues);
+  const [selectedIcaoHex, setSelectedIcaoHex] = useState<string | undefined>(undefined);
+  const [controlsShowing, setControlsShowing] = useState(initialControlsShowing);
   const stream = useScopeStream();
   const videoMap = useVideoMap(rangeNm, loadVideoMap);
 
@@ -95,6 +107,22 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
     [modeId],
   );
 
+  const { snapshot } = stream;
+  const handleStepSelection = useCallback(
+    (direction: SelectionDirection): void => {
+      setSelectedIcaoHex((current) => stepSelection(snapshot, current, direction));
+    },
+    [snapshot],
+  );
+
+  const handleDeselect = useCallback((): void => {
+    setSelectedIcaoHex(undefined);
+  }, []);
+
+  const handleToggleControls = useCallback((): void => {
+    setControlsShowing((current) => !current);
+  }, []);
+
   const handleKeyPress = useCallback(
     (press: KeyPress): void => {
       const action = resolveHotkey(press, mode);
@@ -108,11 +136,28 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
         case 'setting':
           handleStepSetting(action.setting);
           break;
+        case 'select':
+          handleStepSelection(action.direction);
+          break;
+        case 'deselect':
+          handleDeselect();
+          break;
+        case 'toggleControls':
+          handleToggleControls();
+          break;
         case undefined:
           break;
       }
     },
-    [mode, handleStepRange, handleNextMode, handleStepSetting],
+    [
+      mode,
+      handleStepRange,
+      handleNextMode,
+      handleStepSetting,
+      handleStepSelection,
+      handleDeselect,
+      handleToggleControls,
+    ],
   );
   useHotkeys(handleKeyPress);
 
@@ -124,6 +169,9 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
         snapshot={stream.snapshot}
         videoMap={videoMap}
         settings={settingValues}
+        selectedIcaoHex={selectedIcaoHex}
+        extent={mode.extent}
+        onSelect={setSelectedIcaoHex}
       />
       <StatusBar
         config={config}
@@ -133,12 +181,19 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
       />
       <TabList snapshot={stream.snapshot} />
       <EmergencyList snapshot={stream.snapshot} />
+      <InspectPanel
+        target={findSelectedTarget(snapshot, selectedIcaoHex)}
+        now={snapshot?.at ?? 0}
+        onDeselect={handleDeselect}
+      />
       <ModeControls
         modes={SCOPE_MODES}
         mode={mode}
         settingValues={settingValues}
         onSelectMode={setModeId}
         onSelectSetting={handleSelectSetting}
+        expanded={controlsShowing}
+        onToggleExpanded={handleToggleControls}
       />
       <RangeControls rangeNm={rangeNm} onStep={handleStepRange} />
     </div>

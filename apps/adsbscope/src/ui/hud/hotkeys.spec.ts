@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { TAGS_SETTING } from '../modes/analog/analog-settings.js';
 import { SCOPE_MODES_BY_ID } from '../modes/registry.js';
 
-import { MODE_HOTKEY, resolveHotkey } from './hotkeys.js';
+import {
+  CONTROLS_HOTKEY,
+  DESELECT_HOTKEY,
+  MODE_HOTKEY,
+  resolveHotkey,
+  SELECT_NEXT_HOTKEY,
+  SELECT_PREVIOUS_HOTKEY,
+} from './hotkeys.js';
 import type { KeyPress } from './hotkeys.js';
 
 const ANALOG = SCOPE_MODES_BY_ID.analog;
@@ -34,6 +41,25 @@ describe('resolveHotkey', () => {
       setting: TAGS_SETTING,
     });
     expect(resolveHotkey(press(TAGS_SETTING.hotkey), DIGITAL)).toBeUndefined();
+  });
+
+  it('resolves the key that hides and shows the controls, in either case', () => {
+    expect(resolveHotkey(press(CONTROLS_HOTKEY), DIGITAL)).toEqual({ type: 'toggleControls' });
+    expect(resolveHotkey(press(CONTROLS_HOTKEY.toUpperCase()), ANALOG)).toEqual({
+      type: 'toggleControls',
+    });
+  });
+
+  it('resolves the selection keys in any mode', () => {
+    expect(resolveHotkey(press(SELECT_NEXT_HOTKEY), DIGITAL)).toEqual({
+      type: 'select',
+      direction: 'next',
+    });
+    expect(resolveHotkey(press(SELECT_PREVIOUS_HOTKEY), ANALOG)).toEqual({
+      type: 'select',
+      direction: 'previous',
+    });
+    expect(resolveHotkey(press(DESELECT_HOTKEY), ANALOG)).toEqual({ type: 'deselect' });
   });
 
   it('ignores keys that mean nothing', () => {

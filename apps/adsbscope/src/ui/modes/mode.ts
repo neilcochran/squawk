@@ -1,5 +1,6 @@
 import type { ScopeModeId } from '../../shared/protocol.js';
 import { nextInCycle } from '../cycle.js';
+import type { ScopeExtent } from '../scope/extent.js';
 import type { ScopeRenderer } from '../scope/renderer.js';
 import type { ScopeTheme } from '../styles/theme.js';
 
@@ -47,6 +48,8 @@ export interface ScopeModeDefinition {
   label: string;
   /** The mode's colors and type, for both its renderer and the HTML UI around it. */
   theme: ScopeTheme;
+  /** How far the mode's scope reaches: what it draws, and so what can be picked from it. */
+  extent: ScopeExtent;
   /** What the user can adjust in this mode. Empty for a mode with nothing to adjust. */
   settings: readonly ModeSetting[];
   /** Creates a fresh renderer for this mode. Called once each time the mode is switched to. */

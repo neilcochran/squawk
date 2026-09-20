@@ -70,6 +70,28 @@ export interface PlacedDataBlock<T extends DataBlockRequest> {
 const DEG_TO_RAD = Math.PI / 180;
 
 /**
+ * Finds the aircraft whose data block covers a point, so that a click on a
+ * block selects the aircraft it describes. Blocks are kept apart, but where
+ * two do overlap the one drawn last - on top - wins.
+ *
+ * @param placed - The blocks as they were last placed.
+ * @param point - The point, in canvas CSS pixels.
+ * @returns The id of the block under the point, or undefined if there is none.
+ */
+export function pickPlacedDataBlock(
+  placed: readonly PlacedDataBlock<DataBlockRequest>[],
+  point: ScreenPoint,
+): string | undefined {
+  return placed.findLast(
+    ({ placement }) =>
+      point.xPx >= placement.rect.leftPx &&
+      point.xPx <= placement.rect.rightPx &&
+      point.yPx >= placement.rect.topPx &&
+      point.yPx <= placement.rect.bottomPx,
+  )?.request.id;
+}
+
+/**
  * Reads back the leader direction each block was given, to hand to the next
  * {@link placeDataBlocks} call as where the blocks were last time.
  *

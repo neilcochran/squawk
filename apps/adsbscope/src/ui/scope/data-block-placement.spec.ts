@@ -6,6 +6,7 @@ import {
   LEADER_BEARINGS_DEG,
   leaderBearingsOf,
   overlapAreaPx,
+  pickPlacedDataBlock,
   placeDataBlocks,
 } from './data-block-placement.js';
 import type { DataBlockGeometry, DataBlockRequest, ScreenRect } from './data-block-placement.js';
@@ -185,5 +186,51 @@ describe('placeDataBlocks', () => {
     };
 
     expect(bearingsById([request('a', 400, 10)], strip)).toEqual({ a: 90 });
+  });
+});
+
+describe('pickPlacedDataBlock', () => {
+  const placed = placeDataBlocks(
+    [request('a', 400, 300), request('b', 405, 300)],
+    GEOMETRY,
+    NO_HISTORY,
+  );
+  const rectOf = (id: string): ScreenRect => {
+    const entry = placed.find((candidate) => candidate.request.id === id);
+    if (entry === undefined) {
+      throw new Error(`no block was placed for ${id}`);
+    }
+    return entry.placement.rect;
+  };
+
+  it('picks the block under the point, edges included', () => {
+    const a = rectOf('a');
+    const b = rectOf('b');
+
+    expect(pickPlacedDataBlock(placed, { xPx: a.leftPx + 1, yPx: a.topPx + 1 })).toBe('a');
+    expect(pickPlacedDataBlock(placed, { xPx: a.rightPx, yPx: a.bottomPx })).toBe('a');
+    expect(pickPlacedDataBlock(placed, { xPx: b.leftPx, yPx: b.topPx })).toBe('b');
+  });
+
+  it('picks nothing from a point outside every block, on either axis', () => {
+    const a = rectOf('a');
+
+    expect(pickPlacedDataBlock(placed, { xPx: a.leftPx - 1, yPx: a.topPx + 1 })).toBeUndefined();
+    expect(pickPlacedDataBlock(placed, { xPx: a.rightPx + 1, yPx: a.topPx + 1 })).toBeUndefined();
+    expect(pickPlacedDataBlock(placed, { xPx: a.leftPx + 1, yPx: a.topPx - 1 })).toBeUndefined();
+    expect(pickPlacedDataBlock(placed, { xPx: 10, yPx: a.bottomPx + 200 })).toBeUndefined();
+    expect(pickPlacedDataBlock([], { xPx: 400, yPx: 300 })).toBeUndefined();
+  });
+
+  it('picks the block drawn last where two overlap', () => {
+    const stacked = [
+      { request: request('under', 0, 0), placement: placed[0]!.placement },
+      { request: request('over', 0, 0), placement: placed[0]!.placement },
+    ];
+    const rect = placed[0]!.placement.rect;
+
+    expect(pickPlacedDataBlock(stacked, { xPx: rect.leftPx + 1, yPx: rect.topPx + 1 })).toBe(
+      'over',
+    );
   });
 });

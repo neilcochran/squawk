@@ -1,6 +1,6 @@
 import type { ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
 
-import type { ScopeViewport } from './projection.js';
+import type { ScopeViewport, ScreenPoint } from './projection.js';
 
 /** Everything a renderer needs to paint one frame. */
 export interface ScopeFrame {
@@ -16,6 +16,8 @@ export interface ScopeFrame {
   frameTimeMs: number;
   /** The current value of each of the active mode's settings, keyed by setting id. */
   settings: Readonly<Record<string, string>>;
+  /** The ICAO hex of the selected aircraft, or undefined if none is selected. */
+  selectedIcaoHex: string | undefined;
 }
 
 /**
@@ -32,4 +34,12 @@ export interface ScopeRenderer {
   render(context: CanvasRenderingContext2D, frame: ScopeFrame): void;
   /** Discards any state carried between frames, as when the renderer is switched to or the canvas is resized. */
   reset(): void;
+  /**
+   * Finds the aircraft whose data block or tag, as last drawn, covers a point,
+   * so that a click on one selects the aircraft it describes.
+   *
+   * @param point - The point, in canvas CSS pixels.
+   * @returns The ICAO hex of the aircraft, or undefined if no block or tag is under the point.
+   */
+  pickDataBlock(point: ScreenPoint): string | undefined;
 }

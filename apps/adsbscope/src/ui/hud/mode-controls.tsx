@@ -4,9 +4,14 @@ import type { ScopeModeId } from '../../shared/protocol.js';
 import type { ModeSetting, ModeSettingValues, ScopeModeDefinition } from '../modes/mode.js';
 import { selectedChoice } from '../modes/mode.js';
 
+import { ControlButton } from './control-button.js';
 import styles from './control-group.module.css';
-import { MODE_HOTKEY } from './hotkeys.js';
+import { HIDE_CONTROLS_LABEL, SHOW_CONTROLS_LABEL } from './controls-visibility.js';
+import { CONTROLS_HOTKEY, MODE_HOTKEY } from './hotkeys.js';
 import { SegmentedControl } from './segmented-control.js';
+
+/** Visible caption of the view style selector. Short, so that it fits the caption column every selector shares. */
+export const VIEW_STYLE_CAPTION = 'View';
 
 /** Props for {@link ModeControls}. */
 export interface ModeControlsProps {
@@ -20,6 +25,10 @@ export interface ModeControlsProps {
   onSelectMode: (modeId: ScopeModeId) => void;
   /** Called with a setting and the value chosen for it. */
   onSelectSetting: (setting: ModeSetting, value: string) => void;
+  /** Whether the selectors are showing. Hidden, only the button that shows them again is left. */
+  expanded: boolean;
+  /** Called when the user asks to hide or show the selectors. */
+  onToggleExpanded: () => void;
 }
 
 /**
@@ -35,11 +44,29 @@ export function ModeControls({
   settingValues,
   onSelectMode,
   onSelectSetting,
+  expanded,
+  onToggleExpanded,
 }: ModeControlsProps): ReactElement {
+  const toggleLabel = expanded ? HIDE_CONTROLS_LABEL : SHOW_CONTROLS_LABEL;
+  const toggle = (
+    <ControlButton
+      label={toggleLabel}
+      shape="text"
+      expanded={expanded}
+      hint={`${CONTROLS_HOTKEY.toUpperCase()} hides and shows the controls`}
+      onPress={onToggleExpanded}
+    >
+      {toggleLabel}
+    </ControlButton>
+  );
+  if (!expanded) {
+    return <div className={styles.bottomLeft}>{toggle}</div>;
+  }
   return (
     <div className={styles.bottomLeft}>
       <SegmentedControl
         label="View style"
+        caption={VIEW_STYLE_CAPTION}
         options={modes.map((candidate) => ({ value: candidate.id, label: candidate.label }))}
         selectedValue={mode.id}
         hint={`${MODE_HOTKEY.toUpperCase()} switches view style`}
@@ -56,6 +83,7 @@ export function ModeControls({
           onSelect={(value) => onSelectSetting(setting, value)}
         />
       ))}
+      <div className={styles.underOptions}>{toggle}</div>
     </div>
   );
 }

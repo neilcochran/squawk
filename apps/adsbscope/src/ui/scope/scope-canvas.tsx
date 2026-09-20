@@ -1,12 +1,15 @@
-import type { ReactElement } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent, ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
 
+import type { ScopeExtent } from './extent.js';
 import { fitCanvas } from './fit-canvas.js';
 import { createViewport } from './projection.js';
+import type { ScopeViewport } from './projection.js';
 import type { ScopeRenderer } from './renderer.js';
 import styles from './scope-canvas.module.css';
+import { pickTarget } from './selection.js';
 import { readPxPerRem } from './units.js';
 
 /** Props for {@link ScopeCanvas}. */
@@ -21,6 +24,12 @@ export interface ScopeCanvasProps {
   videoMap: ScopeVideoMap | undefined;
   /** The current value of each of the active mode's settings, handed to the renderer with every frame. */
   settings: Readonly<Record<string, string>>;
+  /** The ICAO hex of the selected aircraft, or undefined if none is selected. */
+  selectedIcaoHex: string | undefined;
+  /** How far the active mode's scope reaches: only aircraft within it can be picked. */
+  extent: ScopeExtent;
+  /** Called when the scope is clicked or tapped: with the ICAO hex of the aircraft whose symbol, data block, or tag was picked, or undefined for empty scope. */
+  onSelect: (icaoHex: string | undefined) => void;
 }
 
 /**
@@ -40,13 +49,17 @@ export function ScopeCanvas({
   snapshot,
   videoMap,
   settings,
+  selectedIcaoHex,
+  extent,
+  onSelect,
 }: ScopeCanvasProps): ReactElement {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
-  const latest = useRef({ renderer, rangeNm, snapshot, videoMap, settings });
+  const latest = useRef({ renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex });
+  const paintedViewport = useRef<ScopeViewport | undefined>(undefined);
 
   useEffect(() => {
-    latest.current = { renderer, rangeNm, snapshot, videoMap, settings };
-  }, [renderer, rangeNm, snapshot, videoMap, settings]);
+    latest.current = { renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex };
+  }, [renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex]);
 
   useEffect(() => {
     renderer.reset();
@@ -72,13 +85,16 @@ export function ScopeCanvas({
     let frameHandle = 0;
     function paint(frameTimeMs: number): void {
       const current = latest.current;
+      const viewport = createViewport(size.widthPx, size.heightPx, current.rangeNm, pxPerRem);
+      paintedViewport.current = viewport;
       current.renderer.render(scopeContext, {
-        viewport: createViewport(size.widthPx, size.heightPx, current.rangeNm, pxPerRem),
+        viewport,
         rangeNm: current.rangeNm,
         snapshot: current.snapshot,
         videoMap: current.videoMap,
         frameTimeMs,
         settings: current.settings,
+        selectedIcaoHex: current.selectedIcaoHex,
       });
       frameHandle = window.requestAnimationFrame(paint);
     }
@@ -90,5 +106,29 @@ export function ScopeCanvas({
     };
   }, [canvas]);
 
-  return <canvas ref={setCanvas} className={styles.scopeCanvas} aria-label="Radar scope" />;
+  const handleClick = useCallback(
+    (event: MouseEvent<HTMLCanvasElement>): void => {
+      const viewport = paintedViewport.current;
+      if (viewport === undefined) {
+        return;
+      }
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const point = { xPx: event.clientX - bounds.left, yPx: event.clientY - bounds.top };
+      const current = latest.current;
+      onSelect(
+        pickTarget(viewport, current.snapshot, point, extent) ??
+          current.renderer.pickDataBlock(point),
+      );
+    },
+    [extent, onSelect],
+  );
+
+  return (
+    <canvas
+      ref={setCanvas}
+      className={styles.scopeCanvas}
+      aria-label="Radar scope"
+      onClick={handleClick}
+    />
+  );
 }
