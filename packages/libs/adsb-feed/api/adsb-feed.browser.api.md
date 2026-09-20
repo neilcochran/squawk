@@ -5,6 +5,7 @@
 ```ts
 
 import type { Aircraft } from '@squawk/types';
+import type { EmergencyState } from '@squawk/types';
 import type { Position } from '@squawk/types';
 
 // @public
@@ -45,6 +46,18 @@ export interface ConnectionStateEventDetail {
 
 // @public
 export function createJsonAircraftFeed(options: JsonFeedOptions): AircraftFeed;
+
+// @public
+export const EMERGENCY_SQUAWKS: ReadonlySet<string>;
+
+// @public
+export function isDeclaredEmergencyState(emergencyState: EmergencyState | undefined): boolean;
+
+// @public
+export function isEmergencyAircraft(aircraft: Aircraft): boolean;
+
+// @public
+export function isEmergencySquawk(squawk: string | undefined): boolean;
 
 // @public
 export interface JsonFeedOptions extends AircraftFeedOptions {
