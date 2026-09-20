@@ -1,0 +1,28 @@
+/* A stack of controls pinned to a corner of the scope, where the circular display leaves room. */
+.group {
+  position: absolute;
+  bottom: var(--scope-inset-block);
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-sm);
+}
+
+.bottomRight {
+  composes: group;
+  right: var(--scope-inset-inline);
+  align-items: flex-end;
+}
+
+.bottomLeft {
+  composes: group;
+  left: var(--scope-inset-inline);
+  align-items: flex-start;
+}
+
+/*
+ * Lines a control up with the options of the selectors above it, rather than
+ * with their captions: the caption column, its margin, and the gap after it.
+ */
+.underOptions {
+  margin-left: calc(var(--scope-caption-width) + var(--scope-space-sm) + var(--scope-space-xs));
+}

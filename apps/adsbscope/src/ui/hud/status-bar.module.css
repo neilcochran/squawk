@@ -1,0 +1,22 @@
+.statusBar {
+  position: absolute;
+  top: var(--scope-inset-block);
+  left: var(--scope-inset-inline);
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-xs);
+  pointer-events: none;
+}
+
+.name {
+  color: var(--scope-ui-emphasis);
+  font-weight: bold;
+}
+
+.statusOk {
+  color: var(--scope-ui-ok);
+}
+
+.statusAlert {
+  color: var(--scope-ui-alert);
+}

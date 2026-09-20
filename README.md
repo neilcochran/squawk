@@ -116,10 +116,11 @@ Each query library is listed with its companion data package. The bundled snapsh
 
 ## Apps
 
-| App                                                                               | Description                                                                                                                     |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| [Atlas](https://github.com/neilcochran/squawk/tree/main/apps/atlas)               | The official Squawk viewer - a chart-first web app for browsing aeronautical data. Not published to npm; run it from this repo. |
-| [`@squawk/adsbtop`](https://github.com/neilcochran/squawk/tree/main/apps/adsbtop) | Terminal dashboard for live ADS-B aircraft tracking, built on `@squawk/adsb-feed`. Published to npm.                            |
+| App                                                                                   | Description                                                                                                                                                    |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Atlas](https://github.com/neilcochran/squawk/tree/main/apps/atlas)                   | The official Squawk viewer - a chart-first web app for browsing aeronautical data. Not published to npm; run it from this repo.                                |
+| [`@squawk/adsbtop`](https://github.com/neilcochran/squawk/tree/main/apps/adsbtop)     | Terminal dashboard for live ADS-B aircraft tracking, built on `@squawk/adsb-feed`. Published to npm.                                                           |
+| [`@squawk/adsbscope`](https://github.com/neilcochran/squawk/tree/main/apps/adsbscope) | ATC-style radar scope for live ADS-B traffic, served to your browser by a small CLI built on `@squawk/adsb-feed`. Not published to npm; run it from this repo. |
 
 ```bash
 npm install -g @squawk/adsbtop

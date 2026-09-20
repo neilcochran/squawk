@@ -1,0 +1,48 @@
+/*
+ * Global tokens and page-level rules. Component styles live beside their
+ * components as CSS Modules.
+ *
+ * Colors and type come from the active theme (styles/theme.ts), which
+ * publishes them as the --scope-ui-* and --scope-font-* custom
+ * properties. The stylesheets only define layout tokens, in rem so the UI
+ * follows the user's font-size setting, and contain no literal colors or font
+ * names - theme.spec.ts enforces both directions of that contract.
+ */
+:root {
+  color-scheme: dark;
+
+  --scope-space-xs: 0.125rem;
+  --scope-space-sm: 0.5rem;
+  --scope-inset-block: 0.5rem;
+  --scope-inset-inline: 0.625rem;
+  --scope-radius: 0.25rem;
+  --scope-border-width: 0.0625rem;
+  --scope-focus-ring-width: 0.125rem;
+  --scope-touch-target: 2.75rem;
+  --scope-control-size: 1.75rem;
+  --scope-control-font-size: 1rem;
+  --scope-caption-width: 2.75rem;
+  --scope-emergency-list-top: 7rem;
+  --scope-disabled-opacity: 0.4;
+  --scope-label-opacity: 0.7;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* The dynamic viewport height keeps the scope clear of a mobile browser's collapsing toolbars. */
+#root {
+  height: 100dvh;
+}
+
+body {
+  background: var(--scope-ui-background);
+  color: var(--scope-ui-text);
+  font-family: var(--scope-font-family);
+  font-size: var(--scope-font-size);
+  overflow: hidden;
+}

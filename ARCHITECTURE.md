@@ -41,7 +41,7 @@ Six guiding principles shape every decision in this repo:
 
 Three top-level buckets:
 
-- [`apps/`](apps/) - applications built on the libraries ([`apps/atlas/`](apps/atlas/), [`apps/adsbtop/`](apps/adsbtop/)); each is independently private or published to npm.
+- [`apps/`](apps/) - applications built on the libraries ([`apps/atlas/`](apps/atlas/), [`apps/adsbtop/`](apps/adsbtop/), [`apps/adsbscope/`](apps/adsbscope/)); each is independently private or published to npm.
 - [`packages/libs/`](packages/libs/) - the published `@squawk/*` libraries. See the [README](README.md) for the full list.
 - [`tools/`](tools/) - private workspaces that produce the FAA-data snapshots shipped inside the `*-data` libraries.
 
@@ -194,7 +194,7 @@ Four properties of the gate set:
 
 - **The `ci` job is the required check, not the three gate jobs.** It runs with `if: always()` and compares each upstream result to `success` explicitly, because a job that is skipped when one of its `needs` fails would otherwise satisfy a required status check. Each gate job installs and builds independently; the duplicated build costs runner minutes but roughly halves wall time. Lint, build, pack, and API tasks run at `TURBO_CONCURRENCY=100%`, while `test:coverage` keeps the 50% default from [turbo.json](turbo.json) so turbo does not oversubscribe vitest's own worker pool.
 - **Coverage is layered intentionally.** Vitest's `perFile: true` enforces a per-file floor; the aggregate gate is a thin post-coverage script because Vitest can't express both in one threshold block.
-- **CLI-only packages run `publint` without arethetypeswrong.** [`apps/adsbtop/`](apps/adsbtop/) ships a `bin` and no `main` / `types` / `exports`, so there is nothing for a consumer to import and attw reports every resolution as failed. publint still applies and is the part that matters for a binary - it validates the tarball and that the `bin` target exists. A package that gains an importable entrypoint should pick up the full `publint && attw` line.
+- **CLI-only packages run `publint` without arethetypeswrong.** [`apps/adsbtop/`](apps/adsbtop/) and [`apps/adsbscope/`](apps/adsbscope/) each ship a `bin` and no `main` / `types` / `exports`, so there is nothing for a consumer to import and attw reports every resolution as failed. publint still applies and is the part that matters for a binary - it validates the tarball and that the `bin` target exists. A package that gains an importable entrypoint should pick up the full `publint && attw` line.
 - **Knip and ESLint cover different axes.** Knip handles package-level dead deps and orphaned files; ESLint handles source-level patterns. Source-level dead-export detection isn't part of the gate set.
 
 CodeQL runs as a separate workflow; it's a required check on `main`.

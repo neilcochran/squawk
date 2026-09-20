@@ -1,0 +1,8 @@
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--scope-inset-block) var(--scope-inset-inline);
+  text-align: center;
+}
