@@ -10,7 +10,7 @@ import type { AircraftFeed } from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
 import { MAX_RANGE_NM } from '../shared/protocol.js';
-import type { ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
+import type { ScopeAircraftDetails, ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
 
 import { createScopeServer, parseVideoMapRange, STREAM_RETRY_MS } from './http-server.js';
 import type { ScopeServer } from './http-server.js';
@@ -35,6 +35,17 @@ let aircraft: Aircraft[] = [];
 const getVideoMap = vi.fn<(rangeNm: number) => Promise<ScopeVideoMap>>();
 const getAircraftModel = (icaoHex: string): string | undefined =>
   icaoHex === 'a1b2c3' ? 'PA-28-181' : undefined;
+const DETAILS: ScopeAircraftDetails = {
+  icaoHex: 'A1B2C3',
+  registration: 'N409CC',
+  make: 'PIPER AIRCRAFT INC',
+  model: 'PA-28-181',
+  operator: 'PAPPY AIR LLC',
+  yearManufactured: 2023,
+};
+const getAircraftDetails = vi.fn((icaoHex: string): ScopeAircraftDetails | undefined =>
+  icaoHex.toLowerCase() === 'a1b2c3' ? DETAILS : undefined,
+);
 
 function makeFeed(): AircraftFeed {
   return Object.assign(new EventTarget(), {
@@ -52,6 +63,7 @@ async function startServer(snapshotIntervalMs = 1000): Promise<number> {
     feed: makeFeed(),
     config: CONFIG,
     getAircraftModel,
+    getAircraftDetails,
     getVideoMap,
     publicDir,
     allowedHostnames: ['localhost'],
@@ -273,6 +285,53 @@ describe('createScopeServer', () => {
     expect((await send(port, '/api/config', { host: `localhost:${port}` })).status).toBe(200);
   });
 
+  describe('aircraft details', () => {
+    it('serves what the registry records about an aircraft, in either letter case', async () => {
+      const port = await startServer();
+
+      const lower = await send(port, '/api/aircraft/a1b2c3');
+      const upper = await send(port, '/api/aircraft/A1B2C3');
+
+      expect(lower.status).toBe(200);
+      expect(lower.headers['content-type']).toBe('application/json; charset=utf-8');
+      expect(lower.headers['cache-control']).toBe('no-cache');
+      expect(JSON.parse(lower.body)).toEqual(DETAILS);
+      expect(JSON.parse(upper.body)).toEqual(DETAILS);
+    });
+
+    it('answers HEAD without a body', async () => {
+      const port = await startServer();
+
+      const response = await send(port, '/api/aircraft/a1b2c3', { method: 'HEAD' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toBe('');
+    });
+
+    it('answers 404 for an aircraft the registry does not know', async () => {
+      const port = await startServer();
+
+      expect((await send(port, '/api/aircraft/c0ffee')).status).toBe(404);
+    });
+
+    it('rejects anything that is not a six-digit ICAO hex, without looking it up', async () => {
+      const port = await startServer();
+      getAircraftDetails.mockClear();
+
+      for (const path of [
+        '/api/aircraft/',
+        '/api/aircraft/a1b2c',
+        '/api/aircraft/a1b2c3d',
+        '/api/aircraft/zzzzzz',
+        '/api/aircraft/a1b2c3/extra',
+        '/api/aircraft/..%2Fconfig',
+      ]) {
+        expect((await send(port, path)).status).toBe(400);
+      }
+      expect(getAircraftDetails).not.toHaveBeenCalled();
+    });
+  });
+
   it('streams a snapshot immediately on connect, then on every interval', async () => {
     aircraft = [{ icaoHex: 'a1b2c3', callsign: 'UAL123', lastSeenAt: 999_000 }];
     const port = await startServer(20);
@@ -342,6 +401,7 @@ describe('createScopeServer', () => {
       feed: makeFeed(),
       config: CONFIG,
       getAircraftModel,
+      getAircraftDetails,
       getVideoMap,
       publicDir,
       allowedHostnames: [],

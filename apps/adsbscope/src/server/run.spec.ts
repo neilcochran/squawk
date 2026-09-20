@@ -20,7 +20,11 @@ interface Harness {
   server: { listen: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
   serverOptions: ScopeServerOptions[];
   videoMaps: { preload: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn> };
-  aircraftModels: { load: ReturnType<typeof vi.fn>; lookup: ReturnType<typeof vi.fn> };
+  aircraftModels: {
+    load: ReturnType<typeof vi.fn>;
+    lookup: ReturnType<typeof vi.fn>;
+    details: ReturnType<typeof vi.fn>;
+  };
   out: string[];
   err: string[];
   io: { stdout(text: string): void; stderr(text: string): void };
@@ -47,6 +51,9 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
   const aircraftModels = {
     load: vi.fn(() => Promise.resolve()),
     lookup: vi.fn((icaoHex: string) => (icaoHex === 'a1b2c3' ? 'PA-28-181' : undefined)),
+    details: vi.fn((icaoHex: string) =>
+      icaoHex === 'a1b2c3' ? { icaoHex: 'A1B2C3', registration: 'N409CC' } : undefined,
+    ),
   };
   const out: string[] = [];
   const err: string[] = [];
@@ -238,6 +245,11 @@ describe('run', () => {
     expect(harness.aircraftModels.load).toHaveBeenCalledTimes(1);
     expect(harness.serverOptions[0]?.getAircraftModel('a1b2c3')).toBe('PA-28-181');
     expect(harness.aircraftModels.lookup).toHaveBeenCalledWith('a1b2c3');
+    expect(harness.serverOptions[0]?.getAircraftDetails('a1b2c3')).toEqual({
+      icaoHex: 'A1B2C3',
+      registration: 'N409CC',
+    });
+    expect(harness.serverOptions[0]?.getAircraftDetails('c0ffee')).toBeUndefined();
   });
 
   it('does not load the aircraft registry with --no-registry', async () => {

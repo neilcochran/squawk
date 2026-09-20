@@ -1,8 +1,16 @@
 import type { ReactElement } from 'react';
-import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
-import type { ScopeConfig, ScopeModeId, ScopeVideoMap } from '../shared/protocol.js';
+import type {
+  ScopeAircraftDetails,
+  ScopeConfig,
+  ScopeModeId,
+  ScopeVideoMap,
+} from '../shared/protocol.js';
 
+import { fetchAircraftDetails } from './data/aircraft-details.js';
+import { formatUrlSearch, parseUrlState } from './data/url-state.js';
+import { useAircraftDetails } from './data/use-aircraft-details.js';
 import { useScopeStream } from './data/use-scope-stream.js';
 import { useVideoMap } from './data/use-video-map.js';
 import { fetchVideoMap } from './data/video-map.js';
@@ -33,6 +41,8 @@ export interface ScopeViewProps {
   config: ScopeConfig;
   /** Loads the video map for a range. Injectable for tests; defaults to fetching it from the scope server. Must be stable across renders. */
   loadVideoMap?: (rangeNm: number) => Promise<ScopeVideoMap | undefined>;
+  /** Loads what the registry records about an aircraft. Injectable for tests; defaults to fetching it from the scope server. Must be stable across renders. */
+  loadAircraftDetails?: (icaoHex: string) => Promise<ScopeAircraftDetails | undefined>;
 }
 
 /**
@@ -57,16 +67,27 @@ function initialSettingValues(): Record<ScopeModeId, ModeSettingValues> {
  * The working scope: the canvas in the active view style, with the status
  * readout and the on-screen controls over it. Owns everything the user can
  * change while running - the view style, that style's settings, and the range
- * - along with the live snapshot stream and the video map for the current
- * range. Every change is reachable both from
+ * - along with the selection, the live snapshot stream, and the video map for
+ * the current range. The view style, range, and selection are mirrored in the
+ * URL, so a view can be bookmarked, and are read back from it on load.
+ *
+ * The selection always names an aircraft that is being tracked: one that a
+ * snapshot no longer contains - or that a bookmarked URL named long ago - is
+ * dropped, and with it the URL parameter, rather than left claiming a
+ * selection that is not there. Every change is reachable both from
  * an on-screen control, which selects an option directly, and from a hotkey,
  * which steps to the next one.
  */
-export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewProps): ReactElement {
-  const [modeId, setModeId] = useState<ScopeModeId>(config.mode);
-  const [rangeNm, setRangeNm] = useState(config.rangeNm);
+export function ScopeView({
+  config,
+  loadVideoMap = fetchVideoMap,
+  loadAircraftDetails = fetchAircraftDetails,
+}: ScopeViewProps): ReactElement {
+  const [urlState] = useState(() => parseUrlState(window.location.search));
+  const [modeId, setModeId] = useState<ScopeModeId>(urlState.modeId ?? config.mode);
+  const [rangeNm, setRangeNm] = useState(urlState.rangeNm ?? config.rangeNm);
   const [settingValuesByMode, setSettingValuesByMode] = useState(initialSettingValues);
-  const [selectedIcaoHex, setSelectedIcaoHex] = useState<string | undefined>(undefined);
+  const [selectedIcaoHex, setSelectedIcaoHex] = useState(urlState.selectedIcaoHex);
   const [controlsShowing, setControlsShowing] = useState(initialControlsShowing);
   const stream = useScopeStream();
   const videoMap = useVideoMap(rangeNm, loadVideoMap);
@@ -108,6 +129,22 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
   );
 
   const { snapshot } = stream;
+  const selectedTarget = findSelectedTarget(snapshot, selectedIcaoHex);
+  // Adjusting state while rendering, rather than in an effect, drops a selection that a snapshot
+  // has just invalidated before anything is drawn or written to the URL with it.
+  if (snapshot !== undefined && selectedIcaoHex !== undefined && selectedTarget === undefined) {
+    setSelectedIcaoHex(undefined);
+  }
+  const aircraftDetails = useAircraftDetails(selectedIcaoHex, loadAircraftDetails);
+
+  useEffect(() => {
+    const search = formatUrlSearch(
+      { modeId, rangeNm, selectedIcaoHex },
+      { modeId: config.mode, rangeNm: config.rangeNm },
+    );
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${search}`);
+  }, [modeId, rangeNm, selectedIcaoHex, config.mode, config.rangeNm]);
+
   const handleStepSelection = useCallback(
     (direction: SelectionDirection): void => {
       setSelectedIcaoHex((current) => stepSelection(snapshot, current, direction));
@@ -182,8 +219,9 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
       <TabList snapshot={stream.snapshot} />
       <EmergencyList snapshot={stream.snapshot} />
       <InspectPanel
-        target={findSelectedTarget(snapshot, selectedIcaoHex)}
+        target={selectedTarget}
         now={snapshot?.at ?? 0}
+        details={aircraftDetails}
         onDeselect={handleDeselect}
       />
       <ModeControls

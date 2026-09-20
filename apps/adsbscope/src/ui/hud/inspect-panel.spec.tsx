@@ -11,7 +11,7 @@ const NOW = 1_000_000;
 describe('InspectPanel', () => {
   it('shows nothing while no aircraft is selected', () => {
     const { container } = render(
-      <InspectPanel target={undefined} now={NOW} onDeselect={vi.fn()} />,
+      <InspectPanel target={undefined} now={NOW} details={undefined} onDeselect={vi.fn()} />,
     );
 
     expect(container).toBeEmptyDOMElement();
@@ -26,7 +26,7 @@ describe('InspectPanel', () => {
       lastSeenAt: NOW - 2000,
     });
 
-    render(<InspectPanel target={target} now={NOW} onDeselect={vi.fn()} />);
+    render(<InspectPanel target={target} now={NOW} details={undefined} onDeselect={vi.fn()} />);
 
     const panel = screen.getByRole('region', { name: INSPECT_PANEL_LABEL });
     expect(within(panel).getByRole('heading', { name: 'UAL123 EM' })).toBeInTheDocument();
@@ -36,9 +36,20 @@ describe('InspectPanel', () => {
     expect(within(panel).getByText('2 s ago')).toBeInTheDocument();
   });
 
+  it('adds the registry details once they have loaded', () => {
+    const details = { icaoHex: 'A1B2C3', registration: 'N409CC', operator: 'PAPPY AIR LLC' };
+
+    render(<InspectPanel target={makeTarget()} now={NOW} details={details} onDeselect={vi.fn()} />);
+
+    expect(screen.getByText('N409CC')).toBeInTheDocument();
+    expect(screen.getByText('PAPPY AIR LLC')).toBeInTheDocument();
+  });
+
   it('asks to clear the selection from its deselect button, which names its key', () => {
     const onDeselect = vi.fn();
-    render(<InspectPanel target={makeTarget()} now={NOW} onDeselect={onDeselect} />);
+    render(
+      <InspectPanel target={makeTarget()} now={NOW} details={undefined} onDeselect={onDeselect} />,
+    );
 
     const button = screen.getByRole('button', { name: DESELECT_LABEL });
     fireEvent.click(button);

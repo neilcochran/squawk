@@ -129,6 +129,7 @@ async function start(
   const server = dependencies.createScopeServer({
     feed,
     getAircraftModel: (icaoHex) => aircraftModels.lookup(icaoHex),
+    getAircraftDetails: (icaoHex) => aircraftModels.details(icaoHex),
     getVideoMap: (rangeNm) => videoMaps.get(rangeNm),
     config: {
       receiver: cli.location,

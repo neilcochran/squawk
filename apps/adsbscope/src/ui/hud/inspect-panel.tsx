@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 
-import type { ScopeTarget } from '../../shared/protocol.js';
+import type { ScopeAircraftDetails, ScopeTarget } from '../../shared/protocol.js';
 
 import { ControlButton } from './control-button.js';
 import { DESELECT_HOTKEY } from './hotkeys.js';
@@ -19,6 +19,8 @@ export interface InspectPanelProps {
   target: ScopeTarget | undefined;
   /** Unix epoch ms of the snapshot the aircraft came from. */
   now: number;
+  /** What the registry records about the aircraft, or undefined while it loads or if there is nothing. */
+  details: ScopeAircraftDetails | undefined;
   /** Called when the user asks to clear the selection. */
   onDeselect: () => void;
 }
@@ -28,11 +30,16 @@ export interface InspectPanelProps {
  * out in full. It is shown by every view style, only while an aircraft is
  * selected and still being tracked.
  */
-export function InspectPanel({ target, now, onDeselect }: InspectPanelProps): ReactElement | null {
+export function InspectPanel({
+  target,
+  now,
+  details,
+  onDeselect,
+}: InspectPanelProps): ReactElement | null {
   if (target === undefined) {
     return null;
   }
-  const { title, rows } = buildInspectContent(target, now);
+  const { title, rows } = buildInspectContent(target, now, details);
   return (
     <section className={styles.inspectPanel} aria-label={INSPECT_PANEL_LABEL}>
       <div className={styles.header}>

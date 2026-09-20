@@ -31,6 +31,7 @@ describe('buildInspectContent', () => {
         lastSeenAt: NOW - 3200,
       }),
       NOW,
+      undefined,
     );
 
     expect(content.title).toBe('N409CC');
@@ -48,7 +49,11 @@ describe('buildInspectContent', () => {
   });
 
   it('keeps its shape for an aircraft that has sent almost nothing', () => {
-    const content = buildInspectContent(makeTarget({ icaoHex: 'c0ffee', lastSeenAt: NOW }), NOW);
+    const content = buildInspectContent(
+      makeTarget({ icaoHex: 'c0ffee', lastSeenAt: NOW }),
+      NOW,
+      undefined,
+    );
 
     expect(content.title).toBe('C0FFEE');
     expect(content.rows).toEqual([
@@ -61,7 +66,8 @@ describe('buildInspectContent', () => {
 
   it('carries the emergency code in the title', () => {
     expect(
-      buildInspectContent(makeTarget({ callsign: 'UAL123', emergency: 'general' }), NOW).title,
+      buildInspectContent(makeTarget({ callsign: 'UAL123', emergency: 'general' }), NOW, undefined)
+        .title,
     ).toBe('UAL123 EM');
   });
 
@@ -69,6 +75,7 @@ describe('buildInspectContent', () => {
     const content = buildInspectContent(
       makeTarget({ onGround: true, altitudeFt: 0, verticalRateFtPerMin: 0 }),
       NOW,
+      undefined,
     );
 
     expect(valueOf(content, 'Altitude')).toBe('on the ground');
@@ -77,7 +84,10 @@ describe('buildInspectContent', () => {
 
   it('describes a descent with a minus sign, and a small rate either way as level', () => {
     const rate = (verticalRateFtPerMin: number): string | undefined =>
-      valueOf(buildInspectContent(makeTarget({ verticalRateFtPerMin }), NOW), 'Vertical');
+      valueOf(
+        buildInspectContent(makeTarget({ verticalRateFtPerMin }), NOW, undefined),
+        'Vertical',
+      );
 
     expect(rate(-700)).toBe('-700 ft/min');
     expect(rate(LEVEL_FLIGHT_FT_PER_MIN)).toBe(`+${LEVEL_FLIGHT_FT_PER_MIN} ft/min`);
@@ -87,15 +97,49 @@ describe('buildInspectContent', () => {
 
   it('writes north as 360, and wraps a bearing that rounds up to it', () => {
     const track = (trueTrackDeg: number): string | undefined =>
-      valueOf(buildInspectContent(makeTarget({ trueTrackDeg }), NOW), 'Track');
+      valueOf(buildInspectContent(makeTarget({ trueTrackDeg }), NOW, undefined), 'Track');
 
     expect(track(0)).toBe('360 true');
     expect(track(359.7)).toBe('360 true');
     expect(track(7.2)).toBe('007 true');
   });
 
+  it('adds what the registry records about the aircraft, once it has loaded', () => {
+    const content = buildInspectContent(makeTarget({ icaoHex: 'a4ce45' }), NOW, {
+      icaoHex: 'A4CE45',
+      registration: 'N409CC',
+      make: 'PIPER AIRCRAFT INC',
+      model: 'PA-28-181',
+      operator: 'PAPPY AIR LLC',
+      yearManufactured: 2023,
+    });
+
+    expect(content.rows.slice(0, 6)).toEqual([
+      { label: 'ICAO hex', value: 'A4CE45' },
+      { label: 'Registration', value: 'N409CC' },
+      { label: 'Make', value: 'PIPER AIRCRAFT INC' },
+      { label: 'Model', value: 'PA-28-181' },
+      { label: 'Operator', value: 'PAPPY AIR LLC' },
+      { label: 'Built', value: '2023' },
+    ]);
+  });
+
+  it('shows only the registry fields that hold something, and prefers the model the snapshot carries', () => {
+    const content = buildInspectContent(makeTarget({ aircraftModel: 'PA-28-181 ARCHER' }), NOW, {
+      icaoHex: 'A1B2C3',
+      registration: 'N1',
+      model: 'PA-28-181',
+    });
+
+    expect(valueOf(content, 'Registration')).toBe('N1');
+    expect(valueOf(content, 'Model')).toBe('PA-28-181 ARCHER');
+    expect(valueOf(content, 'Make')).toBeUndefined();
+    expect(valueOf(content, 'Operator')).toBeUndefined();
+    expect(valueOf(content, 'Built')).toBeUndefined();
+  });
+
   it('never reports a negative age when the clocks disagree', () => {
-    const content = buildInspectContent(makeTarget({ lastSeenAt: NOW + 5000 }), NOW);
+    const content = buildInspectContent(makeTarget({ lastSeenAt: NOW + 5000 }), NOW, undefined);
 
     expect(valueOf(content, 'Heard')).toBe('0 s ago');
   });

@@ -114,11 +114,17 @@ The bundled data covers the United States only, so a receiver elsewhere gets an 
 
 ### Inspecting an aircraft
 
-Click or tap an aircraft - its symbol or return, or its data block or tag - to select it. It is ringed on the scope, and a panel in the bottom-right corner writes out what its data block abbreviates or has no room for: ICAO hex, registered model in full, squawk, altitude in feet, vertical rate, ground speed, track, bearing and range from the receiver, and how long ago it was last heard from. Only what the aircraft has actually reported gets a row.
+Click or tap an aircraft - its symbol or return, or its data block or tag - to select it. It is ringed on the scope, and a panel in the bottom-right corner writes out what its data block abbreviates or has no room for: ICAO hex, registered model in full, squawk, altitude in feet, vertical rate, ground speed, track, bearing and range from the receiver, and how long ago it was last heard from. Only what the aircraft has actually reported gets a row. If the aircraft is in the [registry](#aircraft-models), its registration, make, operator, and year of manufacture are fetched and added a moment later; for an aircraft the registry does not know, or with `--no-registry`, those rows are simply absent.
 
-Click empty scope, press `Esc`, or use the panel's close button to clear the selection. `.` and `,` step forwards and backwards through every tracked aircraft in order of callsign, which is also the only way to select one that has no position and so is not on the scope. The selection is kept when you switch view styles, and the panel closes by itself when the aircraft stops being tracked.
+Click empty scope, press `Esc`, or use the panel's close button to clear the selection. `.` and `,` step forwards and backwards through every tracked aircraft in order of callsign, which is also the only way to select one that has no position and so is not on the scope. The selection is kept when you switch view styles, and is dropped when the aircraft stops being tracked: a selection always names an aircraft that is actually there.
 
 Only aircraft the view style draws can be clicked: the digital scope fills the window, so an aircraft beyond the outermost ring can be picked there, while the analog scope ends at it. In the analog style the ring sits on the aircraft's most recent return, which is where the aircraft was when the beam last crossed it.
+
+### Bookmarking a view
+
+The view style, the range, and the selected aircraft are kept in the page's URL as you change them - `?mode=analog&range=40&selected=a4ce45` - so a view can be bookmarked or shared, and a reload comes back to it. Whatever matches what the command line asked for is left out, so an untouched scope keeps a clean URL. The URL is rewritten in place, without adding to the browser's history.
+
+On load the URL wins over `--mode` and `--range`. It is validated as strictly as the flags are: a view style the scope does not have, a range that is not a positive number up to 500 nm, or a selection that is not a six-digit ICAO hex is ignored and tidied out of the URL. A selection is only honored once a snapshot shows the aircraft is being tracked, so a bookmark from another day - naming an aircraft that is long gone - opens with nothing selected and drops the parameter, rather than claiming a selection that is not there. Each view style's own settings are not part of the URL.
 
 ### Emergencies
 
@@ -157,7 +163,7 @@ adsbscope --replay session.jsonl --lat 40.6413 --lon -73.7781
 - It binds to `127.0.0.1` by default, so only the machine running it can open the scope. Pass `--bind 0.0.0.0` (or a specific local address) to view it from another device on your network; anyone who can reach that address can then see it, and `adsbscope` prints a reminder when started that way. It has no authentication, so do not expose it to the internet.
 - It refuses any request whose `Host` header is not an IP address, `localhost`, or the machine's own hostname (with or without `.local`). This blocks DNS rebinding, where a hostile web page points its own domain at your machine to read the responses.
 - It only ever reads from the station (or recording) it was started with, and the video map and aircraft models come from data bundled with the install. It makes no other outbound requests and cannot be used as a proxy.
-- The one endpoint that takes input, the video map's range, accepts only a number up to 500 nm, and keeps at most 16 ranges' maps in memory, so requests cannot grow it without bound.
+- Two endpoints take input. The video map's range accepts only a number up to 500 nm, and at most 16 ranges' maps are kept in memory, so requests cannot grow it without bound. The aircraft details endpoint accepts only a six-digit ICAO hex, and answers from the registry already in memory.
 - It answers `GET` and `HEAD` only, serves nothing outside its own bundled UI files, and sends a `Content-Security-Policy` that limits the page to its own origin.
 
 ## Development
@@ -177,10 +183,10 @@ For UI work, `npm run dev:ui -w @squawk/adsbscope` serves the UI with hot reload
 src/server/
   cli.ts, run.ts, shutdown.ts   # Entry point, startup, and signal handling
   cli-args.ts, create-feed.ts   # Flags, and the live or replayed aircraft feed
-  http-server.ts                # Static UI, /api/config, /api/stream, /api/videomap
+  http-server.ts                # Static UI, /api/config, /api/stream, /api/videomap, /api/aircraft/<hex>
   snapshot.ts                   # Aircraft -> scope targets, in receiver-relative polar coordinates
   emergency.ts                  # Which kind of emergency an aircraft is in, if any
-  aircraft-model.ts             # Registered model by ICAO hex, from the bundled FAA registry, loaded on demand
+  aircraft-model.ts             # Registered model and details by ICAO hex, from the bundled FAA registry, loaded on demand
   video-map/
     layers.ts                   # Which features are shown at which range: the knobs for map density
     build.ts                    # Pure: source records + receiver + range -> the map
@@ -196,7 +202,7 @@ Everything geographic is resolved on the server: aircraft and map features alike
 src/ui/
   app.tsx, scope-view.tsx   # Root (config loading) and the working scope
   styles/                   # theme.ts (theme types + CSS variable publishing), global.css (layout tokens)
-  data/                     # Config loading and the snapshot stream hook
+  data/                     # Config loading, the snapshot stream, video map and aircraft details loading, URL state
   notice.tsx                # Full-page message shown while the scope loads, or if it cannot
   hud/                      # The heads-up display over the canvas: status readout, tab and emergency lists, inspect panel, controls, hotkeys
   scope/                    # Canvas host, projection, range steps, data-block formatting

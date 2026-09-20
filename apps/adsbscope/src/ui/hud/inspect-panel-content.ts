@@ -1,4 +1,4 @@
-import type { ScopeTarget } from '../../shared/protocol.js';
+import type { ScopeAircraftDetails, ScopeTarget } from '../../shared/protocol.js';
 import { formatDataBlock } from '../scope/data-block.js';
 import { formatCompassLabel, FULL_CIRCLE_DEG } from '../scope/furniture.js';
 
@@ -53,16 +53,36 @@ function formatVerticalRate(verticalRateFtPerMin: number): string {
  * Builds the inspect panel's content for an aircraft: the values a data
  * block abbreviates or has no room for, written out in full. Identity,
  * altitude, and position always have a row, so the panel keeps its shape;
- * the rest appear only once the aircraft has reported them.
+ * the rest appear only once the aircraft has reported them. What the
+ * registry records about the aircraft is added once it has loaded, and is
+ * simply absent for an aircraft the registry does not know.
  *
  * @param target - The selected aircraft.
  * @param now - Unix epoch ms of the snapshot the aircraft came from.
+ * @param details - What the registry records about the aircraft, if it has loaded and there is any.
  * @returns The panel's title and rows.
  */
-export function buildInspectContent(target: ScopeTarget, now: number): InspectContent {
+export function buildInspectContent(
+  target: ScopeTarget,
+  now: number,
+  details: ScopeAircraftDetails | undefined,
+): InspectContent {
   const rows: InspectRow[] = [{ label: 'ICAO hex', value: target.icaoHex.toUpperCase() }];
-  if (target.aircraftModel !== undefined) {
-    rows.push({ label: 'Model', value: target.aircraftModel });
+  if (details !== undefined) {
+    rows.push({ label: 'Registration', value: details.registration });
+  }
+  if (details?.make !== undefined) {
+    rows.push({ label: 'Make', value: details.make });
+  }
+  const model = target.aircraftModel ?? details?.model;
+  if (model !== undefined) {
+    rows.push({ label: 'Model', value: model });
+  }
+  if (details?.operator !== undefined) {
+    rows.push({ label: 'Operator', value: details.operator });
+  }
+  if (details?.yearManufactured !== undefined) {
+    rows.push({ label: 'Built', value: String(details.yearManufactured) });
   }
   if (target.squawk !== undefined) {
     rows.push({ label: 'Squawk', value: target.squawk });

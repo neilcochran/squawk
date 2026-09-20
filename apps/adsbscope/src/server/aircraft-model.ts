@@ -1,5 +1,7 @@
 import type { AircraftRegistration } from '@squawk/types';
 
+import type { ScopeAircraftDetails } from '../shared/protocol.js';
+
 /** Looks up the model an aircraft is registered as, by its ICAO hex. Undefined when the aircraft is not in the registry, or while there is no registry to look in. */
 export type AircraftModelLookup = (icaoHex: string) => string | undefined;
 
@@ -21,6 +23,36 @@ export interface AircraftModelProvider {
   load(): Promise<void>;
   /** Looks up an aircraft's model. Safe to call at any time. */
   lookup: AircraftModelLookup;
+  /** Looks up everything the registry records about an aircraft. Undefined when the aircraft is not in the registry, or while there is no registry to look in. */
+  details(icaoHex: string): ScopeAircraftDetails | undefined;
+}
+
+function nonBlank(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed === undefined || trimmed === '' ? undefined : trimmed;
+}
+
+/**
+ * Reduces a registry record to what the scope shows of it, dropping fields
+ * the registry left blank.
+ *
+ * @param registration - The registry record.
+ * @returns The details, with only the fields that hold something.
+ */
+export function toAircraftDetails(registration: AircraftRegistration): ScopeAircraftDetails {
+  const make = nonBlank(registration.make);
+  const model = nonBlank(registration.model);
+  const operator = nonBlank(registration.operator);
+  return {
+    icaoHex: registration.icaoHex,
+    registration: registration.registration,
+    ...(make !== undefined && { make }),
+    ...(model !== undefined && { model }),
+    ...(operator !== undefined && { operator }),
+    ...(registration.yearManufactured !== undefined && {
+      yearManufactured: registration.yearManufactured,
+    }),
+  };
 }
 
 /**
@@ -58,8 +90,11 @@ export function createAircraftModelProvider(
       registry = await loadRegistry();
     },
     lookup(icaoHex: string): string | undefined {
-      const model = registry?.lookup(icaoHex)?.model?.trim();
-      return model === undefined || model === '' ? undefined : model;
+      return nonBlank(registry?.lookup(icaoHex)?.model);
+    },
+    details(icaoHex: string): ScopeAircraftDetails | undefined {
+      const registration = registry?.lookup(icaoHex);
+      return registration === undefined ? undefined : toAircraftDetails(registration);
     },
   };
 }

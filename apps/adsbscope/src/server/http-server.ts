@@ -6,14 +6,16 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AircraftFeed } from '@squawk/adsb-feed';
 
 import {
+  AIRCRAFT_PATH_PREFIX,
   CONFIG_PATH,
+  isIcaoHex,
   MAX_RANGE_NM,
   SNAPSHOT_EVENT,
   STREAM_PATH,
   VIDEO_MAP_PATH,
   VIDEO_MAP_RANGE_PARAM,
 } from '../shared/protocol.js';
-import type { ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
+import type { ScopeAircraftDetails, ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
 
 import type { AircraftModelLookup } from './aircraft-model.js';
 import { isAllowedHost } from './host-check.js';
@@ -54,6 +56,8 @@ export interface ScopeServerOptions {
   config: ScopeConfig;
   /** Looks up the model an aircraft is registered as, for the snapshots. */
   getAircraftModel: AircraftModelLookup;
+  /** Looks up everything the registry records about an aircraft, by its ICAO hex. Undefined when there is nothing to tell. */
+  getAircraftDetails: (icaoHex: string) => ScopeAircraftDetails | undefined;
   /** Builds the video map for a scope range, given in nautical miles. */
   getVideoMap: (rangeNm: number) => Promise<ScopeVideoMap>;
   /** Absolute path of the directory the UI was built into. */
@@ -159,6 +163,24 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
     });
   }
 
+  function handleAircraft(icaoHex: string, headOnly: boolean, response: ServerResponse): void {
+    if (!isIcaoHex(icaoHex)) {
+      sendPlain(response, 400, 'Bad request: an aircraft is named by its six-digit ICAO hex');
+      return;
+    }
+    const details = options.getAircraftDetails(icaoHex);
+    if (details === undefined) {
+      sendNotFound(response);
+      return;
+    }
+    response.writeHead(200, {
+      ...SECURITY_HEADERS,
+      'Content-Type': JSON_CONTENT,
+      'Cache-Control': REVALIDATE_CACHE_CONTROL,
+    });
+    response.end(headOnly ? undefined : JSON.stringify(details));
+  }
+
   async function handleVideoMap(
     query: string,
     headOnly: boolean,
@@ -244,6 +266,10 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
         'Cache-Control': 'no-store',
       });
       response.end(method === 'HEAD' ? undefined : JSON.stringify(options.config));
+      return;
+    }
+    if (urlPath.startsWith(AIRCRAFT_PATH_PREFIX)) {
+      handleAircraft(urlPath.slice(AIRCRAFT_PATH_PREFIX.length), method === 'HEAD', response);
       return;
     }
     if (urlPath === VIDEO_MAP_PATH) {

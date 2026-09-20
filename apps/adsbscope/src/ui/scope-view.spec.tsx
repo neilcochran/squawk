@@ -44,10 +44,15 @@ beforeEach(() => {
   loadVideoMap.mockClear();
   FakeEventSource.reset();
   vi.stubGlobal('EventSource', FakeEventSource);
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => Promise.reject(new Error('specs have no network'))),
+  );
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
 });
 
 afterEach(() => {
+  window.history.replaceState(null, '', '/');
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   document.documentElement.removeAttribute('style');
@@ -273,6 +278,68 @@ describe('ScopeView', () => {
     expect(screen.getByRole('status')).toHaveTextContent('2 targets (1 plotted)');
   });
 
+  describe('URL state', () => {
+    const snapshot = makeSnapshot([makeTarget({ icaoHex: 'aaaaaa', callsign: 'AAL7' })]);
+
+    it('keeps a clean URL until something is changed, then mirrors the view in it', () => {
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+      expect(window.location.search).toBe('');
+
+      fireEvent.keyDown(window, { key: 'm' });
+      fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+
+      expect(window.location.search).toBe('?mode=analog&range=40');
+    });
+
+    it('starts from the view the URL asks for, over what the command line asked for', () => {
+      window.history.replaceState(null, '', '/?mode=analog&range=20');
+
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+
+      expectSelected('View style: Analog');
+      expect(screen.getByRole('status')).toHaveTextContent('range 20 nm');
+      expect(loadVideoMap).toHaveBeenLastCalledWith(20);
+    });
+
+    it('ignores what it cannot use in the URL, and tidies it away', () => {
+      window.history.replaceState(null, '', '/?mode=hologram&range=-4&selected=nope');
+
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+
+      expectSelected('View style: Digital');
+      expect(screen.getByRole('status')).toHaveTextContent('range 60 nm');
+      expect(window.location.search).toBe('');
+    });
+
+    it('selects the aircraft the URL names, once a snapshot shows it is being tracked', () => {
+      window.history.replaceState(null, '', '/?selected=aaaaaa');
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+      expect(screen.queryByRole('region', { name: INSPECT_PANEL_LABEL })).not.toBeInTheDocument();
+      expect(window.location.search).toBe('?selected=aaaaaa');
+
+      act(() => {
+        FakeEventSource.latest().emitOpen();
+        FakeEventSource.latest().emit('snapshot', JSON.stringify(snapshot));
+      });
+
+      expect(screen.getByRole('region', { name: INSPECT_PANEL_LABEL })).toHaveTextContent('AAL7');
+      expect(window.location.search).toBe('?selected=aaaaaa');
+    });
+
+    it('drops a bookmarked selection that names an aircraft no longer there', () => {
+      window.history.replaceState(null, '', '/?mode=analog&selected=c0ffee');
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+
+      act(() => {
+        FakeEventSource.latest().emitOpen();
+        FakeEventSource.latest().emit('snapshot', JSON.stringify(snapshot));
+      });
+
+      expect(screen.queryByRole('region', { name: INSPECT_PANEL_LABEL })).not.toBeInTheDocument();
+      expect(window.location.search).toBe('?mode=analog');
+    });
+  });
+
   describe('hiding and showing the controls', () => {
     it('hides the selectors from the button or the H key, and shows them again', () => {
       render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
@@ -371,15 +438,44 @@ describe('ScopeView', () => {
       expect(panelTitle()).toBe('AAL7');
     });
 
-    it('stops inspecting an aircraft that is no longer tracked', () => {
+    it('drops the selection of an aircraft that is no longer tracked, for good', () => {
       renderWithTraffic();
       fireEvent.keyDown(window, { key: '.' });
+      expect(window.location.search).toBe('?selected=aaaaaa');
 
       act(() => {
         FakeEventSource.latest().emit('snapshot', JSON.stringify(makeSnapshot()));
       });
-
       expect(panelTitle()).toBeUndefined();
+      expect(window.location.search).toBe('');
+
+      act(() => {
+        FakeEventSource.latest().emit('snapshot', JSON.stringify(snapshot));
+      });
+      expect(panelTitle()).toBeUndefined();
+    });
+
+    it('adds what the registry records about the selected aircraft', async () => {
+      const loadAircraftDetails = vi.fn((icaoHex: string) =>
+        Promise.resolve({ icaoHex, registration: 'N409CC', operator: 'PAPPY AIR LLC' }),
+      );
+      render(
+        <ScopeView
+          config={CONFIG}
+          loadVideoMap={loadVideoMap}
+          loadAircraftDetails={loadAircraftDetails}
+        />,
+      );
+      act(() => {
+        FakeEventSource.latest().emitOpen();
+        FakeEventSource.latest().emit('snapshot', JSON.stringify(snapshot));
+      });
+
+      fireEvent.keyDown(window, { key: '.' });
+
+      expect(await screen.findByText('N409CC')).toBeInTheDocument();
+      expect(screen.getByText('PAPPY AIR LLC')).toBeInTheDocument();
+      expect(loadAircraftDetails).toHaveBeenCalledWith('aaaaaa');
     });
   });
 

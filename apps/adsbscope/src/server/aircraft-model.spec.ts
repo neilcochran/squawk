@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AircraftRegistration } from '@squawk/types';
 
-import { createAircraftModelProvider, loadBundledRegistry } from './aircraft-model.js';
+import {
+  createAircraftModelProvider,
+  loadBundledRegistry,
+  toAircraftDetails,
+} from './aircraft-model.js';
 import type { RegistrationSource } from './aircraft-model.js';
 
 function makeRegistry(records: AircraftRegistration[]): RegistrationSource {
@@ -52,6 +56,50 @@ describe('createAircraftModelProvider', () => {
 
     await expect(provider.load()).rejects.toThrow('snapshot unreadable');
     expect(provider.lookup('a4ce45')).toBeUndefined();
+  });
+});
+
+describe('aircraft details', () => {
+  it('reduces a registry record to the fields the scope shows, trimmed', () => {
+    expect(
+      toAircraftDetails({
+        icaoHex: 'A4CE45',
+        registration: 'N409CC',
+        make: ' PIPER AIRCRAFT INC ',
+        model: 'PA-28-181',
+        operator: 'PAPPY AIR LLC',
+        aircraftType: 'fixedWingSingleEngine',
+        engineType: 'reciprocating',
+        yearManufactured: 2023,
+      }),
+    ).toEqual({
+      icaoHex: 'A4CE45',
+      registration: 'N409CC',
+      make: 'PIPER AIRCRAFT INC',
+      model: 'PA-28-181',
+      operator: 'PAPPY AIR LLC',
+      yearManufactured: 2023,
+    });
+  });
+
+  it('leaves out what the registry left blank', () => {
+    expect(
+      toAircraftDetails({ icaoHex: 'A00001', registration: 'N1', make: '  ', operator: '' }),
+    ).toEqual({ icaoHex: 'A00001', registration: 'N1' });
+  });
+
+  it('is found through the provider once the registry has loaded, and not before', async () => {
+    const provider = createAircraftModelProvider({ loadRegistry: () => Promise.resolve(REGISTRY) });
+    expect(provider.details('a4ce45')).toBeUndefined();
+
+    await provider.load();
+
+    expect(provider.details('a4ce45')).toEqual({
+      icaoHex: 'A4CE45',
+      registration: 'N409CC',
+      model: 'PA-28-181',
+    });
+    expect(provider.details('c0ffee')).toBeUndefined();
   });
 });
 

@@ -44,6 +44,22 @@ export const STREAM_PATH = `${API_PREFIX}/stream`;
 /** Path of the endpoint serving the {@link ScopeVideoMap} for a range, given as the {@link VIDEO_MAP_RANGE_PARAM} query parameter. */
 export const VIDEO_MAP_PATH = `${API_PREFIX}/videomap`;
 
+/** Path prefix of the endpoint serving the {@link ScopeAircraftDetails} of one aircraft: the aircraft's ICAO hex follows it. */
+export const AIRCRAFT_PATH_PREFIX = `${API_PREFIX}/aircraft/`;
+
+const ICAO_HEX_PATTERN = /^[0-9a-f]{6}$/i;
+
+/**
+ * Narrows a string to a well-formed ICAO 24-bit address: exactly six
+ * hexadecimal digits, in either case.
+ *
+ * @param value - The string to check, such as a path segment or a query parameter.
+ * @returns True if `value` is a six-digit hexadecimal address.
+ */
+export function isIcaoHex(value: string): boolean {
+  return ICAO_HEX_PATTERN.test(value);
+}
+
 /** Query parameter of {@link VIDEO_MAP_PATH}: the scope range, in nautical miles, the map is wanted for. */
 export const VIDEO_MAP_RANGE_PARAM = 'rangeNm';
 
@@ -106,6 +122,27 @@ export interface ScopeTarget {
   history: PolarPoint[];
   /** Unix epoch ms the aircraft was last heard from. */
   lastSeenAt: number;
+}
+
+/**
+ * What the aircraft registry records about one aircraft, fetched when it is
+ * selected rather than sent with every snapshot. Everything but the
+ * registration is optional: the registry does not hold every field for every
+ * aircraft.
+ */
+export interface ScopeAircraftDetails {
+  /** 24-bit ICAO hexadecimal address, as the registry writes it. */
+  icaoHex: string;
+  /** Registration mark, such as an N-number. */
+  registration: string;
+  /** Manufacturer. */
+  make?: string;
+  /** Model, as registered. */
+  model?: string;
+  /** Registered owner or operator. */
+  operator?: string;
+  /** Year of manufacture. */
+  yearManufactured?: number;
 }
 
 /** The full state of the scope at one instant, pushed to every connected browser. */
