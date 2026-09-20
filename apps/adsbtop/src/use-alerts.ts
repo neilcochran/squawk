@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 
+import { isEmergencyAircraft } from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
-import { isEmergencyAircraft } from './format.js';
 import { matchesWatchlist } from './watchlist.js';
 
 /** Inputs for {@link useAlerts}. */

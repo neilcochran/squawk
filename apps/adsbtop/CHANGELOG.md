@@ -1,5 +1,12 @@
 # @squawk/adsbtop
 
+## 0.7.1
+
+### Patch Changes
+
+- Updated dependencies [49fb0fb]
+  - @squawk/adsb-feed@0.7.0
+
 ## 0.7.0
 
 ### Minor Changes

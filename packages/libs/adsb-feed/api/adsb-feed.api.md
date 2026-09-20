@@ -5,6 +5,7 @@
 ```ts
 
 import type { Aircraft } from '@squawk/types';
+import type { EmergencyState } from '@squawk/types';
 import type { Position } from '@squawk/types';
 
 // @public
@@ -67,7 +68,19 @@ export function createSbsAircraftFeed(options: SbsFeedOptions): AircraftFeed;
 export const DEFAULT_PORT_BY_SOURCE: Record<FeedSource, number>;
 
 // @public
+export const EMERGENCY_SQUAWKS: ReadonlySet<string>;
+
+// @public
 export type FeedSource = 'json' | 'sbs' | 'beast';
+
+// @public
+export function isDeclaredEmergencyState(emergencyState: EmergencyState | undefined): boolean;
+
+// @public
+export function isEmergencyAircraft(aircraft: Aircraft): boolean;
+
+// @public
+export function isEmergencySquawk(squawk: string | undefined): boolean;
 
 // @public
 export interface JsonFeedOptions extends AircraftFeedOptions {

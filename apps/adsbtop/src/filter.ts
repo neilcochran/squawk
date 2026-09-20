@@ -1,7 +1,7 @@
+import { isEmergencyAircraft } from '@squawk/adsb-feed';
 import type { Aircraft, Coordinates } from '@squawk/types';
 import { altitude, distance } from '@squawk/units';
 
-import { isEmergencyAircraft } from './format.js';
 import { distanceToAircraftNm } from './location.js';
 import { matchesSearch } from './search.js';
 import type { UnitSystem } from './units.js';
