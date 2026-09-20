@@ -44,6 +44,9 @@ export function verticalTrendMarker(verticalRateFtPerMin: number | undefined): s
   return ' ';
 }
 
+/** The two lines of a data block: who the aircraft is, then its altitude and ground speed. */
+export type DataBlockLines = [identity: string, detail: string];
+
 /**
  * Builds the two lines of a target's data block. Line one identifies the
  * aircraft: its callsign, or its ICAO hex until it has sent one. Line two is
@@ -54,7 +57,7 @@ export function verticalTrendMarker(verticalRateFtPerMin: number | undefined): s
  * @param target - The target to describe.
  * @returns The data block's lines, top first.
  */
-export function formatDataBlock(target: ScopeTarget): string[] {
+export function formatDataBlock(target: ScopeTarget): DataBlockLines {
   const identity = target.callsign?.trim();
   let altitude = '---';
   if (target.onGround === true) {

@@ -63,6 +63,8 @@ The scope fits whatever window it is given - the range circle always fills the s
 
 Both view styles share the same scope furniture and the same [video map](#video-map), so nothing moves when you switch: north is up and the receiver is the cross at the center, range rings are labeled in nautical miles and spaced so that no more than six are drawn at any range, and a compass rose around the outermost ring is marked every 10 degrees and labeled every 30 in degrees true. The range, and each view style's own settings, are kept when you switch.
 
+An aircraft can be heard from for some time before it sends a position - or, with a Mode S-only transponder, never send one - and until it does it cannot be plotted. Those aircraft are listed in the top right corner under `NO POSITION`, in both view styles: callsign (or ICAO hex) and ground speed, in the same format as a data block. Altitude shows as dashes there, since it arrives with the position. The list names up to eight aircraft, counts any beyond that, and disappears when it is empty. The status readout's `17 targets (14 plotted)` is the same split.
+
 ### Digital
 
 A modern scope: no sweep, and every aircraft is redrawn at its latest position as soon as it arrives. Each aircraft with a known position is drawn as:
@@ -71,6 +73,8 @@ A modern scope: no sweep, and every aircraft is redrawn at its latest position a
 - a **history trail** - up to five fading dots at five-second intervals behind it;
 - a **velocity vector** - a line showing where it will be in one minute at its current track and ground speed (not drawn on the ground);
 - a **data block** on a leader line. Line one is the callsign, or the ICAO hex until the aircraft has sent one. Line two is altitude in hundreds of feet, a climb (`^`) or descent (`v`) marker when the vertical rate is beyond 300 ft/min, and ground speed in tens of knots - so `236v42` is descending through 23,600 ft at 420 kt. An aircraft on the ground shows `GND` for altitude, and unknown values show as dashes.
+
+Data blocks are kept off one another. A leader line normally runs up and to the right, but when its block would cover another block, another aircraft's symbol, or hang off the edge of the window, it takes whichever of the eight compass directions leaves the block clear - or, in a real crowd, the one that covers the least. A block only moves when it has to, and one that has been moved aside stays there, as it does on a real scope when a controller moves it, so blocks do not flicker between directions as traffic shifts.
 
 An aircraft that has not been heard from for 15 seconds is dimmed until it either updates or is dropped at the `--stale-after` threshold.
 
@@ -165,6 +169,7 @@ src/ui/
   scope/                    # Canvas host, projection, range steps, data-block formatting
   scope/furniture.ts        # Range rings, compass rose, receiver marker - shared by every view style
   scope/video-map-draw.ts   # The video map - shared by every view style
+  scope/data-block-placement.ts  # Pure: which way each leader line runs, so data blocks stay readable
   modes/<mode>/             # One directory per view style: its renderer, theme, settings, and mode definition
   modes/mode.ts             # The ScopeModeDefinition contract, and declarative mode settings
   modes/registry.ts         # The view styles, keyed by id

@@ -11,6 +11,7 @@ import type { KeyPress } from './hud/hotkeys.js';
 import { ModeControls } from './hud/mode-controls.js';
 import { RangeControls } from './hud/range-controls.js';
 import { StatusBar } from './hud/status-bar.js';
+import { TabList } from './hud/tab-list.js';
 import { useHotkeys } from './hud/use-hotkeys.js';
 import { defaultSettingValues, selectSetting, stepSetting } from './modes/mode.js';
 import type { ModeSetting, ModeSettingValues } from './modes/mode.js';
@@ -129,6 +130,7 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
         snapshot={stream.snapshot}
         rangeNm={rangeNm}
       />
+      <TabList snapshot={stream.snapshot} />
       <ModeControls
         modes={SCOPE_MODES}
         mode={mode}

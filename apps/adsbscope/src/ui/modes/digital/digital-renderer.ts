@@ -1,4 +1,11 @@
 import type { ScopeSnapshot, ScopeTarget } from '../../../shared/protocol.js';
+import { placeDataBlocks } from '../../scope/data-block-placement.js';
+import type {
+  DataBlockGeometry,
+  DataBlockPlacement,
+  DataBlockRequest,
+  PlacedDataBlock,
+} from '../../scope/data-block-placement.js';
 import { formatDataBlock } from '../../scope/data-block.js';
 import {
   drawCompassRose,
@@ -24,9 +31,6 @@ export const COASTING_AFTER_MS = 15_000;
 /** How far ahead, in minutes of flight at the current ground speed, the velocity vector reaches. */
 export const VECTOR_MINUTES = 1;
 
-/** Direction the leader line runs from a target's symbol to its data block. */
-export const LEADER_BEARING_DEG = 45;
-
 /**
  * Sizes of the digital scope's target symbology, in rem. They are converted
  * to pixels with the viewport's `pxPerRem` at draw time, so the scope scales
@@ -48,6 +52,8 @@ export const DIGITAL_LAYOUT_REM = {
   dataBlockOffsetX: 0.1875,
   /** Height of one data block line. */
   dataBlockLineHeight: 0.875,
+  /** Half the side of the square around every target's symbol that data blocks are kept off. */
+  symbolClearance: 0.375,
 } as const;
 
 const MINUTES_PER_HOUR = 60;
@@ -94,13 +100,22 @@ function drawVelocityVector(
   context.stroke();
 }
 
+/** A target that is on, or just off, the canvas: a request for a place for its data block, carrying what is needed to draw it. */
+interface PlottedTarget extends DataBlockRequest {
+  /** The target. */
+  target: ScopeTarget;
+  /** Its data block's lines, top first. */
+  lines: string[];
+}
+
 function drawSymbolAndDataBlock(
   context: CanvasRenderingContext2D,
   color: string,
   pxPerRem: number,
-  target: ScopeTarget,
-  at: ScreenPoint,
+  plotted: PlottedTarget,
+  placement: DataBlockPlacement,
 ): void {
+  const { target, at } = plotted;
   const halfSizePx = DIGITAL_LAYOUT_REM.symbolHalfSize * pxPerRem;
   const sizePx = halfSizePx * 2;
   context.fillStyle = color;
@@ -114,47 +129,83 @@ function drawSymbolAndDataBlock(
 
   const leaderStart = offsetByBearing(
     at,
-    LEADER_BEARING_DEG,
+    placement.leaderBearingDeg,
     halfSizePx + DIGITAL_LAYOUT_REM.leaderGap * pxPerRem,
-  );
-  const leaderEnd = offsetByBearing(
-    at,
-    LEADER_BEARING_DEG,
-    DIGITAL_LAYOUT_REM.leaderLength * pxPerRem,
   );
   context.beginPath();
   context.moveTo(leaderStart.xPx, leaderStart.yPx);
-  context.lineTo(leaderEnd.xPx, leaderEnd.yPx);
+  context.lineTo(placement.leaderEnd.xPx, placement.leaderEnd.yPx);
   context.stroke();
 
   drawTextLines(
     context,
-    formatDataBlock(target),
-    leaderEnd.xPx + DIGITAL_LAYOUT_REM.dataBlockOffsetX * pxPerRem,
-    leaderEnd.yPx,
+    plotted.lines,
+    placement.rect.leftPx,
+    placement.rect.bottomPx,
     DIGITAL_LAYOUT_REM.dataBlockLineHeight * pxPerRem,
   );
 }
 
-function drawTarget(
+function plotTargets(
   context: CanvasRenderingContext2D,
-  palette: ScopeCanvasPalette,
   viewport: ScopeViewport,
-  target: ScopeTarget,
   snapshot: ScopeSnapshot,
-): void {
-  if (target.position === undefined) {
-    return;
+): PlottedTarget[] {
+  const marginPx = DIGITAL_LAYOUT_REM.offscreenMargin * viewport.pxPerRem;
+  const lineHeightPx = DIGITAL_LAYOUT_REM.dataBlockLineHeight * viewport.pxPerRem;
+  const plotted: PlottedTarget[] = [];
+  for (const target of snapshot.targets) {
+    if (target.position === undefined) {
+      continue;
+    }
+    const at = polarToScreen(viewport, target.position);
+    if (isNearCanvas(viewport, at, marginPx)) {
+      const lines = formatDataBlock(target);
+      plotted.push({
+        id: target.icaoHex,
+        at,
+        widthPx: Math.max(...lines.map((line) => context.measureText(line).width)),
+        heightPx: lines.length * lineHeightPx,
+        target,
+        lines,
+      });
+    }
   }
-  const at = polarToScreen(viewport, target.position);
-  if (!isNearCanvas(viewport, at, DIGITAL_LAYOUT_REM.offscreenMargin * viewport.pxPerRem)) {
-    return;
-  }
-  const coasting = snapshot.at - target.lastSeenAt > COASTING_AFTER_MS;
-  const color = coasting ? palette.coasting : palette.target;
-  drawHistory(context, palette, viewport, target);
-  drawVelocityVector(context, palette, viewport, target, at);
-  drawSymbolAndDataBlock(context, color, viewport.pxPerRem, target, at);
+  return plotted;
+}
+
+function dataBlockGeometry(viewport: ScopeViewport): DataBlockGeometry {
+  const { pxPerRem } = viewport;
+  return {
+    leaderLengthPx: DIGITAL_LAYOUT_REM.leaderLength * pxPerRem,
+    blockGapPx: DIGITAL_LAYOUT_REM.dataBlockOffsetX * pxPerRem,
+    symbolClearancePx: DIGITAL_LAYOUT_REM.symbolClearance * pxPerRem,
+    bounds: { leftPx: 0, topPx: 0, rightPx: viewport.widthPx, bottomPx: viewport.heightPx },
+  };
+}
+
+/** What a set of data block placements was worked out for. Placements are reused until one of these changes. */
+interface PlacementInputs {
+  /** The snapshot whose targets were placed. */
+  snapshot: ScopeSnapshot;
+  /** Canvas width. */
+  widthPx: number;
+  /** Canvas height. */
+  heightPx: number;
+  /** Traffic scale. */
+  pxPerNm: number;
+  /** Type scale. */
+  pxPerRem: number;
+}
+
+function isSameInputs(a: PlacementInputs, b: PlacementInputs): boolean {
+  return (
+    a.snapshot === b.snapshot &&
+    a.widthPx === b.widthPx &&
+    a.heightPx === b.heightPx &&
+    a.pxPerNm === b.pxPerNm &&
+    a.pxPerRem === b.pxPerRem
+  );
 }
 
 /**
@@ -165,8 +216,14 @@ function drawTarget(
  * block. A target not heard from for {@link COASTING_AFTER_MS} is drawn
  * dimmed.
  *
+ * Data blocks are kept off one another: each leader line takes whichever of
+ * eight directions leaves its block clear. The directions are worked out once
+ * per snapshot, not once per frame, and are the only thing the renderer
+ * remembers between frames - a block stays where it was last put until it has
+ * to move.
+ *
  * @param theme - Colors and type to draw with.
- * @returns The renderer. It carries no state between frames.
+ * @returns The renderer.
  */
 export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
   const palette = theme.canvas;
@@ -181,6 +238,35 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
     feature: palette.videoMapFeature,
     label: palette.videoMapLabel,
   };
+  let placedFor: PlacementInputs | undefined;
+  let placed: PlacedDataBlock<PlottedTarget>[] = [];
+
+  function placedTargets(
+    context: CanvasRenderingContext2D,
+    viewport: ScopeViewport,
+    snapshot: ScopeSnapshot,
+  ): readonly PlacedDataBlock<PlottedTarget>[] {
+    const inputs: PlacementInputs = {
+      snapshot,
+      widthPx: viewport.widthPx,
+      heightPx: viewport.heightPx,
+      pxPerNm: viewport.pxPerNm,
+      pxPerRem: viewport.pxPerRem,
+    };
+    if (placedFor === undefined || !isSameInputs(placedFor, inputs)) {
+      const previousBearings = new Map(
+        placed.map(({ request, placement }) => [request.id, placement.leaderBearingDeg]),
+      );
+      placed = placeDataBlocks(
+        plotTargets(context, viewport, snapshot),
+        dataBlockGeometry(viewport),
+        previousBearings,
+      );
+      placedFor = inputs;
+    }
+    return placed;
+  }
+
   return {
     render(context: CanvasRenderingContext2D, frame: ScopeFrame): void {
       const { viewport, snapshot } = frame;
@@ -201,10 +287,22 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       if (snapshot === undefined) {
         return;
       }
-      for (const target of snapshot.targets) {
-        drawTarget(context, palette, viewport, target, snapshot);
+      for (const { request, placement } of placedTargets(context, viewport, snapshot)) {
+        const coasting = snapshot.at - request.target.lastSeenAt > COASTING_AFTER_MS;
+        drawHistory(context, palette, viewport, request.target);
+        drawVelocityVector(context, palette, viewport, request.target, request.at);
+        drawSymbolAndDataBlock(
+          context,
+          coasting ? palette.coasting : palette.target,
+          viewport.pxPerRem,
+          request,
+          placement,
+        );
       }
     },
-    reset(): void {},
+    reset(): void {
+      placedFor = undefined;
+      placed = [];
+    },
   };
 }

@@ -1,0 +1,37 @@
+.tabList {
+  position: absolute;
+  top: var(--scope-inset-block);
+  right: var(--scope-inset-inline);
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-xs);
+  pointer-events: none;
+}
+
+.heading {
+  margin: 0;
+  color: var(--scope-ui-emphasis);
+  font-size: inherit;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--scope-space-sm);
+  white-space: pre;
+}
+
+.more {
+  margin: 0;
+}

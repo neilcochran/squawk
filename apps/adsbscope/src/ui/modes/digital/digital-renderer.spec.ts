@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { ScopeSnapshot, ScopeVideoMap } from '../../../shared/protocol.js';
+import type { ScopeSnapshot, ScopeTarget, ScopeVideoMap } from '../../../shared/protocol.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
 import type { ScopeFrame } from '../../scope/renderer.js';
 import { createRecordingContext, makeSnapshot, makeTarget } from '../../scope/test-utils.js';
@@ -302,7 +302,85 @@ describe('createDigitalRenderer', () => {
     });
   });
 
-  it('has no state to reset', () => {
-    expect(createDigitalRenderer(DIGITAL_THEME).reset()).toBeUndefined();
+  describe('data block placement', () => {
+    const CENTER = { trueBearingDeg: 90, rangeNm: 30 };
+    const lead = makeTarget({ icaoHex: 'aaaaaa', callsign: 'LEAD1', position: CENTER });
+    const wing = makeTarget({
+      icaoHex: 'bbbbbb',
+      callsign: 'WING2',
+      position: { trueBearingDeg: 90, rangeNm: 31 },
+    });
+
+    function frameOf(targets: ScopeTarget[], overrides: Partial<ScopeFrame> = {}): ScopeFrame {
+      return {
+        viewport: VIEWPORT,
+        rangeNm: 60,
+        snapshot: makeSnapshot(targets),
+        videoMap: undefined,
+        frameTimeMs: 0,
+        settings: {},
+        ...overrides,
+      };
+    }
+
+    function blockTopOf(recording: RecordingContext, callsign: string): number {
+      return Number(
+        recording.callsTo('fillText').find((call) => call.args[0] === callsign)?.args[2],
+      );
+    }
+
+    it('moves one of two crowded data blocks aside, so that both can be read', () => {
+      const recording = createRecordingContext();
+
+      createDigitalRenderer(DIGITAL_THEME).render(recording.context, frameOf([lead, wing]));
+
+      const symbolYPx = polarToScreen(VIEWPORT, CENTER).yPx;
+      expect(blockTopOf(recording, 'LEAD1')).toBeLessThan(symbolYPx);
+      expect(blockTopOf(recording, 'WING2')).toBeGreaterThan(symbolYPx);
+    });
+
+    it('leaves a block where it was put once the crowd has gone, until the renderer is reset', () => {
+      const renderer = createDigitalRenderer(DIGITAL_THEME);
+      const symbolYPx = polarToScreen(VIEWPORT, CENTER).yPx;
+      renderer.render(createRecordingContext().context, frameOf([lead, wing]));
+
+      const alone = createRecordingContext();
+      renderer.render(alone.context, frameOf([wing]));
+      renderer.reset();
+      const afterReset = createRecordingContext();
+      renderer.render(afterReset.context, frameOf([wing]));
+
+      expect(blockTopOf(alone, 'WING2')).toBeGreaterThan(symbolYPx);
+      expect(blockTopOf(afterReset, 'WING2')).toBeLessThan(symbolYPx);
+    });
+
+    it('works the placement out once per snapshot and viewport, not once per frame', () => {
+      const renderer = createDigitalRenderer(DIGITAL_THEME);
+      const recording = createRecordingContext();
+      const measureText = vi.spyOn(recording.context, 'measureText');
+      const frame = frameOf([lead]);
+      const oneInputChangedEachTime: ScopeFrame[] = [
+        { ...frame, snapshot: makeSnapshot([lead]) },
+        { ...frame, viewport: { ...VIEWPORT, widthPx: WIDTH_PX + 100 } },
+        { ...frame, viewport: { ...VIEWPORT, heightPx: HEIGHT_PX + 100 } },
+        { ...frame, viewport: { ...VIEWPORT, pxPerNm: VIEWPORT.pxPerNm * 2 } },
+        { ...frame, viewport: { ...VIEWPORT, pxPerRem: 32 } },
+      ];
+
+      renderer.render(recording.context, frame);
+      const callsPerPlacement = measureText.mock.calls.length;
+      renderer.render(recording.context, { ...frame, frameTimeMs: 16 });
+      expect(callsPerPlacement).toBeGreaterThan(0);
+      expect(measureText).toHaveBeenCalledTimes(callsPerPlacement);
+
+      for (const next of oneInputChangedEachTime) {
+        const fresh = createDigitalRenderer(DIGITAL_THEME);
+        const { context } = createRecordingContext();
+        const measured = vi.spyOn(context, 'measureText');
+        fresh.render(context, frame);
+        fresh.render(context, next);
+        expect(measured).toHaveBeenCalledTimes(callsPerPlacement * 2);
+      }
+    });
   });
 });

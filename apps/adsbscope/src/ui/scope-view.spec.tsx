@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScopeConfig } from '../shared/protocol.js';
 
 import { LINK_STATUS_LABELS } from './hud/link-status.js';
+import { TAB_LIST_LABEL } from './hud/tab-list.js';
 import { SCOPE_MODES_BY_ID } from './modes/registry.js';
 import { makeSnapshot, makeTarget } from './scope/test-utils.js';
 import { ScopeView } from './scope-view.js';
@@ -267,5 +268,21 @@ describe('ScopeView', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(LINK_STATUS_LABELS.live);
     expect(screen.getByRole('status')).toHaveTextContent('2 targets (1 plotted)');
+  });
+
+  it('lists the aircraft that cannot be plotted in the tab list', () => {
+    render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+    const snapshot = makeSnapshot([
+      makeTarget({ position: { trueBearingDeg: 90, rangeNm: 12 } }),
+      makeTarget({ icaoHex: 'c0ffee' }),
+    ]);
+    expect(screen.queryByRole('region', { name: TAB_LIST_LABEL })).not.toBeInTheDocument();
+
+    act(() => {
+      FakeEventSource.latest().emitOpen();
+      FakeEventSource.latest().emit('snapshot', JSON.stringify(snapshot));
+    });
+
+    expect(screen.getByRole('region', { name: TAB_LIST_LABEL })).toHaveTextContent('C0FFEE');
   });
 });

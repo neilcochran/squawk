@@ -26,6 +26,9 @@ export interface RecordingContext {
   texts(): string[];
 }
 
+/** Width the recording context reports for each character of measured text: a monospace font, as the scope uses. */
+export const RECORDED_CHAR_WIDTH_PX = 7;
+
 const RECORDED_METHODS = [
   'arc',
   'beginPath',
@@ -73,6 +76,9 @@ export function createRecordingContext(): RecordingContext {
   for (const method of RECORDED_METHODS) {
     state[method] = (...args: unknown[]): void => record(method, args);
   }
+  state.measureText = (text: string): { width: number } => ({
+    width: text.length * RECORDED_CHAR_WIDTH_PX,
+  });
   const savedStates: Record<string, unknown>[] = [];
   state.save = (): void => {
     record('save', []);
