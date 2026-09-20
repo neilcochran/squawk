@@ -40,8 +40,3 @@ Gzipped JSON file written to `packages/libs/airway-data/data/airways.json.gz`.
 npm run build
 node dist/index.js --local /path/to/28DaySubscription_Effective_YYYY-MM-DD
 ```
-
-## Dependencies
-
-- `@squawk/build-shared` - Shared NASR build utilities (CLI args, input resolution)
-- `@squawk/types` - Airway type definitions and mapping constants

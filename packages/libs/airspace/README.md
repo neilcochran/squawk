@@ -67,7 +67,7 @@ const dataset = await loadUsBundledAirspace();
 const resolver = createAirspaceResolver({ data: dataset });
 ```
 
-The `/browser` entry is identical to the main entry; the separate subpath exists so browser support is an explicit, `publint`-verified part of the public API surface.
+The `/browser` entry is identical to the main entry.
 
 ## How it works
 

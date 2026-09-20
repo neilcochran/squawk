@@ -326,10 +326,7 @@ subpath for SPAs and edge runtimes:
 import { parseMetar, parseTaf } from '@squawk/weather/browser';
 ```
 
-The `/browser` entry is identical to the main entry; the separate subpath
-exists so browser support is an explicit, `publint`-verified part of the public
-API surface. A `node:`-dependent import added to the main entry later would
-fail that check rather than silently break browser consumers.
+The `/browser` entry is identical to the main entry.
 
 The `/fetch` layer also runs in the browser, since it uses the global `fetch`,
 but the AWC API does not send CORS headers. A direct cross-origin request to

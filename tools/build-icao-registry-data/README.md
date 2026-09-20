@@ -29,10 +29,3 @@ The default output path is `packages/libs/icao-registry-data/data/icao-registry.
    which extracts `MASTER.txt` and `ACFTREF.txt`, parses both CSVs, and joins
    them by manufacturer/model code
 3. Serializes records as JSON, gzip compresses, and writes the output
-
-## Dependencies
-
-| Package                 | Purpose                                                  |
-| ----------------------- | -------------------------------------------------------- |
-| `@squawk/build-shared`  | Shared NASR build utilities (CLI args, input resolution) |
-| `@squawk/icao-registry` | `parseFaaRegistryZip()` parsing logic                    |

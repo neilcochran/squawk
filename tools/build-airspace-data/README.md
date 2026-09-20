@@ -57,13 +57,3 @@ All input files come from inside the NASR subscription directory:
 | `APT_BASE.csv`                | Inside `CSV_Data/<cycle>.zip`             | Airport identifier to state code mapping      |
 | `ARB_BASE.csv`                | Inside `CSV_Data/<cycle>.zip`             | ARTCC center metadata (name, country, state)  |
 | `ARB_SEG.csv`                 | Inside `CSV_Data/<cycle>.zip`             | ARTCC boundary points by stratum and sequence |
-
-## Dependencies
-
-| Package                | Purpose                                                  |
-| ---------------------- | -------------------------------------------------------- |
-| `@squawk/build-shared` | Shared NASR build utilities (CLI args, input resolution) |
-| `@squawk/types`        | `AirspaceFeature` and `AltitudeBound` type definitions   |
-| `shapefile`            | Parse ESRI Shapefile format                              |
-| `fast-xml-parser`      | Parse SAA AIXM 5.0 XML                                   |
-| `adm-zip`              | Read nested ZIP archives in memory                       |

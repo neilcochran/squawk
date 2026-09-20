@@ -172,7 +172,7 @@ adsbscope --replay session.jsonl --lat 40.6413 --lon -73.7781
 
 ## Development
 
-The package has two halves that build into one `dist/`: the Node CLI and server under `src/server/` (compiled by `tsc` to `dist/server/`), and the browser UI under `src/ui/` (bundled by Vite to `dist/public/`, which the server serves). `src/shared/` holds the wire protocol both sides import.
+Build the package, then run the CLI out of `dist/`:
 
 ```bash
 npx turbo run build --filter=@squawk/adsbscope

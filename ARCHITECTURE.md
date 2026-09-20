@@ -140,7 +140,11 @@ The architectural patterns for what libraries look like and how they relate to e
 
 ## Atlas at a glance
 
-[`apps/atlas/`](apps/atlas/) is the chart-first SPA viewer (`squawk-atlas`, private). The atlas [README](apps/atlas/README.md) covers the user-facing surface, current feature set, stack, and known rough edges. The conventions captured here describe how the code is organized.
+[`apps/atlas/`](apps/atlas/) is the chart-first SPA viewer (`squawk-atlas`, private). The atlas [README](apps/atlas/README.md) covers the user-facing surface, current feature set, and known rough edges. The stack and conventions captured here describe how the code is built and organized.
+
+The stack is React 19 on Vite, TanStack Router for file-based routes with zod-validated search params, Tailwind CSS v4 with Radix primitives, MapLibre GL via `@vis.gl/react-maplibre` drawing over Protomaps hosted vector tiles, and Vitest with jsdom and `@testing-library/react` for tests.
+
+The app is a shell plus a per-mode component tree. The shell owns app-level chrome (header, mode switcher, theme switcher); each mode under `src/modes/<name>/` owns its layers, URL state schema, and inspector wiring, so adding a mode means a new directory there, a new route file under `src/routes/`, and an entry in the shell's mode switcher. Cross-mode code - data loaders, shared map primitives, the inspector, UI primitives, and style tokens - lives under `src/shared/`.
 
 Atlas does not extend [tsconfig.base.json](tsconfig.base.json) - it has framework-specific TS settings (jsx, DOM lib, Bundler resolution, noEmit) the lib base doesn't carry. It has its own [eslint.config.js](apps/atlas/eslint.config.js) with React / JSX / a11y rules. The cross-cutting code conventions above still apply.
 
