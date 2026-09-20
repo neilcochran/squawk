@@ -33,7 +33,7 @@ Other shapes:
 - **Data packages** add a `data/` directory at the package root (sibling to `src/`) and split entries into `src/node.ts` + `src/browser.ts` (see [Data package pattern](#data-package-pattern) below).
 - **Aggregator** (`@squawk/mcp`) has a `src/tools/<domain>.ts` per exposed library and a `src/resolvers.ts` that wires them up.
 
-Apps live under `apps/<name>/` and follow their own conventions - see [`apps/atlas/README.md`](apps/atlas/README.md).
+Apps live under `apps/<name>/` and follow their own conventions - see [`apps/atlas/README.md`](apps/atlas/README.md) and [`apps/adsbscope/CONVENTIONS.md`](apps/adsbscope/CONVENTIONS.md).
 
 ---
 

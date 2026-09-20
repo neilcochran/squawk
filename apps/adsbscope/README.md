@@ -4,6 +4,10 @@
 
 An ATC-style radar scope for live ADS-B traffic, in your browser. `adsbscope` is a small command-line tool: it connects to a local [dump1090-fa](https://github.com/flightaware/dump1090) station through [`@squawk/adsb-feed`](../../packages/libs/adsb-feed), and serves a web page that plots every tracked aircraft on a scope centered on your receiver, over a video map of the airports, runways, navaids, fixes, and airspace around it. The scope has two view styles you can switch between while it runs: a modern **digital** scope with data blocks, and a sweep-era **analog** scope with a rotating beam and fading returns.
 
+![The digital view style: a modern scope with data blocks on leader lines, over a video map of airports and airspace](assets/digital.png)
+
+![The analog view style: a rotating beam painting returns that fade behind it, on a green phosphor tube](assets/analog.png)
+
 ## Running it
 
 `adsbscope` is not yet published to npm; build and run it from a clone of this repository. The turbo filter builds the `@squawk/*` libraries it depends on first:
@@ -45,7 +49,7 @@ The three sources are the same ones `@squawk/adsb-feed` and [`adsbtop`](../adsbt
 
 Everything you can change while the scope is running has both an on-screen control and a key. The zoom buttons sit in the bottom-right corner. In the bottom-left is the view style selector, followed by a selector for each setting the current view style has. A selector shows all of its options side by side with the active one filled in - `Digital | Analog`, `Tags On | Off` - so it always shows both what is selected and what else can be; press an option to select it. The keys step to the next option instead.
 
-Under the selectors is a `Hide controls` button (`H`). It folds the view style and setting selectors away, leaving just a `Show controls` button and the zoom buttons, which makes room on a small screen; the keys all keep working while the selectors are hidden. On a screen narrower than 48rem the scope starts with them hidden.
+Under the selectors is a `Hide controls` button (`H`). It folds the view style and setting selectors away, leaving just a `Show controls` button and the zoom buttons, which makes room on a small screen; the keys all keep working while the selectors are hidden. On a phone-sized screen the scope starts with them hidden.
 
 | Key              | Action                                            |
 | ---------------- | ------------------------------------------------- |
@@ -63,7 +67,7 @@ The range steps are 5, 10, 20, 40, 60, 80, 100, 150, 200, and 250 nm, and each z
 
 ### Screen sizes
 
-The scope fits whatever window it is given - the range circle always fills the shorter dimension, so it works in a desktop window, on a tablet, or on a phone in either orientation, and follows a resize or rotation. Below 48rem wide the on-screen buttons grow to full-size touch targets. Everything on the scope, including the text and symbols drawn on the canvas, is sized in rem, so it also follows your browser's font-size and zoom settings.
+The scope fits whatever window it is given - the range circle always fills the shorter dimension, so it works in a desktop window, on a tablet, or on a phone in either orientation, and follows a resize or rotation. On a narrow screen the on-screen buttons grow to full-size touch targets. Everything on the scope, including its text and symbols, also follows your browser's font-size and zoom settings.
 
 ## View styles
 
@@ -177,52 +181,4 @@ node apps/adsbscope/dist/server/cli.js --replay session.jsonl --lat 40.6413 --lo
 
 For UI work, `npm run dev:ui -w @squawk/adsbscope` serves the UI with hot reload and proxies `/api` to an `adsbscope` instance running on its default port.
 
-### Server layout
-
-```
-src/server/
-  cli.ts, run.ts, shutdown.ts   # Entry point, startup, and signal handling
-  cli-args.ts, create-feed.ts   # Flags, and the live or replayed aircraft feed
-  http-server.ts                # Static UI, /api/config, /api/stream, /api/videomap, /api/aircraft/<hex>
-  snapshot.ts                   # Aircraft -> scope targets, in receiver-relative polar coordinates
-  emergency.ts                  # Which kind of emergency an aircraft is in, if any
-  aircraft-model.ts             # Registered model and details by ICAO hex, from the bundled FAA registry, loaded on demand
-  video-map/
-    layers.ts                   # Which features are shown at which range: the knobs for map density
-    build.ts                    # Pure: source records + receiver + range -> the map
-    load-data.ts                # Loads the bundled FAA snapshots, on first use
-    provider.ts                 # One map per range, built once, in a bounded cache
-```
-
-Everything geographic is resolved on the server: aircraft and map features alike reach the browser as bearing and range from the receiver, so the browser bundle contains no geodesy and none of the FAA data.
-
-### UI layout
-
-```
-src/ui/
-  app.tsx, scope-view.tsx   # Root (config loading) and the working scope
-  styles/                   # theme.ts (theme types + CSS variable publishing), global.css (layout tokens)
-  data/                     # Config loading, the snapshot stream, video map and aircraft details loading, URL state
-  notice.tsx                # Full-page message shown while the scope loads, or if it cannot
-  hud/                      # The heads-up display over the canvas: status readout, tab and emergency lists, inspect panel, controls, hotkeys
-  scope/                    # Canvas host, projection, range steps, data-block formatting
-  scope/furniture.ts        # Range rings, compass rose, receiver marker - shared by every view style
-  scope/video-map-draw.ts   # The video map - shared by every view style
-  scope/data-block-placement.ts  # Pure: which way each leader line runs, so data blocks stay readable
-  scope/selection.ts, extent.ts  # Pure: which aircraft a click picked, stepping the selection, how far a scope reaches
-  modes/<mode>/             # One directory per view style: its renderer, theme, settings, and mode definition
-  modes/mode.ts             # The ScopeModeDefinition contract, and declarative mode settings
-  modes/registry.ts         # The view styles, keyed by id
-```
-
-A few conventions keep the UI easy to change:
-
-- **One source of truth for color and type.** Each view style's `ScopeTheme` (under `modes/<mode>/`) holds every color and the font. Renderers read it directly, and its HTML UI colors are published as `--scope-*` CSS custom properties. The stylesheets contain no literal colors or font names, and `styles/theme.spec.ts` fails if one appears or if a stylesheet and the theme disagree about a variable name.
-- **rem, not px.** Stylesheets size everything in rem. Canvas sizes are authored in rem too (`DIGITAL_LAYOUT_REM`) and converted with the root font size at draw time; a `Px` suffix marks a value that is genuinely in canvas pixels.
-- **Mobile first, one breakpoint.** Base styles target a phone; `min-width: 48rem` restores the compact desktop sizing. Interactive controls are at least 2.75rem (44px) square below it.
-- **Styles live beside their component** as CSS Modules (`status-bar.module.css` next to `status-bar.tsx`); only tokens and page-level rules are global.
-- **Pure logic lives in `.ts`, components in `.tsx`**, one component per file, so helpers are unit-tested without rendering.
-- **A view style is self-contained.** Adding one means adding its id to `SCOPE_MODE_IDS` in `src/shared/protocol.ts`, a `modes/<mode>/` directory with a `ScopeModeDefinition` (renderer factory, theme, settings), and one entry in `modes/registry.ts` - the compiler points at every place that needs the new id.
-- **Mode settings are data.** A view style declares what the user can adjust as `ModeSetting`s (id, label, hotkey, choices). The HUD renders a selector per setting - every choice side by side, the selected one filled in - and wires the hotkey without knowing what any setting means; only that view style's renderer reads the value. `modes/registry.spec.ts` checks that hotkeys do not collide with each other or with the global keys.
-- **Choices are shown as selectors, never as a single toggle button.** A lone button labelled `Analog` can be read as "you are in analog" or as "press for analog", and no wording fixes that for everyone. `hud/segmented-control.tsx` shows every option with the selected one marked (`aria-pressed`), so state and action are both visible. Plain actions (zoom in, zoom out) stay plain buttons.
-- **Renderers keep state, not pixels.** A renderer redraws the whole frame every time. Anything that persists between frames - the analog style's fading blips - is kept as data and drawn at a brightness computed from its age, rather than by fading the canvas, which leaves permanent ghosting in 8-bit color and cannot survive a resize or a range change.
+The patterns the code follows are in [CONVENTIONS.md](CONVENTIONS.md).
