@@ -1,26 +1,26 @@
 # @squawk/adsbscope
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/adsbscope)](https://www.npmjs.com/package/@squawk/adsbscope) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
 An ATC-style radar scope for live ADS-B traffic, in your browser. `adsbscope` is a small command-line tool: it connects to a local [dump1090-fa](https://github.com/flightaware/dump1090) station through [`@squawk/adsb-feed`](../../packages/libs/adsb-feed), and serves a web page that plots every tracked aircraft on a scope centered on your receiver, over a video map of the airports, runways, navaids, fixes, and airspace around it. The scope has two view styles you can switch between while it runs: a modern **digital** scope with data blocks, and a sweep-era **analog** scope with a rotating beam and fading returns.
 
-![The digital view style: a modern scope with data blocks on leader lines, over a video map of airports and airspace](assets/digital.png)
+![The digital view style: a modern scope with data blocks on leader lines, over a video map of airports and airspace](https://raw.githubusercontent.com/neilcochran/squawk/main/apps/adsbscope/assets/digital.png)
 
-![The analog view style: a rotating beam painting returns that fade behind it, on a green phosphor tube](assets/analog.png)
+![The analog view style: a rotating beam painting returns that fade behind it, on a green phosphor tube](https://raw.githubusercontent.com/neilcochran/squawk/main/apps/adsbscope/assets/analog.png)
 
-## Running it
-
-`adsbscope` is not yet published to npm; build and run it from a clone of this repository. The turbo filter builds the `@squawk/*` libraries it depends on first:
+## Installation
 
 ```bash
-npm install
-npx turbo run build --filter=@squawk/adsbscope
-node apps/adsbscope/dist/server/cli.js --host 192.168.1.50 --lat 40.6413 --lon -73.7781
+npm install -g @squawk/adsbscope
 ```
 
-Then open the address it prints (`http://127.0.0.1:8090` by default). The examples below write the command as `adsbscope`; from a clone, that is `node apps/adsbscope/dist/server/cli.js`.
-
 ## Usage
+
+```bash
+adsbscope --host 192.168.1.50 --lat 40.6413 --lon -73.7781
+```
+
+Then open the address it prints (`http://127.0.0.1:8090` by default).
 
 `--lat`/`--lon` are your receiver's own position. They are required: the scope is centered on the receiver, and every aircraft is plotted by its bearing and range from that point. With the default Beast source they are also what lets aircraft on the ground resolve a position.
 
