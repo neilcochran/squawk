@@ -32,6 +32,7 @@ export const ANALOG_THEME: AnalogTheme = {
     videoMapLabel: '#164d29',
     target: '#7dffa0',
     coasting: '#7dffa0',
+    emergency: '#d6ffe0',
     history: '#7dffa0',
     vector: '#7dffa0',
     sweep: '#3dff7a',

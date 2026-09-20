@@ -1,5 +1,7 @@
 import type { ScopeTarget } from '../../shared/protocol.js';
 
+import { EMERGENCY_CODES } from './emergency.js';
+
 /**
  * The most characters of an aircraft's model a data block shows. Registered
  * models run to 20 characters, which would make a block two and a half times
@@ -64,12 +66,17 @@ export type DataBlockLines = [identity: string, detail: string];
 
 function formatIdentity(target: ScopeTarget): string {
   const callsign = target.callsign?.trim();
-  return callsign !== undefined && callsign !== '' ? callsign : target.icaoHex.toUpperCase();
+  const identity =
+    callsign !== undefined && callsign !== '' ? callsign : target.icaoHex.toUpperCase();
+  return target.emergency === undefined
+    ? identity
+    : `${identity} ${EMERGENCY_CODES[target.emergency]}`;
 }
 
 /**
  * Builds the two lines of a target's data block. Line one identifies the
- * aircraft: its callsign, or its ICAO hex until it has sent one. Line two is
+ * aircraft: its callsign, or its ICAO hex until it has sent one, followed by
+ * its emergency code (`UAL123 EM`) if it is in an emergency. Line two is
  * altitude in hundreds of feet, a climb/descent marker, and ground speed in
  * tens of knots (`045^25`); an aircraft on the ground shows `GND` for
  * altitude, and unknown values show as dashes.

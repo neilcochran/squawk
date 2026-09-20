@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ScopeSnapshot, ScopeVideoMap } from '../../../shared/protocol.js';
+import { EMERGENCY_FLASH_PERIOD_MS } from '../../scope/emergency.js';
 import { FULL_CIRCLE_RAD } from '../../scope/furniture.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
 import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
@@ -15,6 +16,7 @@ import {
   AFTERGLOW_DEG,
   bearingToCanvasRad,
   createAnalogRenderer,
+  EMERGENCY_BLOOM_ARCS,
   TAG_ALPHA,
 } from './analog-renderer.js';
 import { SWEEP_SETTING_ID, TAGS_OFF, TAGS_ON, TAGS_SETTING_ID } from './analog-settings.js';
@@ -289,6 +291,60 @@ describe('createAnalogRenderer', () => {
         position,
       );
       expect(Number(tag?.args[1])).toBeGreaterThan(at.xPx);
+    });
+
+    describe('emergencies', () => {
+      const position = { trueBearingDeg: 45, rangeNm: 30 };
+      const emergency = makeSnapshot([
+        makeTarget({ callsign: 'UAL123', emergency: 'general', position }),
+      ]);
+      const routine = makeSnapshot([makeTarget({ callsign: 'UAL123', position })]);
+
+      it('blooms the return of an aircraft in an emergency into a stack of arcs', () => {
+        const bloomed = createAnalogRenderer(ANALOG_THEME);
+        const plain = createAnalogRenderer(ANALOG_THEME);
+        renderAt(bloomed, 0, { snapshot: emergency });
+        renderAt(plain, 0, { snapshot: routine });
+
+        const bloom = blipArcs(renderAt(bloomed, QUARTER_TURN_MS, { snapshot: emergency }));
+        const single = blipArcs(renderAt(plain, QUARTER_TURN_MS, { snapshot: routine }));
+
+        expect(single).toHaveLength(1);
+        expect(bloom).toHaveLength(EMERGENCY_BLOOM_ARCS);
+        const radii = bloom.map((arc) => Number(arc.args[2]));
+        expect(radii[0]).toBe(Number(single[0]?.args[2]));
+        expect([...radii].sort((a, b) => a - b)).toEqual(radii);
+        expect(new Set(radii).size).toBe(EMERGENCY_BLOOM_ARCS);
+      });
+
+      it('keeps blooming a return that was painted during the emergency, once it is over', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        renderAt(renderer, 0, { snapshot: emergency });
+        renderAt(renderer, QUARTER_TURN_MS, { snapshot: emergency });
+
+        const afterwards = renderAt(renderer, QUARTER_TURN_MS + 16, { snapshot: routine });
+
+        expect(blipArcs(afterwards)).toHaveLength(EMERGENCY_BLOOM_ARCS);
+      });
+
+      it('flashes the tag at full brightness in the emergency color, and shows the code', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        renderAt(renderer, 0, { snapshot: emergency });
+        const litAtMs = EMERGENCY_FLASH_PERIOD_MS * 2;
+        const darkAtMs = litAtMs + EMERGENCY_FLASH_PERIOD_MS / 2;
+
+        const tagAt = (frameTimeMs: number): RecordedCall | undefined =>
+          renderAt(renderer, frameTimeMs, { snapshot: emergency })
+            .callsTo('fillText')
+            .find((call) => call.args[0] === 'UAL123 EM');
+        const lit = tagAt(litAtMs);
+        const dark = tagAt(darkAtMs);
+
+        expect(lit?.fillStyle).toBe(COLORS.emergency);
+        expect(lit?.globalAlpha).toBe(1);
+        expect(dark?.fillStyle).toBe(COLORS.target);
+        expect(dark?.globalAlpha).toBeLessThan(1);
+      });
     });
 
     describe('tag placement', () => {

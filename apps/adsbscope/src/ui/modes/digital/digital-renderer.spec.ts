@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { ScopeSnapshot, ScopeTarget, ScopeVideoMap } from '../../../shared/protocol.js';
 import { TIME_SHARE_ALTERNATE_MS, TIME_SHARE_CYCLE_MS } from '../../scope/data-block.js';
+import { EMERGENCY_FLASH_PERIOD_MS } from '../../scope/emergency.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
 import type { ScopeFrame } from '../../scope/renderer.js';
 import { createRecordingContext, makeSnapshot, makeTarget } from '../../scope/test-utils.js';
@@ -300,6 +301,49 @@ describe('createDigitalRenderer', () => {
 
       expect(off.texts()).not.toContain('KTST');
       expect(off.calls).toEqual(notLoaded.calls);
+    });
+  });
+
+  describe('emergencies', () => {
+    const position = { trueBearingDeg: 90, rangeNm: 30 };
+
+    function symbolColorAt(target: ScopeTarget, frameTimeMs: number): string | undefined {
+      const recording = createRecordingContext();
+      createDigitalRenderer(DIGITAL_THEME).render(recording.context, {
+        viewport: VIEWPORT,
+        rangeNm: 60,
+        snapshot: makeSnapshot([target]),
+        videoMap: undefined,
+        frameTimeMs,
+        settings: {},
+      });
+      return recording.callsTo('fillRect').at(-1)?.fillStyle;
+    }
+
+    it('flashes an aircraft in an emergency between the emergency color and the usual one', () => {
+      const target = makeTarget({ callsign: 'UAL123', emergency: 'general', position });
+
+      expect(symbolColorAt(target, 0)).toBe(COLORS.emergency);
+      expect(symbolColorAt(target, EMERGENCY_FLASH_PERIOD_MS / 2)).toBe(COLORS.target);
+      expect(symbolColorAt(makeTarget({ position }), 0)).toBe(COLORS.target);
+    });
+
+    it('never dims an aircraft in an emergency as coasting', () => {
+      const lastSeenAt = makeSnapshot().at - COASTING_AFTER_MS - 1;
+      const emergency = makeTarget({ emergency: 'general', position, lastSeenAt });
+      const routine = makeTarget({ position, lastSeenAt });
+
+      expect(symbolColorAt(routine, 0)).toBe(COLORS.coasting);
+      expect(symbolColorAt(emergency, 0)).toBe(COLORS.emergency);
+      expect(symbolColorAt(emergency, EMERGENCY_FLASH_PERIOD_MS / 2)).toBe(COLORS.target);
+    });
+
+    it('adds the emergency code to the data block', () => {
+      const recording = renderFrame(
+        makeSnapshot([makeTarget({ callsign: 'UAL123', emergency: 'general', position })]),
+      );
+
+      expect(recording.texts()).toContain('UAL123 EM');
     });
   });
 

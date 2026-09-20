@@ -20,6 +20,7 @@ export const DIGITAL_THEME: ScopeTheme = {
     videoMapLabel: '#466577',
     target: '#e6f2e6',
     coasting: '#7d8a7d',
+    emergency: '#ff4d4d',
     history: '#3f7fe0',
     vector: '#c8d4c8',
   },

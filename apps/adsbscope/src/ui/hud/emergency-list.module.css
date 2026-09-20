@@ -1,0 +1,47 @@
+/*
+ * On a narrow screen the top corners are taken by the status readout and the
+ * tab list, so the emergency list sits below the readout; from the breakpoint
+ * up there is room for it at the top center.
+ */
+.emergencyList {
+  position: absolute;
+  top: var(--scope-emergency-list-top);
+  left: var(--scope-inset-inline);
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-xs);
+  color: var(--scope-ui-alert);
+  pointer-events: none;
+}
+
+.heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--scope-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--scope-space-sm);
+  white-space: pre;
+}
+
+@media (min-width: 48rem) {
+  .emergencyList {
+    top: var(--scope-inset-block);
+    left: 50%;
+    align-items: center;
+    transform: translateX(-50%);
+  }
+}

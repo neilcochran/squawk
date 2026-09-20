@@ -78,6 +78,24 @@ describe('formatDataBlock', () => {
   });
 });
 
+describe('emergency codes', () => {
+  it('follows the identity with the emergency code, in both the usual and the alternate block', () => {
+    const target = makeTarget({
+      callsign: 'UAL123',
+      emergency: 'general',
+      aircraftModel: '737-8H4',
+    });
+
+    expect(formatDataBlock(target)[0]).toBe('UAL123 EM');
+    expect(formatAlternateDataBlock(target)?.[0]).toBe('UAL123 EM');
+    expect(formatDataBlock(makeTarget({ emergency: 'radioFailure' }))[0]).toBe('A1B2C3 RF');
+  });
+
+  it('adds nothing to the identity of an aircraft that is not in an emergency', () => {
+    expect(formatDataBlock(makeTarget({ callsign: 'UAL123' }))[0]).toBe('UAL123');
+  });
+});
+
 describe('formatAlternateDataBlock', () => {
   it('shows the registered model under the same first line', () => {
     const target = makeTarget({ callsign: 'N409CC ', aircraftModel: 'PA-28-181' });

@@ -107,6 +107,17 @@ The `Map` selector, or `V`, chooses how much of this is drawn. `Basic`, the defa
 
 The bundled data covers the United States only, so a receiver elsewhere gets an empty map. It is also a snapshot: it is as current as the installed data packages, not a live feed of airspace changes.
 
+### Emergencies
+
+An aircraft is treated as being in an emergency when it squawks 7500, 7600, or 7700, when its transponder broadcasts an emergency state, or while it has an active ACAS/TCAS Resolution Advisory - the same test [`adsbtop`](../adsbtop) applies, from `@squawk/adsb-feed`. Which of those a station can report depends on the source; see [`@squawk/adsb-feed`'s README](../../packages/libs/adsb-feed/README.md#field-population-by-source). When more than one applies, the squawk wins, then the declared state.
+
+The aircraft's callsign is followed by a code, everywhere it is shown: `EM` for a general emergency (7700), `RF` for radio failure (7600), `HJ` for unlawful interference (7500) - the codes a real scope uses - and `MED`, `FUEL`, `DOWN`, and `RA` for a medical flight, minimum fuel, a downed aircraft, and a Resolution Advisory. Each view style then marks it in its own way:
+
+- **Digital** - the symbol, leader line, and data block flash red once a second, and the aircraft is never dimmed for going quiet.
+- **Analog** - a monochrome tube has no red, so the return blooms into a stack of three arcs, as the return of a transponder squawking 7700 did on a real scope, and its tag flashes at full brightness instead of fading with the blip.
+
+In both, the aircraft is also named under `EMERGENCY` at the top of the window (below the readout on a narrow screen), with its squawk. That list does not depend on the aircraft being in view: one beyond the selected range, or with no position at all, is listed just the same.
+
 ### Aircraft models
 
 The model in a data block comes from the FAA aircraft registry bundled with [`@squawk/icao-registry-data`](../../packages/libs/icao-registry-data), looked up by the aircraft's ICAO hex. It is the model the aircraft is registered as - `PA-28-181`, `737-8H4` - cut to twelve characters. Registered models run to twenty; twelve shows more than nine in ten of them whole, and only the blocks that need the width take it. That is not the four-character ICAO type designator (`P28A`, `B738`) a real scope shows; the FAA registry does not carry designators. It covers aircraft on the US register only, and is as current as the installed data package.
@@ -155,6 +166,7 @@ src/server/
   cli-args.ts, create-feed.ts   # Flags, and the live or replayed aircraft feed
   http-server.ts                # Static UI, /api/config, /api/stream, /api/videomap
   snapshot.ts                   # Aircraft -> scope targets, in receiver-relative polar coordinates
+  emergency.ts                  # Which kind of emergency an aircraft is in, if any
   aircraft-model.ts             # Registered model by ICAO hex, from the bundled FAA registry, loaded on demand
   video-map/
     layers.ts                   # Which features are shown at which range: the knobs for map density
@@ -173,7 +185,7 @@ src/ui/
   styles/                   # theme.ts (theme types + CSS variable publishing), global.css (layout tokens)
   data/                     # Config loading and the snapshot stream hook
   notice.tsx                # Full-page message shown while the scope loads, or if it cannot
-  hud/                      # The heads-up display over the canvas: status readout, controls, hotkeys
+  hud/                      # The heads-up display over the canvas: status readout, tab and emergency lists, controls, hotkeys
   scope/                    # Canvas host, projection, range steps, data-block formatting
   scope/furniture.ts        # Range rings, compass rose, receiver marker - shared by every view style
   scope/video-map-draw.ts   # The video map - shared by every view style

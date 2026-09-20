@@ -28,6 +28,8 @@ export interface ScopeCanvasPalette {
   target: string;
   /** A target that has not been heard from recently. */
   coasting: string;
+  /** A target in an emergency, during the lit half of its flash. */
+  emergency: string;
   /** History trail dots. */
   history: string;
   /** Velocity vector lines. */

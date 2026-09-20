@@ -65,6 +65,19 @@ export interface PolarPoint {
   rangeNm: number;
 }
 
+/**
+ * The kind of emergency an aircraft is in: what its crew has declared by
+ * squawk code or emergency state, or an active ACAS/TCAS Resolution Advisory.
+ */
+export type ScopeEmergencyKind =
+  | 'general'
+  | 'radioFailure'
+  | 'unlawfulInterference'
+  | 'medical'
+  | 'minimumFuel'
+  | 'downed'
+  | 'resolutionAdvisory';
+
 /** One tracked aircraft as the scope draws it. */
 export interface ScopeTarget {
   /** 24-bit ICAO hexadecimal address. */
@@ -73,6 +86,8 @@ export interface ScopeTarget {
   callsign?: string;
   /** Squawk transponder code. */
   squawk?: string;
+  /** The emergency the aircraft is in. Absent for an aircraft that is not in one. */
+  emergency?: ScopeEmergencyKind;
   /** The model the aircraft is registered as (`PA-28-181`, `737-8H4`), when the registry knows it. */
   aircraftModel?: string;
   /** Altitude in feet MSL: barometric when available, otherwise geometric. */

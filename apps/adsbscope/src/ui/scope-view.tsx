@@ -6,6 +6,7 @@ import type { ScopeConfig, ScopeModeId, ScopeVideoMap } from '../shared/protocol
 import { useScopeStream } from './data/use-scope-stream.js';
 import { useVideoMap } from './data/use-video-map.js';
 import { fetchVideoMap } from './data/video-map.js';
+import { EmergencyList } from './hud/emergency-list.js';
 import { resolveHotkey } from './hud/hotkeys.js';
 import type { KeyPress } from './hud/hotkeys.js';
 import { ModeControls } from './hud/mode-controls.js';
@@ -131,6 +132,7 @@ export function ScopeView({ config, loadVideoMap = fetchVideoMap }: ScopeViewPro
         rangeNm={rangeNm}
       />
       <TabList snapshot={stream.snapshot} />
+      <EmergencyList snapshot={stream.snapshot} />
       <ModeControls
         modes={SCOPE_MODES}
         mode={mode}

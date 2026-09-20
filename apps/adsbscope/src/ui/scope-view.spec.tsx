@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ScopeConfig } from '../shared/protocol.js';
 
+import { EMERGENCY_LIST_LABEL } from './hud/emergency-list.js';
 import { LINK_STATUS_LABELS } from './hud/link-status.js';
 import { TAB_LIST_LABEL } from './hud/tab-list.js';
 import { SCOPE_MODES_BY_ID } from './modes/registry.js';
@@ -268,6 +269,24 @@ describe('ScopeView', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(LINK_STATUS_LABELS.live);
     expect(screen.getByRole('status')).toHaveTextContent('2 targets (1 plotted)');
+  });
+
+  it('raises an aircraft in an emergency in the emergency list', () => {
+    render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+    const snapshot = makeSnapshot([
+      makeTarget({ callsign: 'UAL123', squawk: '7700', emergency: 'general' }),
+      makeTarget({ icaoHex: 'c0ffee', callsign: 'DAL45' }),
+    ]);
+    expect(screen.queryByRole('alert', { name: EMERGENCY_LIST_LABEL })).not.toBeInTheDocument();
+
+    act(() => {
+      FakeEventSource.latest().emitOpen();
+      FakeEventSource.latest().emit('snapshot', JSON.stringify(snapshot));
+    });
+
+    const list = screen.getByRole('alert', { name: EMERGENCY_LIST_LABEL });
+    expect(list).toHaveTextContent('UAL123 EM');
+    expect(list).not.toHaveTextContent('DAL45');
   });
 
   it('lists the aircraft that cannot be plotted in the tab list', () => {

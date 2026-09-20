@@ -9,6 +9,8 @@ export interface Blip {
   position: PolarPoint;
   /** Frame time, in ms, at which the blip was painted. */
   paintedAtMs: number;
+  /** True if the aircraft was in an emergency when the beam crossed it: the return is drawn bloomed. */
+  isEmergency: boolean;
 }
 
 /**

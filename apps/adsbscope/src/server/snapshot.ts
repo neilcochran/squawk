@@ -5,6 +5,7 @@ import type { Aircraft, Coordinates } from '@squawk/types';
 import type { PolarPoint, ScopeSnapshot, ScopeTarget } from '../shared/protocol.js';
 
 import type { AircraftModelLookup } from './aircraft-model.js';
+import { classifyEmergency } from './emergency.js';
 
 /** Minimum time between two points of a target's history trail. */
 export const HISTORY_SPACING_MS = 5000;
@@ -86,10 +87,12 @@ export function toScopeTarget(
   aircraftModel: string | undefined,
 ): ScopeTarget {
   const altitudeFt = aircraft.position?.baroAltitudeFt ?? aircraft.position?.geoAltitudeFt;
+  const emergency = classifyEmergency(aircraft);
   return {
     icaoHex: aircraft.icaoHex,
     ...(aircraft.callsign !== undefined && { callsign: aircraft.callsign }),
     ...(aircraft.squawk !== undefined && { squawk: aircraft.squawk }),
+    ...(emergency !== undefined && { emergency }),
     ...(aircraftModel !== undefined && { aircraftModel }),
     ...(altitudeFt !== undefined && { altitudeFt: roundTo(altitudeFt, 0) }),
     ...(aircraft.groundSpeedKt !== undefined && {

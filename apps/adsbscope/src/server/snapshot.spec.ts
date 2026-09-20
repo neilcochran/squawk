@@ -157,6 +157,14 @@ describe('toScopeTarget', () => {
     expect(target.altitudeFt).toBe(5500);
   });
 
+  it('carries the kind of emergency an aircraft is in, and nothing for one that is not', () => {
+    const emergency: Aircraft = { icaoHex: 'a1b2c3', squawk: '7700', lastSeenAt: NOW };
+    const routine: Aircraft = { icaoHex: 'a1b2c3', squawk: '1200', lastSeenAt: NOW };
+
+    expect(toScopeTarget(emergency, [], RECEIVER, NOW, undefined).emergency).toBe('general');
+    expect(toScopeTarget(routine, [], RECEIVER, NOW, undefined)).not.toHaveProperty('emergency');
+  });
+
   it('carries the registered model when one is known', () => {
     const aircraft: Aircraft = { icaoHex: 'a1b2c3', lastSeenAt: NOW };
 

@@ -12,6 +12,7 @@ import {
   isTimeShareAlternate,
 } from '../../scope/data-block.js';
 import type { DataBlockLines } from '../../scope/data-block.js';
+import { isEmergencyFlashOn } from '../../scope/emergency.js';
 import {
   drawCompassRose,
   drawRangeRings,
@@ -154,6 +155,18 @@ function drawSymbolAndDataBlock(
   );
 }
 
+function targetColor(
+  palette: ScopeCanvasPalette,
+  target: ScopeTarget,
+  snapshot: ScopeSnapshot,
+  isFlashOn: boolean,
+): string {
+  if (target.emergency !== undefined) {
+    return isFlashOn ? palette.emergency : palette.target;
+  }
+  return snapshot.at - target.lastSeenAt > COASTING_AFTER_MS ? palette.coasting : palette.target;
+}
+
 function plotTargets(
   context: CanvasRenderingContext2D,
   viewport: ScopeViewport,
@@ -225,7 +238,8 @@ function isSameInputs(a: PlacementInputs, b: PlacementInputs): boolean {
  * compass rose, and for each target a position symbol (hollow when on the ground), fading
  * history dots, a one-minute velocity vector, and a leader line to its data
  * block. A target not heard from for {@link COASTING_AFTER_MS} is drawn
- * dimmed.
+ * dimmed. A target in an emergency flashes in the emergency color instead,
+ * and is never dimmed: it is the one target that must not fade from view.
  *
  * A target whose registered model is known time-shares the second line of
  * its block with it; a block is sized for the wider of the two, so it does
@@ -300,13 +314,13 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
         return;
       }
       const showAlternate = isTimeShareAlternate(frame.frameTimeMs);
+      const isFlashOn = isEmergencyFlashOn(frame.frameTimeMs);
       for (const { request, placement } of placedTargets(context, viewport, snapshot)) {
-        const coasting = snapshot.at - request.target.lastSeenAt > COASTING_AFTER_MS;
         drawHistory(context, palette, viewport, request.target);
         drawVelocityVector(context, palette, viewport, request.target, request.at);
         drawSymbolAndDataBlock(
           context,
-          coasting ? palette.coasting : palette.target,
+          targetColor(palette, request.target, snapshot, isFlashOn),
           viewport.pxPerRem,
           request,
           placement,

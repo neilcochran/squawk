@@ -8,6 +8,7 @@ import type {
 } from '../../scope/data-block-placement.js';
 import { formatDataBlock } from '../../scope/data-block.js';
 import type { DataBlockLines } from '../../scope/data-block.js';
+import { isEmergencyFlashOn } from '../../scope/emergency.js';
 import {
   drawCompassRose,
   drawRangeRings,
@@ -43,6 +44,13 @@ export const AFTERGLOW_ALPHA = 0.3;
 /** Brightness of a data tag relative to the blip it labels, so tags stay secondary to the returns. */
 export const TAG_ALPHA = 0.6;
 
+/**
+ * How many arcs an emergency return is drawn as. A transponder squawking 7700
+ * answered a sweep-era interrogator with a train of extra pulses, and the
+ * return bloomed into a stack of slashes that no controller could miss.
+ */
+export const EMERGENCY_BLOOM_ARCS = 3;
+
 /** Stroke width of the beam itself. A hairline stays crisp at any scale. */
 const BEAM_LINE_WIDTH_PX = 1.5;
 const DEG_TO_RAD = FULL_CIRCLE_RAD / FULL_CIRCLE_DEG;
@@ -54,6 +62,8 @@ export const ANALOG_LAYOUT_REM = {
   blipThickness: 0.25,
   /** Shortest a blip's arc is ever drawn, so returns near the center stay visible. */
   blipMinLength: 0.5,
+  /** Radial distance between the arcs of an emergency return's bloom. */
+  bloomSpacing: 0.4375,
   /** Gap between the center of a blip and the start of its tag's leader line. */
   tagLeaderGap: 0.375,
   /** Distance from the center of a blip to the end of its tag's leader line. */
@@ -91,7 +101,12 @@ function paintCrossedTargets(
       continue;
     }
     if (isBearingSwept(position.trueBearingDeg, sweepDeg, advanceDeg)) {
-      blips.push({ icaoHex: target.icaoHex, position, paintedAtMs: frameTimeMs });
+      blips.push({
+        icaoHex: target.icaoHex,
+        position,
+        paintedAtMs: frameTimeMs,
+        isEmergency: target.emergency !== undefined,
+      });
     }
   }
 }
@@ -159,6 +174,20 @@ function drawBlip(
   context.lineCap = 'round';
   context.arc(center.xPx, center.yPx, radiusPx, centerRad - halfWidthRad, centerRad + halfWidthRad);
   context.stroke();
+  if (blip.isEmergency) {
+    const spacingPx = ANALOG_LAYOUT_REM.bloomSpacing * pxPerRem;
+    for (let arc = 1; arc < EMERGENCY_BLOOM_ARCS; arc++) {
+      context.beginPath();
+      context.arc(
+        center.xPx,
+        center.yPx,
+        radiusPx + arc * spacingPx,
+        centerRad - halfWidthRad,
+        centerRad + halfWidthRad,
+      );
+      context.stroke();
+    }
+  }
 }
 
 /** The newest blip of a target that is still in the snapshot: a request for a place for its tag, carrying what is needed to draw it. */
@@ -244,14 +273,20 @@ function drawTags(
   color: string,
   pxPerRem: number,
   tags: readonly PlacedDataBlock<TaggedBlip>[],
+  emergencyColor: string,
   nowMs: number,
   periodMs: number,
 ): void {
-  context.fillStyle = color;
-  context.strokeStyle = color;
+  const isFlashOn = isEmergencyFlashOn(nowMs);
   context.lineWidth = FURNITURE_LINE_WIDTH_PX;
   for (const { request, placement } of tags) {
-    context.globalAlpha = TAG_ALPHA * blipAlpha(nowMs - request.blip.paintedAtMs, periodMs);
+    const isLit = request.blip.isEmergency && isFlashOn;
+    const tagColor = isLit ? emergencyColor : color;
+    context.fillStyle = tagColor;
+    context.strokeStyle = tagColor;
+    context.globalAlpha = isLit
+      ? 1
+      : TAG_ALPHA * blipAlpha(nowMs - request.blip.paintedAtMs, periodMs);
     const leaderStart = offsetByBearing(
       request.at,
       placement.leaderBearingDeg,
@@ -284,6 +319,11 @@ function drawTags(
  * changes while it fades. `reset()` forgets every blip and returns the beam
  * to north, so switching to this style starts from a dark scope that fills in
  * over one rotation.
+ *
+ * An aircraft in an emergency returns a bloom - a stack of
+ * {@link EMERGENCY_BLOOM_ARCS} arcs rather than one - as a transponder
+ * squawking 7700 did on a real tube, and its tag flashes at full brightness
+ * rather than fading with the blip. A monochrome tube has no red to offer.
  *
  * Tags hang off each target's newest blip on a short leader line, and are
  * kept off one another the way the digital style's data blocks are: a leader
@@ -377,6 +417,7 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
           palette.target,
           viewport.pxPerRem,
           placedTags(context, viewport, snapshot),
+          palette.emergency,
           frameTimeMs,
           periodMs,
         );

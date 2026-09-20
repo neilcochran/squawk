@@ -14,7 +14,12 @@ import type { Blip } from './sweep.js';
 const PERIOD_MS = 4800;
 
 function blipPaintedAt(paintedAtMs: number): Blip {
-  return { icaoHex: 'a1b2c3', position: { trueBearingDeg: 90, rangeNm: 10 }, paintedAtMs };
+  return {
+    icaoHex: 'a1b2c3',
+    position: { trueBearingDeg: 90, rangeNm: 10 },
+    paintedAtMs,
+    isEmergency: false,
+  };
 }
 
 describe('sweepAdvanceDeg', () => {
