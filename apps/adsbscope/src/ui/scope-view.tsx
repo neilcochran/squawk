@@ -24,8 +24,9 @@ import { RangeControls } from './hud/range-controls.js';
 import { StatusBar } from './hud/status-bar.js';
 import { TabList } from './hud/tab-list.js';
 import { useHotkeys } from './hud/use-hotkeys.js';
-import { defaultSettingValues, selectSetting, stepSetting } from './modes/mode.js';
-import type { ModeSetting, ModeSettingValues } from './modes/mode.js';
+import { defaultSettingValuesByMode, withModeSettingValues } from './modes/mode-settings.js';
+import { selectSetting, stepSetting } from './modes/mode.js';
+import type { ModeSetting } from './modes/mode.js';
 import { nextScopeMode, SCOPE_MODES, SCOPE_MODES_BY_ID } from './modes/registry.js';
 import { stepRange } from './scope/range.js';
 import type { RangeDirection } from './scope/range.js';
@@ -45,22 +46,10 @@ export interface ScopeViewProps {
   loadAircraftDetails?: (icaoHex: string) => Promise<ScopeAircraftDetails | undefined>;
 }
 
-/**
- * Every mode's settings at their defaults. Each mode keeps its own values, so
- * they survive switching away and back. Typed as a complete record, so a new
- * mode id that is not given its defaults here fails to compile.
- */
 function initialControlsShowing(): boolean {
   return startsWithControlsShowing(
     typeof window.matchMedia === 'function' ? (query) => window.matchMedia(query) : undefined,
   );
-}
-
-function initialSettingValues(): Record<ScopeModeId, ModeSettingValues> {
-  return {
-    digital: defaultSettingValues(SCOPE_MODES_BY_ID.digital),
-    analog: defaultSettingValues(SCOPE_MODES_BY_ID.analog),
-  };
 }
 
 /**
@@ -86,7 +75,7 @@ export function ScopeView({
   const [urlState] = useState(() => parseUrlState(window.location.search));
   const [modeId, setModeId] = useState<ScopeModeId>(urlState.modeId ?? config.mode);
   const [rangeNm, setRangeNm] = useState(urlState.rangeNm ?? config.rangeNm);
-  const [settingValuesByMode, setSettingValuesByMode] = useState(initialSettingValues);
+  const [settingValuesByMode, setSettingValuesByMode] = useState(defaultSettingValuesByMode);
   const [selectedIcaoHex, setSelectedIcaoHex] = useState(urlState.selectedIcaoHex);
   const [controlsShowing, setControlsShowing] = useState(initialControlsShowing);
   const stream = useScopeStream();
@@ -110,20 +99,18 @@ export function ScopeView({
 
   const handleSelectSetting = useCallback(
     (setting: ModeSetting, value: string): void => {
-      setSettingValuesByMode((current) => ({
-        ...current,
-        [modeId]: selectSetting(setting, current[modeId], value),
-      }));
+      setSettingValuesByMode((current) =>
+        withModeSettingValues(current, modeId, selectSetting(setting, current[modeId], value)),
+      );
     },
     [modeId],
   );
 
   const handleStepSetting = useCallback(
     (setting: ModeSetting): void => {
-      setSettingValuesByMode((current) => ({
-        ...current,
-        [modeId]: stepSetting(setting, current[modeId]),
-      }));
+      setSettingValuesByMode((current) =>
+        withModeSettingValues(current, modeId, stepSetting(setting, current[modeId])),
+      );
     },
     [modeId],
   );
