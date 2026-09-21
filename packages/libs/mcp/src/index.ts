@@ -19,6 +19,16 @@
  * const server = createSquawkMcpServer();
  * await server.connect(new StdioServerTransport());
  * ```
+ *
+ * Pass `toolGroups` to register only part of the catalog:
+ *
+ * ```typescript
+ * const server = createSquawkMcpServer({ toolGroups: ['airports', 'navaids', 'geo'] });
+ * ```
  */
 
 export { createSquawkMcpServer } from './server.js';
+export { TOOL_GROUP_NAMES, ToolGroupConfigError } from './tool-groups.js';
+
+export type { CreateSquawkMcpServerOptions } from './server.js';
+export type { ToolGroupName } from './tool-groups.js';
