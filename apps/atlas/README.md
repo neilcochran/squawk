@@ -50,7 +50,7 @@ npm run dev
 
 Without a key the app still runs and the chart overlays render, but the basemap stays blank.
 
-The stack and the patterns the code follows are in the [Atlas at a glance](../../ARCHITECTURE.md#atlas-at-a-glance) section of ARCHITECTURE.md.
+The patterns the code follows are in [CONVENTIONS.md](CONVENTIONS.md).
 
 ## Scripts
 

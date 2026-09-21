@@ -10,16 +10,15 @@ Big-picture orientation: the principles, conventions, and processes that shape t
 2. [Repository structure](#repository-structure)
 3. [Architectural principles](#architectural-principles)
 4. [Library conventions](#library-conventions)
-5. [Atlas at a glance](#atlas-at-a-glance)
-6. [Data pipelines](#data-pipelines)
-7. [Quality gates](#quality-gates)
-8. [CI/CD overview](#cicd-overview)
-9. [Release process](#release-process)
-10. [Branch protection and access](#branch-protection-and-access)
-11. [Dependency management](#dependency-management)
-12. [Node versions](#node-versions)
-13. [Security](#security)
-14. [Documentation](#documentation)
+5. [Data pipelines](#data-pipelines)
+6. [Quality gates](#quality-gates)
+7. [CI/CD overview](#cicd-overview)
+8. [Release process](#release-process)
+9. [Branch protection and access](#branch-protection-and-access)
+10. [Dependency management](#dependency-management)
+11. [Node versions](#node-versions)
+12. [Security](#security)
+13. [Documentation](#documentation)
 
 ---
 
@@ -107,7 +106,7 @@ Why: keeping `@squawk/types` focused on genuinely shared models avoids forcing a
 
 ### Browser entries on data and logic packages
 
-Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders so SPAs and edge runtimes can consume the bundled snapshots. Pure-logic query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/flightplan`, `@squawk/navaids`, `@squawk/procedures`) and the `@squawk/weather` parser library also expose a `/browser` subpath that aliases the main entry, since their core code has no Node-specific imports. The `/browser` import is the explicit, supported way for SPAs to consume these packages; the contract is enforced by `lint:pack` (publint) so a future Node-only import would have to split the surface explicitly rather than silently breaking browsers.
+Data packages ship a `/browser` subpath with async `loadUsBundled<X>()` loaders so SPAs and edge runtimes can consume the bundled snapshots. Pure-logic query libraries (`@squawk/airports`, `@squawk/airspace`, `@squawk/airways`, `@squawk/fixes`, `@squawk/flightplan`, `@squawk/navaids`, `@squawk/procedures`) and the `@squawk/weather` parser library also expose a `/browser` subpath that aliases the main entry, since their core code has no Node-specific imports. The `/browser` import is the explicit, supported way for SPAs to consume these packages; the contract is enforced by `lint:pack` (publint) so a future Node-only import would have to split the surface explicitly rather than silently breaking browsers. [`apps/atlas/`](apps/atlas/) is the contract's in-repo consumer - every dataset it draws arrives through a `loadUsBundled<X>()` loader paired with a `/browser` resolver - so a break in the browser surface shows up in this repo's own test suite rather than only in a downstream install.
 
 `@squawk/weather` additionally ships an opt-in `/fetch` subpath that calls the AWC text API over the global `fetch`. It runs in the browser, but AWC sends no CORS headers, so browser consumers point the `baseUrl` option at a same-origin proxy they control. The main `@squawk/weather` and `/browser` entries stay pure parsers with no network calls.
 
@@ -136,28 +135,6 @@ Three non-obvious maintenance patterns hold here:
 ## Library conventions
 
 The architectural patterns for what libraries look like and how they relate to each other are above in [Architectural principles](#architectural-principles). The concrete rules - file layout, package.json shape, workspace dependency ranges, dependency rules, naming, TSDoc requirements, code style, test conventions, and changeset format - live in [CONVENTIONS.md](CONVENTIONS.md), which is the source of truth that PR review enforces.
-
----
-
-## Atlas at a glance
-
-[`apps/atlas/`](apps/atlas/) is the chart-first SPA viewer (`squawk-atlas`, private). The atlas [README](apps/atlas/README.md) covers the user-facing surface, current feature set, and known rough edges. The stack and conventions captured here describe how the code is built and organized.
-
-The stack is React 19 on Vite, TanStack Router for file-based routes with zod-validated search params, Tailwind CSS v4 with Radix primitives, MapLibre GL via `@vis.gl/react-maplibre` drawing over Protomaps hosted vector tiles, and Vitest with jsdom and `@testing-library/react` for tests.
-
-The app is a shell plus a per-mode component tree. The shell owns app-level chrome (header, mode switcher, theme switcher); each mode under `src/modes/<name>/` owns its layers, URL state schema, and inspector wiring, so adding a mode means a new directory there, a new route file under `src/routes/`, and an entry in the shell's mode switcher. Cross-mode code - data loaders, shared map primitives, the inspector, UI primitives, and style tokens - lives under `src/shared/`.
-
-Atlas does not extend [tsconfig.base.json](tsconfig.base.json) - it has framework-specific TS settings (jsx, DOM lib, Bundler resolution, noEmit) the lib base doesn't carry. It has its own [eslint.config.js](apps/atlas/eslint.config.js) with React / JSX / a11y rules. The cross-cutting code conventions above still apply.
-
-App-specific principles:
-
-- **State-first URL design.** Every persisted piece of UI state lives in the URL, validated by zod with both `.default()` (initial value) and `.catch()` (fallback for stale share-links). Component state is reserved for genuinely transient interaction (hover, last-click snapshot). Stale share-links never error - they fall back.
-- **Pure helpers separated from JSX.** Anything that doesn't return JSX or close over component state lives in a `.ts` sibling, not the `.tsx`. Keeps logic unit-testable without a render harness.
-- **Module-level cached promises for shared data loads.** The data-package `/browser` loaders are wrapped in module-level cached promises, so N components subscribing to a dataset trigger one fetch.
-- **Tiny pub/sub buses for cross-tree side effects.** When the shell needs to trigger something inside a mode (e.g. "reset the chart view"), the pattern is a module-level pub/sub bus + a `<Listener />` component, not a callback drilled through React props or state lifted into the shell. Decouples the shell from each mode's internal API.
-- **Tailwind primitives over class-composition helpers.** Repeated UI shapes (3+ consumers) get extracted as React components in `shared/ui/`. Recurring class clusters that can't be wrapped (Radix `className` props, third-party widgets) become string constants in `shared/styles/style-tokens.ts`. No `@apply` in `index.css` - it fights Tailwind v4's IntelliSense and tree-shaking.
-- **Chart colors as typed TS constants.** MapLibre paint properties can't read CSS custom properties at runtime, so chart-domain colors live in `shared/styles/chart-colors.ts` rather than as Tailwind classes or CSS variables.
-- **Mobile-first responsive.** One breakpoint (`md:`, 768px) divides phone from desktop. Touch targets >= 44px on mobile. The inspector pivots to a bottom sheet on phones; hover preview is gated on `(hover: hover)` so taps don't synthesize flicker.
 
 ---
 
@@ -343,10 +320,10 @@ Every workflow `uses:` is a full commit SHA followed by a trailing `# v<x.y.z>` 
 
 Two floors, moved for different reasons:
 
-| Floor           | Declared in                                                                                               | Now    | Moves when                                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
-| **Published**   | `engines.node` of the 28 published packages                                                               | `>=22` | A library needs a newer API, or the floor reaches EOL. Not when a new LTS ships - that breaks consumers for nothing |
-| **Development** | `engines.node` of the root and every `tools/*` (what `scripts/*` resolves against), plus [.nvmrc](.nvmrc) | `>=24` | A newer line reaches Active LTS. Never the Current line                                                             |
+| Floor           | Declared in                                                                                                              | Now    | Moves when                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| **Published**   | `engines.node` of the 28 published packages                                                                              | `>=22` | A library needs a newer API, or the floor reaches EOL. Not when a new LTS ships - that breaks consumers for nothing |
+| **Development** | `engines.node` of the root, every `tools/*` (what `scripts/*` resolves against), and `apps/atlas`, plus [.nvmrc](.nvmrc) | `>=24` | A newer line reaches Active LTS. Never the Current line                                                             |
 
 [.nvmrc](.nvmrc) is the single source of truth for the development floor: every CI job except the `compat` matrix reads it through `node-version-file`.
 

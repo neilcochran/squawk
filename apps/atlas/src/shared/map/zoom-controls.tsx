@@ -14,10 +14,10 @@ const ZOOM_ANIMATION_MS = 300;
 const TILT_ANIMATION_MS = 200;
 
 /**
- * Pitch increment (in degrees) applied to each tilt button click. With
- * `MAP_MAX_PITCH = 75`, this gives the user five button-driven stops
- * (15 / 30 / 45 / 60 / 75) - fine-grained control without making the
- * fully-tilted case onerous.
+ * Pitch increment (in degrees) applied to each tilt button click. Stepping
+ * by 15 gives the user a handful of stops between flat and `MAP_MAX_PITCH`,
+ * the last one a short remainder wherever the cap is not a multiple of the
+ * step - fine-grained control without making the fully-tilted case onerous.
  */
 const TILT_STEP_DEG = 15;
 
