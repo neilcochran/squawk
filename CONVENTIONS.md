@@ -50,7 +50,7 @@ Other notes:
 
 - Data packages include `"data"` in the `files` array alongside `"dist"`.
 - Query libraries list their companion data package as a `devDependency` (for testing only).
-- Tools workspaces declare `"lint": "tsc --noEmit && eslint src"` so `turbo run lint` covers them. The root and every `tools/*`, which is also what `scripts/*` resolves against, declare the development floor, currently `"engines": { "node": ">=24" }`, matching [.nvmrc](.nvmrc). Published packages keep their own lower floor, and `apps/atlas` is private but still reads `>=22`. See [Node versions](ARCHITECTURE.md#node-versions) for which floor moves when.
+- Tools workspaces declare `"lint": "tsc --noEmit && eslint src"` so `turbo run lint` covers them. Everything private - the root, every `tools/*` (which is also what `scripts/*` resolves against), and `apps/atlas` - declares the development floor, currently `"engines": { "node": ">=24" }`, matching [.nvmrc](.nvmrc). Published packages keep their own lower floor. See [Node versions](ARCHITECTURE.md#node-versions) for which floor moves when.
 
 ---
 

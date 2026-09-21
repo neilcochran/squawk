@@ -320,14 +320,12 @@ Every workflow `uses:` is a full commit SHA followed by a trailing `# v<x.y.z>` 
 
 Two floors, moved for different reasons:
 
-| Floor           | Declared in                                                                                               | Now    | Moves when                                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
-| **Published**   | `engines.node` of the 28 published packages                                                               | `>=22` | A library needs a newer API, or the floor reaches EOL. Not when a new LTS ships - that breaks consumers for nothing |
-| **Development** | `engines.node` of the root and every `tools/*` (what `scripts/*` resolves against), plus [.nvmrc](.nvmrc) | `>=24` | A newer line reaches Active LTS. Never the Current line                                                             |
+| Floor           | Declared in                                                                                                              | Now    | Moves when                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| **Published**   | `engines.node` of the 28 published packages                                                                              | `>=22` | A library needs a newer API, or the floor reaches EOL. Not when a new LTS ships - that breaks consumers for nothing |
+| **Development** | `engines.node` of the root, every `tools/*` (what `scripts/*` resolves against), and `apps/atlas`, plus [.nvmrc](.nvmrc) | `>=24` | A newer line reaches Active LTS. Never the Current line                                                             |
 
 [.nvmrc](.nvmrc) is the single source of truth for the development floor: every CI job except the `compat` matrix reads it through `node-version-file`.
-
-[`apps/atlas/`](apps/atlas/) sits outside both rows. It is private, so its `engines.node` promises nothing to anyone, and it still reads `>=22`. Nothing depends on that number, so it can follow the development floor whenever it is convenient rather than on either schedule above.
 
 Ranges are open-ended (`">=24"`), never enumerated (`"^22 || ^24"`), which would mark the Current releases unsupported where the code runs fine and mean editing every manifest each time a major lands.
 
