@@ -33,7 +33,7 @@ Other shapes:
 - **Data packages** add a `data/` directory at the package root (sibling to `src/`) and split entries into `src/node.ts` + `src/browser.ts` (see [Data package pattern](#data-package-pattern) below).
 - **Aggregator** (`@squawk/mcp`) has a `src/tools/<domain>.ts` per exposed library and a `src/resolvers.ts` that wires them up.
 
-Apps live under `apps/<name>/` and follow their own conventions - see [`apps/atlas/CONVENTIONS.md`](apps/atlas/CONVENTIONS.md) and [`apps/adsbscope/CONVENTIONS.md`](apps/adsbscope/CONVENTIONS.md).
+Apps live under `apps/<name>/` and follow their own conventions - see [`apps/atlas/CONVENTIONS.md`](apps/atlas/CONVENTIONS.md), [`apps/adsbscope/CONVENTIONS.md`](apps/adsbscope/CONVENTIONS.md), and [`apps/adsbtop/CONVENTIONS.md`](apps/adsbtop/CONVENTIONS.md).
 
 ---
 
@@ -58,7 +58,7 @@ Other notes:
 
 Every published library extends `../../../tsconfig.base.json` (three levels up from `packages/libs/<name>/tsconfig.json`) and only sets `rootDir: src` / `outDir: dist` plus the `include` glob. Use any existing lib's `tsconfig.json` as the reference.
 
-Apps under `apps/<name>/` do **not** extend `tsconfig.base.json` - they have framework-specific settings (jsx, DOM lib, Bundler resolution, noEmit) that the lib base does not carry.
+Apps under `apps/<name>/` split by surface. A Node-side config extends `tsconfig.base.json` and adds only what its runtime needs - `apps/adsbtop/tsconfig.json` and `apps/adsbscope/tsconfig.server.json` both do, so the base's strictness flags (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`) apply to that code. A browser-side config does **not** extend the base, because it needs framework settings (jsx, DOM lib, Bundler resolution, noEmit) the lib base has no reason to carry: `apps/atlas/tsconfig.app.json` and `apps/adsbscope/tsconfig.ui.json`.
 
 ---
 
@@ -275,13 +275,13 @@ Examples: `@squawk/weather` (`types/metar.ts`, `types/taf.ts`, etc.), `@squawk/n
 
 ## ESLint configuration
 
-The actual config lives in `eslint.config.mjs` (root, covers libs / tools / scripts) plus `eslint.shared.mjs` (shared rule blocks). Atlas has its own `apps/atlas/eslint.config.js` that imports from `eslint.shared.mjs` to stay aligned. Plugins in use:
+The actual config lives in `eslint.config.mjs` (root, covers libs / tools / scripts) plus `eslint.shared.mjs` (shared rule blocks). Each app has its own `apps/<name>/eslint.config.js`, all three importing from `eslint.shared.mjs` to stay aligned. Plugins in use:
 
 - `@eslint/js` recommended rules
 - `typescript-eslint` recommended rules
 - `eslint-config-prettier` to disable formatting conflicts
 - `eslint-plugin-import` (shared via `eslint.shared.mjs`): `import/order`, `import/no-cycle`, `import/no-duplicates`, `import/no-self-import`, plus typescript / node resolver settings
-- `eslint-plugin-n` (root only - Node-specific, not applied to atlas browser code): `n/no-deprecated-api`, `n/no-process-exit` (error), `n/no-unsupported-features/{es,node}-builtins`, `n/prefer-node-protocol`
+- `eslint-plugin-n` (Node-specific, so the root config plus the two CLI apps' own configs; not applied to browser code): `n/no-deprecated-api`, `n/no-process-exit` (error), `n/no-unsupported-features/{es,node}-builtins`, `n/prefer-node-protocol`
 - Ignores: `**/dist/**`, `**/node_modules/**`, `scripts/*.js`
 
 On `n/no-process-exit`: the rule's "throw instead" advice is wrong for a CLI's expected failures - a typo'd flag should not produce a stack trace, and throwing fights the result-type convention in **Code style** below. Those paths return a result that the entry point turns into `process.exitCode`, so output is never cut short by the process ending mid-write. Within the globs above, the only calls left are the `main().catch()` fatal handlers in the build tools and the mcp `bin.ts`, where exiting guarantees a non-zero status even when a pending download or file handle would otherwise hold the process open. Each carries an inline disable naming that reason, which is what the rule now requires: it is an error, so a new `process.exit` fails lint until it is either reworked into an exit code or justified inline.

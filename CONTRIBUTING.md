@@ -22,7 +22,7 @@ Before opening a non-trivial PR, skim:
 - [README](README.md) - what's published and how to install it.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - the principles, processes, and architectural decisions that shape the codebase.
 - [CONVENTIONS.md](CONVENTIONS.md) - the code-style, naming, TSDoc, test, and changeset conventions that PR review enforces.
-- For work inside an app, also that app's own `README.md` for the user-facing surface and its `CONVENTIONS.md` for the stack and code organization ([`apps/atlas/`](apps/atlas/), [`apps/adsbscope/`](apps/adsbscope/)).
+- For work inside an app, also that app's own `README.md` for the user-facing surface and its `CONVENTIONS.md` for the stack and code organization ([`apps/atlas/`](apps/atlas/), [`apps/adsbscope/`](apps/adsbscope/), [`apps/adsbtop/`](apps/adsbtop/)).
 
 ## Branch names
 
