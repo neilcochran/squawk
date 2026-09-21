@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.11.1"]
+      "args": ["-y", "@squawk/mcp@0.12.0"]
     }
   }
 }
@@ -164,7 +164,7 @@ Pinning works the same way:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.10", "@squawk/mcp@0.11.0"]
+      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.12", "@squawk/mcp@0.12.0"]
     }
   }
 }
@@ -193,8 +193,8 @@ the absolute path to a modern node + the absolute path to the installed `bin.js`
 }
 ```
 
-The server logs `[squawk-mcp] node <version> on <platform>/<arch>` and the tool-module count
-to stderr on every startup so you can verify the right runtime is being used.
+The server logs `[squawk-mcp] node <version> on <platform>/<arch>` and how many tool groups
+registered to stderr on every startup so you can verify the right runtime is being used.
 
 ### Example prompts
 
@@ -224,6 +224,17 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 const server = createSquawkMcpServer();
 await server.connect(new StdioServerTransport());
+```
+
+Pass `toolGroups` to register part of the catalog. An explicit list takes precedence over
+the environment variables described under [Configuration](#configuration); omit the option
+entirely to honor them. `TOOL_GROUP_NAMES` holds every valid group name, and an unknown one
+throws a `ToolGroupConfigError`.
+
+```typescript
+import { createSquawkMcpServer, TOOL_GROUP_NAMES } from '@squawk/mcp';
+
+const server = createSquawkMcpServer({ toolGroups: ['airports', 'navaids', 'geo'] });
 ```
 
 ## Tool catalog
@@ -390,9 +401,74 @@ left to the model itself.
 
 ## Configuration
 
-| Environment variable  | Effect                                                                                                                                                                   |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `SQUAWK_AWC_BASE_URL` | Override the Aviation Weather Center base URL used by every `fetch_*` tool. Defaults to `https://aviationweather.gov/api/data`. Useful for proxies and regional mirrors. |
+| Environment variable       | Effect                                                                                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SQUAWK_MCP_TOOLS`         | Register only the named tool groups. See [Choosing which tools to register](#choosing-which-tools-to-register).                                                          |
+| `SQUAWK_MCP_DISABLE_TOOLS` | Register every tool group except the named ones. Mutually exclusive with `SQUAWK_MCP_TOOLS`.                                                                             |
+| `SQUAWK_AWC_BASE_URL`      | Override the Aviation Weather Center base URL used by every `fetch_*` tool. Defaults to `https://aviationweather.gov/api/data`. Useful for proxies and regional mirrors. |
+
+### Choosing which tools to register
+
+The full catalog is 79 tools, which costs roughly 18k tokens of context in every session
+before you ask anything. If you only reach for part of it, register only that part and the
+rest never reaches your client.
+
+Each tool group is one row below. Set `SQUAWK_MCP_TOOLS` to the groups you want, or
+`SQUAWK_MCP_DISABLE_TOOLS` to the groups you do not. With neither set, every group is
+registered.
+
+| Group           | Tools | ~Tokens |
+| --------------- | ----: | ------: |
+| `geo`           |     5 |   1,100 |
+| `flight-math`   |    24 |   5,300 |
+| `airports`      |     4 |     900 |
+| `airspace`      |     5 |   1,700 |
+| `navaids`       |     5 |   1,300 |
+| `fixes`         |     4 |   1,000 |
+| `airways`       |     4 |     800 |
+| `procedures`    |     8 |   1,900 |
+| `icao-registry` |     1 |     250 |
+| `weather`       |    12 |   2,100 |
+| `notams`        |     2 |     300 |
+| `flightplan`    |     4 |   1,400 |
+| `datasets`      |     1 |     180 |
+
+A VFR pilot who wants airport, navaid, and fix lookups plus a distance calculator:
+
+```json
+{
+  "mcpServers": {
+    "squawk": {
+      "command": "npx",
+      "args": ["-y", "@squawk/mcp"],
+      "env": { "SQUAWK_MCP_TOOLS": "airports,navaids,fixes,geo" }
+    }
+  }
+}
+```
+
+That registers 18 tools for roughly 4.3k tokens, down from 79 and 18k. Dropping just
+`flight-math` and `weather` - the two largest groups - takes the catalog to 43 tools and
+roughly 11k tokens while leaving every lookup tool in place.
+
+Names are case-insensitive and whitespace around them is ignored. The server refuses to
+start, with an explanation on stderr, when a group name is unrecognized, when both
+variables are set, or when the result would leave it with no tools at all. Check your
+host's MCP log if the server fails to come up after a config change; the startup
+diagnostic also reports how many groups registered and names the ones that did not.
+
+Two things worth knowing before you trim:
+
+- **`datasets` is a group like any other.** It holds `get_dataset_status`, the tool that
+  reports which NASR and CIFP cycles the running server is serving. An allowlist that
+  leaves it out means you can no longer ask how current the data is, so include it unless
+  you are sure you do not want it. It is the cheapest group in the catalog.
+- **Groups gate the catalog, not the data.** The bundled snapshots are loaded and indexed
+  at startup no matter which groups you register, so trimming the catalog does not reduce
+  the server's startup time or memory use. It also means a group you kept keeps working
+  even when it reads data belonging to a group you dropped - `flightplan` still resolves
+  airports and navaids in a route string with `airports` and `navaids` disabled, because
+  you disabled those tools, not that data.
 
 ## Notes
 
@@ -403,7 +479,7 @@ left to the model itself.
 - Live weather tools issue HTTPS requests to `https://aviationweather.gov/api/data/...` (or the
   override above). They are the only tools that touch the network at invocation time; everything
   else operates against bundled snapshots in memory.
-- The bundled snapshots are decompressed and indexed once when the server starts. Expect a few
-  hundred milliseconds of startup time. The aircraft registration snapshot (the largest, and an
-  optional peer dependency) is decompressed lazily on the first `lookup_aircraft_by_icao_hex` call,
-  if the package is installed.
+- The bundled snapshots are decompressed and indexed once when the server starts, which takes on
+  the order of a second and is unaffected by which tool groups you register. The aircraft
+  registration snapshot (the largest, and an optional peer dependency) is decompressed lazily on
+  the first `lookup_aircraft_by_icao_hex` call, if the package is installed.

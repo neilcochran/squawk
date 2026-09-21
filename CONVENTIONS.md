@@ -31,7 +31,7 @@ Other shapes:
 - **Parser libraries** (`@squawk/weather`, `@squawk/notams`) export `parse*` functions plus the types they produce. Typically include a `src/types/` subdirectory with package-local types (see [Package-local types](#package-local-types) below).
 - **Shared types** (`@squawk/types`) just re-exports interface declarations from per-domain files.
 - **Data packages** add a `data/` directory at the package root (sibling to `src/`) and split entries into `src/node.ts` + `src/browser.ts` (see [Data package pattern](#data-package-pattern) below).
-- **Aggregator** (`@squawk/mcp`) has a `src/tools/<domain>.ts` per exposed library and a `src/resolvers.ts` that wires them up.
+- **Aggregator** (`@squawk/mcp`) has a `src/tools/<domain>.ts` per exposed library, a `src/resolvers.ts` that wires them up, and a `src/tool-groups.ts` naming each domain module as a toggleable group.
 
 Apps live under `apps/<name>/` and follow their own conventions - see [`apps/atlas/CONVENTIONS.md`](apps/atlas/CONVENTIONS.md), [`apps/adsbscope/CONVENTIONS.md`](apps/adsbscope/CONVENTIONS.md), and [`apps/adsbtop/CONVENTIONS.md`](apps/adsbtop/CONVENTIONS.md).
 
