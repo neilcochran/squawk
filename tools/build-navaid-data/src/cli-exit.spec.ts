@@ -2,15 +2,16 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * The compiled entry point. `turbo.json` makes `test` depend on `build`, so
- * this exists under `npm test`; a bare `vitest run` inside the package may
- * not have built it yet, and the suite skips rather than failing on that.
+ * The compiled entry point. These specs exercise the real CLI as a
+ * subprocess, which is the only way to assert the exit status the shell
+ * sees. `turbo.json` makes `test` depend on `build`, so it is always present
+ * under `npm test`; running vitest directly without building first fails
+ * here with an actionable message rather than skipping silently.
  */
 const CLI = resolve(import.meta.dirname, '../dist/index.js');
-const built = existsSync(CLI);
 
 function run(args: readonly string[]): { status: number | null; stderr: string } {
   const result = spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf-8' });
@@ -18,7 +19,15 @@ function run(args: readonly string[]): { status: number | null; stderr: string }
 }
 
 describe('CLI exit status', () => {
-  it.skipIf(!built)('exits 1 with the reason and usage when an argument is unknown', () => {
+  beforeAll(() => {
+    if (!existsSync(CLI)) {
+      throw new Error(
+        `${CLI} is missing, so the CLI exit status cannot be checked. Build first: ` +
+          `npx turbo run build --filter=@squawk/build-navaid-data`,
+      );
+    }
+  });
+  it('exits 1 with the reason and usage when an argument is unknown', () => {
     const { status, stderr } = run(['--bogus']);
 
     expect(status).toBe(1);
@@ -26,7 +35,7 @@ describe('CLI exit status', () => {
     expect(stderr).toMatch(/Usage:/);
   });
 
-  it.skipIf(!built)('exits 1 with usage when --local is missing', () => {
+  it('exits 1 with usage when --local is missing', () => {
     const { status, stderr } = run([]);
 
     expect(status).toBe(1);
@@ -34,7 +43,7 @@ describe('CLI exit status', () => {
     expect(stderr).toMatch(/Usage:/);
   });
 
-  it.skipIf(!built)('writes the whole message even though the process is ending', () => {
+  it('writes the whole message even though the process is ending', () => {
     const { stderr } = run(['--bogus']);
 
     expect(stderr.trimEnd().endsWith('.json.gz')).toBe(true);
