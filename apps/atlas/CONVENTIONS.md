@@ -1,0 +1,61 @@
+# atlas conventions
+
+The patterns that keep `atlas` easy to change. They add to the repo-wide [CONVENTIONS.md](../../CONVENTIONS.md), whose cross-cutting rules (TSDoc, naming, unit suffixes, code style, ESLint) apply here too; this file covers only what is specific to this app. For what the app does and how to run it, see its [README](README.md).
+
+The stack is React 19 on Vite, TanStack Router for file-based routes with zod-validated search params, Tailwind CSS v4 plus Radix's dropdown-menu primitive (the only Radix package in use; other overlays are hand-rolled), MapLibre GL via `@vis.gl/react-maplibre` drawing over Protomaps hosted vector tiles, and Vitest under jsdom with `@testing-library/react`. The three tsconfigs split the project by surface: `tsconfig.app.json` covers `src/`, `tsconfig.node.json` covers the Vite config, and `tsconfig.json` is the project-references root the build walks.
+
+## A shell and one tree per mode
+
+`src/shell/` owns app-level chrome - the header, the mode switcher, the theme switcher. Each mode under `src/modes/<name>/` owns its own layers, URL-state schema, and inspector wiring. Code that more than one mode would need lives under `src/shared/`: dataset loaders, map primitives, the entity inspector, UI primitives, and styles.
+
+- **Adding a mode touches four places, and the compiler only finds three.** A directory under `src/modes/`, a route file under `src/routes/`, an entry in the shell's mode switcher, and that switcher's `to` union widened to take the new route path. The union is typed rather than a bare string precisely so the fourth edit is a compile error instead of a dead link.
+- **A module moves into `src/shared/` when a second mode would need it, not in anticipation.** Mode-local code staying mode-local is what keeps a mode deletable.
+- **The route tree is a build product.** `npm run build` runs `tsr generate` ahead of `tsc -b && vite build`, and the router's Vite plugin regenerates it during dev. `src/routeTree.gen.ts` is gitignored, excluded from lint and coverage, and never edited by hand.
+- **Pure logic lives in a `.ts` sibling, components in `.tsx`, one component per file.** Anything that neither returns JSX nor closes over component state belongs beside its component as plain TypeScript. The threshold is testability: if it has tests, or plausibly could, it moves out. A one-to-three-line helper used by exactly one component can stay inline; an icon that returns JSX stays with its consumer, because it is a component rather than a helper.
+- **A context is two files.** `<feature>-context.ts` holds the `createContext` call and the consumer hooks, whose fallbacks keep a consumer render-safe with no provider mounted; `<feature>-provider.tsx` holds the component that builds the value. The split satisfies `react-refresh/only-export-components` and lets specs import the hooks without dragging in JSX. `highlight-context.ts` / `highlight-provider.tsx` and `theme-context.ts` / `theme-provider.tsx` are the two examples.
+- **The shell reaches into a mode over a module-level bus, not a callback drilled through props.** Clicking the active mode link is a reset gesture, so the switcher fires `dispatchChartViewReset()` and chart mode subscribes through a `<Listener />` component (`view-reset-bus.ts` and `view-reset-listener.tsx`). The shell stays ignorant of each mode's internal API.
+- **Layer ids are exported consts named `atlas-<domain>-<role>`.** `AIRPORTS_LAYER_ID` is `'atlas-airports-circle'`, its highlight twin `'atlas-airports-highlight'`. Hit-testing and paint ordering both key off these, so no call site spells one out.
+- **A synthetic property's name and its read helpers live in one shared module, not in the writer.** The airspace source projection decorates GeoJSON features with `__atlasFloorFt`, `__atlasMatchKey` and friends; `shared/inspector/airspace-feature.ts` owns both the property-name constants and the functions that read them back. Writer and readers import the same constant, so a rename is a compile error rather than a silent miss. Keep a constant in the writer until a second reader appears.
+
+## State
+
+- **State that belongs to a view lives in the URL.** Every field of a mode's zod schema carries both a `.default()` (the initial value) and a `.catch()` (the fallback when a share-link is stale), so an unrecognized value degrades instead of erroring. Component state is reserved for genuinely transient interaction such as hover or a last-click snapshot.
+- **An invalid value is resolved to a no-op at the consuming layer, never scrubbed from the URL.** `selected` is an encoded `{type}:{id}` string (`airport:BOS`, `airspace:CLASS_B/JFK`); when it does not resolve, the inspector simply opens nothing. Stripping it mid-navigation would discard intent the user can still see in the address bar.
+- **A bound comes from the primitive that enforces it.** The chart schema imports `MAP_MAX_PITCH` from the map canvas rather than restating a number, so the URL cannot describe a camera the map will not accept.
+- **What the search box queries is separate from what the map draws.** `searchLayers`, `searchAirspaceClasses` and `searchAirwayCategories` are their own URL fields with their own defaults. Narrowing a search must not change the picture.
+- **Per-browser preferences are the one thing that persists outside the URL.** The theme and the airspace-3D auto-hide choice belong to the browser, not to a shared link, so they go to `localStorage` behind a type guard, with every read and write wrapped in `try` / `catch` and a documented default. A failed write degrades to in-session-only state.
+
+## Data loading
+
+- **One cached promise per dataset.** A `shared/data/<thing>-dataset.ts` module holds a module-level promise, the loader that populates it on first call, a discriminated `{ status: 'loading' | 'loaded' | 'error' }` state type, and the hook that subscribes. N components mounting the hook produce one fetch, and the hook ignores a resolution that lands after unmount. The union is discriminated so `dataset` and `error` are typed only in the arm that has them.
+- **The resolver is cached beside its dataset, keyed on the dataset.** `getAirportResolver()` and its siblings memoize through a `WeakMap` on the dataset reference, so a session pays the indexing cost once while a spec that builds a fresh fixture gets a fresh resolver.
+- **`dataset-hooks.spec.ts` is the shared home for that contract.** It mocks all five `/browser` entries with deferred promises and exercises each arm; a sixth dataset adds a case there rather than a new spec file.
+
+## Color, type, and size
+
+- **Chart colors are a typed palette read through a hook.** MapLibre paint properties cannot read CSS custom properties at runtime, so `shared/styles/chart-colors.ts` declares a light and a dark palette of one `ChartColorPalette` shape and exposes them as `useChartColors()`. Layer components fold the palette into their `paint` props through `useMemo`, so a theme switch propagates declaratively with no `setStyle` call. Add a field to the shape and both palettes, named for intent rather than swatch (`airway.low`, not `airway.slate600`).
+- **No hex literal at a call site.** `'CLASS_B': colors.airspace.classB` is fine; `'CLASS_B': '#1e3a8a'` is not.
+- **Dark mode is a class, not a media query.** `index.css` redefines the `dark:` variant as `&:where(.dark, .dark *)` so the in-app theme switcher can drive it by writing to `documentElement` regardless of the OS preference. The `:where()` wrapper keeps specificity at zero so author classes still win.
+- **UI chrome uses Tailwind's named colors directly.** Panels, buttons and text are already centralized by Tailwind's defaults; a `--color-*` alias in `@theme` earns its place only once a semantic surface is referenced from three or more places.
+- **rem, not px.** Layout sizing reaches for Tailwind's named scale, which is rem-based. A dimension used in more than one place or carrying a semantic name becomes a `@theme` spacing token (`--spacing-inspector` is the one that exists today) and is consumed as `w-inspector` and friends.
+- **A `_PX` suffix means the value interfaces with a pixel-space API** - `map.project()`, `easeTo({ offset })`, `getBoundingClientRect()`, a DOM `style.left`. The suffix is load-bearing: it tells the next reader not to quietly convert the value to rem.
+- **Repeated shapes become a component at three consumers; clusters that cannot be wrapped become a token.** If the natural composition is "wrap children in a styled element", extract a component into `shared/ui/`. If the consumer is a Radix primitive's `className` or a widget this app does not own, export a string constant from `shared/styles/style-tokens.ts` instead. Two usages stay inline. Shape utilities (radius, shadow, padding, sizing) stay at the call site rather than baked into a surface token, because they vary per consumer.
+- **`index.css` carries only what a utility class cannot**: the Tailwind import, the dark variant, `@theme` tokens, the inspector-geometry custom properties the bottom sheet writes at runtime, and html/body sizing. No `@apply` - it fights Tailwind v4's IntelliSense and tree-shaking.
+
+## Responsiveness and controls
+
+- **Mobile first, one breakpoint.** Base classes target a phone; `md:` (768px) restores the desktop layout. Do not introduce `sm:`, `lg:` or `xl:` without a concrete need that one breakpoint cannot express.
+- **Touch targets are at least 44px below `md:`.** `h-11 w-11` for square icon buttons, `py-2.5` or `py-3` for text buttons, each paired with a `md:` override that restores the compact desktop size.
+- **The inspector is a right-edge panel at `md:` and a bottom sheet below it.** On a phone it takes `max-h-[60vh]` with a rounded top edge so the map stays visible above.
+- **Chrome that covers the map publishes its geometry, and the camera reads it.** The sheet writes `--atlas-inspector-occlusion` to `documentElement` so overlay controls can move out from under it, and the pan hooks shift the camera focal point along the occluded axis - left on desktop, up on mobile. New map-covering chrome follows the same shape rather than hardcoding an offset.
+- **Committing a selection pans to the feature, not just hovering one.** A chip or popover click navigates the URL, which on touch has no hover phase to have moved the camera already, so the commit handler pans with the same inspector-aware offset before navigating.
+- **Hover preview is a desktop affordance, gated on `(hover: hover)`.** A tap synthesizes `mouseenter`, so attaching `onMouseEnter` unconditionally makes every tap flicker preview-then-commit. Gate it on `useCanHover()`, which follows the media query mid-session, and keep `onFocus` / `onBlur` unconditional so keyboard users get the same affordance on any device.
+- **A row with two actions gets two targets.** The row body performs the primary action and a dedicated button, which stops propagation, performs the secondary. Arrow keys on the row mirror the button for keyboard users. A hidden "click elsewhere on the row" interaction is not an affordance.
+
+## Tests
+
+- **Component specs are `<component>.spec.tsx`, colocated,** and query by role and accessible name as a user of assistive technology would find the element.
+- **Module mocks go through `vi.hoisted`** so the mock's identity survives hoisting above the `vi.mock` factory.
+- **`src/test-setup.ts` registers the jest-dom matchers, an `afterEach(cleanup)`, and a `window.matchMedia` shim** that jsdom does not provide. The shim answers `true` to every query except `(prefers-color-scheme: dark)`, so hover-gated and breakpoint-gated paths exercise the desktop branch and theme resolution deterministically picks light. A suite that needs the touch or dark branch stubs `matchMedia` itself.
+- **Assert the behavior, not that a render happened.** Fire a real event and assert the resulting call or DOM change.
+- **A coverage exclude states its reason.** The generated route tree and the thin map-canvas wrapper are excluded because there is nothing to assert; the chip-hover pan hook is excluded because its exported helpers are unit-tested directly and the React state machine around them would need a fully-staged map fixture. Anything added to that list carries the same kind of justification.

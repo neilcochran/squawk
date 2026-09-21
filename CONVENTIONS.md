@@ -2,7 +2,7 @@
 
 The patterns and rules that PR review enforces in the squawk monorepo. Code-style, naming, TSDoc, test, and changeset conventions live here. For the architectural decisions and processes that shape the codebase as a whole, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-The cross-cutting rules in this file (TSDoc, naming, unit suffixes, code style, ESLint) apply to atlas as well; for atlas-specific framework patterns (React, Vite, Tailwind v4, MapLibre, Vitest with jsdom), see the **Atlas at a glance** section of [ARCHITECTURE.md](ARCHITECTURE.md#atlas-at-a-glance).
+The cross-cutting rules in this file (TSDoc, naming, unit suffixes, code style, ESLint) apply to the apps under [`apps/`](apps/) as well; each app's own `CONVENTIONS.md` covers the framework patterns specific to it.
 
 ---
 
@@ -33,7 +33,7 @@ Other shapes:
 - **Data packages** add a `data/` directory at the package root (sibling to `src/`) and split entries into `src/node.ts` + `src/browser.ts` (see [Data package pattern](#data-package-pattern) below).
 - **Aggregator** (`@squawk/mcp`) has a `src/tools/<domain>.ts` per exposed library and a `src/resolvers.ts` that wires them up.
 
-Apps live under `apps/<name>/` and follow their own conventions - see the **Atlas at a glance** section of [ARCHITECTURE.md](ARCHITECTURE.md#atlas-at-a-glance) and [`apps/adsbscope/CONVENTIONS.md`](apps/adsbscope/CONVENTIONS.md).
+Apps live under `apps/<name>/` and follow their own conventions - see [`apps/atlas/CONVENTIONS.md`](apps/atlas/CONVENTIONS.md) and [`apps/adsbscope/CONVENTIONS.md`](apps/adsbscope/CONVENTIONS.md).
 
 ---
 
@@ -50,7 +50,7 @@ Other notes:
 
 - Data packages include `"data"` in the `files` array alongside `"dist"`.
 - Query libraries list their companion data package as a `devDependency` (for testing only).
-- Tools workspaces declare `"lint": "tsc --noEmit && eslint src"` so `turbo run lint` covers them. Everything private - the root and every `tools/*`, which is also what `scripts/*` resolves against - declares the development floor, currently `"engines": { "node": ">=24" }`, matching [.nvmrc](.nvmrc). Published packages keep their own lower floor. See [Node versions](ARCHITECTURE.md#node-versions) for which floor moves when.
+- Tools workspaces declare `"lint": "tsc --noEmit && eslint src"` so `turbo run lint` covers them. The root and every `tools/*`, which is also what `scripts/*` resolves against, declare the development floor, currently `"engines": { "node": ">=24" }`, matching [.nvmrc](.nvmrc). Published packages keep their own lower floor, and `apps/atlas` is private but still reads `>=22`. See [Node versions](ARCHITECTURE.md#node-versions) for which floor moves when.
 
 ---
 
