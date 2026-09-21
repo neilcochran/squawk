@@ -1,9 +1,10 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { afterEach, beforeEach, describe, it, expect, assert } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, assert, vi } from 'vitest';
 import { z } from 'zod';
 
-import { createSquawkMcpServer } from './server.js';
+import { createSquawkMcpServer, type CreateSquawkMcpServerOptions } from './server.js';
+import { ToolGroupConfigError } from './tool-groups.js';
 
 /** Tool names every freshly-constructed server is expected to register. */
 const EXPECTED_TOOLS: readonly string[] = [
@@ -98,11 +99,11 @@ const EXPECTED_TOOLS: readonly string[] = [
   'get_dataset_status',
 ];
 
-async function connectTestClient(): Promise<{
+async function connectTestClient(options?: CreateSquawkMcpServerOptions): Promise<{
   client: Client;
   close: () => Promise<void>;
 }> {
-  const server = createSquawkMcpServer();
+  const server = createSquawkMcpServer(options);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
 
@@ -116,6 +117,17 @@ async function connectTestClient(): Promise<{
       await server.close();
     },
   };
+}
+
+/**
+ * Lists the tool names a connected client can see.
+ *
+ * @param client - A client already connected to a test server.
+ * @returns The registered tool names.
+ */
+async function listToolNames(client: Client): Promise<string[]> {
+  const { tools } = await client.listTools();
+  return tools.map((tool) => tool.name);
 }
 
 describe('createSquawkMcpServer', () => {
@@ -803,6 +815,96 @@ describe('createSquawkMcpServer', () => {
         expect(proc.procedure.type).toBe('IAP');
         expect(proc.procedure.approachType).toBe('ILS');
       }
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('tool-group toggling', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('registers only the groups named in toolGroups', async () => {
+    const { client, close } = await connectTestClient({ toolGroups: ['airports', 'geo'] });
+    try {
+      const names = await listToolNames(client);
+      expect(names).toContain('get_airport_by_icao');
+      expect(names).toContain('great_circle_distance');
+      expect(names).not.toContain('parse_metar');
+      expect(names).not.toContain('solve_wind_triangle');
+      expect(names.length).toBe(9);
+    } finally {
+      await close();
+    }
+  });
+
+  it('drops get_dataset_status when the datasets group is not requested', async () => {
+    const { client, close } = await connectTestClient({ toolGroups: ['geo'] });
+    try {
+      expect(await listToolNames(client)).not.toContain('get_dataset_status');
+    } finally {
+      await close();
+    }
+  });
+
+  it('keeps flightplan tools working when the airports group is disabled', async () => {
+    const { client, close } = await connectTestClient({ toolGroups: ['flightplan'] });
+    try {
+      const result = await client.callTool({
+        name: 'compute_route_distance',
+        arguments: { routeString: 'KJFK DCT KLAX' },
+      });
+      const parsed = z
+        .object({ result: z.object({ totalDistanceNm: z.number() }) })
+        .parse(result.structuredContent);
+      assert(
+        parsed.result.totalDistanceNm > 2100 && parsed.result.totalDistanceNm < 2200,
+        `expected JFK-LAX total around 2145 nm, got ${parsed.result.totalDistanceNm}`,
+      );
+    } finally {
+      await close();
+    }
+  });
+
+  it('honors the allowlist environment variable when no options are passed', async () => {
+    vi.stubEnv('SQUAWK_MCP_TOOLS', 'geo');
+    const { client, close } = await connectTestClient();
+    try {
+      const names = await listToolNames(client);
+      expect(names.every((name) => name.startsWith('great_circle_'))).toBe(true);
+    } finally {
+      await close();
+    }
+  });
+
+  it('honors the denylist environment variable when no options are passed', async () => {
+    vi.stubEnv('SQUAWK_MCP_DISABLE_TOOLS', 'weather,flight-math');
+    const { client, close } = await connectTestClient();
+    try {
+      const names = await listToolNames(client);
+      expect(names).not.toContain('parse_metar');
+      expect(names).not.toContain('solve_wind_triangle');
+      expect(names).toContain('get_airport_by_icao');
+    } finally {
+      await close();
+    }
+  });
+
+  it('refuses to construct a server when the environment is misconfigured', () => {
+    vi.stubEnv('SQUAWK_MCP_TOOLS', 'geo');
+    vi.stubEnv('SQUAWK_MCP_DISABLE_TOOLS', 'weather');
+    expect(() => createSquawkMcpServer()).toThrow(ToolGroupConfigError);
+  });
+
+  it('ignores the environment variables when toolGroups is passed explicitly', async () => {
+    vi.stubEnv('SQUAWK_MCP_TOOLS', 'weather');
+    const { client, close } = await connectTestClient({ toolGroups: ['geo'] });
+    try {
+      const names = await listToolNames(client);
+      expect(names).toContain('great_circle_distance');
+      expect(names).not.toContain('parse_metar');
     } finally {
       await close();
     }

@@ -1,7 +1,7 @@
 /**
  * @packageDocumentation
- * Server factory for @squawk/mcp. Assembles an {@link McpServer} preloaded
- * with every squawk aviation tool module.
+ * Server factory for @squawk/mcp. Assembles an {@link McpServer} carrying the
+ * squawk aviation tool modules the caller asked for, defaulting to all of them.
  */
 
 import { readFileSync } from 'node:fs';
@@ -10,6 +10,12 @@ import { fileURLToPath } from 'node:url';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
+import {
+  ToolGroupConfigError,
+  normalizeToolGroups,
+  resolveToolGroupsFromEnv,
+  type ToolGroupName,
+} from './tool-groups.js';
 import { registerAirportTools } from './tools/airports.js';
 import { registerAirspaceTools } from './tools/airspace.js';
 import { registerAirwayTools } from './tools/airways.js';
@@ -30,33 +36,39 @@ const packageMeta: { name: string; version: string } = JSON.parse(
 );
 
 /**
- * Ordered list of tool-module registrars invoked during server construction.
- * Holding them in a single array keeps {@link createSquawkMcpServer} symmetric
- * across modules and lets {@link TOOL_MODULE_COUNT} stay accurate without
- * manual bookkeeping.
+ * Registrar for each toggleable tool group. Keying by {@link ToolGroupName}
+ * makes the mapping exhaustive: adding a name to `TOOL_GROUP_NAMES` without
+ * wiring its registrar here is a compile error, so the group list and the
+ * modules it toggles cannot drift apart.
  */
-const TOOL_MODULE_REGISTRARS: ((server: McpServer) => void)[] = [
-  registerGeoTools,
-  registerFlightMathTools,
-  registerAirportTools,
-  registerAirspaceTools,
-  registerNavaidTools,
-  registerFixTools,
-  registerAirwayTools,
-  registerProcedureTools,
-  registerIcaoRegistryTools,
-  registerWeatherTools,
-  registerNotamTools,
-  registerFlightplanTools,
-  registerDatasetTools,
-];
+const TOOL_GROUP_REGISTRARS: Record<ToolGroupName, (server: McpServer) => void> = {
+  geo: registerGeoTools,
+  'flight-math': registerFlightMathTools,
+  airports: registerAirportTools,
+  airspace: registerAirspaceTools,
+  navaids: registerNavaidTools,
+  fixes: registerFixTools,
+  airways: registerAirwayTools,
+  procedures: registerProcedureTools,
+  'icao-registry': registerIcaoRegistryTools,
+  weather: registerWeatherTools,
+  notams: registerNotamTools,
+  flightplan: registerFlightplanTools,
+  datasets: registerDatasetTools,
+};
 
 /**
- * Number of tool modules registered by {@link createSquawkMcpServer}. Exposed
- * so the stdio entrypoint can include the count in its startup diagnostic
- * without re-counting at runtime.
+ * Options accepted by {@link createSquawkMcpServer}.
  */
-export const TOOL_MODULE_COUNT: number = TOOL_MODULE_REGISTRARS.length;
+export interface CreateSquawkMcpServerOptions {
+  /**
+   * Tool groups to register. Omit to resolve the set from the
+   * `SQUAWK_MCP_TOOLS` / `SQUAWK_MCP_DISABLE_TOOLS` environment variables,
+   * which default to every group. Order is ignored; groups always register in
+   * `TOOL_GROUP_NAMES` order.
+   */
+  readonly toolGroups?: readonly ToolGroupName[];
+}
 
 /**
  * Package name as published to npm. Convenient for diagnostic logs that want
@@ -71,7 +83,14 @@ export const PACKAGE_NAME: string = packageMeta.name;
 export const PACKAGE_VERSION: string = packageMeta.version;
 
 /**
- * Creates an MCP server preloaded with every squawk aviation tool module.
+ * Creates an MCP server carrying the requested squawk aviation tool groups,
+ * defaulting to all of them.
+ *
+ * Disabling a group keeps its tools out of the catalog the LLM client sees,
+ * which is the point: the full catalog is roughly 18k tokens of context on
+ * every session. It does not reduce the server's startup time or memory
+ * footprint - the bundled snapshots are imported and indexed at module load
+ * regardless of which groups register.
  *
  * Tool registration triggers eager construction of the shared resolver
  * singletons in `./resolvers.js` for every domain except the ICAO aircraft
@@ -83,22 +102,37 @@ export const PACKAGE_VERSION: string = packageMeta.version;
  * import { createSquawkMcpServer } from '@squawk/mcp';
  * import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
  *
- * const server = createSquawkMcpServer();
+ * const server = createSquawkMcpServer({ toolGroups: ['airports', 'geo'] });
  * await server.connect(new StdioServerTransport());
  * ```
  *
+ * @param options - Server options. Omit to honor the environment variables.
  * @returns A fully configured MCP server instance. Connect it to a transport
  *          (typically `StdioServerTransport` for CLI use) via
  *          `server.connect(transport)` to begin handling protocol messages.
+ * @throws {ToolGroupConfigError} when `options.toolGroups` names an unknown
+ *         group or is empty, or when the environment variables cannot be
+ *         honored (both set at once, unknown names, or nothing left enabled).
  */
-export function createSquawkMcpServer(): McpServer {
+export function createSquawkMcpServer(options?: CreateSquawkMcpServerOptions): McpServer {
   const server = new McpServer({
     name: PACKAGE_NAME,
     version: PACKAGE_VERSION,
   });
 
-  for (const register of TOOL_MODULE_REGISTRARS) {
-    register(server);
+  let enabledGroups: readonly ToolGroupName[];
+  if (options?.toolGroups === undefined) {
+    const resolution = resolveToolGroupsFromEnv(process.env);
+    if (!resolution.ok) {
+      throw new ToolGroupConfigError(resolution.error);
+    }
+    enabledGroups = resolution.toolGroups;
+  } else {
+    enabledGroups = normalizeToolGroups(options.toolGroups);
+  }
+
+  for (const group of enabledGroups) {
+    TOOL_GROUP_REGISTRARS[group](server);
   }
 
   return server;

@@ -6,8 +6,27 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
+// Warning: (tsdoc-escape-right-brace) The "}" character should be escaped using a backslash to avoid confusion with a TSDoc inline tag
+// Warning: (tsdoc-malformed-inline-tag) Expecting a TSDoc tag starting with "{@"
+//
 // @public
-export function createSquawkMcpServer(): McpServer;
+export function createSquawkMcpServer(options?: CreateSquawkMcpServerOptions): McpServer;
+
+// @public
+export interface CreateSquawkMcpServerOptions {
+    readonly toolGroups?: readonly ToolGroupName[];
+}
+
+// @public
+export const TOOL_GROUP_NAMES: readonly ["geo", "flight-math", "airports", "airspace", "navaids", "fixes", "airways", "procedures", "icao-registry", "weather", "notams", "flightplan", "datasets"];
+
+// @public
+export class ToolGroupConfigError extends Error {
+    constructor(message: string);
+}
+
+// @public
+export type ToolGroupName = (typeof TOOL_GROUP_NAMES)[number];
 
 // Warnings were encountered during analysis:
 //
