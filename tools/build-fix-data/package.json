@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Internal build script: processes FAA NASR fix data into the fix dataset",
   "engines": {
-    "node": ">=26"
+    "node": ">=24"
   },
   "main": "./dist/index.js",
   "scripts": {

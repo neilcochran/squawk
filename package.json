@@ -38,7 +38,7 @@
     "format:check": "prettier --check ."
   },
   "engines": {
-    "node": ">=26"
+    "node": ">=24"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
