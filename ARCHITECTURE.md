@@ -17,8 +17,9 @@ Big-picture orientation: the principles, conventions, and processes that shape t
 9. [Release process](#release-process)
 10. [Branch protection and access](#branch-protection-and-access)
 11. [Dependency management](#dependency-management)
-12. [Security](#security)
-13. [Documentation](#documentation)
+12. [Node versions](#node-versions)
+13. [Security](#security)
+14. [Documentation](#documentation)
 
 ---
 
@@ -178,7 +179,7 @@ The date embedded in each data package's README matches the cycle date inside th
 
 ## Quality gates
 
-The gates that run in [.github/workflows/ci.yml](.github/workflows/ci.yml) on every PR. They are spread across three parallel jobs - `static` (lint, knip, format), `test` (build, test + coverage), and `package` (build, pack shape, API surface, and the two README checks) - and a final `ci` job that fails unless all three succeeded:
+The gates that run in [.github/workflows/ci.yml](.github/workflows/ci.yml) on every PR. They are spread across four parallel jobs - `static` (lint, knip, format), `test` (build, test + coverage), `compat` (the published packages' tests on every Node line they support), and `package` (build, pack shape, API surface, and the two README checks) - and a final `ci` job that fails unless all four succeeded:
 
 | Gate                     | Tool                                                                                                                                    | What it covers                                                                                                                               |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -192,11 +193,12 @@ The gates that run in [.github/workflows/ci.yml](.github/workflows/ci.yml) on ev
 | API surface              | [@microsoft/api-extractor](https://api-extractor.com/) + [scripts/check-browser-api-coverage.js](scripts/check-browser-api-coverage.js) | Public API surface of each tracked package matches committed `api/<pkg>.api.md`; divergent browser entries require a paired browser baseline |
 | README data dates        | [scripts/check-readme-dates.js](scripts/check-readme-dates.js)                                                                          | Each data package README's cycle date matches its bundled snapshot                                                                           |
 | MCP pinned version       | [scripts/check-mcp-pin.js](scripts/check-mcp-pin.js)                                                                                    | `packages/libs/mcp/README.md` pin matches the projected publish version (changeset-aware)                                                    |
+| Node compatibility       | vitest, via the `compat` job matrix in [ci.yml](.github/workflows/ci.yml)                                                               | The published packages' tests pass on every Node line their `engines.node` claims                                                            |
 | Publishable build output | [scripts/check-publishable-dist.js](scripts/check-publishable-dist.js)                                                                  | Every non-private workspace has a `dist/` with JavaScript in it (Publish workflow only, both jobs)                                           |
 
 Four properties of the gate set:
 
-- **The `ci` job is the required check, not the three gate jobs.** It runs with `if: always()` and compares each upstream result to `success` explicitly, because a job that is skipped when one of its `needs` fails would otherwise satisfy a required status check. Each gate job installs and builds independently; the duplicated build costs runner minutes but roughly halves wall time. Lint, build, pack, and API tasks run at `TURBO_CONCURRENCY=100%`, while `test:coverage` keeps the 50% default from [turbo.json](turbo.json) so turbo does not oversubscribe vitest's own worker pool.
+- **The `ci` job is the required check, not the four gate jobs.** It runs with `if: always()` and compares each upstream result to `success` explicitly, because a job that is skipped when one of its `needs` fails would otherwise satisfy a required status check. Each gate job installs and builds independently; the duplicated build costs runner minutes but roughly halves wall time. Lint, build, pack, and API tasks run at `TURBO_CONCURRENCY=100%`, while `test:coverage` keeps the 50% default from [turbo.json](turbo.json) so turbo does not oversubscribe vitest's own worker pool.
 - **Coverage is layered intentionally.** Vitest's `perFile: true` enforces a per-file floor; the aggregate gate is a thin post-coverage script because Vitest can't express both in one threshold block.
 - **CLI-only packages run `publint` without arethetypeswrong.** [`apps/adsbtop/`](apps/adsbtop/) and [`apps/adsbscope/`](apps/adsbscope/) each ship a `bin` and no `main` / `types` / `exports`, so there is nothing for a consumer to import and attw reports every resolution as failed. publint still applies and is the part that matters for a binary - it validates the tarball and that the `bin` target exists. A package that gains an importable entrypoint should pick up the full `publint && attw` line.
 - **Knip and ESLint cover different axes.** Knip handles package-level dead deps and orphaned files; ESLint handles source-level patterns. Source-level dead-export detection isn't part of the gate set.
@@ -334,6 +336,23 @@ Both ecosystems carry a 7-day `cooldown`: Dependabot withholds an update until t
 The same window is enforced at install time by `min-release-age=7` in the root [.npmrc](.npmrc): npm 11.10+ refuses to resolve onto a dependency version published less than a week ago, covering the manual `npm install` path on a developer machine that the Dependabot cooldown does not reach. It is a no-op for `npm ci` (which installs the locked tree without resolving) and is silently ignored by older npm, so CI and the publish flow are unaffected. A single install can opt out with `npm install <pkg> --min-release-age=0`.
 
 Every workflow `uses:` is a full commit SHA followed by a trailing `# v<x.y.z>` comment. Dependabot keeps both in sync; manual edits to one without the other drift the comment from the SHA.
+
+---
+
+## Node versions
+
+Two floors, moved for different reasons:
+
+| Floor           | Declared in                                                                                               | Now    | Moves when                                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| **Published**   | `engines.node` of the 28 published packages                                                               | `>=22` | A library needs a newer API, or the floor reaches EOL. Not when a new LTS ships - that breaks consumers for nothing |
+| **Development** | `engines.node` of the root and every `tools/*` (what `scripts/*` resolves against), plus [.nvmrc](.nvmrc) | `>=24` | A newer line reaches Active LTS. Never the Current line                                                             |
+
+[.nvmrc](.nvmrc) is the single source of truth for the development floor: every CI job except the `compat` matrix reads it through `node-version-file`.
+
+Ranges are open-ended (`">=24"`), never enumerated (`"^22 || ^24"`), which would mark the Current releases unsupported where the code runs fine and mean editing every manifest each time a major lands.
+
+Neither floor is taken on trust. `n/no-unsupported-features/node-builtins` fails the build when code reaches past its own package's `engines.node`, and the `compat` matrix in [ci.yml](.github/workflows/ci.yml) runs the published packages' tests on every line they claim. Move a floor, move the matrix.
 
 ---
 

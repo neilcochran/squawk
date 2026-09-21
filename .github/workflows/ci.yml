@@ -9,8 +9,14 @@ permissions:
   contents: read
 
 jobs:
-  # The gates are split across three jobs that run side by side. Each job installs
+  # The gates are split across jobs that run side by side. Each job installs
   # and builds what it needs on its own runner, trading runner minutes for wall time.
+  #
+  # `static`, `test` and `package` run on the development floor, read from
+  # `.nvmrc` so the repo has one source of truth for it. `compat` is different:
+  # it runs the published packages' tests on every Node line they claim to
+  # support, which is the only thing that turns `engines.node` into a verified
+  # promise rather than an assertion.
   static:
     runs-on: ubuntu-latest
     env:
@@ -21,7 +27,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26
+          node-version-file: .nvmrc
           cache: npm
 
       - run: npm ci --ignore-scripts
@@ -39,7 +45,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26
+          node-version-file: .nvmrc
           cache: npm
 
       - run: npm ci --ignore-scripts
@@ -52,6 +58,43 @@ jobs:
       # oversubscription with vitest's internal worker pool.
       - run: npm run test:coverage
 
+  # Every published package declares a Node floor its consumers rely on. This
+  # job runs their tests on that floor and on the development floor, so a change
+  # that quietly depends on a newer runtime fails here instead of in someone
+  # else's install.
+  #
+  # It deliberately runs `turbo run test` against the published workspaces only,
+  # not `npm run test:coverage`: the repo's own tooling targets the development
+  # floor and `scripts/*` would not run on the lowest supported line.
+  compat:
+    name: compat (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The lowest line the published packages support, and the development
+        # floor. Add a line here when a new LTS arrives; drop one when it is EOL
+        # and the published `engines.node` has moved past it.
+        node: [22, 24]
+    env:
+      TURBO_CONCURRENCY: 100%
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - name: Test the published packages
+        run: >-
+          npx turbo run test
+          --filter=./packages/libs/*
+          --filter=@squawk/adsbtop
+          --filter=@squawk/adsbscope
+
   package:
     runs-on: ubuntu-latest
     env:
@@ -61,7 +104,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 26
+          node-version-file: .nvmrc
           cache: npm
 
       - run: npm ci --ignore-scripts
@@ -84,7 +127,7 @@ jobs:
   # satisfy a required check.
   ci:
     if: always()
-    needs: [static, test, package]
+    needs: [static, test, compat, package]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -94,7 +137,7 @@ jobs:
         run: |
           for result in $RESULTS; do
             if [ "$result" != "success" ]; then
-              echo "::error::Gate results (static, test, package): $RESULTS"
+              echo "::error::Gate results (static, test, compat, package): $RESULTS"
               exit 1
             fi
           done

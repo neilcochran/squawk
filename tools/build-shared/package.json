@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Shared utilities for NASR data build scripts",
   "engines": {
-    "node": ">=26"
+    "node": ">=24"
   },
   "main": "./dist/index.js",
   "scripts": {

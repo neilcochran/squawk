@@ -121,7 +121,7 @@ npm install -g @squawk/adsbscope
 
 ## Development
 
-Requires Node.js 26 or newer to work on the repo. The published `@squawk/*` packages still support Node 22.
+Working on the repo requires the Node version in [.nvmrc](.nvmrc) (currently 24) or newer. The published `@squawk/*` packages support Node 22 and newer.
 
 ```bash
 npm install
