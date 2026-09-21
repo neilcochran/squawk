@@ -28,10 +28,9 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { relative, resolve } from 'node:path';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(import.meta.dirname, '..');
 
 const LINE_THRESHOLD = Number(process.env.COVERAGE_LINES_THRESHOLD ?? 90);
 const FUNC_THRESHOLD = Number(process.env.COVERAGE_FUNCS_THRESHOLD ?? 90);
@@ -148,148 +147,158 @@ function meetsThresholds(linePct, funcPct, branchPct) {
   return true;
 }
 
-const workspaceDirs = discoverWorkspaceDirs();
-const perWorkspace = [];
-const missing = [];
+/**
+ * Reads every workspace coverage summary and checks it against the thresholds.
+ *
+ * @returns The exit code: 0 when every threshold is met, 1 otherwise.
+ */
+function main() {
+  const workspaceDirs = discoverWorkspaceDirs();
+  const perWorkspace = [];
+  const missing = [];
 
-for (const dir of workspaceDirs) {
-  const summaryPath = resolve(dir, 'coverage', 'coverage-summary.json');
-  if (!existsSync(summaryPath)) {
-    missing.push(relative(root, dir));
-    continue;
+  for (const dir of workspaceDirs) {
+    const summaryPath = resolve(dir, 'coverage', 'coverage-summary.json');
+    if (!existsSync(summaryPath)) {
+      missing.push(relative(root, dir));
+      continue;
+    }
+    perWorkspace.push({ name: relative(root, dir), counters: readSummary(summaryPath) });
   }
-  perWorkspace.push({ name: relative(root, dir), counters: readSummary(summaryPath) });
-}
 
-if (perWorkspace.length === 0) {
-  console.error(
-    '[check-coverage] No coverage/coverage-summary.json files found in any workspace. ' +
-      'Run `npm run test:coverage` first.',
-  );
-  process.exit(1);
-}
-
-const aggregate = perWorkspace.reduce((acc, ws) => addCounters(acc, ws.counters), {
-  totalLines: 0,
-  hitLines: 0,
-  totalFuncs: 0,
-  hitFuncs: 0,
-  totalBranches: 0,
-  hitBranches: 0,
-});
-
-// Per-package report. Sort lowest-line-coverage first so the rows
-// most in need of attention land at the top.
-const rows = perWorkspace.map((ws) => {
-  const linePct = pct(ws.counters.hitLines, ws.counters.totalLines);
-  const funcPct = pct(ws.counters.hitFuncs, ws.counters.totalFuncs);
-  const branchPct = pct(ws.counters.hitBranches, ws.counters.totalBranches);
-  return {
-    name: ws.name,
-    linePct,
-    funcPct,
-    branchPct,
-    passes: meetsThresholds(linePct, funcPct, branchPct),
-  };
-});
-rows.sort((a, b) => {
-  const al = a.linePct ?? 100;
-  const bl = b.linePct ?? 100;
-  if (al !== bl) {
-    return al - bl;
+  if (perWorkspace.length === 0) {
+    console.error(
+      '[check-coverage] No coverage/coverage-summary.json files found in any workspace. ' +
+        'Run `npm run test:coverage` first.',
+    );
+    return 1;
   }
-  return a.name.localeCompare(b.name);
-});
 
-const nameWidth = Math.max(...rows.map((r) => r.name.length), 'package'.length);
-const headerName = 'package'.padEnd(nameWidth);
-const sep = '-'.repeat(nameWidth + 4 + 7 + 4 + 7 + 4 + 7 + 4 + 8);
+  const aggregate = perWorkspace.reduce((acc, ws) => addCounters(acc, ws.counters), {
+    totalLines: 0,
+    hitLines: 0,
+    totalFuncs: 0,
+    hitFuncs: 0,
+    totalBranches: 0,
+    hitBranches: 0,
+  });
 
-console.log('');
-console.log('Per-package coverage:');
-console.log(sep);
-console.log(`${headerName}    Lines     Funcs     Branches   Status`);
-console.log(sep);
-for (const row of rows) {
-  const status = row.passes ? '[ok]   ' : '[BELOW]';
-  console.log(
-    `${row.name.padEnd(nameWidth)}    ${fmtPct(row.linePct)}    ${fmtPct(row.funcPct)}    ${fmtPct(row.branchPct)}    ${status}`,
-  );
-}
-console.log(sep);
+  // Per-package report. Sort lowest-line-coverage first so the rows
+  // most in need of attention land at the top.
+  const rows = perWorkspace.map((ws) => {
+    const linePct = pct(ws.counters.hitLines, ws.counters.totalLines);
+    const funcPct = pct(ws.counters.hitFuncs, ws.counters.totalFuncs);
+    const branchPct = pct(ws.counters.hitBranches, ws.counters.totalBranches);
+    return {
+      name: ws.name,
+      linePct,
+      funcPct,
+      branchPct,
+      passes: meetsThresholds(linePct, funcPct, branchPct),
+    };
+  });
+  rows.sort((a, b) => {
+    const al = a.linePct ?? 100;
+    const bl = b.linePct ?? 100;
+    if (al !== bl) {
+      return al - bl;
+    }
+    return a.name.localeCompare(b.name);
+  });
 
-if (missing.length > 0) {
+  const nameWidth = Math.max(...rows.map((r) => r.name.length), 'package'.length);
+  const headerName = 'package'.padEnd(nameWidth);
+  const sep = '-'.repeat(nameWidth + 4 + 7 + 4 + 7 + 4 + 7 + 4 + 8);
+
   console.log('');
+  console.log('Per-package coverage:');
+  console.log(sep);
+  console.log(`${headerName}    Lines     Funcs     Branches   Status`);
+  console.log(sep);
+  for (const row of rows) {
+    const status = row.passes ? '[ok]   ' : '[BELOW]';
+    console.log(
+      `${row.name.padEnd(nameWidth)}    ${fmtPct(row.linePct)}    ${fmtPct(row.funcPct)}    ${fmtPct(row.branchPct)}    ${status}`,
+    );
+  }
+  console.log(sep);
+
+  if (missing.length > 0) {
+    console.log('');
+    console.log(
+      'Workspaces without coverage/coverage-summary.json (no spec files or coverage script):',
+    );
+    for (const name of missing) {
+      console.log(`  ${name}`);
+    }
+  }
+
+  const aggLinePct = pct(aggregate.hitLines, aggregate.totalLines);
+  const aggFuncPct = pct(aggregate.hitFuncs, aggregate.totalFuncs);
+  const aggBranchPct = pct(aggregate.hitBranches, aggregate.totalBranches);
+
+  console.log('');
+  console.log('Aggregate coverage:');
   console.log(
-    'Workspaces without coverage/coverage-summary.json (no spec files or coverage script):',
+    `  Lines:     ${fmtPct(aggLinePct)} (${aggregate.hitLines} / ${aggregate.totalLines})  threshold ${LINE_THRESHOLD}%`,
   );
-  for (const name of missing) {
-    console.log(`  ${name}`);
-  }
-}
+  console.log(
+    `  Functions: ${fmtPct(aggFuncPct)} (${aggregate.hitFuncs} / ${aggregate.totalFuncs})  threshold ${FUNC_THRESHOLD}%`,
+  );
+  console.log(
+    `  Branches:  ${fmtPct(aggBranchPct)} (${aggregate.hitBranches} / ${aggregate.totalBranches})  threshold ${BRANCH_THRESHOLD}%`,
+  );
 
-const aggLinePct = pct(aggregate.hitLines, aggregate.totalLines);
-const aggFuncPct = pct(aggregate.hitFuncs, aggregate.totalFuncs);
-const aggBranchPct = pct(aggregate.hitBranches, aggregate.totalBranches);
-
-console.log('');
-console.log('Aggregate coverage:');
-console.log(
-  `  Lines:     ${fmtPct(aggLinePct)} (${aggregate.hitLines} / ${aggregate.totalLines})  threshold ${LINE_THRESHOLD}%`,
-);
-console.log(
-  `  Functions: ${fmtPct(aggFuncPct)} (${aggregate.hitFuncs} / ${aggregate.totalFuncs})  threshold ${FUNC_THRESHOLD}%`,
-);
-console.log(
-  `  Branches:  ${fmtPct(aggBranchPct)} (${aggregate.hitBranches} / ${aggregate.totalBranches})  threshold ${BRANCH_THRESHOLD}%`,
-);
-
-const aggregateFailures = [];
-if (aggLinePct !== undefined && aggLinePct < LINE_THRESHOLD) {
-  aggregateFailures.push(`line coverage ${aggLinePct.toFixed(2)}% < ${LINE_THRESHOLD}%`);
-}
-if (aggFuncPct !== undefined && aggFuncPct < FUNC_THRESHOLD) {
-  aggregateFailures.push(`function coverage ${aggFuncPct.toFixed(2)}% < ${FUNC_THRESHOLD}%`);
-}
-if (aggBranchPct !== undefined && aggBranchPct < BRANCH_THRESHOLD) {
-  aggregateFailures.push(`branch coverage ${aggBranchPct.toFixed(2)}% < ${BRANCH_THRESHOLD}%`);
-}
-
-const packageFailures = [];
-for (const row of rows) {
-  if (row.passes) {
-    continue;
+  const aggregateFailures = [];
+  if (aggLinePct !== undefined && aggLinePct < LINE_THRESHOLD) {
+    aggregateFailures.push(`line coverage ${aggLinePct.toFixed(2)}% < ${LINE_THRESHOLD}%`);
   }
-  const reasons = [];
-  if (row.linePct !== undefined && row.linePct < LINE_THRESHOLD) {
-    reasons.push(`lines ${row.linePct.toFixed(2)}% < ${LINE_THRESHOLD}%`);
+  if (aggFuncPct !== undefined && aggFuncPct < FUNC_THRESHOLD) {
+    aggregateFailures.push(`function coverage ${aggFuncPct.toFixed(2)}% < ${FUNC_THRESHOLD}%`);
   }
-  if (row.funcPct !== undefined && row.funcPct < FUNC_THRESHOLD) {
-    reasons.push(`functions ${row.funcPct.toFixed(2)}% < ${FUNC_THRESHOLD}%`);
+  if (aggBranchPct !== undefined && aggBranchPct < BRANCH_THRESHOLD) {
+    aggregateFailures.push(`branch coverage ${aggBranchPct.toFixed(2)}% < ${BRANCH_THRESHOLD}%`);
   }
-  if (row.branchPct !== undefined && row.branchPct < BRANCH_THRESHOLD) {
-    reasons.push(`branches ${row.branchPct.toFixed(2)}% < ${BRANCH_THRESHOLD}%`);
-  }
-  packageFailures.push({ name: row.name, reasons });
-}
 
-if (aggregateFailures.length > 0 || packageFailures.length > 0) {
-  console.error('');
-  console.error('[check-coverage] FAILED:');
-  if (aggregateFailures.length > 0) {
-    console.error('  Aggregate:');
-    for (const failure of aggregateFailures) {
-      console.error(`    - ${failure}`);
+  const packageFailures = [];
+  for (const row of rows) {
+    if (row.passes) {
+      continue;
     }
-  }
-  if (packageFailures.length > 0) {
-    console.error('  Per-package:');
-    for (const { name, reasons } of packageFailures) {
-      console.error(`    - ${name}: ${reasons.join(', ')}`);
+    const reasons = [];
+    if (row.linePct !== undefined && row.linePct < LINE_THRESHOLD) {
+      reasons.push(`lines ${row.linePct.toFixed(2)}% < ${LINE_THRESHOLD}%`);
     }
+    if (row.funcPct !== undefined && row.funcPct < FUNC_THRESHOLD) {
+      reasons.push(`functions ${row.funcPct.toFixed(2)}% < ${FUNC_THRESHOLD}%`);
+    }
+    if (row.branchPct !== undefined && row.branchPct < BRANCH_THRESHOLD) {
+      reasons.push(`branches ${row.branchPct.toFixed(2)}% < ${BRANCH_THRESHOLD}%`);
+    }
+    packageFailures.push({ name: row.name, reasons });
   }
-  process.exit(1);
+
+  if (aggregateFailures.length > 0 || packageFailures.length > 0) {
+    console.error('');
+    console.error('[check-coverage] FAILED:');
+    if (aggregateFailures.length > 0) {
+      console.error('  Aggregate:');
+      for (const failure of aggregateFailures) {
+        console.error(`    - ${failure}`);
+      }
+    }
+    if (packageFailures.length > 0) {
+      console.error('  Per-package:');
+      for (const { name, reasons } of packageFailures) {
+        console.error(`    - ${name}: ${reasons.join(', ')}`);
+      }
+    }
+    return 1;
+  }
+
+  console.log('');
+  console.log('[check-coverage] All per-package and aggregate thresholds met.');
+  return 0;
 }
 
-console.log('');
-console.log('[check-coverage] All per-package and aggregate thresholds met.');
+process.exitCode = main();

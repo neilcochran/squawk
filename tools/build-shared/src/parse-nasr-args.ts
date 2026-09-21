@@ -21,24 +21,56 @@ export interface NasrArgs {
 }
 
 /**
+ * A command line {@link parseNasrArgs} could not use.
+ */
+export interface NasrArgsError {
+  /** The complete text to write to stderr: what was wrong, then the usage instructions. */
+  message: string;
+}
+
+/**
  * Options for {@link parseNasrArgs}.
  */
 export interface ParseNasrArgsOptions {
   /** Default output path resolved from the calling script's dirname. */
   defaultOutputPath: string;
+  /** Arguments to parse, without the node and script entries. */
+  argv: readonly string[];
+}
+
+/**
+ * Builds the message for an unusable command line: the reason, then usage.
+ *
+ * @param reason - What was wrong with the arguments.
+ * @param defaultOutputPath - Output path shown in the usage text.
+ * @returns The error to return to the caller.
+ */
+function usageError(reason: string, defaultOutputPath: string): NasrArgsError {
+  return {
+    message:
+      `${reason}\n\n` +
+      'Usage: node dist/index.js --local <nasr-zip-or-dir> [--output <output-path>]\n\n' +
+      'Options:\n' +
+      '  --local <path>   Path to a NASR subscription .zip file or extracted directory.\n' +
+      '  --output <path>  Path to write the output file.\n' +
+      `                   Defaults to: ${defaultOutputPath}\n`,
+  };
 }
 
 /**
  * Parses the standard `--local` / `--output` CLI arguments used by all NASR
  * build scripts, resolves zip-or-directory input, and extracts the cycle date.
  *
- * Exits the process with usage instructions if arguments are invalid.
+ * Nothing here ends the process: an unusable command line comes back as a
+ * {@link NasrArgsError} for the calling script to print and turn into an exit
+ * code. That keeps the caller in charge of how the process ends, and keeps
+ * this helper testable.
  *
  * @param options - Configuration for the calling script.
- * @returns Parsed arguments including the resolved subscription directory and cycle date.
+ * @returns Parsed arguments including the resolved subscription directory and cycle date, or the error to report.
  */
-export function parseNasrArgs(options: ParseNasrArgsOptions): NasrArgs {
-  const args = process.argv.slice(2);
+export function parseNasrArgs(options: ParseNasrArgsOptions): NasrArgs | NasrArgsError {
+  const args = options.argv;
 
   let inputPath: string | undefined;
   let outputPath: string = options.defaultOutputPath;
@@ -53,14 +85,12 @@ export function parseNasrArgs(options: ParseNasrArgsOptions): NasrArgs {
       outputPath = next;
       i++;
     } else {
-      process.stderr.write(`Unknown argument: ${arg}\n`);
-      printUsageAndExit(options.defaultOutputPath);
+      return usageError(`Unknown argument: ${arg}`, options.defaultOutputPath);
     }
   }
 
   if (!inputPath) {
-    process.stderr.write('Error: --local <path> is required.\n');
-    printUsageAndExit(options.defaultOutputPath);
+    return usageError('Error: --local <path> is required.', options.defaultOutputPath);
   }
 
   const resolved: ResolvedInput = resolveInput(inputPath);
@@ -84,18 +114,4 @@ export function parseNasrArgs(options: ParseNasrArgsOptions): NasrArgs {
     outputPath,
     cleanup: resolved.cleanup,
   };
-}
-
-/**
- * Prints usage instructions to stderr and exits with code 1.
- */
-function printUsageAndExit(defaultOutputPath: string): never {
-  process.stderr.write(
-    'Usage: node dist/index.js --local <nasr-zip-or-dir> [--output <output-path>]\n\n' +
-      'Options:\n' +
-      '  --local <path>   Path to a NASR subscription .zip file or extracted directory.\n' +
-      '  --output <path>  Path to write the output file.\n' +
-      `                   Defaults to: ${defaultOutputPath}\n`,
-  );
-  process.exit(1);
 }

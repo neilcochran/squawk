@@ -20,5 +20,5 @@ try {
   console.log('Clean complete');
 } catch (error) {
   console.error('Clean failed:', error.message);
-  process.exit(1);
+  process.exitCode = 1;
 }

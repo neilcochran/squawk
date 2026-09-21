@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 
+import { parseCliArgs } from './cli-args.js';
 import { fetchCifp, loadCifpFromPath, type LoadedCifp } from './fetch-cifp.js';
 import { parseCifp } from './parse-cifp.js';
 import { writeOutput } from './write-output.js';
@@ -17,21 +18,6 @@ const DEFAULT_OUTPUT_PATH = '../../../packages/libs/procedure-data/data/procedur
  */
 const CIFP_DOWNLOAD_PAGE_URL =
   'https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/download/';
-
-/**
- * Prints usage instructions to stderr and exits with code 1.
- */
-function printUsageAndExit(): never {
-  process.stderr.write(
-    'Usage: node dist/index.js (--cifp-fetch | --cifp-local <path>) [--output <path>]\n\n' +
-      'Options:\n' +
-      '  --cifp-fetch       Download and build from the latest FAA CIFP release.\n' +
-      '  --cifp-local <p>   Path to a CIFP zip file or an extracted FAACIFP18 file.\n' +
-      '  --output <path>    Path to write the output .json.gz file.\n' +
-      `                     Defaults to: ${DEFAULT_OUTPUT_PATH}\n`,
-  );
-  process.exit(1);
-}
 
 /**
  * Scrapes the FAA CIFP download page for the most recent release's zip
@@ -59,46 +45,24 @@ async function fetchLatestCifpFilename(): Promise<string> {
  * decodes every published procedure, and writes the gzipped output.
  */
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-
-  let mode: 'fetch' | 'local' | undefined;
-  let localPath: string | undefined;
-  let outputPath: string = resolve(import.meta.dirname, DEFAULT_OUTPUT_PATH);
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    const next = args[i + 1];
-    if (arg === '--cifp-fetch') {
-      mode = 'fetch';
-    } else if (arg === '--cifp-local' && next) {
-      mode = 'local';
-      localPath = resolve(next);
-      i++;
-    } else if (arg === '--output' && next) {
-      outputPath = resolve(next);
-      i++;
-    } else {
-      process.stderr.write(`Unknown argument: ${arg}\n`);
-      printUsageAndExit();
-    }
+  const parsed = parseCliArgs(
+    process.argv.slice(2),
+    resolve(import.meta.dirname, DEFAULT_OUTPUT_PATH),
+  );
+  if ('message' in parsed) {
+    process.stderr.write(parsed.message);
+    process.exitCode = 1;
+    return;
   }
-
-  if (mode === undefined) {
-    process.stderr.write('Error: either --cifp-fetch or --cifp-local <path> is required.\n');
-    printUsageAndExit();
-  }
+  const { outputPath } = parsed;
 
   let loaded: LoadedCifp;
-  if (mode === 'fetch') {
+  if (parsed.mode === 'fetch') {
     const filename = await fetchLatestCifpFilename();
     loaded = await fetchCifp(filename);
   } else {
-    if (localPath === undefined) {
-      process.stderr.write('Error: --cifp-local requires a path argument.\n');
-      printUsageAndExit();
-    }
-    console.log(`[parse] Reading CIFP from ${localPath}...`);
-    loaded = loadCifpFromPath(localPath);
+    console.log(`[parse] Reading CIFP from ${parsed.localPath}...`);
+    loaded = loadCifpFromPath(parsed.localPath);
   }
 
   try {
@@ -118,5 +82,6 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   console.error('[index] Fatal error:', err instanceof Error ? err.message : String(err));
+  // eslint-disable-next-line n/no-process-exit -- last-resort fatal handler; exiting guarantees a non-zero status even when a pending download or file handle would otherwise hold the process open.
   process.exit(1);
 });

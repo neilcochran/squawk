@@ -7,7 +7,7 @@ import tseslint from 'typescript-eslint';
 import { sharedImportConfig } from './eslint.shared.mjs';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', 'scripts/*.js'] },
+  { ignores: ['**/dist/**', '**/node_modules/**'] },
   eslint.configs.recommended,
   tseslint.configs.recommended,
   prettierConfig,
@@ -25,7 +25,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.mjs'],
+    files: ['**/*.mjs', 'scripts/**/*.js'],
     languageOptions: {
       globals: globals.nodeBuiltin,
     },
@@ -36,7 +36,7 @@ export default tseslint.config(
     plugins: { n: nodePlugin },
     rules: {
       'n/no-deprecated-api': 'error',
-      'n/no-process-exit': 'warn',
+      'n/no-process-exit': 'error',
       'n/no-unsupported-features/es-builtins': 'error',
       'n/no-unsupported-features/node-builtins': 'error',
       'n/prefer-node-protocol': 'error',

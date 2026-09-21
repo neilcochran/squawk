@@ -25,7 +25,7 @@ export default tseslint.config(
     plugins: { n: nodePlugin },
     rules: {
       'n/no-deprecated-api': 'error',
-      'n/no-process-exit': 'warn',
+      'n/no-process-exit': 'error',
       'n/no-unsupported-features/es-builtins': 'error',
       'n/no-unsupported-features/node-builtins': 'error',
       'n/prefer-node-protocol': 'error',

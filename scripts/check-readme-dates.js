@@ -7,11 +7,10 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(import.meta.dirname, '..');
 
 /**
  * Data packages with the cycle-date field name used in each package's
@@ -129,7 +128,7 @@ for (const { pkg, dataFile, dateField, source } of dataPackages) {
 
 if (failures > 0) {
   console.error(`\n${failures} README date(s) out of sync with data files.`);
-  process.exit(1);
+  process.exitCode = 1;
 } else {
   console.log('\nAll README dates match their data files.');
 }

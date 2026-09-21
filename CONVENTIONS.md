@@ -50,7 +50,7 @@ Other notes:
 
 - Data packages include `"data"` in the `files` array alongside `"dist"`.
 - Query libraries list their companion data package as a `devDependency` (for testing only).
-- Tools workspaces declare `"lint": "tsc --noEmit && eslint src"` so `turbo run lint` covers them. Tools that use `import.meta.dirname` declare `"engines": { "node": ">=22.16" }` (the rest stay at `>=22`).
+- Tools workspaces declare `"lint": "tsc --noEmit && eslint src"` so `turbo run lint` covers them. Everything private - the root, `tools/*`, and `scripts/*` under the root manifest - declares `"engines": { "node": ">=26" }`, matching the CI pin, so tooling can use APIs that are only stable on newer runtimes (`import.meta.dirname`, for one). Published packages keep their own lower floor, which is a promise to consumers rather than a development requirement.
 
 ---
 
@@ -281,8 +281,10 @@ The actual config lives in `eslint.config.mjs` (root, covers libs / tools / scri
 - `typescript-eslint` recommended rules
 - `eslint-config-prettier` to disable formatting conflicts
 - `eslint-plugin-import` (shared via `eslint.shared.mjs`): `import/order`, `import/no-cycle`, `import/no-duplicates`, `import/no-self-import`, plus typescript / node resolver settings
-- `eslint-plugin-n` (root only - Node-specific, not applied to atlas browser code): `n/no-deprecated-api`, `n/no-process-exit` (warn, not error - build tools and the mcp `bin.ts` legitimately exit), `n/no-unsupported-features/{es,node}-builtins`, `n/prefer-node-protocol`
+- `eslint-plugin-n` (root only - Node-specific, not applied to atlas browser code): `n/no-deprecated-api`, `n/no-process-exit` (error), `n/no-unsupported-features/{es,node}-builtins`, `n/prefer-node-protocol`
 - Ignores: `**/dist/**`, `**/node_modules/**`, `scripts/*.js`
+
+On `n/no-process-exit`: the rule's "throw instead" advice is wrong for a CLI's expected failures - a typo'd flag should not produce a stack trace, and throwing fights the result-type convention in **Code style** below. Those paths return a result that the entry point turns into `process.exitCode`, so output is never cut short by the process ending mid-write. Within the globs above, the only calls left are the `main().catch()` fatal handlers in the build tools and the mcp `bin.ts`, where exiting guarantees a non-zero status even when a pending download or file handle would otherwise hold the process open. Each carries an inline disable naming that reason, which is what the rule now requires: it is an error, so a new `process.exit` fails lint until it is either reworked into an exit code or justified inline.
 
 Cross-config rule blocks (rules that apply to both libs/tools and atlas) live in `eslint.shared.mjs`. New rules that apply to both surfaces go there to prevent drift; atlas-only or libs/tools-only rules stay in their respective config files.
 
