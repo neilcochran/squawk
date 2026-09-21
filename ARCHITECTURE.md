@@ -41,7 +41,7 @@ Six guiding principles shape every decision in this repo:
 
 Three top-level buckets:
 
-- [`apps/`](apps/) - applications built on the libraries ([`apps/atlas/`](apps/atlas/), [`apps/adsbtop/`](apps/adsbtop/), [`apps/adsbscope/`](apps/adsbscope/)); each is independently private or published to npm.
+- [`apps/`](apps/) - applications built on the libraries ([`apps/atlas/`](apps/atlas/), [`apps/adsbtop/`](apps/adsbtop/), [`apps/adsbscope/`](apps/adsbscope/)); each is independently private or published to npm, and each documents the patterns specific to it in a `CONVENTIONS.md` beside its README. A new app gets one too.
 - [`packages/libs/`](packages/libs/) - the published `@squawk/*` libraries. See the [README](README.md) for the full list.
 - [`tools/`](tools/) - private workspaces that produce the FAA-data snapshots shipped inside the `*-data` libraries.
 

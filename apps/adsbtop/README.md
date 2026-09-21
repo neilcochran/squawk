@@ -191,3 +191,16 @@ Passing both `--lat` and `--lon` (either together or not at all) configures your
 `CPA` projects each aircraft's current true track and ground speed as a straight line and reports how close that line passes to your receiver and how long until the aircraft gets there, e.g. `2.1nm in 4m10s` - an aircraft that will pass directly overhead in four minutes reads `0.0nm in 4m00s`. Distance keeps one decimal under 10 nm and rounds to whole miles beyond that. Sorting on `CPA` orders by the distance at closest approach, so ascending puts the aircraft that will pass nearest you at the top. The column shows `-` for an aircraft with no position, no true track, or no ground speed, and also for one that is already opening (its closest approach is behind it), so a `-` next to a real `Dist` value means "not coming any closer".
 
 For `--source beast`, the same location also serves as the receiver position used to decode surface (on-ground) CPR positions, which otherwise can't resolve from paired frames alone.
+
+## Development
+
+Build the package, then run the CLI out of `dist/`:
+
+```bash
+npx turbo run build --filter=@squawk/adsbtop
+node apps/adsbtop/dist/cli.js --host 192.168.1.50 --lat 40.6413 --lon -73.7781
+```
+
+Give it a terminal of its own rather than the one you are watching build output in: it takes the screen over for as long as it runs and reads keys from stdin, and `Q` quits. Don't run it through a pipe or a task runner - with no terminal to measure it assumes 80 columns and stops limiting rows to the window, so neither auto-fit nor row windowing is exercised. With no station reachable it still starts, showing the `RECONNECTING` chip and an empty table, so `npm run test -w @squawk/adsbtop`, which drives the whole dashboard against a fake feed, is the faster loop for anything but a look at real traffic.
+
+The patterns the code follows are in [CONVENTIONS.md](CONVENTIONS.md).

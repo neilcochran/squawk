@@ -213,9 +213,10 @@ describe('AircraftTable', () => {
   });
 
   it('renders a watched aircraft row in full', () => {
-    // ink-testing-library strips ANSI codes from lastFrame(), so the yellow
-    // highlight itself isn't assertable here - this covers that the watched
-    // branch renders the same content, both on and off the cursor row.
+    // The frame carries no color codes (Ink colors through chalk, which emits
+    // none when stdout is not a terminal), so the yellow highlight itself
+    // isn't assertable here - this covers that the watched branch renders the
+    // same content, both on and off the cursor row.
     const aircraft = [makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' })];
     for (const selectedIcaoHex of ['A0B1C2', undefined]) {
       const { lastFrame } = render(
@@ -267,8 +268,8 @@ describe('AircraftTable', () => {
   });
 
   it('renders new and stale rows in full', () => {
-    // As above, the green/dim styling isn't assertable through the
-    // ANSI-stripped frame - this covers that both branches keep the content.
+    // As above, the green/dim styling isn't assertable through a frame with
+    // no color codes - this covers that both branches keep the content.
     const aircraft = [
       makeAircraft({ icaoHex: 'A0B1C2', callsign: 'NEW111', lastSeenAt: 10_000 }),
       makeAircraft({ icaoHex: 'D3E4F5', callsign: 'OLD222', lastSeenAt: 0 }),
@@ -294,10 +295,9 @@ describe('AircraftTable', () => {
   });
 
   it('renders every header regardless of which column is the active sort key', () => {
-    // ink-testing-library strips ANSI codes from lastFrame(), so the color
-    // highlight itself isn't assertable here - this covers that switching
-    // sortKey doesn't drop or duplicate a header, which is the part that
-    // could actually regress.
+    // The frame carries no color codes, so the highlight itself isn't
+    // assertable here - this covers that switching sortKey doesn't drop or
+    // duplicate a header, which is the part that could actually regress.
     for (const sortKey of sortKeyCycle(TABLE_COLUMNS)) {
       const { lastFrame } = render(
         <AircraftTable
@@ -325,10 +325,10 @@ describe('AircraftTable', () => {
   });
 
   it('renders every row regardless of which one is selected', () => {
-    // Same ANSI-stripping limitation as the sort-key test above: the cursor
-    // row's cyan background isn't assertable here, so this covers that
-    // selecting a row doesn't drop content, including for an icaoHex not
-    // currently present in `aircraft`.
+    // Same limitation as the sort-key test above: the cursor row's cyan
+    // background isn't assertable here, so this covers that selecting a row
+    // doesn't drop content, including for an icaoHex not currently present
+    // in `aircraft`.
     const aircraft = [
       makeAircraft({ icaoHex: 'A0B1C2', callsign: 'UAL123' }),
       makeAircraft({ icaoHex: 'D3E4F5', callsign: 'DAL456' }),
