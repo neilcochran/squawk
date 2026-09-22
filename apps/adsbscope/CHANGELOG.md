@@ -1,5 +1,15 @@
 # @squawk/adsbscope
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [9935693]
+  - @squawk/airport-data@0.8.0
+  - @squawk/airspace-data@0.6.0
+  - @squawk/fix-data@0.7.0
+  - @squawk/navaid-data@0.7.0
+
 ## 0.1.0
 
 ### Minor Changes

@@ -47,7 +47,7 @@
     "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {
-    "@squawk/airspace-data": "^0.5.2",
+    "@squawk/airspace-data": "^0.6.0",
     "@types/node": "^26.5.1"
   },
   "keywords": [
