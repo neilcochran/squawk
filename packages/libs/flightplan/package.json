@@ -48,15 +48,15 @@
     "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {
-    "@squawk/airport-data": "^0.7.12",
+    "@squawk/airport-data": "^0.8.0",
     "@squawk/airports": "^0.7.1",
-    "@squawk/airway-data": "^0.5.12",
+    "@squawk/airway-data": "^0.6.0",
     "@squawk/airways": "^0.5.1",
-    "@squawk/fix-data": "^0.6.12",
+    "@squawk/fix-data": "^0.7.0",
     "@squawk/fixes": "^0.5.1",
-    "@squawk/navaid-data": "^0.6.12",
+    "@squawk/navaid-data": "^0.7.0",
     "@squawk/navaids": "^0.6.1",
-    "@squawk/procedure-data": "^0.7.10",
+    "@squawk/procedure-data": "^0.8.0",
     "@squawk/procedures": "^0.7.1",
     "@types/node": "^26.5.1"
   },
