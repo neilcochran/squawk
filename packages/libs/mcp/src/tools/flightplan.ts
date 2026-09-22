@@ -3,7 +3,8 @@
  * MCP tool module wrapping `@squawk/flightplan` route-string parsing and
  * great-circle distance computation. The flightplan resolver composes the
  * shared airport, navaid, fix, airway, and procedure resolvers from the
- * package's `resolvers` module.
+ * package's `resolvers` module, so the first route parsed in a session loads
+ * all five of those snapshots.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -15,32 +16,58 @@ import {
   createFlightplanResolver,
   extractRoutePoints,
   routeToLineString,
+  type FlightplanResolver,
 } from '@squawk/flightplan';
 
 import {
-  airportResolver,
-  airwayResolver,
-  fixResolver,
-  navaidResolver,
-  procedureResolver,
+  getAirportResolver,
+  getAirwayResolver,
+  getFixResolver,
+  getNavaidResolver,
+  getProcedureResolver,
 } from '../resolvers.js';
 
 /**
+ * Memoized composed resolver. Holding the promise rather than the finished
+ * resolver means concurrent route parses share one load of the five
+ * underlying snapshots instead of each building their own composition.
+ */
+let flightplanResolver: Promise<FlightplanResolver> | undefined;
+
+/**
+ * Returns the composed flightplan resolver, loading the five snapshots it
+ * draws on (airports, navaids, fixes, airways, procedures) in parallel on the
+ * first call. A rejected load clears the memo so a later call can retry.
+ *
+ * @returns The shared flightplan resolver.
+ */
+function getFlightplanResolver(): Promise<FlightplanResolver> {
+  flightplanResolver ??= Promise.all([
+    getAirportResolver(),
+    getNavaidResolver(),
+    getFixResolver(),
+    getAirwayResolver(),
+    getProcedureResolver(),
+  ]).then(
+    ([airports, navaids, fixes, airways, procedures]) =>
+      createFlightplanResolver({ airports, navaids, fixes, airways, procedures }),
+    (err: unknown) => {
+      flightplanResolver = undefined;
+      throw err;
+    },
+  );
+  return flightplanResolver;
+}
+
+/**
  * Registers flight plan parsing and route distance tools on the given MCP
- * server. The flightplan resolver is built once at registration time and
- * shares the bundled NASR data via the resolver singletons.
+ * server. Each handler pulls the composed resolver from
+ * {@link getFlightplanResolver}, which builds it from the bundled NASR and
+ * CIFP snapshots on the first invocation.
  *
  * @param server - The MCP server instance to register tools on.
  */
 export function registerFlightplanTools(server: McpServer): void {
-  const resolver = createFlightplanResolver({
-    airports: airportResolver,
-    navaids: navaidResolver,
-    fixes: fixResolver,
-    airways: airwayResolver,
-    procedures: procedureResolver,
-  });
-
   server.registerTool(
     'parse_flightplan_route',
     {
@@ -54,7 +81,8 @@ export function registerFlightplanTools(server: McpServer): void {
           .describe('Whitespace-separated route string in ICAO Item 15 conventions.'),
       },
     },
-    ({ routeString }) => {
+    async ({ routeString }) => {
+      const resolver = await getFlightplanResolver();
       const route = resolver.parse(routeString);
       return {
         content: [{ type: 'text', text: JSON.stringify(route, null, 2) }],
@@ -83,7 +111,8 @@ export function registerFlightplanTools(server: McpServer): void {
           ),
       },
     },
-    ({ routeString, groundSpeedKt }) => {
+    async ({ routeString, groundSpeedKt }) => {
+      const resolver = await getFlightplanResolver();
       const route = resolver.parse(routeString);
       const result = computeRouteDistance(route, groundSpeedKt);
       return {
@@ -106,7 +135,8 @@ export function registerFlightplanTools(server: McpServer): void {
           .describe('Whitespace-separated route string in ICAO Item 15 conventions.'),
       },
     },
-    ({ routeString }) => {
+    async ({ routeString }) => {
+      const resolver = await getFlightplanResolver();
       const route = resolver.parse(routeString);
       const points = extractRoutePoints(route);
       const lineString = routeToLineString(route);
@@ -162,7 +192,8 @@ export function registerFlightplanTools(server: McpServer): void {
           ),
       },
     },
-    ({ routeString, trueAirspeedKt, wind, fuelBurnPerHr, fuelAvailable }) => {
+    async ({ routeString, trueAirspeedKt, wind, fuelBurnPerHr, fuelAvailable }) => {
+      const resolver = await getFlightplanResolver();
       const route = resolver.parse(routeString);
       const result = computeRouteTiming(route, {
         trueAirspeedKt,

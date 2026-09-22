@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-import { updateReadmeDate } from '@squawk/build-shared';
+import { updateReadmeDate, writeDatasetMeta } from '@squawk/build-shared';
 import type { Fix } from '@squawk/types';
 
 /**
@@ -57,4 +57,11 @@ export async function writeOutput(
   );
 
   await updateReadmeDate(outputPath, nasrCycleDate);
+  await writeDatasetMeta(outputPath, {
+    constName: 'usBundledFixesProperties',
+    typeName: 'FixDatasetProperties',
+    datasetName: 'fix',
+    generatedBy: 'tools/build-fix-data',
+    properties: output.meta,
+  });
 }

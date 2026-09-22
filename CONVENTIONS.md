@@ -96,6 +96,7 @@ Each data package bundles a single gzipped snapshot under `data/<name>.{json,geo
 
 - **`src/node.ts`**: synchronous read at module load via `node:fs` + `node:zlib`, exposed as a single eager constant `usBundled<X>`. This is the default entry consumed by Node lib tests, mcp tool modules, and any Node consumer.
 - **`src/browser.ts`** (exposed via the `/browser` exports subpath): async function `loadUsBundled<X>(options?)` that uses `fetch` + `DecompressionStream('gzip')`. Returns the same `<Name>Dataset` shape. Handles servers that advertise `Content-Encoding: gzip` (fetch decodes automatically) as well as servers that serve `.gz` as opaque bytes.
+- **`src/meta.ts`** (exposed via the `/meta` exports subpath): a generated module exporting `usBundled<X>Properties`, the same `<Name>DatasetProperties` object the snapshot carries, as a plain constant. It exists so a consumer can report which cycle it is serving without decompressing the records, and it imports nothing at runtime, so it costs the same in Node and in the browser. Do not edit it by hand: it is written by `writeDatasetMeta` in `@squawk/build-shared`, called from each build tool's `write-output.ts` right after the `.gz`. Every data package pairs it with a `src/meta.spec.ts` asserting the constant equals `usBundled<X>.properties`, which is what catches a refresh that regenerated the snapshot but not the constant.
 
 The browser entry's `LoadOptions` accepts an explicit `url` (override the default `import.meta.url`-relative path - useful for hosting on a CDN or for test fixtures) and a `fetch` (for tests or non-standard runtimes). See `packages/libs/airport-data/src/node.ts` and `.../browser.ts` for the canonical shape.
 
@@ -167,7 +168,7 @@ When `api:check` fails on a PR, run `npm run api:report` locally, review the reg
 
 Pre-1.0 packages can ship surface changes liberally - additive changes go in a minor changeset, removed or signature changes also go in a minor with explicit notes (we're still pre-1.0). Internal-type bleed never; fix the source rather than committing the leak.
 
-Browser entries: most packages currently have `./browser` exports that resolve to the same `.d.ts` as the default `.` export, so a single report covers both. Data packages that ship distinct `node.ts` / `browser.ts` entries (separate `.d.ts` outputs) need a paired `<pkg>.browser.api.md` baseline with its own `api-extractor.browser.json` config. The [scripts/check-browser-api-coverage.js](scripts/check-browser-api-coverage.js) guard runs in CI and fails when a tracked package has divergent entries without a browser baseline.
+Export subpaths: a subpath whose `types` resolve to the same `.d.ts` as the default `.` export is covered by the default report. A subpath with its own `.d.ts` needs its own `api-extractor.<subpath>.json` config, its own `<pkg>.<subpath>.api.md` baseline, and a link into the package's `api:check` / `api:report` scripts. Current cases: the data packages' `./browser` (distinct `browser.ts` entry) and `./meta` (generated metadata module), and `@squawk/weather`'s `./fetch`. The [scripts/check-subpath-api-coverage.js](scripts/check-subpath-api-coverage.js) guard runs in CI and fails when a tracked package has a divergent subpath without its baseline.
 
 ---
 

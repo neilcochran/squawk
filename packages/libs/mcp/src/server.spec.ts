@@ -443,21 +443,33 @@ describe('createSquawkMcpServer', () => {
       const parsed = z
         .object({
           datasets: z.object({
+            // `loaded` varies with whichever tests in this file ran first,
+            // so it is only checked for its type here; the ordered
+            // assertions about load state live in lazy-loading.spec.ts.
             airports: z.object({
+              loaded: z.boolean(),
               nasrCycleDate: z.string(),
               generatedAt: z.string(),
               recordCount: z.number().positive(),
             }),
             airspace: z.object({
+              loaded: z.boolean(),
               nasrCycleDate: z.string(),
               generatedAt: z.string(),
               featureCount: z.number().positive(),
             }),
-            navaids: z.object({ recordCount: z.number().positive() }).passthrough(),
-            fixes: z.object({ recordCount: z.number().positive() }).passthrough(),
-            airways: z.object({ recordCount: z.number().positive() }).passthrough(),
+            navaids: z
+              .object({ loaded: z.boolean(), recordCount: z.number().positive() })
+              .passthrough(),
+            fixes: z
+              .object({ loaded: z.boolean(), recordCount: z.number().positive() })
+              .passthrough(),
+            airways: z
+              .object({ loaded: z.boolean(), recordCount: z.number().positive() })
+              .passthrough(),
             procedures: z
               .object({
+                loaded: z.boolean(),
                 cifpCycleDate: z.string(),
                 sidCount: z.number().nonnegative(),
                 starCount: z.number().nonnegative(),

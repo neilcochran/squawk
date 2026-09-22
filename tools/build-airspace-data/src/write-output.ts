@@ -4,7 +4,7 @@ import { gzipSync } from 'node:zlib';
 
 import type { FeatureCollection, Feature, Polygon } from 'geojson';
 
-import { updateReadmeDate } from '@squawk/build-shared';
+import { updateReadmeDate, writeDatasetMeta } from '@squawk/build-shared';
 import type { AirspaceFeature } from '@squawk/types';
 
 /**
@@ -93,6 +93,13 @@ export async function writeOutput(
   );
 
   await updateReadmeDate(outputPath, nasrCycleDate);
+  await writeDatasetMeta(outputPath, {
+    constName: 'usBundledAirspaceProperties',
+    typeName: 'AirspaceDatasetProperties',
+    datasetName: 'airspace',
+    generatedBy: 'tools/build-airspace-data',
+    properties: collection.properties,
+  });
 }
 
 /**

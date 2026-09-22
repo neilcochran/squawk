@@ -1,59 +1,226 @@
 /**
  * @packageDocumentation
- * Shared resolver instances used across the squawk MCP tool modules. Each
- * resolver is constructed once at module load time so the bundled FAA data
- * snapshots are decoded and indexed exactly once per server process.
+ * Shared resolver accessors used across the squawk MCP tool modules. Every
+ * bundled FAA snapshot loads on demand: the first accessor call dynamically
+ * imports its data package, decompresses and indexes the snapshot, and caches
+ * the result for the life of the process. A session that only asks about
+ * airports never decompresses the CIFP procedure snapshot, and a session that
+ * asks nothing pays nothing beyond process start.
  *
- * The ICAO registry is the only resolver that loads lazily, and its data
+ * Each accessor memoizes the in-flight load rather than the finished
+ * resolver, so concurrent tool calls needing the same dataset share one
+ * import and one index build instead of racing to build two.
+ *
+ * The ICAO registry follows the same shape with one extra wrinkle: its data
  * package (`@squawk/icao-registry-data`) is declared as an optional peer
- * dependency rather than a required dep. The registry is built on the first
- * {@link getIcaoRegistry} call (decompressing ~40 MB on first access) and
- * cached for subsequent calls. When the peer is not installed, the import
+ * dependency rather than a required dep, so a failed import is an expected
+ * outcome rather than a broken install. When the peer is absent the import
  * throws `ERR_MODULE_NOT_FOUND` and {@link getIcaoRegistry} surfaces a
  * {@link MissingDataPackageError} for the tool handler to format.
  */
 
-import { usBundledAirports } from '@squawk/airport-data';
 import { createAirportResolver, type AirportResolver } from '@squawk/airports';
 import { createAirspaceResolver, type AirspaceResolver } from '@squawk/airspace';
-import { usBundledAirspace } from '@squawk/airspace-data';
-import { usBundledAirways } from '@squawk/airway-data';
 import { createAirwayResolver, type AirwayResolver } from '@squawk/airways';
-import { usBundledFixes } from '@squawk/fix-data';
 import { createFixResolver, type FixResolver } from '@squawk/fixes';
 import { createIcaoRegistry, type IcaoRegistry } from '@squawk/icao-registry';
-import { usBundledNavaids } from '@squawk/navaid-data';
 import { createNavaidResolver, type NavaidResolver } from '@squawk/navaids';
-import { usBundledProcedures } from '@squawk/procedure-data';
 import { createProcedureResolver, type ProcedureResolver } from '@squawk/procedures';
 
-/** Eagerly-built airport resolver backed by the US NASR snapshot. */
-export const airportResolver: AirportResolver = createAirportResolver({
-  data: usBundledAirports.records,
-});
+/**
+ * Accessors over one bundled snapshot that is imported, decompressed, and
+ * indexed the first time something reads it.
+ *
+ * @typeParam TResolver - Resolver type built over the dataset records.
+ */
+interface LazyDataset<TResolver> {
+  /**
+   * Returns the resolver, importing and indexing the snapshot on the first
+   * call and reusing the cached instance on every call after that.
+   */
+  getResolver: () => Promise<TResolver>;
+  /**
+   * Reports whether the snapshot has finished loading in this process.
+   * Never triggers a load.
+   */
+  isLoaded: () => boolean;
+}
 
-/** Eagerly-built airspace resolver backed by the US NASR airspace GeoJSON snapshot. */
-export const airspaceResolver: AirspaceResolver = createAirspaceResolver({
-  data: usBundledAirspace,
-});
+/**
+ * Builds a {@link LazyDataset} around a data package's dynamic import.
+ *
+ * The in-flight promise is what gets memoized, not the finished resolver, so
+ * two tool calls arriving before the first load settles share a single import
+ * and a single index build. A rejected load clears the memo so a later call
+ * retries rather than inheriting a permanently poisoned cache.
+ *
+ * @typeParam TDataset - Dataset object exported by the data package.
+ * @typeParam TResolver - Resolver type built over the dataset records.
+ * @param importDataset - Dynamic import resolving to the bundled dataset.
+ * @param buildResolver - Builds the resolver from the imported dataset.
+ * @returns Accessors over the lazily-loaded dataset.
+ */
+function createLazyDataset<TDataset, TResolver>(
+  importDataset: () => Promise<TDataset>,
+  buildResolver: (dataset: TDataset) => TResolver,
+): LazyDataset<TResolver> {
+  let loaded: TResolver | undefined;
+  let pending: Promise<TResolver> | undefined;
 
-/** Eagerly-built airway resolver backed by the US NASR snapshot. */
-export const airwayResolver: AirwayResolver = createAirwayResolver({
-  data: usBundledAirways.records,
-});
+  return {
+    getResolver: (): Promise<TResolver> => {
+      if (loaded !== undefined) {
+        return Promise.resolve(loaded);
+      }
+      pending ??= importDataset().then(
+        (dataset) => {
+          loaded = buildResolver(dataset);
+          return loaded;
+        },
+        (err: unknown) => {
+          pending = undefined;
+          throw err;
+        },
+      );
+      return pending;
+    },
+    isLoaded: (): boolean => loaded !== undefined,
+  };
+}
 
-/** Eagerly-built fix resolver backed by the US NASR snapshot. */
-export const fixResolver: FixResolver = createFixResolver({ data: usBundledFixes.records });
+/** Lazily-loaded airport dataset backed by the US NASR snapshot. */
+const airportDataset = createLazyDataset(
+  async () => (await import('@squawk/airport-data')).usBundledAirports,
+  (dataset) => createAirportResolver({ data: dataset.records }),
+);
 
-/** Eagerly-built navaid resolver backed by the US NASR snapshot. */
-export const navaidResolver: NavaidResolver = createNavaidResolver({
-  data: usBundledNavaids.records,
-});
+/** Lazily-loaded airspace dataset backed by the US NASR airspace GeoJSON snapshot. */
+const airspaceDataset = createLazyDataset(
+  async () => (await import('@squawk/airspace-data')).usBundledAirspace,
+  (dataset) => createAirspaceResolver({ data: dataset }),
+);
 
-/** Eagerly-built procedure resolver backed by the US NASR snapshot. */
-export const procedureResolver: ProcedureResolver = createProcedureResolver({
-  data: usBundledProcedures.records,
-});
+/** Lazily-loaded airway dataset backed by the US NASR snapshot. */
+const airwayDataset = createLazyDataset(
+  async () => (await import('@squawk/airway-data')).usBundledAirways,
+  (dataset) => createAirwayResolver({ data: dataset.records }),
+);
+
+/** Lazily-loaded fix dataset backed by the US NASR snapshot. */
+const fixDataset = createLazyDataset(
+  async () => (await import('@squawk/fix-data')).usBundledFixes,
+  (dataset) => createFixResolver({ data: dataset.records }),
+);
+
+/** Lazily-loaded navaid dataset backed by the US NASR snapshot. */
+const navaidDataset = createLazyDataset(
+  async () => (await import('@squawk/navaid-data')).usBundledNavaids,
+  (dataset) => createNavaidResolver({ data: dataset.records }),
+);
+
+/** Lazily-loaded procedure dataset backed by the FAA CIFP snapshot. */
+const procedureDataset = createLazyDataset(
+  async () => (await import('@squawk/procedure-data')).usBundledProcedures,
+  (dataset) => createProcedureResolver({ data: dataset.records }),
+);
+
+/**
+ * Returns the shared airport resolver, importing and indexing the bundled US
+ * NASR airport snapshot on the first call.
+ *
+ * @returns The shared airport resolver.
+ */
+export function getAirportResolver(): Promise<AirportResolver> {
+  return airportDataset.getResolver();
+}
+
+/**
+ * Returns the shared airspace resolver, importing and indexing the bundled US
+ * NASR airspace GeoJSON snapshot on the first call.
+ *
+ * @returns The shared airspace resolver.
+ */
+export function getAirspaceResolver(): Promise<AirspaceResolver> {
+  return airspaceDataset.getResolver();
+}
+
+/**
+ * Returns the shared airway resolver, importing and indexing the bundled US
+ * NASR airway snapshot on the first call.
+ *
+ * @returns The shared airway resolver.
+ */
+export function getAirwayResolver(): Promise<AirwayResolver> {
+  return airwayDataset.getResolver();
+}
+
+/**
+ * Returns the shared fix resolver, importing and indexing the bundled US NASR
+ * fix snapshot on the first call.
+ *
+ * @returns The shared fix resolver.
+ */
+export function getFixResolver(): Promise<FixResolver> {
+  return fixDataset.getResolver();
+}
+
+/**
+ * Returns the shared navaid resolver, importing and indexing the bundled US
+ * NASR navaid snapshot on the first call.
+ *
+ * @returns The shared navaid resolver.
+ */
+export function getNavaidResolver(): Promise<NavaidResolver> {
+  return navaidDataset.getResolver();
+}
+
+/**
+ * Returns the shared procedure resolver, importing and indexing the bundled
+ * FAA CIFP procedure snapshot on the first call.
+ *
+ * @returns The shared procedure resolver.
+ */
+export function getProcedureResolver(): Promise<ProcedureResolver> {
+  return procedureDataset.getResolver();
+}
+
+/**
+ * Whether each required bundled snapshot has been loaded into the running
+ * process. Build metadata is not part of this shape: it is available from
+ * each data package's `/meta` subpath without loading anything, so only the
+ * in-memory state has to be read from here.
+ */
+export interface BundledDatasetLoadState {
+  /** Whether the airport snapshot is loaded. */
+  readonly airports: boolean;
+  /** Whether the airspace snapshot is loaded. */
+  readonly airspace: boolean;
+  /** Whether the airway snapshot is loaded. */
+  readonly airways: boolean;
+  /** Whether the fix snapshot is loaded. */
+  readonly fixes: boolean;
+  /** Whether the navaid snapshot is loaded. */
+  readonly navaids: boolean;
+  /** Whether the procedure snapshot is loaded. */
+  readonly procedures: boolean;
+}
+
+/**
+ * Reports which required bundled snapshots are currently in memory, without
+ * loading any of them.
+ *
+ * @returns Per-dataset load state.
+ */
+export function getBundledDatasetLoadState(): BundledDatasetLoadState {
+  return {
+    airports: airportDataset.isLoaded(),
+    airspace: airspaceDataset.isLoaded(),
+    airways: airwayDataset.isLoaded(),
+    fixes: fixDataset.isLoaded(),
+    navaids: navaidDataset.isLoaded(),
+    procedures: procedureDataset.isLoaded(),
+  };
+}
 
 /**
  * Error thrown when a tool tries to load an optional data package peer that
@@ -87,6 +254,12 @@ export class MissingDataPackageError extends Error {
 
 /** Cached ICAO registry instance, populated on the first {@link getIcaoRegistry} call. */
 let icaoRegistryInstance: IcaoRegistry | undefined;
+
+/**
+ * In-flight registry load, memoized so concurrent lookups share one import
+ * and one index build. Cleared when the load rejects so a later call retries.
+ */
+let icaoRegistryPending: Promise<IcaoRegistry> | undefined;
 
 /**
  * Cached metadata captured the first time the registry is loaded. Held
@@ -132,16 +305,43 @@ function isModuleNotFoundError(err: unknown): boolean {
 }
 
 /**
+ * Imports the optional registry peer and builds the registry, populating the
+ * module-level caches. Split out of {@link getIcaoRegistry} so the memoized
+ * in-flight promise has a single body behind it.
+ *
+ * @returns The newly built registry instance.
+ * @throws {MissingDataPackageError} when the peer is not installed.
+ */
+async function loadIcaoRegistry(): Promise<IcaoRegistry> {
+  let registryDataModule: typeof import('@squawk/icao-registry-data');
+  try {
+    registryDataModule = await icaoRegistryDataLoader();
+  } catch (err) {
+    icaoRegistryPending = undefined;
+    if (isModuleNotFoundError(err)) {
+      icaoRegistryMissing = true;
+      throw new MissingDataPackageError('icao-registry', '@squawk/icao-registry-data');
+    }
+    throw err;
+  }
+  const { usBundledRegistry } = registryDataModule;
+  icaoRegistryInstance = createIcaoRegistry({ data: usBundledRegistry.records });
+  icaoRegistryMetadata = {
+    generatedAt: usBundledRegistry.properties.generatedAt,
+    recordCount: usBundledRegistry.properties.recordCount,
+  };
+  return icaoRegistryInstance;
+}
+
+/**
  * Returns the shared {@link IcaoRegistry} instance, decompressing and indexing
  * the bundled FAA aircraft registration snapshot on the first call. Subsequent
  * calls reuse the cached instance.
  *
- * The registry is initialized lazily because the underlying data package is
- * the largest snapshot in the suite (roughly 40 MB raw) and is declared as an
- * optional peer dependency rather than a required dep. Sessions that never
- * look up an aircraft by ICAO hex avoid the cost entirely, and consumers who
- * never install the peer see only the structured missing-package error
- * surfaced by the tool handler.
+ * The registry's data package is the largest snapshot in the suite (roughly
+ * 40 MB raw) and is declared as an optional peer dependency rather than a
+ * required dep, so consumers who never install the peer see only the
+ * structured missing-package error surfaced by the tool handler.
  *
  * @returns The shared registry instance.
  * @throws {MissingDataPackageError} when `@squawk/icao-registry-data` is not
@@ -151,25 +351,11 @@ export async function getIcaoRegistry(): Promise<IcaoRegistry> {
   if (icaoRegistryMissing) {
     throw new MissingDataPackageError('icao-registry', '@squawk/icao-registry-data');
   }
-  if (icaoRegistryInstance === undefined) {
-    let registryDataModule: typeof import('@squawk/icao-registry-data');
-    try {
-      registryDataModule = await icaoRegistryDataLoader();
-    } catch (err) {
-      if (isModuleNotFoundError(err)) {
-        icaoRegistryMissing = true;
-        throw new MissingDataPackageError('icao-registry', '@squawk/icao-registry-data');
-      }
-      throw err;
-    }
-    const { usBundledRegistry } = registryDataModule;
-    icaoRegistryInstance = createIcaoRegistry({ data: usBundledRegistry.records });
-    icaoRegistryMetadata = {
-      generatedAt: usBundledRegistry.properties.generatedAt,
-      recordCount: usBundledRegistry.properties.recordCount,
-    };
+  if (icaoRegistryInstance !== undefined) {
+    return icaoRegistryInstance;
   }
-  return icaoRegistryInstance;
+  icaoRegistryPending ??= loadIcaoRegistry();
+  return icaoRegistryPending;
 }
 
 /**
@@ -177,8 +363,8 @@ export async function getIcaoRegistry(): Promise<IcaoRegistry> {
  *
  * Test-only seam for swapping the optional data package loader. Production
  * code must not call this. Pass `undefined` to restore the default loader
- * and clear all cached state (instance, metadata, and the missing-peer
- * sticky flag) so subsequent tests start from a clean slate.
+ * and clear all cached state (instance, in-flight load, metadata, and the
+ * missing-peer sticky flag) so subsequent tests start from a clean slate.
  *
  * @param loader - Replacement loader, or `undefined` to reset.
  */
@@ -187,6 +373,7 @@ export function __setIcaoRegistryDataLoaderForTest(
 ): void {
   icaoRegistryDataLoader = loader ?? defaultIcaoRegistryDataLoader;
   icaoRegistryInstance = undefined;
+  icaoRegistryPending = undefined;
   icaoRegistryMetadata = undefined;
   icaoRegistryMissing = false;
 }

@@ -48,8 +48,18 @@ const sampleAirway: Airway = {
 };
 
 describe('writeOutput', () => {
+  it('writes the generated metadata module into the package source directory', async () => {
+    const outPath = join(sandbox, 'data', 'airways.json.gz');
+    await writeOutput([sampleAirway], '2026-04-16', outPath);
+
+    const meta = readFileSync(join(sandbox, 'src', 'meta.ts'), 'utf-8');
+    expect(meta).toContain('export const usBundledAirwaysProperties: AirwayDatasetProperties');
+    expect(meta).toContain("  nasrCycleDate: '2026-04-16',");
+    expect(meta).toContain('  recordCount: 1,');
+  });
+
   it('writes airways with waypointCount aggregated across records', async () => {
-    const outPath = join(sandbox, 'airways.json.gz');
+    const outPath = join(sandbox, 'data', 'airways.json.gz');
     await writeOutput([sampleAirway], '2026-04-16', outPath);
 
     const data = readOutput(outPath);
@@ -59,7 +69,7 @@ describe('writeOutput', () => {
   });
 
   it('records meta.generatedAt in ISO 8601 format', async () => {
-    const outPath = join(sandbox, 'airways.json.gz');
+    const outPath = join(sandbox, 'data', 'airways.json.gz');
     await writeOutput([sampleAirway], '2026-04-16', outPath);
 
     const data = readOutput(outPath);
@@ -75,7 +85,7 @@ describe('writeOutput', () => {
   });
 
   it('reports zero waypoints for an empty record set', async () => {
-    const outPath = join(sandbox, 'airways.json.gz');
+    const outPath = join(sandbox, 'data', 'airways.json.gz');
     await writeOutput([], '2026-04-16', outPath);
 
     const data = readOutput(outPath);

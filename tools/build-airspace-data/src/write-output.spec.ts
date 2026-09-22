@@ -56,8 +56,18 @@ const sampleFeature: AirspaceFeature = {
 };
 
 describe('writeOutput', () => {
+  it('writes the generated metadata module into the package source directory', async () => {
+    const outPath = join(sandbox, 'data', 'airspace.geojson.gz');
+    await writeOutput([sampleFeature], outPath, '2026-04-16');
+
+    const meta = readFileSync(join(sandbox, 'src', 'meta.ts'), 'utf-8');
+    expect(meta).toContain('export const usBundledAirspaceProperties: AirspaceDatasetProperties');
+    expect(meta).toContain("  nasrCycleDate: '2026-04-16',");
+    expect(meta).toContain('  featureCount: 1,');
+  });
+
   it('writes a GeoJSON FeatureCollection with cycle date in top-level properties', async () => {
-    const outPath = join(sandbox, 'airspace.geojson.gz');
+    const outPath = join(sandbox, 'data', 'airspace.geojson.gz');
     await writeOutput([sampleFeature], outPath, '2026-04-16');
 
     const data = readOutput(outPath);
@@ -68,7 +78,7 @@ describe('writeOutput', () => {
   });
 
   it('rounds coordinates to 5 decimal places (~1.1 m precision)', async () => {
-    const outPath = join(sandbox, 'airspace.geojson.gz');
+    const outPath = join(sandbox, 'data', 'airspace.geojson.gz');
     await writeOutput([sampleFeature], outPath, '2026-04-16');
 
     const data = readOutput(outPath);
@@ -85,7 +95,7 @@ describe('writeOutput', () => {
   });
 
   it('records meta.generatedAt in ISO 8601 format', async () => {
-    const outPath = join(sandbox, 'airspace.geojson.gz');
+    const outPath = join(sandbox, 'data', 'airspace.geojson.gz');
     await writeOutput([sampleFeature], outPath, '2026-04-16');
 
     const data = readOutput(outPath);
@@ -101,7 +111,7 @@ describe('writeOutput', () => {
   });
 
   it('handles an empty feature set', async () => {
-    const outPath = join(sandbox, 'airspace.geojson.gz');
+    const outPath = join(sandbox, 'data', 'airspace.geojson.gz');
     await writeOutput([], outPath, '2026-04-16');
 
     const data = readOutput(outPath);

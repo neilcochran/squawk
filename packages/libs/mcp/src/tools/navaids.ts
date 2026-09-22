@@ -10,7 +10,7 @@ import { z } from 'zod';
 import type { NavaidFrequencyQuery, NavaidSearchQuery, NearestNavaidQuery } from '@squawk/navaids';
 import type { NavaidType } from '@squawk/types';
 
-import { navaidResolver } from '../resolvers.js';
+import { getNavaidResolver } from '../resolvers.js';
 
 /** All {@link NavaidType} values, used for input validation. */
 const NAVAID_TYPE_VALUES = [
@@ -27,8 +27,9 @@ const NAVAID_TYPE_VALUES = [
 ] as const satisfies readonly NavaidType[];
 
 /**
- * Registers navaid lookup tools on the given MCP server. Uses the shared
- * {@link navaidResolver} built at module load time.
+ * Registers navaid lookup tools on the given MCP server. Each handler pulls
+ * the shared resolver from {@link getNavaidResolver}, which imports and
+ * indexes the bundled US NASR snapshot on the first invocation.
  *
  * @param server - The MCP server instance to register tools on.
  */
@@ -43,8 +44,9 @@ export function registerNavaidTools(server: McpServer): void {
         ident: z.string().min(1).describe('Navaid identifier (case-insensitive).'),
       },
     },
-    ({ ident }) => {
-      const navaids = navaidResolver.byIdent(ident);
+    async ({ ident }) => {
+      const resolver = await getNavaidResolver();
+      const navaids = resolver.byIdent(ident);
       return {
         content: [{ type: 'text', text: JSON.stringify(navaids, null, 2) }],
         structuredContent: { navaids },
@@ -79,8 +81,9 @@ export function registerNavaidTools(server: McpServer): void {
           ),
       },
     },
-    ({ ident, lat, lon, toleranceNm }) => {
-      const navaid = navaidResolver.byIdentAtPosition(ident, lat, lon, toleranceNm) ?? null;
+    async ({ ident, lat, lon, toleranceNm }) => {
+      const resolver = await getNavaidResolver();
+      const navaid = resolver.byIdentAtPosition(ident, lat, lon, toleranceNm) ?? null;
       return {
         content: [{ type: 'text', text: JSON.stringify(navaid, null, 2) }],
         structuredContent: { navaid },
@@ -111,7 +114,8 @@ export function registerNavaidTools(server: McpServer): void {
           .describe('Maximum number of results to return. Defaults to 20.'),
       },
     },
-    ({ frequency, navaidTypes, limit }) => {
+    async ({ frequency, navaidTypes, limit }) => {
+      const resolver = await getNavaidResolver();
       const query: NavaidFrequencyQuery = { frequency };
       if (navaidTypes !== undefined) {
         query.types = new Set(navaidTypes);
@@ -119,7 +123,7 @@ export function registerNavaidTools(server: McpServer): void {
       if (limit !== undefined) {
         query.limit = limit;
       }
-      const navaids = navaidResolver.byFrequency(query);
+      const navaids = resolver.byFrequency(query);
       return {
         content: [{ type: 'text', text: JSON.stringify(navaids, null, 2) }],
         structuredContent: { navaids },
@@ -153,7 +157,8 @@ export function registerNavaidTools(server: McpServer): void {
           .describe('Restrict results to these navaid types. Omit to include all types.'),
       },
     },
-    ({ lat, lon, maxDistanceNm, limit, navaidTypes }) => {
+    async ({ lat, lon, maxDistanceNm, limit, navaidTypes }) => {
+      const resolver = await getNavaidResolver();
       const query: NearestNavaidQuery = { lat, lon };
       if (maxDistanceNm !== undefined) {
         query.maxDistanceNm = maxDistanceNm;
@@ -164,7 +169,7 @@ export function registerNavaidTools(server: McpServer): void {
       if (navaidTypes !== undefined) {
         query.types = new Set(navaidTypes);
       }
-      const results = navaidResolver.nearest(query);
+      const results = resolver.nearest(query);
       return {
         content: [{ type: 'text', text: JSON.stringify(results, null, 2) }],
         structuredContent: { results },
@@ -203,7 +208,8 @@ export function registerNavaidTools(server: McpServer): void {
           ),
       },
     },
-    ({ text, navaidTypes, limit, minScore }) => {
+    async ({ text, navaidTypes, limit, minScore }) => {
+      const resolver = await getNavaidResolver();
       const query: NavaidSearchQuery = { text };
       if (navaidTypes !== undefined) {
         query.types = new Set(navaidTypes);
@@ -214,7 +220,7 @@ export function registerNavaidTools(server: McpServer): void {
       if (minScore !== undefined) {
         query.minScore = minScore;
       }
-      const navaids = navaidResolver.search(query);
+      const navaids = resolver.search(query);
       return {
         content: [{ type: 'text', text: JSON.stringify(navaids, null, 2) }],
         structuredContent: { navaids },
