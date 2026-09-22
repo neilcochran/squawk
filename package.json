@@ -23,7 +23,7 @@
     "test:coverage:fresh": "turbo run test:coverage --force --continue=always && node scripts/check-coverage.js",
     "lint": "turbo run lint",
     "lint:pack": "turbo run lint:pack",
-    "api:check": "turbo run api:check && node scripts/check-browser-api-coverage.js",
+    "api:check": "turbo run api:check && node scripts/check-subpath-api-coverage.js",
     "api:report": "turbo run api:report",
     "knip": "knip",
     "dev": "turbo run dev",

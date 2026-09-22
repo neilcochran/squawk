@@ -80,6 +80,23 @@ const dataset = await loadUsBundledFixes({
 The loader also accepts a custom `fetch` implementation, which is useful in
 tests or in edge environments that need a configured fetcher.
 
+## Reading the metadata without loading the data
+
+Importing the package decompresses and parses the whole fix snapshot. When all
+you need is the data's vintage - to show which cycle you are serving, or to decide
+whether to refresh - import the `/meta` subpath instead. It is a plain constant with
+no file access, so it costs nothing and works the same in Node and the browser.
+
+```typescript
+import { usBundledFixesProperties } from '@squawk/fix-data/meta';
+
+console.log(usBundledFixesProperties.nasrCycleDate); // YYYY-MM-DD
+console.log(usBundledFixesProperties.recordCount);
+```
+
+The values are identical to `usBundledFixes.properties`; the difference is only
+that reading them this way does not pull the records into memory.
+
 ## Data format
 
 Each record is a full `Fix` object from `@squawk/types`. Key fields:

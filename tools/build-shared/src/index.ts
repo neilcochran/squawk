@@ -3,6 +3,8 @@ export type { ResolvedInput } from './resolve-input.js';
 export { parseNasrArgs } from './parse-nasr-args.js';
 export type { NasrArgs, NasrArgsError, ParseNasrArgsOptions } from './parse-nasr-args.js';
 export { updateReadmeDate } from './update-readme-date.js';
+export { writeDatasetMeta } from './write-dataset-meta.js';
+export type { DatasetMetaOptions } from './write-dataset-meta.js';
 export { lookupCode } from './lookup-code.js';
 export { parseCsv, parseCsvLine } from './parse-csv.js';
 export type { CsvRecord } from './parse-csv.js';

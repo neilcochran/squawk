@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-import { updateReadmeDate } from '@squawk/build-shared';
+import { updateReadmeDate, writeDatasetMeta } from '@squawk/build-shared';
 import type { Procedure } from '@squawk/types';
 
 /**
@@ -93,4 +93,11 @@ export async function writeOutput(
   );
 
   await updateReadmeDate(outputPath, cifpCycleDate);
+  await writeDatasetMeta(outputPath, {
+    constName: 'usBundledProceduresProperties',
+    typeName: 'ProcedureDatasetProperties',
+    datasetName: 'procedure',
+    generatedBy: 'tools/build-procedure-data',
+    properties: output.meta,
+  });
 }

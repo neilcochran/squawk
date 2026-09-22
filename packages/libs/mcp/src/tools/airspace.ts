@@ -11,7 +11,7 @@ import { z } from 'zod';
 import type { AirspaceQuery, AirspaceSearchQuery } from '@squawk/airspace';
 import type { AirspaceFeature, AirspaceType, ArtccStratum } from '@squawk/types';
 
-import { airportResolver, airspaceResolver } from '../resolvers.js';
+import { getAirportResolver, getAirspaceResolver } from '../resolvers.js';
 
 /** All {@link AirspaceType} values, used for input validation. */
 const AIRSPACE_TYPE_VALUES = [
@@ -89,9 +89,11 @@ function summarizeFeature(feature: AirspaceFeature): {
 }
 
 /**
- * Registers airspace query tools on the given MCP server. The bundled US
- * airspace GeoJSON snapshot is decoded and indexed eagerly via the shared
- * {@link airspaceResolver}.
+ * Registers airspace query tools on the given MCP server. Each handler pulls
+ * the shared resolver from {@link getAirspaceResolver}, which decodes and
+ * indexes the bundled US airspace GeoJSON snapshot on the first invocation.
+ * `get_airspace_for_airport` additionally resolves the airport identifier,
+ * so it loads the airport snapshot alongside the airspace one.
  *
  * @param server - The MCP server instance to register tools on.
  */
@@ -114,7 +116,8 @@ export function registerAirspaceTools(server: McpServer): void {
           .describe('Restrict results to these airspace types. Omit to include all types.'),
       },
     },
-    ({ lat, lon, altitudeFt, airspaceTypes }) => {
+    async ({ lat, lon, altitudeFt, airspaceTypes }) => {
+      const airspaceResolver = await getAirspaceResolver();
       const query: AirspaceQuery = { lat, lon, altitudeFt };
       if (airspaceTypes !== undefined) {
         query.types = new Set(airspaceTypes);
@@ -146,7 +149,11 @@ export function registerAirspaceTools(server: McpServer): void {
           ),
       },
     },
-    ({ airportId, airspaceTypes }) => {
+    async ({ airportId, airspaceTypes }) => {
+      const [airportResolver, airspaceResolver] = await Promise.all([
+        getAirportResolver(),
+        getAirspaceResolver(),
+      ]);
       const airport = airportResolver.byFaaId(airportId) ?? airportResolver.byIcao(airportId);
       if (airport === undefined) {
         return {
@@ -183,7 +190,8 @@ export function registerAirspaceTools(server: McpServer): void {
           ),
       },
     },
-    ({ lat, lon, altitudeFt }) => {
+    async ({ lat, lon, altitudeFt }) => {
+      const airspaceResolver = await getAirspaceResolver();
       const query: AirspaceQuery = {
         lat,
         lon,
@@ -218,7 +226,8 @@ export function registerAirspaceTools(server: McpServer): void {
           ),
       },
     },
-    ({ artccId, stratum }) => {
+    async ({ artccId, stratum }) => {
+      const airspaceResolver = await getAirspaceResolver();
       const features = airspaceResolver.byArtcc(artccId, stratum);
       return {
         content: [{ type: 'text', text: JSON.stringify({ features }, null, 2) }],
@@ -258,7 +267,8 @@ export function registerAirspaceTools(server: McpServer): void {
           ),
       },
     },
-    ({ text, airspaceTypes, limit, minScore }) => {
+    async ({ text, airspaceTypes, limit, minScore }) => {
+      const airspaceResolver = await getAirspaceResolver();
       const query: AirspaceSearchQuery = { text };
       if (airspaceTypes !== undefined) {
         query.types = new Set(airspaceTypes);

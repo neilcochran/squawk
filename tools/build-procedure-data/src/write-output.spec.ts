@@ -70,13 +70,29 @@ function makeProcedure(
 }
 
 describe('writeOutput', () => {
+  it('writes the generated metadata module into the package source directory', async () => {
+    const outPath = join(sandbox, 'data', 'procedures.json.gz');
+    await writeOutput(
+      [makeProcedure('SID', { common: 1, transitions: [] })],
+      '2026-04-16',
+      outPath,
+    );
+
+    const meta = readFileSync(join(sandbox, 'src', 'meta.ts'), 'utf-8');
+    expect(meta).toContain(
+      'export const usBundledProceduresProperties: ProcedureDatasetProperties',
+    );
+    expect(meta).toContain("  cifpCycleDate: '2026-04-16',");
+    expect(meta).toContain('  recordCount: 1,');
+  });
+
   it('writes procedures with type counts and total leg count in metadata', async () => {
     const procedures: Procedure[] = [
       makeProcedure('SID', { common: 2, transitions: [3, 4] }),
       makeProcedure('STAR', { common: 1, transitions: [] }),
       makeProcedure('IAP', { common: 5, transitions: [2], missed: 6 }),
     ];
-    const outPath = join(sandbox, 'procedures.json.gz');
+    const outPath = join(sandbox, 'data', 'procedures.json.gz');
     await writeOutput(procedures, '2026-04-16', outPath);
 
     const data = readOutput(outPath);
@@ -90,7 +106,7 @@ describe('writeOutput', () => {
   });
 
   it('records meta.generatedAt in ISO 8601 format', async () => {
-    const outPath = join(sandbox, 'procedures.json.gz');
+    const outPath = join(sandbox, 'data', 'procedures.json.gz');
     await writeOutput(
       [makeProcedure('SID', { common: 1, transitions: [] })],
       '2026-04-16',
@@ -114,7 +130,7 @@ describe('writeOutput', () => {
   });
 
   it('reports zero counts for an empty record set', async () => {
-    const outPath = join(sandbox, 'procedures.json.gz');
+    const outPath = join(sandbox, 'data', 'procedures.json.gz');
     await writeOutput([], '2026-04-16', outPath);
 
     const data = readOutput(outPath);
@@ -127,7 +143,7 @@ describe('writeOutput', () => {
 
   it('handles an IAP without missed approach (legs only from commonRoutes and transitions)', async () => {
     const procedures: Procedure[] = [makeProcedure('IAP', { common: 4, transitions: [3] })];
-    const outPath = join(sandbox, 'procedures.json.gz');
+    const outPath = join(sandbox, 'data', 'procedures.json.gz');
     await writeOutput(procedures, '2026-04-16', outPath);
 
     const data = readOutput(outPath);

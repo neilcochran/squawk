@@ -10,7 +10,7 @@ import { z } from 'zod';
 import type { AirwaySearchQuery } from '@squawk/airways';
 import type { AirwayType } from '@squawk/types';
 
-import { airwayResolver } from '../resolvers.js';
+import { getAirwayResolver } from '../resolvers.js';
 
 /** All {@link AirwayType} values, used for input validation. */
 const AIRWAY_TYPE_VALUES = [
@@ -29,8 +29,9 @@ const AIRWAY_TYPE_VALUES = [
 ] as const satisfies readonly AirwayType[];
 
 /**
- * Registers airway lookup tools on the given MCP server. Uses the shared
- * {@link airwayResolver} built at module load time.
+ * Registers airway lookup tools on the given MCP server. Each handler pulls
+ * the shared resolver from {@link getAirwayResolver}, which imports and
+ * indexes the bundled US NASR snapshot on the first invocation.
  *
  * @param server - The MCP server instance to register tools on.
  */
@@ -45,8 +46,9 @@ export function registerAirwayTools(server: McpServer): void {
         designation: z.string().min(1).describe('Airway designation (case-insensitive).'),
       },
     },
-    ({ designation }) => {
-      const airways = airwayResolver.byDesignation(designation);
+    async ({ designation }) => {
+      const resolver = await getAirwayResolver();
+      const airways = resolver.byDesignation(designation);
       return {
         content: [{ type: 'text', text: JSON.stringify(airways, null, 2) }],
         structuredContent: { airways },
@@ -66,8 +68,9 @@ export function registerAirwayTools(server: McpServer): void {
         exitFix: z.string().min(1).describe('Identifier of the exit fix (case-insensitive).'),
       },
     },
-    ({ designation, entryFix, exitFix }) => {
-      const expansion = airwayResolver.expand(designation, entryFix, exitFix);
+    async ({ designation, entryFix, exitFix }) => {
+      const resolver = await getAirwayResolver();
+      const expansion = resolver.expand(designation, entryFix, exitFix);
       if (expansion === undefined) {
         return {
           content: [
@@ -99,8 +102,9 @@ export function registerAirwayTools(server: McpServer): void {
           .describe('Fix, navaid, or waypoint identifier (case-insensitive).'),
       },
     },
-    ({ ident }) => {
-      const results = airwayResolver.byFix(ident);
+    async ({ ident }) => {
+      const resolver = await getAirwayResolver();
+      const results = resolver.byFix(ident);
       return {
         content: [{ type: 'text', text: JSON.stringify(results, null, 2) }],
         structuredContent: { results },
@@ -139,7 +143,8 @@ export function registerAirwayTools(server: McpServer): void {
           ),
       },
     },
-    ({ text, airwayTypes, limit, minScore }) => {
+    async ({ text, airwayTypes, limit, minScore }) => {
+      const resolver = await getAirwayResolver();
       const query: AirwaySearchQuery = { text };
       if (airwayTypes !== undefined) {
         query.types = new Set(airwayTypes);
@@ -150,7 +155,7 @@ export function registerAirwayTools(server: McpServer): void {
       if (minScore !== undefined) {
         query.minScore = minScore;
       }
-      const airways = airwayResolver.search(query);
+      const airways = resolver.search(query);
       return {
         content: [{ type: 'text', text: JSON.stringify(airways, null, 2) }],
         structuredContent: { airways },

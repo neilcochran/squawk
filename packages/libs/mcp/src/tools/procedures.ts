@@ -12,7 +12,7 @@ import { expansionToLineString, extractLegPoints } from '@squawk/procedures';
 import type { ProcedureSearchQuery } from '@squawk/procedures';
 import type { ApproachType, ProcedureType } from '@squawk/types';
 
-import { procedureResolver } from '../resolvers.js';
+import { getProcedureResolver } from '../resolvers.js';
 
 /** All {@link ProcedureType} values, used for input validation. */
 const PROCEDURE_TYPE_VALUES = ['SID', 'STAR', 'IAP'] as const satisfies readonly ProcedureType[];
@@ -40,8 +40,9 @@ const APPROACH_TYPE_VALUES = [
 
 /**
  * Registers procedure lookup tools (SIDs, STARs, and IAPs) on the given
- * MCP server. Uses the shared {@link procedureResolver} built at module
- * load time from the bundled FAA CIFP snapshot.
+ * MCP server. Each handler pulls the shared resolver from
+ * {@link getProcedureResolver}, which imports and indexes the bundled FAA
+ * CIFP snapshot on the first invocation.
  *
  * @param server - The MCP server instance to register tools on.
  */
@@ -61,8 +62,9 @@ export function registerProcedureTools(server: McpServer): void {
           ),
       },
     },
-    ({ identifier }) => {
-      const procedures = procedureResolver.byIdentifier(identifier);
+    async ({ identifier }) => {
+      const resolver = await getProcedureResolver();
+      const procedures = resolver.byIdentifier(identifier);
       return {
         content: [{ type: 'text', text: JSON.stringify(procedures, null, 2) }],
         structuredContent: { procedures },
@@ -84,8 +86,9 @@ export function registerProcedureTools(server: McpServer): void {
         identifier: z.string().min(1).describe('CIFP procedure identifier (case-insensitive).'),
       },
     },
-    ({ airportId, identifier }) => {
-      const procedure = procedureResolver.byAirportAndIdentifier(airportId, identifier);
+    async ({ airportId, identifier }) => {
+      const resolver = await getProcedureResolver();
+      const procedure = resolver.byAirportAndIdentifier(airportId, identifier);
       if (procedure === undefined) {
         return {
           content: [
@@ -114,8 +117,9 @@ export function registerProcedureTools(server: McpServer): void {
         airportId: z.string().min(1).describe('Airport identifier (case-insensitive).'),
       },
     },
-    ({ airportId }) => {
-      const procedures = procedureResolver.byAirport(airportId);
+    async ({ airportId }) => {
+      const resolver = await getProcedureResolver();
+      const procedures = resolver.byAirport(airportId);
       return {
         content: [{ type: 'text', text: JSON.stringify(procedures, null, 2) }],
         structuredContent: { procedures },
@@ -137,8 +141,9 @@ export function registerProcedureTools(server: McpServer): void {
           .describe('Runway identifier, without the "RW" prefix (e.g. "04L", "13", "27R").'),
       },
     },
-    ({ airportId, runway }) => {
-      const procedures = procedureResolver.byAirportAndRunway(airportId, runway);
+    async ({ airportId, runway }) => {
+      const resolver = await getProcedureResolver();
+      const procedures = resolver.byAirportAndRunway(airportId, runway);
       return {
         content: [{ type: 'text', text: JSON.stringify(procedures, null, 2) }],
         structuredContent: { procedures },
@@ -158,8 +163,9 @@ export function registerProcedureTools(server: McpServer): void {
           .describe('Approach classification. Use LOC_BC for localizer back-course approaches.'),
       },
     },
-    ({ approachType }) => {
-      const procedures = procedureResolver.byApproachType(approachType);
+    async ({ approachType }) => {
+      const resolver = await getProcedureResolver();
+      const procedures = resolver.byApproachType(approachType);
       return {
         content: [{ type: 'text', text: JSON.stringify(procedures, null, 2) }],
         structuredContent: { procedures },
@@ -183,8 +189,9 @@ export function registerProcedureTools(server: McpServer): void {
           .describe('Optional transition name. Omit to return just the common route.'),
       },
     },
-    ({ airportId, identifier, transitionName }) => {
-      const expansion = procedureResolver.expand(airportId, identifier, transitionName);
+    async ({ airportId, identifier, transitionName }) => {
+      const resolver = await getProcedureResolver();
+      const expansion = resolver.expand(airportId, identifier, transitionName);
       if (expansion === undefined) {
         return {
           content: [
@@ -222,8 +229,9 @@ export function registerProcedureTools(server: McpServer): void {
           .describe('Optional transition name. Omit to use just the common route.'),
       },
     },
-    ({ airportId, identifier, transitionName }) => {
-      const expansion = procedureResolver.expand(airportId, identifier, transitionName);
+    async ({ airportId, identifier, transitionName }) => {
+      const resolver = await getProcedureResolver();
+      const expansion = resolver.expand(airportId, identifier, transitionName);
       if (expansion === undefined) {
         return {
           content: [
@@ -280,7 +288,8 @@ export function registerProcedureTools(server: McpServer): void {
           ),
       },
     },
-    ({ text, procedureType, approachType, limit, minScore }) => {
+    async ({ text, procedureType, approachType, limit, minScore }) => {
+      const resolver = await getProcedureResolver();
       const query: ProcedureSearchQuery = { text };
       if (procedureType !== undefined) {
         query.type = procedureType;
@@ -294,7 +303,7 @@ export function registerProcedureTools(server: McpServer): void {
       if (minScore !== undefined) {
         query.minScore = minScore;
       }
-      const procedures = procedureResolver.search(query);
+      const procedures = resolver.search(query);
       return {
         content: [{ type: 'text', text: JSON.stringify(procedures, null, 2) }],
         structuredContent: { procedures },

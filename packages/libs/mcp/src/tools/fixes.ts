@@ -10,7 +10,7 @@ import { z } from 'zod';
 import type { FixSearchQuery, NearestFixQuery } from '@squawk/fixes';
 import type { FixUseCode } from '@squawk/types';
 
-import { fixResolver } from '../resolvers.js';
+import { getFixResolver } from '../resolvers.js';
 
 /** All {@link FixUseCode} values, used for input validation. */
 const FIX_USE_CODE_VALUES = [
@@ -25,8 +25,9 @@ const FIX_USE_CODE_VALUES = [
 ] as const satisfies readonly FixUseCode[];
 
 /**
- * Registers fix/waypoint lookup tools on the given MCP server. Uses the
- * shared {@link fixResolver} built at module load time.
+ * Registers fix/waypoint lookup tools on the given MCP server. Each handler
+ * pulls the shared resolver from {@link getFixResolver}, which imports and
+ * indexes the bundled US NASR snapshot on the first invocation.
  *
  * @param server - The MCP server instance to register tools on.
  */
@@ -41,8 +42,9 @@ export function registerFixTools(server: McpServer): void {
         ident: z.string().min(1).describe('Fix identifier (case-insensitive).'),
       },
     },
-    ({ ident }) => {
-      const fixes = fixResolver.byIdent(ident);
+    async ({ ident }) => {
+      const resolver = await getFixResolver();
+      const fixes = resolver.byIdent(ident);
       return {
         content: [{ type: 'text', text: JSON.stringify(fixes, null, 2) }],
         structuredContent: { fixes },
@@ -77,8 +79,9 @@ export function registerFixTools(server: McpServer): void {
           ),
       },
     },
-    ({ ident, lat, lon, toleranceNm }) => {
-      const fix = fixResolver.byIdentAtPosition(ident, lat, lon, toleranceNm) ?? null;
+    async ({ ident, lat, lon, toleranceNm }) => {
+      const resolver = await getFixResolver();
+      const fix = resolver.byIdentAtPosition(ident, lat, lon, toleranceNm) ?? null;
       return {
         content: [{ type: 'text', text: JSON.stringify(fix, null, 2) }],
         structuredContent: { fix },
@@ -114,7 +117,8 @@ export function registerFixTools(server: McpServer): void {
           ),
       },
     },
-    ({ lat, lon, maxDistanceNm, limit, useCodes }) => {
+    async ({ lat, lon, maxDistanceNm, limit, useCodes }) => {
+      const resolver = await getFixResolver();
       const query: NearestFixQuery = { lat, lon };
       if (maxDistanceNm !== undefined) {
         query.maxDistanceNm = maxDistanceNm;
@@ -125,7 +129,7 @@ export function registerFixTools(server: McpServer): void {
       if (useCodes !== undefined) {
         query.useCodes = new Set(useCodes);
       }
-      const results = fixResolver.nearest(query);
+      const results = resolver.nearest(query);
       return {
         content: [{ type: 'text', text: JSON.stringify(results, null, 2) }],
         structuredContent: { results },
@@ -164,7 +168,8 @@ export function registerFixTools(server: McpServer): void {
           ),
       },
     },
-    ({ text, useCodes, limit, minScore }) => {
+    async ({ text, useCodes, limit, minScore }) => {
+      const resolver = await getFixResolver();
       const query: FixSearchQuery = { text };
       if (useCodes !== undefined) {
         query.useCodes = new Set(useCodes);
@@ -175,7 +180,7 @@ export function registerFixTools(server: McpServer): void {
       if (minScore !== undefined) {
         query.minScore = minScore;
       }
-      const fixes = fixResolver.search(query);
+      const fixes = resolver.search(query);
       return {
         content: [{ type: 'text', text: JSON.stringify(fixes, null, 2) }],
         structuredContent: { fixes },

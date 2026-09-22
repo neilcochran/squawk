@@ -47,8 +47,18 @@ const sampleFix: Fix = {
 };
 
 describe('writeOutput', () => {
+  it('writes the generated metadata module into the package source directory', async () => {
+    const outPath = join(sandbox, 'data', 'fixes.json.gz');
+    await writeOutput([sampleFix], '2026-04-16', outPath);
+
+    const meta = readFileSync(join(sandbox, 'src', 'meta.ts'), 'utf-8');
+    expect(meta).toContain('export const usBundledFixesProperties: FixDatasetProperties');
+    expect(meta).toContain("  nasrCycleDate: '2026-04-16',");
+    expect(meta).toContain('  recordCount: 1,');
+  });
+
   it('writes fixes as a gzipped JSON file with cycle date metadata', async () => {
-    const outPath = join(sandbox, 'fixes.json.gz');
+    const outPath = join(sandbox, 'data', 'fixes.json.gz');
     await writeOutput([sampleFix], '2026-04-16', outPath);
 
     const data = readOutput(outPath);
@@ -58,7 +68,7 @@ describe('writeOutput', () => {
   });
 
   it('records meta.generatedAt in ISO 8601 format', async () => {
-    const outPath = join(sandbox, 'fixes.json.gz');
+    const outPath = join(sandbox, 'data', 'fixes.json.gz');
     await writeOutput([sampleFix], '2026-04-16', outPath);
 
     const data = readOutput(outPath);
@@ -74,7 +84,7 @@ describe('writeOutput', () => {
   });
 
   it('handles an empty record set', async () => {
-    const outPath = join(sandbox, 'fixes.json.gz');
+    const outPath = join(sandbox, 'data', 'fixes.json.gz');
     await writeOutput([], '2026-04-16', outPath);
 
     const data = readOutput(outPath);

@@ -1,8 +1,9 @@
 /**
  * @packageDocumentation
  * MCP tool module wrapping `@squawk/airports` airport lookup methods, backed
- * by the US NASR snapshot in `@squawk/airport-data`. The dataset is loaded
- * and indexed eagerly when the shared {@link airportResolver} is imported.
+ * by the US NASR snapshot in `@squawk/airport-data`. The dataset is imported
+ * and indexed by the first handler to call {@link getAirportResolver}, so a
+ * session that never asks about an airport never pays for the snapshot.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -11,7 +12,7 @@ import { z } from 'zod';
 import type { AirportSearchQuery, NearestAirportQuery } from '@squawk/airports';
 import type { FacilityType } from '@squawk/types';
 
-import { airportResolver } from '../resolvers.js';
+import { getAirportResolver } from '../resolvers.js';
 
 /** All {@link FacilityType} values, used for input validation. */
 const FACILITY_TYPE_VALUES = [
@@ -25,14 +26,13 @@ const FACILITY_TYPE_VALUES = [
 
 /**
  * Registers airport lookup tools (by FAA ID, by ICAO code, nearest, text
- * search) on the given MCP server. Tools share the {@link airportResolver}
- * singleton built at module load time from the bundled US NASR dataset.
+ * search) on the given MCP server. Tools share the resolver singleton from
+ * {@link getAirportResolver}, which builds the bundled US NASR dataset on
+ * the first invocation and reuses it thereafter.
  *
  * @param server - The MCP server instance to register tools on.
  */
 export function registerAirportTools(server: McpServer): void {
-  const resolver = airportResolver;
-
   server.registerTool(
     'get_airport_by_faa_id',
     {
@@ -43,7 +43,8 @@ export function registerAirportTools(server: McpServer): void {
         faaId: z.string().min(1).describe('FAA location identifier (case-insensitive).'),
       },
     },
-    ({ faaId }) => {
+    async ({ faaId }) => {
+      const resolver = await getAirportResolver();
       const airport = resolver.byFaaId(faaId);
       if (airport === undefined) {
         return {
@@ -68,7 +69,8 @@ export function registerAirportTools(server: McpServer): void {
         icao: z.string().min(1).describe('ICAO airport code (case-insensitive).'),
       },
     },
-    ({ icao }) => {
+    async ({ icao }) => {
+      const resolver = await getAirportResolver();
       const airport = resolver.byIcao(icao);
       if (airport === undefined) {
         return {
@@ -114,7 +116,8 @@ export function registerAirportTools(server: McpServer): void {
           .describe('Only include airports with at least one runway meeting this length in feet.'),
       },
     },
-    ({ lat, lon, maxDistanceNm, limit, facilityTypes, minRunwayLengthFt }) => {
+    async ({ lat, lon, maxDistanceNm, limit, facilityTypes, minRunwayLengthFt }) => {
+      const resolver = await getAirportResolver();
       const query: NearestAirportQuery = { lat, lon };
       if (maxDistanceNm !== undefined) {
         query.maxDistanceNm = maxDistanceNm;
@@ -167,7 +170,8 @@ export function registerAirportTools(server: McpServer): void {
           ),
       },
     },
-    ({ text, limit, facilityTypes, minScore }) => {
+    async ({ text, limit, facilityTypes, minScore }) => {
+      const resolver = await getAirportResolver();
       const query: AirportSearchQuery = { text };
       if (limit !== undefined) {
         query.limit = limit;

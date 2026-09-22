@@ -86,6 +86,23 @@ const dataset = await loadUsBundledProcedures({
 The loader also accepts a custom `fetch` implementation, which is useful in
 tests or in edge environments that need a configured fetcher.
 
+## Reading the metadata without loading the data
+
+Importing the package decompresses and parses the whole procedure snapshot. When all
+you need is the data's vintage - to show which cycle you are serving, or to decide
+whether to refresh - import the `/meta` subpath instead. It is a plain constant with
+no file access, so it costs nothing and works the same in Node and the browser.
+
+```typescript
+import { usBundledProceduresProperties } from '@squawk/procedure-data/meta';
+
+console.log(usBundledProceduresProperties.cifpCycleDate); // YYYY-MM-DD
+console.log(usBundledProceduresProperties.recordCount);
+```
+
+The values are identical to `usBundledProcedures.properties`; the difference is only
+that reading them this way does not pull the records into memory.
+
 ## Data format
 
 Each record is a full `Procedure` object from `@squawk/types`. Key fields:

@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.12.1"]
+      "args": ["-y", "@squawk/mcp@0.13.0"]
     }
   }
 }
@@ -172,7 +172,7 @@ Pinning works the same way:
         "-p",
         "@squawk/icao-registry-data@0.8.12",
         "-p",
-        "@squawk/mcp@0.12.1",
+        "@squawk/mcp@0.13.0",
         "squawk-mcp"
       ]
     }
@@ -405,9 +405,9 @@ left to the model itself.
 
 ### Server diagnostics
 
-| Tool                 | Purpose                                                                                                      |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `get_dataset_status` | Report NASR cycle date, build timestamp, and record counts for every loaded snapshot (incl. lazy-load state) |
+| Tool                 | Purpose                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `get_dataset_status` | Report NASR/CIFP cycle date, build timestamp, and record counts for every bundled snapshot, plus whether each is loaded |
 
 ## Configuration
 
@@ -472,13 +472,16 @@ Two things worth knowing before you trim:
 - **`datasets` is a group like any other.** It holds `get_dataset_status`, the tool that
   reports which NASR and CIFP cycles the running server is serving. An allowlist that
   leaves it out means you can no longer ask how current the data is, so include it unless
-  you are sure you do not want it. It is the cheapest group in the catalog.
-- **Groups gate the catalog, not the data.** The bundled snapshots are loaded and indexed
-  at startup no matter which groups you register, so trimming the catalog does not reduce
-  the server's startup time or memory use. It also means a group you kept keeps working
-  even when it reads data belonging to a group you dropped - `flightplan` still resolves
-  airports and navaids in a route string with `airports` and `navaids` disabled, because
-  you disabled those tools, not that data.
+  you are sure you do not want it. It is the cheapest group in the catalog, and it stays
+  cheap: cycle dates and record counts are read from a small metadata module in each data
+  package, so asking for status never loads a snapshot.
+- **Trimming the catalog trims the data too.** Each snapshot is decompressed the first time
+  a tool actually reads it, so a group you never register is a group whose data never
+  loads. Dropping `procedures` from a session that never asks about approach plates saves
+  its load outright, not just its share of the context window. A group you kept still works
+  when it reads data belonging to a group you dropped - `flightplan` resolves airports and
+  navaids in a route string with `airports` and `navaids` disabled, loading those snapshots
+  on its own first call, because you disabled those tools, not that data.
 
 ## Notes
 
@@ -489,7 +492,11 @@ Two things worth knowing before you trim:
 - Live weather tools issue HTTPS requests to `https://aviationweather.gov/api/data/...` (or the
   override above). They are the only tools that touch the network at invocation time; everything
   else operates against bundled snapshots in memory.
-- The bundled snapshots are decompressed and indexed once when the server starts, which takes on
-  the order of a second and is unaffected by which tool groups you register. The aircraft
-  registration snapshot (the largest, and an optional peer dependency) is decompressed lazily on
-  the first `lookup_aircraft_by_icao_hex` call, if the package is installed.
+- Snapshots are decompressed and indexed on first use rather than at startup, so the server comes
+  up immediately and each dataset pays a one-time cost the first time a tool reads it. Every later
+  call against a loaded dataset is served from memory. Procedures is the largest of these loads and
+  navaids by far the smallest, with airports, fixes, airspace, and airways in between; loading all
+  of them is on the order of a second. Parsing a route string triggers the biggest single first
+  call, since `flightplan` draws on five snapshots at once. The aircraft registration snapshot (the
+  largest overall, and an optional peer dependency) loads on the first `lookup_aircraft_by_icao_hex`
+  call, if the package is installed.

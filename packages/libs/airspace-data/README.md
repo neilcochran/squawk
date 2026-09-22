@@ -68,6 +68,23 @@ const dataset = await loadUsBundledAirspace({
 The loader also accepts a custom `fetch` implementation, which is useful in
 tests or in edge environments that need a configured fetcher.
 
+## Reading the metadata without loading the data
+
+Importing the package decompresses and parses the whole airspace snapshot. When all
+you need is the data's vintage - to show which cycle you are serving, or to decide
+whether to refresh - import the `/meta` subpath instead. It is a plain constant with
+no file access, so it costs nothing and works the same in Node and the browser.
+
+```typescript
+import { usBundledAirspaceProperties } from '@squawk/airspace-data/meta';
+
+console.log(usBundledAirspaceProperties.nasrCycleDate); // YYYY-MM-DD
+console.log(usBundledAirspaceProperties.featureCount);
+```
+
+The values are identical to `usBundledAirspace.properties`; the difference is only
+that reading them this way does not pull the records into memory.
+
 ## Data format
 
 The export is a GeoJSON `FeatureCollection`. Each feature's geometry is a Polygon
