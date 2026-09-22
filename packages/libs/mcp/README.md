@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.12.0"]
+      "args": ["-y", "@squawk/mcp@0.12.1"]
     }
   }
 }
@@ -144,14 +144,17 @@ rest of the server keeps working normally. If you do not need aircraft lookups, 
 is required.
 
 To enable lookups, install the data package alongside `@squawk/mcp`. Through `npx` the cleanest
-option is the `-p` flag, which adds extra packages to the temporary install npx builds:
+option is the `-p` flag, which adds extra packages to the temporary install npx builds. Once more
+than one package is involved, npx no longer infers which one to run, so give it each package
+behind its own `-p` and name the actual binary (`squawk-mcp`, not the package name) as the
+trailing command:
 
 ```json
 {
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "-p", "@squawk/icao-registry-data", "@squawk/mcp"]
+      "args": ["-y", "-p", "@squawk/icao-registry-data", "-p", "@squawk/mcp", "squawk-mcp"]
     }
   }
 }
@@ -164,7 +167,14 @@ Pinning works the same way:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "-p", "@squawk/icao-registry-data@0.8.12", "@squawk/mcp@0.12.0"]
+      "args": [
+        "-y",
+        "-p",
+        "@squawk/icao-registry-data@0.8.12",
+        "-p",
+        "@squawk/mcp@0.12.1",
+        "squawk-mcp"
+      ]
     }
   }
 }
