@@ -48,7 +48,7 @@
   },
   "devDependencies": {
     "@squawk/airspace-data": "^0.6.0",
-    "@types/node": "^26.5.1"
+    "@types/node": "^26.6.1"
   },
   "keywords": [
     "aviation",
