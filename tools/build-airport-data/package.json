@@ -21,7 +21,7 @@
     "@squawk/build-shared": "*",
     "@squawk/types": "*",
     "adm-zip": "^0.6.1",
-    "geo-tz": "^8.1.8"
+    "geo-tz": "^8.1.9"
   },
   "devDependencies": {
     "@types/node": "^26.5.1"
