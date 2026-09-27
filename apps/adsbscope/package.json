@@ -1,6 +1,6 @@
 {
   "name": "@squawk/adsbscope",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "ATC-style radar scope web UI for live ADS-B traffic, built on @squawk/adsb-feed",
   "license": "MIT",
@@ -31,7 +31,7 @@
     "lint:pack": "publint"
   },
   "dependencies": {
-    "@squawk/adsb-feed": "^0.7.0",
+    "@squawk/adsb-feed": "^0.8.0",
     "@squawk/airport-data": "^0.8.0",
     "@squawk/airspace-data": "^0.6.0",
     "@squawk/fix-data": "^0.7.0",
