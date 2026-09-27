@@ -65,7 +65,10 @@ describe('parseSbsLine', () => {
     });
   });
 
-  it('maps the on-ground flag when it is exactly "0" or "1"', () => {
+  it('maps the on-ground flag: "-1" (how dump1090-fa writes true) or "1" to true, "0" to false', () => {
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '2', 4: 'a0b1c2', 21: '-1' }))?.onGround).toBe(
+      true,
+    );
     expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '2', 4: 'a0b1c2', 21: '1' }))?.onGround).toBe(
       true,
     );
@@ -77,11 +80,17 @@ describe('parseSbsLine', () => {
   it('leaves onGround unset when the flag is blank or an unrecognized value', () => {
     expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '3', 4: 'a0b1c2' }))?.onGround).toBeUndefined();
     expect(
-      parseSbsLine(buildLine({ 0: 'MSG', 1: '3', 4: 'a0b1c2', 21: '-1' }))?.onGround,
+      parseSbsLine(buildLine({ 0: 'MSG', 1: '3', 4: 'a0b1c2', 21: '2' }))?.onGround,
+    ).toBeUndefined();
+    expect(
+      parseSbsLine(buildLine({ 0: 'MSG', 1: '3', 4: 'a0b1c2', 21: 'constructor' }))?.onGround,
     ).toBeUndefined();
   });
 
-  it('maps the alert flag when it is exactly "0" or "1"', () => {
+  it('maps the alert flag: "-1" (how dump1090-fa writes true) or "1" to true, "0" to false', () => {
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 18: '-1' }))?.squawkAlert).toBe(
+      true,
+    );
     expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 18: '1' }))?.squawkAlert).toBe(
       true,
     );
@@ -97,7 +106,10 @@ describe('parseSbsLine', () => {
     ).toBeUndefined();
   });
 
-  it('maps the SPI flag to identActive when it is exactly "0" or "1"', () => {
+  it('maps the SPI flag to identActive: "-1" (how dump1090-fa writes true) or "1" to true, "0" to false', () => {
+    expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 20: '-1' }))?.identActive).toBe(
+      true,
+    );
     expect(parseSbsLine(buildLine({ 0: 'MSG', 1: '5', 4: 'a0b1c2', 20: '1' }))?.identActive).toBe(
       true,
     );
@@ -172,6 +184,30 @@ describe('parseSbsLine - real dump1090-fa capture', () => {
       squawk: '3543',
       squawkAlert: false,
       identActive: false,
+    });
+  });
+
+  it('parses a real transmission type 6 line from an aircraft identing on a new squawk', () => {
+    const update = parseSbsLine(
+      'MSG,6,1,1,A16DD7,1,2026/09/22,23:29:29.062,2026/09/22,23:29:29.103,,,,,,,,5766,-1,0,-1,',
+    );
+    expect(update).toEqual({
+      icaoHex: 'A16DD7',
+      squawk: '5766',
+      squawkAlert: true,
+      identActive: true,
+    });
+  });
+
+  it('parses a real transmission type 5 line whose flags report an alert and on-ground', () => {
+    const update = parseSbsLine(
+      'MSG,5,1,1,394A05,1,2026/09/22,23:33:43.244,2026/09/22,23:33:43.280,,,,,,,,,-1,,0,-1',
+    );
+    expect(update).toEqual({
+      icaoHex: '394A05',
+      squawkAlert: true,
+      identActive: false,
+      onGround: true,
     });
   });
 });

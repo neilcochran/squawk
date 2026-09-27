@@ -210,6 +210,7 @@ describe('decodeModeSMessage - real dump1090-fa Beast capture', () => {
       geoAltitudeFt: undefined,
       groundSpeedKt: undefined,
       trueTrackDeg: undefined,
+      surveillanceStatus: 'none',
     });
   });
 
@@ -227,6 +228,7 @@ describe('decodeModeSMessage - real dump1090-fa Beast capture', () => {
       geoAltitudeFt: undefined,
       groundSpeedKt: undefined,
       trueTrackDeg: undefined,
+      surveillanceStatus: 'none',
     });
   });
 
@@ -431,6 +433,66 @@ describe('decodeModeSMessage - airborne GNSS position (synthetic)', () => {
     expect(result.surface).toBe(false);
     expect(result.geoAltitudeFt).toBe(Math.round(1000 * 3.28084));
     expect(result.baroAltitudeFt).toBeUndefined();
+  });
+});
+
+describe('decodeModeSMessage - airborne position surveillance status (synthetic)', () => {
+  it.each([
+    [0, 'none'],
+    [1, 'permanentAlert'],
+    [2, 'temporaryAlert'],
+    [3, 'ident'],
+  ] as const)('decodes SS %i on a barometric airborne position as %s', (rawStatus, status) => {
+    const me = new Uint8Array(7);
+    setBits(me, 0, 5, 11); // type code 11: airborne barometric position
+    setBits(me, 5, 2, rawStatus);
+
+    const result = decodeModeSMessage(buildValidDf17([0xab, 0x09, 0x69], me));
+    expect(result?.kind).toBe('extendedSquitterPosition');
+    if (result?.kind !== 'extendedSquitterPosition') {
+      return;
+    }
+    expect(result.surveillanceStatus).toBe(status);
+  });
+
+  it('decodes it on a GNSS-height airborne position too', () => {
+    const me = new Uint8Array(7);
+    setBits(me, 0, 5, 20); // type code 20: airborne GNSS position
+    setBits(me, 5, 2, 3);
+
+    const result = decodeModeSMessage(buildValidDf17([0xab, 0x09, 0x69], me));
+    expect(result?.kind).toBe('extendedSquitterPosition');
+    if (result?.kind !== 'extendedSquitterPosition') {
+      return;
+    }
+    expect(result.surveillanceStatus).toBe('ident');
+  });
+
+  it('leaves it undefined for a surface position, whose movement field occupies those bits', () => {
+    const me = new Uint8Array(7);
+    setBits(me, 0, 5, 6); // type code 6: surface position
+    setBits(me, 5, 7, 0b1100000); // movement, with the two bits an airborne status would use set
+
+    const result = decodeModeSMessage(buildValidDf17([0xab, 0x09, 0x69], me));
+    expect(result?.kind).toBe('extendedSquitterPosition');
+    if (result?.kind !== 'extendedSquitterPosition') {
+      return;
+    }
+    expect(result.surface).toBe(true);
+    expect(result.surveillanceStatus).toBeUndefined();
+  });
+
+  it('decodes it on a type-code-0 message too, which has the airborne layout without a position', () => {
+    const me = new Uint8Array(7);
+    setBits(me, 0, 5, 0); // type code 0: no position information
+    setBits(me, 5, 2, 3);
+
+    const result = decodeModeSMessage(buildValidDf17([0xab, 0x09, 0x69], me));
+    expect(result?.kind).toBe('extendedSquitterPosition');
+    if (result?.kind !== 'extendedSquitterPosition') {
+      return;
+    }
+    expect(result.surveillanceStatus).toBe('ident');
   });
 });
 

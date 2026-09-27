@@ -13,11 +13,13 @@ import { decodeIdentification } from './identification.js';
 import { decodeIdentityCode } from './identity.js';
 import { decodeAircraftOperationalStatus } from './operational-status.js';
 import { decodeSurfaceMovement } from './surface-movement.js';
+import { decodeSurveillanceStatus } from './surveillance-status.js';
 import { decodeTargetStateAndStatus } from './target-state-status.js';
 import type {
   DecodedModeSMessage,
   ExtendedSquitterPosition,
   MessageSource,
+  SurveillanceStatus,
 } from './types/index.js';
 import { decodeAirborneVelocity } from './velocity.js';
 
@@ -129,6 +131,7 @@ function decodePositionMessage(
   let geoAltitudeFt: number | undefined;
   let groundSpeedKt: number | undefined;
   let trueTrackDeg: number | undefined;
+  let surveillanceStatus: SurveillanceStatus | undefined;
 
   if (isSurface) {
     // Surface messages replace the airborne altitude field (bits 8-19)
@@ -146,6 +149,7 @@ function decodePositionMessage(
     } else {
       geoAltitudeFt = decodeAdsbGnssAltitude(altitudeField);
     }
+    surveillanceStatus = decodeSurveillanceStatus(extractBits(me, 5, 2));
   }
 
   return {
@@ -160,6 +164,7 @@ function decodePositionMessage(
     geoAltitudeFt,
     groundSpeedKt,
     trueTrackDeg,
+    surveillanceStatus,
   };
 }
 
