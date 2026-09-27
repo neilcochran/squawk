@@ -33,6 +33,7 @@ export { decodeIdentityCode } from './identity.js';
 export { decodeModeAc } from './mode-ac.js';
 export { decodeAircraftOperationalStatus } from './operational-status.js';
 export { decodeSurfaceMovement } from './surface-movement.js';
+export { decodeSurveillanceStatus } from './surveillance-status.js';
 export { decodeTargetStateAndStatus } from './target-state-status.js';
 export { decodeAirborneVelocity } from './velocity.js';
 export type {
@@ -73,6 +74,7 @@ export type {
 } from './types/index.js';
 export type { EmergencyState } from './types/index.js';
 export type { FlightStatus } from './types/index.js';
+export type { SurveillanceStatus } from './types/index.js';
 export type { AircraftIdentification } from './types/index.js';
 export type {
   AirborneVelocity,

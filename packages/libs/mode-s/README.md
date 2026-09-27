@@ -5,7 +5,8 @@
 Decodes raw Mode-S/ADS-B messages: downlink format and CRC extraction, CPR
 position, airborne velocity, aircraft identification, altitude (both the
 ADS-B position-message field and legacy Gillham-coded surveillance replies),
-squawk identity, Flight Status alert/ident flags, emergency status,
+squawk identity, alert/ident flags (from a reply's Flight Status or an
+airborne position's Surveillance Status), emergency status,
 ACAS/TCAS Resolution Advisories, target state and status, aircraft
 operational status, and Enhanced Surveillance Comm-B registers (selected
 vertical intention, track and turn, heading and speed). Transport-agnostic -
@@ -72,7 +73,9 @@ carry the same altitude/squawk payload as DF4/5 plus a 56-bit MB field,
 decoded into `commBRegisters` - see
 [Enhanced Surveillance Comm-B registers](#enhanced-surveillance-comm-b-registers).
 DF4/5/20/21 additionally carry `identActive`/`squawkAlert` - see
-[Flight Status (alert/ident)](#flight-status-alertident).
+[Flight Status (alert/ident)](#flight-status-alertident) - and airborne
+position messages carry the same conditions as `surveillanceStatus` - see
+[Surveillance Status (alert/ident)](#surveillance-status-alertident).
 
 ### Resolving CPR position
 
@@ -229,6 +232,30 @@ alert/ident status is not defined - `decodeFlightStatus(fsField)` is also
 exported directly for callers working with a raw FS field outside of
 `decodeModeSMessage`'s dispatch.
 
+### Surveillance Status (alert/ident)
+
+Airborne position messages (type codes 0, 9-18, and 20-22) carry the same
+conditions in a different shape: a 2-bit Surveillance Status field holding
+the one condition the transponder is flagging, decoded as
+`surveillanceStatus`:
+
+```typescript
+const decoded = decodeModeSMessage(rawMessageBytes);
+if (decoded?.kind === 'extendedSquitterPosition' && decoded.surveillanceStatus === 'ident') {
+  // the pilot has pressed Ident
+}
+```
+
+The values are `none`, `permanentAlert` (an emergency squawk: 7500, 7600,
+or 7700), `temporaryAlert` (a recent change to any other squawk), and
+`ident`. The field holds a single condition and an alert outranks an ident,
+so an alert says nothing about whether an ident is active at the same time.
+It is undefined for a surface position, which has no such field. Position
+messages are broadcast twice a second whether or not the aircraft is being
+interrogated, so they report these conditions far more often than
+DF4/5/20/21 replies do. `decodeSurveillanceStatus(field)` is also exported
+directly for callers working with a raw ME field.
+
 ### Mode A/C
 
 Mode A/C predates Mode-S and carries no ICAO address, so it has no natural
@@ -255,6 +282,7 @@ console.log(reply.squawk, reply.identActive, reply.altitudeFt);
 - `decodeSurfaceMovement(field)` - ground speed from a surface position message's movement field.
 - `decodeEmergencyState(rawState)` - emergency/priority state from an ADS-B aircraft status message.
 - `decodeFlightStatus(fsField)` - Alert/Ident flags from a DF4/5/20/21 Flight Status field.
+- `decodeSurveillanceStatus(field)` - the alert/ident condition from an airborne position message's Surveillance Status field.
 - `decodeAcasResolutionAdvisory(payload)` - ACAS/TCAS Resolution Advisory report from a DF16 MV field or a type-code-28 subtype-2 ME field.
 - `decodeTargetStateAndStatus(me)` - target state and status from a type-29 ME field.
 - `decodeAircraftOperationalStatus(me)` - operational status from a type-31 ME field.

@@ -8,5 +8,6 @@ export * from './identification.js';
 export * from './message.js';
 export * from './mode-ac.js';
 export * from './operational-status.js';
+export * from './surveillance-status.js';
 export * from './target-state-status.js';
 export * from './velocity.js';

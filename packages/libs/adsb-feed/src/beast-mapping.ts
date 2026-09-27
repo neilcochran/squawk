@@ -4,7 +4,12 @@ import {
   decodeSurfaceCprPair,
   decodeSurfaceCprWithReference,
 } from '@squawk/mode-s';
-import type { CprPosition, DecodedModeSMessage, ModeAcReply } from '@squawk/mode-s';
+import type {
+  CprPosition,
+  DecodedModeSMessage,
+  ModeAcReply,
+  SurveillanceStatus,
+} from '@squawk/mode-s';
 import type { Aircraft, Position } from '@squawk/types';
 
 import type { AircraftUpdate } from './tracker.js';
@@ -109,6 +114,37 @@ function decodePairOrReference(
 }
 
 /**
+ * Merges an airborne position message's Surveillance Status into an update,
+ * reading it the way dump1090-fa does. The field holds one condition and an
+ * alert outranks an ident, so `none` clears both flags and `ident` sets the
+ * ident and clears the alert, but either alert sets only the alert: whether
+ * an ident is active at the same time is unknown, so it is left as it was.
+ * Airborne positions arrive twice a second, which keeps both flags current
+ * between the interrogation replies that are their only other source.
+ */
+function applySurveillanceStatus(
+  update: AircraftUpdate,
+  status: SurveillanceStatus | undefined,
+): void {
+  switch (status) {
+    case 'none':
+      update.identActive = false;
+      update.squawkAlert = false;
+      break;
+    case 'permanentAlert':
+    case 'temporaryAlert':
+      update.squawkAlert = true;
+      break;
+    case 'ident':
+      update.identActive = true;
+      update.squawkAlert = false;
+      break;
+    case undefined:
+      break;
+  }
+}
+
+/**
  * Creates a {@link BeastMapper}.
  *
  * @param options - Optional receiver position, used as the CPR reference for surface decoding and an aircraft's first airborne fix.
@@ -169,6 +205,7 @@ export function createBeastMapper(options: BeastMapperOptions = {}): BeastMapper
               update.lon = position.lon;
             }
           }
+          applySurveillanceStatus(update, decoded.surveillanceStatus);
           return update;
         }
         case 'extendedSquitterVelocity': {

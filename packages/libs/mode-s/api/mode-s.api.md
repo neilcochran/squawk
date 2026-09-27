@@ -174,6 +174,9 @@ export function decodeSurfaceCprWithReference(format: 'even' | 'odd', frame: Cpr
 export function decodeSurfaceMovement(movementField: number): number | undefined;
 
 // @public
+export function decodeSurveillanceStatus(rawStatus: number): SurveillanceStatus | undefined;
+
+// @public
 export function decodeTargetStateAndStatus(me: Uint8Array): TargetStateAndStatus;
 
 // @public
@@ -222,6 +225,7 @@ export interface ExtendedSquitterPosition extends ExtendedSquitterCommon {
     latCpr: number | undefined;
     lonCpr: number | undefined;
     surface: boolean;
+    surveillanceStatus: SurveillanceStatus | undefined;
     trueTrackDeg: number | undefined;
 }
 
@@ -338,6 +342,9 @@ export interface SurveillanceIdentityReply {
     squawk: string;
     squawkAlert: boolean | undefined;
 }
+
+// @public
+export type SurveillanceStatus = 'none' | 'permanentAlert' | 'temporaryAlert' | 'ident';
 
 export { TargetStateAndStatus }
 

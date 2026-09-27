@@ -3,6 +3,7 @@ import type { CommBRegister } from './comm-b.js';
 import type { EmergencyState } from './emergency-status.js';
 import type { AircraftIdentification } from './identification.js';
 import type { AircraftOperationalStatus } from './operational-status.js';
+import type { SurveillanceStatus } from './surveillance-status.js';
 import type { TargetStateAndStatus } from './target-state-status.js';
 import type { AirborneVelocity } from './velocity.js';
 
@@ -59,6 +60,8 @@ export interface ExtendedSquitterPosition extends ExtendedSquitterCommon {
   groundSpeedKt: number | undefined;
   /** Track over ground in degrees true. Always undefined for an airborne position, and for a surface position whose track status bit is unset (no valid track available). */
   trueTrackDeg: number | undefined;
+  /** The alert or ident condition the transponder is flagging alongside the position - see {@link SurveillanceStatus}. Always undefined for a surface position, which spends those bits on its movement field. */
+  surveillanceStatus: SurveillanceStatus | undefined;
 }
 
 /** A DF17/18 extended squitter airborne velocity message. */

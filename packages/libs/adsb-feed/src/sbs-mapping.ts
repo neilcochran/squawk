@@ -32,6 +32,25 @@ function numericField(fields: string[], index: number): number | undefined {
 }
 
 /**
+ * Reads one of the BaseStation flag fields (alert, SPI, on-ground). True is
+ * written as `-1`, the convention the format inherited from the original
+ * BaseStation software and the one dump1090-fa follows, and false as `0`.
+ * `1` is read as true as well, since no producer writes it to mean anything
+ * else. A blank or unrecognized value leaves the flag unknown.
+ */
+function flagField(fields: string[], index: number): boolean | undefined {
+  switch (field(fields, index)) {
+    case '-1':
+    case '1':
+      return true;
+    case '0':
+      return false;
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Parses one line of dump1090-fa's SBS/BaseStation output into a partial
  * {@link AircraftUpdate}.
  *
@@ -90,17 +109,17 @@ export function parseSbsLine(line: string): AircraftUpdate | undefined {
   if (squawk) {
     update.squawk = squawk;
   }
-  const alert = field(fields, FIELD.ALERT);
-  if (alert === '0' || alert === '1') {
-    update.squawkAlert = alert === '1';
+  const squawkAlert = flagField(fields, FIELD.ALERT);
+  if (squawkAlert !== undefined) {
+    update.squawkAlert = squawkAlert;
   }
-  const spi = field(fields, FIELD.SPI);
-  if (spi === '0' || spi === '1') {
-    update.identActive = spi === '1';
+  const identActive = flagField(fields, FIELD.SPI);
+  if (identActive !== undefined) {
+    update.identActive = identActive;
   }
-  const onGround = field(fields, FIELD.ON_GROUND);
-  if (onGround === '0' || onGround === '1') {
-    update.onGround = onGround === '1';
+  const onGround = flagField(fields, FIELD.ON_GROUND);
+  if (onGround !== undefined) {
+    update.onGround = onGround;
   }
 
   return update;

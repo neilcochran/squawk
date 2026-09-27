@@ -99,6 +99,7 @@ function positionMessage(
     geoAltitudeFt: undefined,
     groundSpeedKt: undefined,
     trueTrackDeg: undefined,
+    surveillanceStatus: undefined,
     ...overrides,
   };
 }
@@ -244,6 +245,41 @@ describe('map', () => {
 
       expect(update?.lat).toBeUndefined();
     });
+
+    it('maps surveillance status "none" to identActive and squawkAlert both false', () => {
+      const mapper = createBeastMapper();
+      const update = mapper.map(
+        positionMessage({ baroAltitudeFt: 5500, surveillanceStatus: 'none' }),
+        noKnownAircraft,
+      );
+      expect(update).toEqual({
+        icaoHex: ICAO_HEX,
+        onGround: false,
+        baroAltitudeFt: 5500,
+        identActive: false,
+        squawkAlert: false,
+      });
+    });
+
+    it('maps surveillance status "ident" to identActive true, and squawkAlert false since an alert would have outranked it', () => {
+      const mapper = createBeastMapper();
+      const update = mapper.map(positionMessage({ surveillanceStatus: 'ident' }), noKnownAircraft);
+      expect(update).toEqual({
+        icaoHex: ICAO_HEX,
+        onGround: false,
+        identActive: true,
+        squawkAlert: false,
+      });
+    });
+
+    it.each(['permanentAlert', 'temporaryAlert'] as const)(
+      'maps surveillance status "%s" to squawkAlert true, leaving identActive unset since an alert hides it',
+      (surveillanceStatus) => {
+        const mapper = createBeastMapper();
+        const update = mapper.map(positionMessage({ surveillanceStatus }), noKnownAircraft);
+        expect(update).toEqual({ icaoHex: ICAO_HEX, onGround: false, squawkAlert: true });
+      },
+    );
 
     it('resolves a paired surface frame given a receiverPosition reference', () => {
       const lat = 33.9425;
