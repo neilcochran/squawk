@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ScopeSnapshot, ScopeTarget, ScopeVideoMap } from '../../../shared/protocol.js';
-import { TIME_SHARE_ALTERNATE_MS, TIME_SHARE_CYCLE_MS } from '../../scope/data-block.js';
+import { TIME_SHARE_TYPE_MS, TIME_SHARE_USUAL_MS } from '../../scope/data-block.js';
 import { EMERGENCY_FLASH_PERIOD_MS } from '../../scope/emergency.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
 import type { ScopeFrame } from '../../scope/renderer.js';
@@ -16,6 +16,7 @@ import {
   COASTING_AFTER_MS,
   createDigitalRenderer,
   DIGITAL_LAYOUT_REM,
+  IDENT_SYMBOL_SCALE,
 } from './digital-renderer.js';
 import { DIGITAL_THEME } from './digital-theme.js';
 
@@ -379,6 +380,97 @@ describe('createDigitalRenderer', () => {
     });
   });
 
+  describe('position symbols', () => {
+    const position = { trueBearingDeg: 90, rangeNm: 30 };
+    const at = polarToScreen(VIEWPORT, position);
+    const halfPx = DIGITAL_LAYOUT_REM.symbolHalfSize * DEFAULT_PX_PER_REM;
+
+    function symbolCalls(target: ScopeTarget): RecordingContext {
+      return renderFrame(makeSnapshot([target]));
+    }
+
+    it('draws a rotorcraft as a circle, filled in the air and hollow on the ground', () => {
+      const airborne = symbolCalls(makeTarget({ category: 'rotorcraft', position }));
+      const onGround = symbolCalls(
+        makeTarget({ category: 'rotorcraft', position, onGround: true }),
+      );
+
+      const circle = airborne.callsTo('arc').at(-1);
+      expect(circle?.args).toEqual([at.xPx, at.yPx, halfPx, 0, expect.any(Number)]);
+      expect(airborne.callsTo('fill')).toHaveLength(1);
+      expect(airborne.callsTo('fill')[0]?.fillStyle).toBe(COLORS.target);
+      expect(airborne.callsTo('fillRect')).toHaveLength(1);
+      expect(onGround.callsTo('fill')).toHaveLength(0);
+      expect(onGround.callsTo('strokeRect')).toHaveLength(0);
+    });
+
+    it('draws a glider as a triangle and a drone as a diamond, closed and filled', () => {
+      const glider = symbolCalls(makeTarget({ category: 'glider', position }));
+      const drone = symbolCalls(makeTarget({ category: 'uav', position }));
+
+      expect(glider.callsTo('moveTo').map((call) => call.args)).toContainEqual([
+        at.xPx,
+        at.yPx - halfPx,
+      ]);
+      expect(glider.callsTo('closePath')).toHaveLength(1);
+      expect(glider.callsTo('fill')).toHaveLength(1);
+      expect(drone.callsTo('lineTo').map((call) => call.args)).toContainEqual([
+        at.xPx + halfPx,
+        at.yPx,
+      ]);
+      expect(drone.callsTo('closePath')).toHaveLength(1);
+      expect(drone.callsTo('fill')).toHaveLength(1);
+      expect(glider.callsTo('fillRect')).toHaveLength(1);
+      expect(drone.callsTo('fillRect')).toHaveLength(1);
+    });
+
+    it('draws a surface vehicle as a cross, which is only ever stroked', () => {
+      const plain = symbolCalls(makeTarget({ position, onGround: true }));
+
+      const vehicle = symbolCalls(
+        makeTarget({ category: 'surfaceServiceVehicle', position, onGround: true }),
+      );
+
+      expect(vehicle.callsTo('lineTo').map((call) => call.args)).toContainEqual([
+        at.xPx + halfPx,
+        at.yPx + halfPx,
+      ]);
+      expect(vehicle.callsTo('strokeRect')).toHaveLength(0);
+      expect(vehicle.callsTo('fill')).toHaveLength(0);
+      expect(vehicle.callsTo('stroke').length).toBe(plain.callsTo('stroke').length + 1);
+    });
+
+    it('keeps the square for fixed-wing aircraft of every weight class, and for no category', () => {
+      for (const category of ['light', 'large', 'heavy', 'unknown', undefined] as const) {
+        const recording = symbolCalls(makeTarget({ position, ...(category && { category }) }));
+
+        expect(recording.callsTo('fillRect').at(-1)?.args).toEqual([
+          at.xPx - halfPx,
+          at.yPx - halfPx,
+          halfPx * 2,
+          halfPx * 2,
+        ]);
+      }
+    });
+
+    it('draws the symbol of an aircraft squawking ident at twice the size, held in the usual color', () => {
+      const recording = symbolCalls(
+        makeTarget({ callsign: 'UAL123', identActive: true, position }),
+      );
+
+      const identHalfPx = halfPx * IDENT_SYMBOL_SCALE;
+      const symbol = recording.callsTo('fillRect').at(-1);
+      expect(symbol?.args).toEqual([
+        at.xPx - identHalfPx,
+        at.yPx - identHalfPx,
+        identHalfPx * 2,
+        identHalfPx * 2,
+      ]);
+      expect(symbol?.fillStyle).toBe(COLORS.target);
+      expect(recording.texts()).toContain('UAL123 ID');
+    });
+  });
+
   describe('emergencies', () => {
     const position = { trueBearingDeg: 90, rangeNm: 30 };
 
@@ -498,15 +590,48 @@ describe('createDigitalRenderer', () => {
       const frame = frameOf([known, unknown]);
 
       renderer.render(usual.context, frame);
-      renderer.render(alternate.context, {
-        ...frame,
-        frameTimeMs: TIME_SHARE_CYCLE_MS - TIME_SHARE_ALTERNATE_MS,
-      });
+      renderer.render(alternate.context, { ...frame, frameTimeMs: TIME_SHARE_USUAL_MS });
 
       expect(usual.texts()).toEqual(expect.arrayContaining(['N409CC', '045 11', '120 30']));
       expect(usual.texts()).not.toContain('PA-28-181');
       expect(alternate.texts()).toEqual(expect.arrayContaining(['N409CC', 'PA-28-181', '120 30']));
       expect(alternate.texts()).not.toContain('045 11');
+    });
+
+    it('time-shares the second line with the altitude an aircraft is climbing or descending to', () => {
+      const climbing = makeTarget({
+        icaoHex: 'aaaaaa',
+        callsign: 'UAL123',
+        aircraftModel: '737-8H4',
+        altitudeFt: 12_000,
+        groundSpeedKt: 300,
+        selectedAltitudeFt: 38_000,
+        position: CENTER,
+      });
+      const level = makeTarget({
+        icaoHex: 'bbbbbb',
+        callsign: 'DAL45',
+        altitudeFt: 35_000,
+        groundSpeedKt: 450,
+        selectedAltitudeFt: 35_000,
+        position: { trueBearingDeg: 270, rangeNm: 30 },
+      });
+      const renderer = createDigitalRenderer(DIGITAL_THEME);
+      const frame = frameOf([climbing, level]);
+      const type = createRecordingContext();
+      const clearance = createRecordingContext();
+
+      renderer.render(type.context, { ...frame, frameTimeMs: TIME_SHARE_USUAL_MS });
+      renderer.render(clearance.context, {
+        ...frame,
+        frameTimeMs: TIME_SHARE_USUAL_MS + TIME_SHARE_TYPE_MS,
+      });
+
+      expect(type.texts()).toEqual(expect.arrayContaining(['737-8H4', '350 45']));
+      expect(type.texts()).not.toContain('^380');
+      expect(clearance.texts()).toEqual(expect.arrayContaining(['^380', '350 45']));
+      expect(clearance.texts()).not.toContain('737-8H4');
+      expect(clearance.texts()).not.toContain('120 30');
     });
 
     it('sizes a block for the wider of its two second lines, so it does not move as they alternate', () => {
@@ -523,10 +648,7 @@ describe('createDigitalRenderer', () => {
       const measured = vi.spyOn(usual.context, 'measureText');
 
       renderer.render(usual.context, frame);
-      renderer.render(alternate.context, {
-        ...frame,
-        frameTimeMs: TIME_SHARE_CYCLE_MS - TIME_SHARE_ALTERNATE_MS,
-      });
+      renderer.render(alternate.context, { ...frame, frameTimeMs: TIME_SHARE_USUAL_MS });
 
       expect(measured).toHaveBeenCalledWith('PA-28-181');
       const callsignAt = (recording: RecordingContext): unknown[] | undefined =>

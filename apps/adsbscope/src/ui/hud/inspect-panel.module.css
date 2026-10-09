@@ -2,16 +2,23 @@
  * The panel sits in the bottom-right corner, stacked on top of the two zoom
  * buttons: its offset is their combined height, which is the touch target
  * size on a narrow screen and the compact control size from the breakpoint up.
+ *
+ * It can list nineteen rows, more than a landscape phone is tall, so its
+ * height is capped and the rows scroll. The cap stops where the top-corner
+ * lists end, so the panel never climbs over the readout or the tab list.
  */
 .inspectPanel {
-  position: absolute;
-  right: var(--scope-inset-inline);
-  bottom: calc(
+  --scope-inspect-panel-bottom: calc(
     var(--scope-inset-block) + 2 * var(--scope-touch-target) + 3 * var(--scope-space-sm)
   );
+
+  position: absolute;
+  right: var(--scope-inset-inline);
+  bottom: var(--scope-inspect-panel-bottom);
   display: flex;
   flex-direction: column;
   gap: var(--scope-space-sm);
+  max-height: calc(100dvh - var(--scope-inspect-panel-bottom) - var(--scope-emergency-list-top));
   padding: var(--scope-space-sm);
   border: var(--scope-border-width) solid var(--scope-ui-control-border);
   border-radius: var(--scope-radius);
@@ -36,7 +43,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--scope-space-xs);
+  min-height: 0;
   margin: 0;
+  overflow-y: auto;
 }
 
 .row {
@@ -56,7 +65,7 @@
 
 @media (min-width: 48rem) {
   .inspectPanel {
-    bottom: calc(
+    --scope-inspect-panel-bottom: calc(
       var(--scope-inset-block) + 2 * var(--scope-control-size) + 3 * var(--scope-space-sm)
     );
   }

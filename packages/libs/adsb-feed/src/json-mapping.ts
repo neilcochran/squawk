@@ -1,5 +1,9 @@
 import { AircraftCategory } from '@squawk/types';
-import type { AircraftCategory as AircraftCategoryValue, EmergencyState } from '@squawk/types';
+import type {
+  AircraftCategory as AircraftCategoryValue,
+  EmergencyState,
+  TargetStateAndStatus,
+} from '@squawk/types';
 
 import type { AircraftUpdate } from './tracker.js';
 
@@ -44,6 +48,80 @@ function mapEmergencyState(raw: unknown): EmergencyState | undefined {
   return typeof raw === 'string' ? EMERGENCY_STATE_MAP[raw] : undefined;
 }
 
+function numberOrUndefined(raw: unknown): number | undefined {
+  return typeof raw === 'number' ? raw : undefined;
+}
+
+/**
+ * Reads the `nav_modes` array of `aircraft.json`: the names of the autopilot
+ * and navigation modes dump1090-fa found engaged (`autopilot`, `vnav`,
+ * `althold`, `approach`, `lnav`, `tcas`). Undefined when the field is absent,
+ * which dump1090-fa writes when the aircraft reports no mode status at all.
+ */
+function mapNavModes(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+  return raw.filter((mode): mode is string => typeof mode === 'string');
+}
+
+/**
+ * Maps the `nav_*` fields of an `aircraft.json` entry - dump1090-fa's own
+ * decode of the aircraft's Target State and Status (BDS 6,2) - to a
+ * {@link TargetStateAndStatus}, or undefined when the entry carries none of
+ * them.
+ *
+ * dump1090-fa splits the selected altitude by source into `nav_altitude_mcp`
+ * and `nav_altitude_fms`; the MCP/FCU value is preferred when both are
+ * present, since it is what the crew has dialed in. The mode flags come from
+ * `nav_modes`, which dump1090-fa writes only when the aircraft reports its
+ * mode status, so they are undefined when it is absent - as is TCAS
+ * operational status, which dump1090-fa reports as the `tcas` mode and only
+ * alongside the others. The accuracy and integrity fields come from the
+ * entry's top-level `nac_p`, `nic_baro`, and `sil`; when an entry lacks one,
+ * the value is the standard's own "unknown" encoding (0, or false for
+ * `nic_baro`), which is also what an aircraft that cannot say transmits.
+ */
+function mapTargetState(raw: Record<string, unknown>): TargetStateAndStatus | undefined {
+  const mcpAltitudeFt = numberOrUndefined(raw.nav_altitude_mcp);
+  const fmsAltitudeFt = numberOrUndefined(raw.nav_altitude_fms);
+  const selectedHeadingDeg = numberOrUndefined(raw.nav_heading);
+  const baroPressureSettingMb = numberOrUndefined(raw.nav_qnh);
+  const modes = mapNavModes(raw.nav_modes);
+  if (
+    mcpAltitudeFt === undefined &&
+    fmsAltitudeFt === undefined &&
+    selectedHeadingDeg === undefined &&
+    baroPressureSettingMb === undefined &&
+    modes === undefined
+  ) {
+    return undefined;
+  }
+  let selectedAltitudeSource: TargetStateAndStatus['selectedAltitudeSource'];
+  if (mcpAltitudeFt !== undefined) {
+    selectedAltitudeSource = 'mcpFcu';
+  } else if (fmsAltitudeFt !== undefined) {
+    selectedAltitudeSource = 'fms';
+  }
+  const modeActive = (mode: string): boolean | undefined =>
+    modes === undefined ? undefined : modes.includes(mode);
+  return {
+    selectedAltitudeSource,
+    selectedAltitudeFt: mcpAltitudeFt ?? fmsAltitudeFt,
+    baroPressureSettingMb,
+    selectedHeadingDeg,
+    navAccuracyCategoryPosition: numberOrUndefined(raw.nac_p) ?? 0,
+    nicBaro: raw.nic_baro === 1,
+    sourceIntegrityLevel: numberOrUndefined(raw.sil) ?? 0,
+    autopilotEngaged: modeActive('autopilot'),
+    vnavModeActive: modeActive('vnav'),
+    altitudeHoldModeActive: modeActive('althold'),
+    approachModeActive: modeActive('approach'),
+    lnavModeActive: modeActive('lnav'),
+    tcasOperational: modeActive('tcas') === true,
+  };
+}
+
 /**
  * Extracts the `aircraft` array from a parsed dump1090-fa `aircraft.json`
  * response body. Returns an empty array if the response is not shaped as
@@ -65,7 +143,9 @@ export function extractAircraftRecords(parsed: unknown): unknown[] {
  * dump1090-fa reports `alt_baro` as either a number or the literal string
  * `"ground"` when the aircraft's own squitter indicates surface status; the
  * latter is mapped to `onGround: true` with no barometric altitude rather
- * than attempting to parse `"ground"` as a number.
+ * than attempting to parse `"ground"` as a number. The `nav_*` fields -
+ * selected altitude and heading, altimeter setting, and engaged autopilot
+ * modes - are gathered into `targetState`.
  *
  * @param raw - One entry from the `aircraft.json` `aircraft` array.
  * @returns A partial update ready for `Tracker.ingest`, or undefined if the entry has no usable ICAO hex address.
@@ -122,6 +202,10 @@ export function mapJsonAircraft(raw: unknown): AircraftUpdate | undefined {
   const emergencyState = mapEmergencyState(raw.emergency);
   if (emergencyState !== undefined) {
     update.emergencyState = emergencyState;
+  }
+  const targetState = mapTargetState(raw);
+  if (targetState !== undefined) {
+    update.targetState = targetState;
   }
 
   return update;

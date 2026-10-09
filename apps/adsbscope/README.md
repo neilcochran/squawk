@@ -79,10 +79,10 @@ An aircraft can be heard from for some time before it sends a position - or, wit
 
 A modern scope: no sweep, and every aircraft is redrawn at its latest position as soon as it arrives. Each aircraft with a known position is drawn as:
 
-- a **position symbol** - a filled square, or a hollow one for an aircraft on the ground;
+- a **position symbol** - a filled square, or a hollow one for an aircraft on the ground. Where the source reports the aircraft's broadcast category, the shape follows it: a circle for a rotorcraft, a triangle for a glider, balloon, or ultralight, a diamond for a drone, and a cross for a surface vehicle; fixed-wing aircraft of every weight class keep the square. While the pilot is squawking ident the symbol is drawn at twice its size, held steady in the usual color - red and flashing both mean an emergency;
 - a **history trail** - up to five fading dots at five-second intervals behind it;
 - a **velocity vector** - a line showing where it will be in one minute at its current track and ground speed (not drawn on the ground);
-- a **data block** on a leader line. Line one is the callsign, or the ICAO hex until the aircraft has sent one. Line two is altitude in hundreds of feet, a climb (`^`) or descent (`v`) marker when the vertical rate is beyond 300 ft/min, and ground speed in tens of knots - so `236v42` is descending through 23,600 ft at 420 kt. An aircraft on the ground shows `GND` for altitude, and unknown values show as dashes. When the aircraft's [model](#aircraft-models) is known, line two time-shares with it, as the type does on a real scope: every block shows altitude and speed for 2.5 seconds, then the model for 1.5, in unison. A block is sized for the wider of the two, so it does not move as they alternate.
+- a **data block** on a leader line. Line one is the callsign, or the ICAO hex until the aircraft has sent one, followed by `ID` while the pilot is squawking ident. Line two is altitude in hundreds of feet, a climb (`^`) or descent (`v`) marker when the vertical rate is beyond 300 ft/min, and ground speed in tens of knots - so `236v42` is descending through 23,600 ft at 420 kt. An aircraft on the ground shows `GND` for altitude, and unknown values show as dashes. Line two time-shares, as the type does on a real scope: every block shows altitude and speed for 2.5 seconds, then the aircraft's [type](#aircraft-models) for 1.5, then the altitude it is climbing or descending to for 1.5, all in unison, and skips any part it has nothing for. The type is the registered model, `H/` first for a heavy (`H/777-222`). The selected altitude is written as a flight strip writes a clearance - `^380` climbing to FL380, `v290` descending to FL290 - and only while the aircraft has more than 300 ft to go, so a level aircraft's block stays quiet. A block is sized for the widest of its lines, so it does not move as they alternate.
 
 Data blocks are kept off one another. A leader line normally runs up and to the right, but when its block would cover another block, another aircraft's symbol, or hang off the edge of the window, it takes whichever of the eight compass directions leaves the block clear - or, in a real crowd, the one that covers the least. A block only moves when it has to, and one that has been moved aside stays there, as it does on a real scope when a controller moves it, so blocks do not flicker between directions as traffic shifts.
 
@@ -90,7 +90,7 @@ An aircraft that has not been heard from for 15 seconds is dimmed until it eithe
 
 ### Analog
 
-A sweep-era PPI scope in monochrome green. A beam rotates clockwise from north, trailing an afterglow, and an aircraft is only painted at the moment the beam crosses its bearing - as a short arc, like a real return - at wherever it was right then. The blip then fades, with a half-life of a little under half a rotation, so a moving aircraft leaves a trail of its previous returns until the beam comes round to repaint it. Only aircraft inside the range circle are painted.
+A sweep-era PPI scope in monochrome green. A beam rotates clockwise from north, trailing an afterglow, and an aircraft is only painted at the moment the beam crosses its bearing - as a short arc, like a real return - at wherever it was right then. The blip then fades, with a half-life of a little under half a rotation, so a moving aircraft leaves a trail of its previous returns until the beam comes round to repaint it. Only aircraft inside the range circle are painted. An aircraft squawking ident returns twice as wide and half again as thick, as the ident pulse stretched a return on a real tube, and its tag reads `ID` after the callsign; every return is the same plain arc otherwise, whatever the aircraft's category.
 
 Switching to the analog style starts from a dark scope that fills in over one rotation, the way a tube warms up; so does resizing the window. If the page is left in a background tab, the scope repaints everything once when it comes back rather than spinning to catch up.
 
@@ -118,7 +118,7 @@ The bundled data covers the United States only, so a receiver elsewhere gets an 
 
 ### Inspecting an aircraft
 
-Click or tap an aircraft - its symbol or return, or its data block or tag - to select it. It is ringed on the scope, and a panel in the bottom-right corner writes out what its data block abbreviates or has no room for: ICAO hex, registered model in full, squawk, altitude in feet, vertical rate, ground speed, track, bearing and range from the receiver, and how long ago it was last heard from. Only what the aircraft has actually reported gets a row. If the aircraft is in the [registry](#aircraft-models), its registration, make, operator, and year of manufacture are fetched and added a moment later; for an aircraft the registry does not know, or with `--no-registry`, those rows are simply absent.
+Click or tap an aircraft - its symbol or return, or its data block or tag - to select it. It is ringed on the scope, and a panel in the bottom-right corner writes out what its data block abbreviates or has no room for: ICAO hex, registered model in full, broadcast category, squawk (noting one that has just changed), altitude in feet, the altitude selected on the autopilot, vertical rate, ground speed, indicated and true airspeed, track, magnetic heading, selected heading, whether the autopilot is on and which of its modes are, bearing and range from the receiver, and how long ago it was last heard from. Only what the aircraft has actually reported gets a row, so under a source that cannot report something the row is absent rather than reading as off; see [What each source can show](#what-each-source-can-show). The selected heading carries no `true` or `magnetic`, because the broadcast does not say which it is. On a screen too short for every row, the panel stops below the lists in the top corners and scrolls. If the aircraft is in the [registry](#aircraft-models), its registration, make, operator, and year of manufacture are fetched and added a moment later; for an aircraft the registry does not know, or with `--no-registry`, those rows are simply absent.
 
 Click empty scope, press `Esc`, or use the panel's close button to clear the selection. `.` and `,` step forwards and backwards through every tracked aircraft in order of callsign, which is also the only way to select one that has no position and so is not on the scope. The selection is kept when you switch view styles, and is dropped when the aircraft stops being tracked: a selection always names an aircraft that is actually there.
 
@@ -144,6 +144,12 @@ In both, the aircraft is also named under `EMERGENCY` at the top of the window (
 ### Aircraft models
 
 The model in a data block comes from the FAA aircraft registry bundled with [`@squawk/icao-registry-data`](../../packages/libs/icao-registry-data), looked up by the aircraft's ICAO hex. It is the model the aircraft is registered as - `PA-28-181`, `737-8H4` - cut to twelve characters. Registered models run to twenty; twelve shows more than nine in ten of them whole, and only the blocks that need the width take it. That is not the four-character ICAO type designator (`P28A`, `B738`) a real scope shows; the FAA registry does not carry designators. It covers aircraft on the US register only, and is as current as the installed data package.
+
+An aircraft that broadcasts the heavy category has its model prefixed `H/`, as a flight strip writes it: `H/777-222`. When the registry does not know an aircraft at all - a foreign one, typically - but it broadcasts a category, the type line shows the category's three-letter code instead (`HVY`, `LRG`, `LGT`, `ROT`), so a heavy still reads as one.
+
+### What each source can show
+
+The scope draws only what the station reports, so nothing ever reads as off under a source that cannot say. The default `beast` source decodes everything above: categories, ident and squawk-change alerts, airspeeds and heading, and the selected altitude, selected heading, and autopilot modes. `json` has categories, airspeeds and heading, and the selected altitude, heading, and autopilot modes, but no ident or squawk alert, so nothing ever shows `ID` under it. `sbs` has ident and squawk alerts but no categories and no selected altitude, so under it every aircraft is a square and no block ever shows a clearance. The detail is in [`@squawk/adsb-feed`'s README](../../packages/libs/adsb-feed/README.md#field-population-by-source).
 
 The registry is loaded in the background once the scope is serving, so models appear a second or so after the first aircraft do. It holds over 300,000 records: parsing them briefly needs several hundred megabytes of memory, and the records then stay in memory for as long as `adsbscope` runs. On a small host, `--no-registry` skips it: the scope runs exactly the same, and data blocks simply never show a model. If the registry cannot be loaded, `adsbscope` says so once and carries on without it.
 
@@ -172,13 +178,14 @@ adsbscope --replay session.jsonl --lat 40.6413 --lon -73.7781
 
 ## Development
 
-Build the package, then run the CLI out of `dist/`:
+`dev:server` compiles the server and runs the CLI from `dist/`; everything after `--` is passed to it, so point it at your station or a recording the same way you would the installed command:
 
 ```bash
-npx turbo run build --filter=@squawk/adsbscope
-node apps/adsbscope/dist/server/cli.js --replay session.jsonl --lat 40.6413 --lon -73.7781
+npm run dev:server -w @squawk/adsbscope -- --host 192.168.1.50 --lat 40.6413 --lon -73.7781
 ```
 
-For UI work, `npm run dev:ui -w @squawk/adsbscope` serves the UI with hot reload and proxies `/api` to an `adsbscope` instance running on its default port.
+That serves the last built UI at the usual address. For UI work, run `npm run dev:ui -w @squawk/adsbscope` in a second terminal: it serves the UI with hot reload at the address it prints, and proxies `/api` to the server started above on its default port.
+
+A full build of the package and everything it depends on is `npx turbo run build --filter=@squawk/adsbscope`.
 
 The patterns the code follows are in [CONVENTIONS.md](CONVENTIONS.md).

@@ -11,6 +11,8 @@ export interface Blip {
   paintedAtMs: number;
   /** True if the aircraft was in an emergency when the beam crossed it: the return is drawn bloomed. */
   isEmergency: boolean;
+  /** True if the aircraft was squawking ident when the beam crossed it: the return is drawn wider and thicker. */
+  isIdent: boolean;
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { ConnectionState, FeedSource } from '@squawk/adsb-feed';
-import type { Coordinates } from '@squawk/types';
+import type { AircraftCategory, Coordinates } from '@squawk/types';
 
 /** The app's name, as shown in the UI and printed by the CLI. */
 export const APP_NAME = 'adsbscope';
@@ -94,6 +94,17 @@ export type ScopeEmergencyKind =
   | 'downed'
   | 'resolutionAdvisory';
 
+/** An autopilot or navigation mode an aircraft can report as engaged. */
+export type ScopeAutopilotMode = 'vnav' | 'altitudeHold' | 'approach' | 'lnav';
+
+/** What an aircraft reports of its autopilot, from its Target State and Status broadcast. */
+export interface ScopeAutopilot {
+  /** True while the autopilot is engaged. */
+  engaged: boolean;
+  /** The modes reported engaged, in a fixed order; empty when none is. */
+  modes: ScopeAutopilotMode[];
+}
+
 /** One tracked aircraft as the scope draws it. */
 export interface ScopeTarget {
   /** 24-bit ICAO hexadecimal address. */
@@ -102,20 +113,38 @@ export interface ScopeTarget {
   callsign?: string;
   /** Squawk transponder code. */
   squawk?: string;
+  /** True while the transponder flags a recent change of squawk code. Never set alongside an emergency squawk, whose alert lasts for as long as the code is set. */
+  squawkAlert?: boolean;
+  /** True while the transponder's Ident (SPI) pulse is active: the pilot has pressed Ident. */
+  identActive?: boolean;
   /** The emergency the aircraft is in. Absent for an aircraft that is not in one. */
   emergency?: ScopeEmergencyKind;
   /** The model the aircraft is registered as (`PA-28-181`, `737-8H4`), when the registry knows it. */
   aircraftModel?: string;
+  /** The ADS-B emitter category the aircraft broadcasts: its weight class, or what kind of vehicle it is. */
+  category?: AircraftCategory;
   /** Altitude in feet MSL: barometric when available, otherwise geometric. */
   altitudeFt?: number;
   /** Ground speed in knots. */
   groundSpeedKt?: number;
+  /** Indicated airspeed in knots. */
+  indicatedAirspeedKt?: number;
+  /** True airspeed in knots. */
+  trueAirspeedKt?: number;
   /** Track over ground in degrees true. */
   trueTrackDeg?: number;
+  /** Magnetic heading in degrees. */
+  magneticHeadingDeg?: number;
   /** Vertical rate in feet per minute. */
   verticalRateFtPerMin?: number;
   /** True if the aircraft reports being on the ground. */
   onGround?: boolean;
+  /** The altitude selected on the autopilot or flight management system, in feet. */
+  selectedAltitudeFt?: number;
+  /** The heading selected on the autopilot, in degrees. The broadcast does not say whether it is true or magnetic. */
+  selectedHeadingDeg?: number;
+  /** What the aircraft reports of its autopilot. Absent when it reports no mode status. */
+  autopilot?: ScopeAutopilot;
   /** Current position relative to the receiver. Absent until the aircraft has a resolved position. */
   position?: PolarPoint;
   /** Recent past positions for the history trail, oldest first, excluding the current position. */

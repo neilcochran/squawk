@@ -2,13 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DATA_BLOCK_MODEL_MAX_CHARS,
-  formatAlternateDataBlock,
+  dataBlockLinesFor,
+  everyDataBlockLine,
   formatAltitudeHundreds,
+  formatClearanceDataBlock,
   formatDataBlock,
+  formatDataBlockPhases,
   formatGroundSpeedTens,
-  isTimeShareAlternate,
-  TIME_SHARE_ALTERNATE_MS,
+  formatTypeDataBlock,
+  SELECTED_ALTITUDE_MIN_DIFFERENCE_FT,
+  TIME_SHARE_CLEARANCE_MS,
   TIME_SHARE_CYCLE_MS,
+  TIME_SHARE_TYPE_MS,
+  TIME_SHARE_USUAL_MS,
+  timeSharePhase,
   verticalTrendMarker,
 } from './data-block.js';
 import { makeTarget } from './test-utils.js';
@@ -79,15 +86,18 @@ describe('formatDataBlock', () => {
 });
 
 describe('emergency codes', () => {
-  it('follows the identity with the emergency code, in both the usual and the alternate block', () => {
+  it('follows the identity with the emergency code, in every part of the time-share', () => {
     const target = makeTarget({
       callsign: 'UAL123',
       emergency: 'general',
       aircraftModel: '737-8H4',
+      altitudeFt: 10_000,
+      selectedAltitudeFt: 20_000,
     });
 
     expect(formatDataBlock(target)[0]).toBe('UAL123 EM');
-    expect(formatAlternateDataBlock(target)?.[0]).toBe('UAL123 EM');
+    expect(formatTypeDataBlock(target)?.[0]).toBe('UAL123 EM');
+    expect(formatClearanceDataBlock(target)?.[0]).toBe('UAL123 EM');
     expect(formatDataBlock(makeTarget({ emergency: 'radioFailure' }))[0]).toBe('A1B2C3 RF');
   });
 
@@ -96,24 +106,43 @@ describe('emergency codes', () => {
   });
 });
 
-describe('formatAlternateDataBlock', () => {
+describe('ident', () => {
+  it('follows the identity with ID while the pilot is squawking ident', () => {
+    const target = makeTarget({ callsign: 'UAL123', identActive: true, aircraftModel: '737-8H4' });
+
+    expect(formatDataBlock(target)[0]).toBe('UAL123 ID');
+    expect(formatTypeDataBlock(target)?.[0]).toBe('UAL123 ID');
+    expect(formatDataBlock(makeTarget({ identActive: true }))[0]).toBe('A1B2C3 ID');
+  });
+
+  it('gives the slot to the emergency code when both apply', () => {
+    const target = makeTarget({ callsign: 'UAL123', identActive: true, emergency: 'general' });
+
+    expect(formatDataBlock(target)[0]).toBe('UAL123 EM');
+  });
+
+  it('adds nothing when the ident is not active', () => {
+    expect(formatDataBlock(makeTarget({ callsign: 'UAL123', identActive: false }))[0]).toBe(
+      'UAL123',
+    );
+  });
+});
+
+describe('formatTypeDataBlock', () => {
   it('shows the registered model under the same first line', () => {
     const target = makeTarget({ callsign: 'N409CC ', aircraftModel: 'PA-28-181' });
 
-    expect(formatAlternateDataBlock(target)).toEqual(['N409CC', 'PA-28-181']);
-    expect(formatAlternateDataBlock(target)?.[0]).toBe(formatDataBlock(target)[0]);
+    expect(formatTypeDataBlock(target)).toEqual(['N409CC', 'PA-28-181']);
+    expect(formatTypeDataBlock(target)?.[0]).toBe(formatDataBlock(target)[0]);
   });
 
   it('identifies the aircraft by its ICAO hex until it has sent a callsign', () => {
-    expect(formatAlternateDataBlock(makeTarget({ aircraftModel: 'SR22' }))).toEqual([
-      'A1B2C3',
-      'SR22',
-    ]);
+    expect(formatTypeDataBlock(makeTarget({ aircraftModel: 'SR22' }))).toEqual(['A1B2C3', 'SR22']);
   });
 
   it('shows a model up to the limit whole, and cuts a longer one, without a trailing space', () => {
     const modelOf = (aircraftModel: string): string | undefined =>
-      formatAlternateDataBlock(makeTarget({ aircraftModel }))?.[1];
+      formatTypeDataBlock(makeTarget({ aircraftModel }))?.[1];
 
     expect(modelOf('BD-100-1A10')).toBe('BD-100-1A10');
     expect(modelOf('CL-600-2C10X')).toBe('CL-600-2C10X');
@@ -123,24 +152,135 @@ describe('formatAlternateDataBlock', () => {
     expect(modelOf('FALCON 2000 EX')).toBe('FALCON 2000');
   });
 
-  it('has nothing to show for an aircraft whose model is not known', () => {
-    expect(formatAlternateDataBlock(makeTarget())).toBeUndefined();
+  it("prefixes a heavy's model with H/, as a flight strip does, and no other category's", () => {
+    expect(
+      formatTypeDataBlock(makeTarget({ aircraftModel: '777-222', category: 'heavy' })),
+    ).toEqual(['A1B2C3', 'H/777-222']);
+    expect(
+      formatTypeDataBlock(makeTarget({ aircraftModel: 'GULFSTREAM G280', category: 'heavy' }))?.[1],
+    ).toBe('H/GULFSTREAM G');
+    expect(
+      formatTypeDataBlock(
+        makeTarget({ aircraftModel: '757-222', category: 'highVortexLarge' }),
+      )?.[1],
+    ).toBe('757-222');
+    expect(
+      formatTypeDataBlock(makeTarget({ aircraftModel: 'A320-214', category: 'large' }))?.[1],
+    ).toBe('A320-214');
+  });
+
+  it('falls back to the category code when the model is not known', () => {
+    expect(formatTypeDataBlock(makeTarget({ category: 'heavy' }))).toEqual(['A1B2C3', 'HVY']);
+    expect(formatTypeDataBlock(makeTarget({ category: 'large' }))?.[1]).toBe('LRG');
+    expect(formatTypeDataBlock(makeTarget({ category: 'light' }))?.[1]).toBe('LGT');
+  });
+
+  it('has nothing to show for an aircraft with neither a model nor a category', () => {
+    expect(formatTypeDataBlock(makeTarget())).toBeUndefined();
+    expect(formatTypeDataBlock(makeTarget({ category: 'unknown' }))).toBeUndefined();
   });
 });
 
-describe('isTimeShareAlternate', () => {
-  it('shows the usual line for the first part of each cycle and the alternate for the rest', () => {
-    const switchAtMs = TIME_SHARE_CYCLE_MS - TIME_SHARE_ALTERNATE_MS;
+describe('formatClearanceDataBlock', () => {
+  it('shows the selected altitude as a climb or a descent, in hundreds of feet', () => {
+    const climbing = makeTarget({
+      callsign: 'UAL123',
+      altitudeFt: 12_000,
+      selectedAltitudeFt: 38_016,
+    });
+    const descending = makeTarget({
+      callsign: 'UAL123',
+      altitudeFt: 35_000,
+      selectedAltitudeFt: 29_000,
+    });
 
-    expect(isTimeShareAlternate(0)).toBe(false);
-    expect(isTimeShareAlternate(switchAtMs - 1)).toBe(false);
-    expect(isTimeShareAlternate(switchAtMs)).toBe(true);
-    expect(isTimeShareAlternate(TIME_SHARE_CYCLE_MS - 1)).toBe(true);
+    expect(formatClearanceDataBlock(climbing)).toEqual(['UAL123', '^380']);
+    expect(formatClearanceDataBlock(descending)).toEqual(['UAL123', 'v290']);
   });
 
-  it('repeats every cycle, and shows the usual line for longer than the alternate', () => {
-    expect(isTimeShareAlternate(TIME_SHARE_CYCLE_MS)).toBe(false);
-    expect(isTimeShareAlternate(TIME_SHARE_CYCLE_MS * 7 - 1)).toBe(true);
-    expect(TIME_SHARE_ALTERNATE_MS).toBeLessThan(TIME_SHARE_CYCLE_MS / 2);
+  it('stays quiet while the aircraft is within the threshold of its selected altitude', () => {
+    const clearanceAt = (altitudeFt: number): string | undefined =>
+      formatClearanceDataBlock(makeTarget({ altitudeFt, selectedAltitudeFt: 10_000 }))?.[1];
+
+    expect(clearanceAt(10_000)).toBeUndefined();
+    expect(clearanceAt(10_000 - SELECTED_ALTITUDE_MIN_DIFFERENCE_FT)).toBeUndefined();
+    expect(clearanceAt(10_000 + SELECTED_ALTITUDE_MIN_DIFFERENCE_FT)).toBeUndefined();
+    expect(clearanceAt(10_000 - SELECTED_ALTITUDE_MIN_DIFFERENCE_FT - 1)).toBe('^100');
+    expect(clearanceAt(10_000 + SELECTED_ALTITUDE_MIN_DIFFERENCE_FT + 1)).toBe('v100');
+  });
+
+  it('has nothing to show without both altitudes, or on the ground', () => {
+    expect(formatClearanceDataBlock(makeTarget({ selectedAltitudeFt: 10_000 }))).toBeUndefined();
+    expect(formatClearanceDataBlock(makeTarget({ altitudeFt: 3000 }))).toBeUndefined();
+    expect(
+      formatClearanceDataBlock(
+        makeTarget({ onGround: true, altitudeFt: 100, selectedAltitudeFt: 10_000 }),
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe('formatDataBlockPhases', () => {
+  const full = makeTarget({
+    callsign: 'UAL123',
+    aircraftModel: '737-8H4',
+    altitudeFt: 12_000,
+    groundSpeedKt: 300,
+    selectedAltitudeFt: 38_000,
+  });
+
+  it('gathers every part a block has something for, and leaves out the rest', () => {
+    expect(formatDataBlockPhases(full)).toEqual({
+      usual: ['UAL123', '120 30'],
+      type: ['UAL123', '737-8H4'],
+      clearance: ['UAL123', '^380'],
+    });
+    expect(formatDataBlockPhases(makeTarget())).toEqual({ usual: ['A1B2C3', '--- --'] });
+  });
+
+  it('shows the usual lines in any part a block has nothing for', () => {
+    const bare = formatDataBlockPhases(makeTarget({ aircraftModel: 'SR22' }));
+
+    expect(dataBlockLinesFor(formatDataBlockPhases(full), 'type')).toEqual(['UAL123', '737-8H4']);
+    expect(dataBlockLinesFor(formatDataBlockPhases(full), 'clearance')).toEqual(['UAL123', '^380']);
+    expect(dataBlockLinesFor(bare, 'type')).toEqual(['A1B2C3', 'SR22']);
+    expect(dataBlockLinesFor(bare, 'clearance')).toEqual(['A1B2C3', '--- --']);
+    expect(dataBlockLinesFor(bare, 'usual')).toEqual(['A1B2C3', '--- --']);
+  });
+
+  it('lists every line of every part, for sizing the block', () => {
+    expect(everyDataBlockLine(formatDataBlockPhases(full))).toEqual([
+      'UAL123',
+      '120 30',
+      'UAL123',
+      '737-8H4',
+      'UAL123',
+      '^380',
+    ]);
+    expect(everyDataBlockLine(formatDataBlockPhases(makeTarget()))).toEqual(['A1B2C3', '--- --']);
+  });
+});
+
+describe('timeSharePhase', () => {
+  it('shows the usual line first, then the type, then the clearance, within each cycle', () => {
+    const typeFromMs = TIME_SHARE_USUAL_MS;
+    const clearanceFromMs = TIME_SHARE_USUAL_MS + TIME_SHARE_TYPE_MS;
+
+    expect(timeSharePhase(0)).toBe('usual');
+    expect(timeSharePhase(typeFromMs - 1)).toBe('usual');
+    expect(timeSharePhase(typeFromMs)).toBe('type');
+    expect(timeSharePhase(clearanceFromMs - 1)).toBe('type');
+    expect(timeSharePhase(clearanceFromMs)).toBe('clearance');
+    expect(timeSharePhase(TIME_SHARE_CYCLE_MS - 1)).toBe('clearance');
+  });
+
+  it('repeats every cycle, and shows the usual line for longer than either other part', () => {
+    expect(timeSharePhase(TIME_SHARE_CYCLE_MS)).toBe('usual');
+    expect(timeSharePhase(TIME_SHARE_CYCLE_MS * 7 - 1)).toBe('clearance');
+    expect(TIME_SHARE_CYCLE_MS).toBe(
+      TIME_SHARE_USUAL_MS + TIME_SHARE_TYPE_MS + TIME_SHARE_CLEARANCE_MS,
+    );
+    expect(TIME_SHARE_USUAL_MS).toBeGreaterThan(TIME_SHARE_TYPE_MS);
+    expect(TIME_SHARE_USUAL_MS).toBeGreaterThan(TIME_SHARE_CLEARANCE_MS);
   });
 });

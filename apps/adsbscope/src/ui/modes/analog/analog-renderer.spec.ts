@@ -17,6 +17,8 @@ import {
   bearingToCanvasRad,
   createAnalogRenderer,
   EMERGENCY_BLOOM_ARCS,
+  IDENT_THICKNESS_SCALE,
+  IDENT_WIDTH_SCALE,
   TAG_ALPHA,
 } from './analog-renderer.js';
 import { SWEEP_SETTING_ID, TAGS_OFF, TAGS_ON, TAGS_SETTING_ID } from './analog-settings.js';
@@ -419,6 +421,44 @@ describe('createAnalogRenderer', () => {
         expect(lit?.globalAlpha).toBe(1);
         expect(dark?.fillStyle).toBe(COLORS.target);
         expect(dark?.globalAlpha).toBeLessThan(1);
+      });
+    });
+
+    describe('ident', () => {
+      const position = { trueBearingDeg: 45, rangeNm: 30 };
+      const ident = makeSnapshot([makeTarget({ callsign: 'UAL123', identActive: true, position })]);
+      const routine = makeSnapshot([makeTarget({ callsign: 'UAL123', position })]);
+
+      function arcSpanRad(arc: RecordedCall | undefined): number {
+        return Number(arc?.args[4]) - Number(arc?.args[3]);
+      }
+
+      it('paints the return of an aircraft squawking ident wider and thicker, in one arc', () => {
+        const identing = createAnalogRenderer(ANALOG_THEME);
+        const plain = createAnalogRenderer(ANALOG_THEME);
+        renderAt(identing, 0, { snapshot: ident });
+        renderAt(plain, 0, { snapshot: routine });
+
+        const wide = blipArcs(renderAt(identing, QUARTER_TURN_MS, { snapshot: ident }));
+        const usual = blipArcs(renderAt(plain, QUARTER_TURN_MS, { snapshot: routine }));
+
+        expect(wide).toHaveLength(1);
+        expect(arcSpanRad(wide[0])).toBeCloseTo(arcSpanRad(usual[0]) * IDENT_WIDTH_SCALE);
+        expect(wide[0]?.lineWidth).toBeCloseTo(Number(usual[0]?.lineWidth) * IDENT_THICKNESS_SCALE);
+        expect(wide[0]?.args[2]).toBe(usual[0]?.args[2]);
+        expect(wide[0]?.strokeStyle).toBe(COLORS.target);
+      });
+
+      it('shows the ident code on the tag, and keeps a return painted during the ident once it is over', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        renderAt(renderer, 0, { snapshot: ident });
+
+        const during = renderAt(renderer, QUARTER_TURN_MS, { snapshot: ident });
+        const afterwards = renderAt(renderer, QUARTER_TURN_MS + 16, { snapshot: routine });
+
+        expect(during.texts()).toContain('UAL123 ID');
+        expect(afterwards.texts()).toContain('UAL123');
+        expect(arcSpanRad(blipArcs(afterwards)[0])).toBeCloseTo(arcSpanRad(blipArcs(during)[0]));
       });
     });
 

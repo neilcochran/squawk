@@ -59,6 +59,16 @@ export const TAG_ALPHA = 0.6;
  */
 export const EMERGENCY_BLOOM_ARCS = 3;
 
+/**
+ * How many times its usual angular width the return of an aircraft squawking
+ * ident is drawn. The ident pulse followed the reply on a sweep-era
+ * transponder, and the return stretched along the sweep.
+ */
+export const IDENT_WIDTH_SCALE = 2;
+
+/** How many times its usual radial thickness the return of an aircraft squawking ident is drawn. */
+export const IDENT_THICKNESS_SCALE = 1.5;
+
 /** Stroke width of the beam itself. A hairline stays crisp at any scale. */
 const BEAM_LINE_WIDTH_PX = 1.5;
 const DEG_TO_RAD = FULL_CIRCLE_RAD / FULL_CIRCLE_DEG;
@@ -116,6 +126,7 @@ function paintCrossedTargets(
         position,
         paintedAtMs: frameTimeMs,
         isEmergency: target.emergency !== undefined,
+        isIdent: target.identActive === true,
       });
     }
   }
@@ -166,7 +177,8 @@ function drawBlip(
   alpha: number,
 ): void {
   const { center, pxPerNm, pxPerRem } = viewport;
-  const thicknessPx = ANALOG_LAYOUT_REM.blipThickness * pxPerRem;
+  const thicknessPx =
+    ANALOG_LAYOUT_REM.blipThickness * pxPerRem * (blip.isIdent ? IDENT_THICKNESS_SCALE : 1);
   const minLengthPx = ANALOG_LAYOUT_REM.blipMinLength * pxPerRem;
   const radiusPx = blip.position.rangeNm * pxPerNm;
   context.globalAlpha = alpha;
@@ -177,7 +189,9 @@ function drawBlip(
     context.fill();
     return;
   }
-  const halfWidthRad = Math.max((BEAM_WIDTH_DEG / 2) * DEG_TO_RAD, minLengthPx / 2 / radiusPx);
+  const halfWidthRad =
+    Math.max((BEAM_WIDTH_DEG / 2) * DEG_TO_RAD, minLengthPx / 2 / radiusPx) *
+    (blip.isIdent ? IDENT_WIDTH_SCALE : 1);
   const centerRad = bearingToCanvasRad(blip.position.trueBearingDeg);
   context.strokeStyle = color;
   context.lineWidth = thicknessPx;
@@ -334,6 +348,10 @@ function drawTags(
  * {@link EMERGENCY_BLOOM_ARCS} arcs rather than one - as a transponder
  * squawking 7700 did on a real tube, and its tag flashes at full brightness
  * rather than fading with the blip. A monochrome tube has no red to offer.
+ * An aircraft squawking ident returns {@link IDENT_WIDTH_SCALE} times as
+ * wide and {@link IDENT_THICKNESS_SCALE} times as thick, as the ident pulse
+ * stretched a return. Both are properties of the blip, painted as the beam
+ * crossed the aircraft, so they fade with it.
  *
  * Tags hang off each target's newest blip on a short leader line, and are
  * kept off one another the way the digital style's data blocks are: a leader

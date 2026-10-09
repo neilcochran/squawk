@@ -1,5 +1,6 @@
 import type { ScopeTarget } from '../../shared/protocol.js';
 
+import { categoryCode, isHeavyCategory } from './category.js';
 import { EMERGENCY_CODES } from './emergency.js';
 
 /**
@@ -11,11 +12,31 @@ import { EMERGENCY_CODES } from './emergency.js';
  */
 export const DATA_BLOCK_MODEL_MAX_CHARS = 12;
 
-/** How long one turn of the data block time-share lasts: the usual second line, then the alternate one. */
-export const TIME_SHARE_CYCLE_MS = 4000;
+/** Prefix of a heavy's type in the data block, as on a flight strip (`H/777-222`). */
+export const HEAVY_TYPE_PREFIX = 'H/';
 
-/** How much of the end of each time-share cycle shows the alternate second line. */
-export const TIME_SHARE_ALTERNATE_MS = 1500;
+/** The code shown after the identity while the transponder's Ident is active. */
+export const IDENT_CODE = 'ID';
+
+/**
+ * How far, in feet, the selected altitude must be from the current one for a
+ * data block to show it. An aircraft flying level has selected the altitude
+ * it is at, and its block has nothing to add.
+ */
+export const SELECTED_ALTITUDE_MIN_DIFFERENCE_FT = 300;
+
+/** How long each turn of the data block time-share shows the usual second line: altitude and ground speed. */
+export const TIME_SHARE_USUAL_MS = 2500;
+
+/** How long each turn of the time-share shows the type line, when a block has one. */
+export const TIME_SHARE_TYPE_MS = 1500;
+
+/** How long each turn of the time-share shows the clearance line, when a block has one. */
+export const TIME_SHARE_CLEARANCE_MS = 1500;
+
+/** How long one turn of the data block time-share lasts: the usual second line, then the type, then the clearance. */
+export const TIME_SHARE_CYCLE_MS =
+  TIME_SHARE_USUAL_MS + TIME_SHARE_TYPE_MS + TIME_SHARE_CLEARANCE_MS;
 
 /** Vertical rate, in feet per minute, beyond which a target is shown as climbing or descending. */
 export const VERTICAL_TREND_THRESHOLD_FT_PER_MIN = 300;
@@ -68,18 +89,24 @@ function formatIdentity(target: ScopeTarget): string {
   const callsign = target.callsign?.trim();
   const identity =
     callsign !== undefined && callsign !== '' ? callsign : target.icaoHex.toUpperCase();
-  return target.emergency === undefined
-    ? identity
-    : `${identity} ${EMERGENCY_CODES[target.emergency]}`;
+  if (target.emergency !== undefined) {
+    return `${identity} ${EMERGENCY_CODES[target.emergency]}`;
+  }
+  if (target.identActive === true) {
+    return `${identity} ${IDENT_CODE}`;
+  }
+  return identity;
 }
 
 /**
  * Builds the two lines of a target's data block. Line one identifies the
  * aircraft: its callsign, or its ICAO hex until it has sent one, followed by
- * its emergency code (`UAL123 EM`) if it is in an emergency. Line two is
- * altitude in hundreds of feet, a climb/descent marker, and ground speed in
- * tens of knots (`045^25`); an aircraft on the ground shows `GND` for
- * altitude, and unknown values show as dashes.
+ * its emergency code (`UAL123 EM`) if it is in an emergency, or otherwise by
+ * `ID` while the pilot is squawking ident. An emergency takes the slot: the
+ * ident still shows on the position symbol. Line two is altitude in hundreds
+ * of feet, a climb/descent marker, and ground speed in tens of knots
+ * (`045^25`); an aircraft on the ground shows `GND` for altitude, and
+ * unknown values show as dashes.
  *
  * @param target - The target to describe.
  * @returns The data block's lines, top first.
@@ -99,35 +126,133 @@ export function formatDataBlock(target: ScopeTarget): DataBlockLines {
   ];
 }
 
-/**
- * Builds the lines a target's data block shows during the alternate part of
- * the time-share: the same first line, over the model the aircraft is
- * registered as, cut to {@link DATA_BLOCK_MODEL_MAX_CHARS}. A real scope
- * time-shares the ICAO type designator here (`B738`); the FAA registry has
- * no designators, so the registered model (`737-8H4`) stands in.
- *
- * @param target - The target to describe.
- * @returns The alternate lines, or undefined if the aircraft's model is not known - its block then never changes.
- */
-export function formatAlternateDataBlock(target: ScopeTarget): DataBlockLines | undefined {
+function formatType(target: ScopeTarget): string | undefined {
   if (target.aircraftModel === undefined) {
-    return undefined;
+    return categoryCode(target.category);
   }
-  return [
-    formatIdentity(target),
-    target.aircraftModel.slice(0, DATA_BLOCK_MODEL_MAX_CHARS).trimEnd(),
-  ];
+  const model = target.aircraftModel.slice(0, DATA_BLOCK_MODEL_MAX_CHARS).trimEnd();
+  return isHeavyCategory(target.category) ? `${HEAVY_TYPE_PREFIX}${model}` : model;
 }
 
 /**
- * Decides which second line every data block shows at an instant. Blocks
- * time-share in unison, as on a real scope: the usual line for most of each
- * {@link TIME_SHARE_CYCLE_MS}, the alternate for its last
- * {@link TIME_SHARE_ALTERNATE_MS}.
+ * Builds the lines a target's data block shows during the type part of the
+ * time-share: the same first line, over the model the aircraft is registered
+ * as, cut to {@link DATA_BLOCK_MODEL_MAX_CHARS} and prefixed `H/` for a
+ * heavy, as a flight strip writes the type. A real scope time-shares the
+ * ICAO type designator here (`B738`); the FAA registry has no designators,
+ * so the registered model (`737-8H4`) stands in. When the model is not known
+ * but the aircraft broadcasts a category, its three-letter code (`HVY`,
+ * `LRG`) stands in for that.
+ *
+ * @param target - The target to describe.
+ * @returns The type lines, or undefined if neither the model nor the category is known.
+ */
+export function formatTypeDataBlock(target: ScopeTarget): DataBlockLines | undefined {
+  const type = formatType(target);
+  return type === undefined ? undefined : [formatIdentity(target), type];
+}
+
+function formatClearance(target: ScopeTarget): string | undefined {
+  if (
+    target.onGround === true ||
+    target.altitudeFt === undefined ||
+    target.selectedAltitudeFt === undefined
+  ) {
+    return undefined;
+  }
+  const differenceFt = target.selectedAltitudeFt - target.altitudeFt;
+  if (Math.abs(differenceFt) <= SELECTED_ALTITUDE_MIN_DIFFERENCE_FT) {
+    return undefined;
+  }
+  return `${differenceFt > 0 ? '^' : 'v'}${formatAltitudeHundreds(target.selectedAltitudeFt)}`;
+}
+
+/**
+ * Builds the lines a target's data block shows during the clearance part of
+ * the time-share: the same first line, over the altitude the crew has
+ * selected, written as a flight strip writes a clearance - `^380` climbing
+ * to FL380, `v290` descending to FL290. It is shown only while the aircraft
+ * has more than {@link SELECTED_ALTITUDE_MIN_DIFFERENCE_FT} to go: a level
+ * aircraft has selected the altitude it is at, and stays quiet.
+ *
+ * @param target - The target to describe.
+ * @returns The clearance lines, or undefined if the aircraft is level, on the ground, or reports no selected altitude.
+ */
+export function formatClearanceDataBlock(target: ScopeTarget): DataBlockLines | undefined {
+  const clearance = formatClearance(target);
+  return clearance === undefined ? undefined : [formatIdentity(target), clearance];
+}
+
+/** The parts of the data block time-share, in the order they are shown. */
+export type TimeSharePhase = 'usual' | 'type' | 'clearance';
+
+/** Everything a target's data block can show, by part of the time-share. */
+export interface DataBlockPhases {
+  /** The usual lines: identity over altitude and ground speed. */
+  usual: DataBlockLines;
+  /** The type lines, when the aircraft's model or category is known. */
+  type?: DataBlockLines;
+  /** The clearance lines, while the aircraft is climbing or descending to a selected altitude. */
+  clearance?: DataBlockLines;
+}
+
+/**
+ * Builds everything a target's data block can show.
+ *
+ * @param target - The target to describe.
+ * @returns The lines for each part of the time-share the target has something for.
+ */
+export function formatDataBlockPhases(target: ScopeTarget): DataBlockPhases {
+  const type = formatTypeDataBlock(target);
+  const clearance = formatClearanceDataBlock(target);
+  return {
+    usual: formatDataBlock(target),
+    ...(type !== undefined && { type }),
+    ...(clearance !== undefined && { clearance }),
+  };
+}
+
+/**
+ * Picks the lines a data block shows during one part of the time-share. A
+ * block with nothing for that part shows its usual lines instead, so it
+ * never goes blank.
+ *
+ * @param phases - Everything the block can show.
+ * @param phase - The part of the time-share showing now.
+ * @returns The lines to draw.
+ */
+export function dataBlockLinesFor(phases: DataBlockPhases, phase: TimeSharePhase): DataBlockLines {
+  return phases[phase] ?? phases.usual;
+}
+
+/**
+ * Every line a data block can show, for sizing it: a block is as wide as the
+ * widest of them, so it does not move as the time-share turns.
+ *
+ * @param phases - Everything the block can show.
+ * @returns Every line of every part.
+ */
+export function everyDataBlockLine(phases: DataBlockPhases): string[] {
+  return [...phases.usual, ...(phases.type ?? []), ...(phases.clearance ?? [])];
+}
+
+/**
+ * Decides which part of the time-share every data block is in at an instant.
+ * Blocks time-share in unison, as on a real scope: the usual second line for
+ * the first {@link TIME_SHARE_USUAL_MS} of each {@link TIME_SHARE_CYCLE_MS},
+ * then the type for {@link TIME_SHARE_TYPE_MS}, then the clearance for
+ * {@link TIME_SHARE_CLEARANCE_MS}.
  *
  * @param frameTimeMs - The animation clock, in milliseconds.
- * @returns True while the alternate line is showing.
+ * @returns The part showing now.
  */
-export function isTimeShareAlternate(frameTimeMs: number): boolean {
-  return frameTimeMs % TIME_SHARE_CYCLE_MS >= TIME_SHARE_CYCLE_MS - TIME_SHARE_ALTERNATE_MS;
+export function timeSharePhase(frameTimeMs: number): TimeSharePhase {
+  const inCycleMs = frameTimeMs % TIME_SHARE_CYCLE_MS;
+  if (inCycleMs < TIME_SHARE_USUAL_MS) {
+    return 'usual';
+  }
+  if (inCycleMs < TIME_SHARE_USUAL_MS + TIME_SHARE_TYPE_MS) {
+    return 'type';
+  }
+  return 'clearance';
 }
