@@ -103,8 +103,9 @@ export function buildFix(rec: CsvRecord): Fix | undefined {
     fix.chartingRemark = rec.CHARTING_REMARK;
   }
 
-  // The CHARTS field in FIX_BASE contains a comma-separated summary.
-  // We parse full chart types from FIX_CHRT separately, but use this as a fallback.
+  // The CHARTS column lists the fix's chart types as a comma-separated
+  // summary and is the primary source for chartTypes. FIX_CHRT.csv is
+  // read afterwards and only contributes entries this column omits.
   if (rec.CHARTS) {
     fix.chartTypes = rec.CHARTS.split(',')
       .map((s) => s.trim())
