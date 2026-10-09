@@ -89,14 +89,15 @@ async function main(): Promise<void> {
       `[index] Built ${fixMap.size} fix records (skipped ${skippedCnf} CNF, ${skippedInvalid} invalid).`,
     );
 
-    // Enrich with chart types from FIX_CHRT.
+    // Add any chart types from FIX_CHRT that the CHARTS column did not list.
     console.log(`[index] Reading ${FIX_CHRT_CSV}...`);
     const chrtBuffer = csvZip.readFile(FIX_CHRT_CSV);
     if (chrtBuffer) {
       const chrtRecords = parseCsv(chrtBuffer.toString('utf-8'));
       console.log(`[index] Parsed ${chrtRecords.length} records from ${FIX_CHRT_CSV}`);
 
-      let chrtMatched = 0;
+      let chrtRowsMatched = 0;
+      let chrtTypesAdded = 0;
       for (const rec of chrtRecords) {
         const id = rec.FIX_ID;
         const icao = rec.ICAO_REGION_CODE;
@@ -106,12 +107,18 @@ async function main(): Promise<void> {
         }
 
         const fix = fixMap.get(fixKey(id, icao));
-        if (fix && !fix.chartTypes.includes(chartType)) {
+        if (!fix) {
+          continue;
+        }
+        chrtRowsMatched++;
+        if (!fix.chartTypes.includes(chartType)) {
           fix.chartTypes.push(chartType);
-          chrtMatched++;
+          chrtTypesAdded++;
         }
       }
-      console.log(`[index] Added ${chrtMatched} chart type associations.`);
+      console.log(
+        `[index] ${chrtRowsMatched} ${FIX_CHRT_CSV} rows matched a fix; ${chrtTypesAdded} chart types added beyond the CHARTS column.`,
+      );
     } else {
       console.log(`[index] Warning: ${FIX_CHRT_CSV} not found in ZIP, skipping chart enrichment.`);
     }

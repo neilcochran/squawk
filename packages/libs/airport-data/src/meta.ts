@@ -11,7 +11,7 @@ import type { AirportDatasetProperties } from './node.js';
 
 /** Build metadata for the bundled airport snapshot. */
 export const usBundledAirportsProperties: AirportDatasetProperties = {
-  generatedAt: '2026-08-29T21:26:01.954Z',
-  nasrCycleDate: '2026-09-03',
-  recordCount: 19113,
+  generatedAt: '2026-10-09T22:25:10.425Z',
+  nasrCycleDate: '2026-10-29',
+  recordCount: 19146,
 };

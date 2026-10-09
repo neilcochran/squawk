@@ -13,8 +13,9 @@ with FIX_BASE.csv, FIX_CHRT.csv, and FIX_NAV.csv.
 1. Opens the CSV data ZIP from the subscription directory
 2. Parses FIX_BASE.csv into fix records
 3. Filters out CNF (computer navigation fix) records
-4. Builds typed Fix objects from CSV fields
-5. Enriches fixes with chart type associations from FIX_CHRT.csv
+4. Builds typed Fix objects from CSV fields, including the chart types listed
+   in the CHARTS column
+5. Adds any chart types from FIX_CHRT.csv that the CHARTS column did not list
 6. Enriches fixes with navaid associations from FIX_NAV.csv
 7. Serializes records as JSON, gzip compresses, and writes the output
 
