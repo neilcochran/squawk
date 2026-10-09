@@ -40,7 +40,7 @@
     "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "@squawk/airport-data": "^0.8.0",
     "@squawk/airports": "^0.7.1",
     "@squawk/airspace": "^0.9.1",
