@@ -152,7 +152,7 @@ Six fields have meaningfully different coverage depending on `--source` - see [`
 | Ident active        | -    | Yes | Yes   |
 | Emergency state     | Yes  | -   | Yes   |
 | Resolution advisory | -    | -   | Yes   |
-| Target state        | -    | -   | Yes   |
+| Target state        | Yes  | -   | Yes   |
 
 ### Units
 

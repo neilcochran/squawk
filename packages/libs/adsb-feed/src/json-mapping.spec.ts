@@ -119,6 +119,95 @@ describe('mapJsonAircraft', () => {
       mapJsonAircraft({ hex: 'a0b1c2', emergency: 'not-a-real-value' })?.emergencyState,
     ).toBeUndefined();
   });
+
+  describe('targetState', () => {
+    it('gathers the nav_* fields, with the accuracy and integrity fields beside them', () => {
+      const update = mapJsonAircraft({
+        hex: 'a0b1c2',
+        nav_qnh: 1012.8,
+        nav_altitude_mcp: 38016,
+        nav_heading: 227.8,
+        nav_modes: ['autopilot', 'vnav', 'lnav', 'tcas'],
+        nac_p: 9,
+        nic_baro: 1,
+        sil: 3,
+      });
+
+      expect(update?.targetState).toEqual({
+        selectedAltitudeSource: 'mcpFcu',
+        selectedAltitudeFt: 38016,
+        baroPressureSettingMb: 1012.8,
+        selectedHeadingDeg: 227.8,
+        navAccuracyCategoryPosition: 9,
+        nicBaro: true,
+        sourceIntegrityLevel: 3,
+        autopilotEngaged: true,
+        vnavModeActive: true,
+        altitudeHoldModeActive: false,
+        approachModeActive: false,
+        lnavModeActive: true,
+        tcasOperational: true,
+      });
+    });
+
+    it('omits targetState when the entry carries no nav_* field', () => {
+      expect(mapJsonAircraft({ hex: 'a0b1c2', nac_p: 9, sil: 3 })?.targetState).toBeUndefined();
+    });
+
+    it('prefers the MCP/FCU selected altitude, and falls back to the FMS one', () => {
+      const both = mapJsonAircraft({
+        hex: 'a0b1c2',
+        nav_altitude_mcp: 38016,
+        nav_altitude_fms: 37000,
+      });
+      const fmsOnly = mapJsonAircraft({ hex: 'a0b1c2', nav_altitude_fms: 37000 });
+      const neither = mapJsonAircraft({ hex: 'a0b1c2', nav_heading: 90 });
+
+      expect(both?.targetState?.selectedAltitudeFt).toBe(38016);
+      expect(both?.targetState?.selectedAltitudeSource).toBe('mcpFcu');
+      expect(fmsOnly?.targetState?.selectedAltitudeFt).toBe(37000);
+      expect(fmsOnly?.targetState?.selectedAltitudeSource).toBe('fms');
+      expect(neither?.targetState?.selectedAltitudeFt).toBeUndefined();
+      expect(neither?.targetState?.selectedAltitudeSource).toBeUndefined();
+    });
+
+    it('leaves every mode flag undefined when nav_modes is absent, and TCAS not operational', () => {
+      const targetState = mapJsonAircraft({ hex: 'a0b1c2', nav_altitude_mcp: 38016 })?.targetState;
+
+      expect(targetState?.autopilotEngaged).toBeUndefined();
+      expect(targetState?.vnavModeActive).toBeUndefined();
+      expect(targetState?.altitudeHoldModeActive).toBeUndefined();
+      expect(targetState?.approachModeActive).toBeUndefined();
+      expect(targetState?.lnavModeActive).toBeUndefined();
+      expect(targetState?.tcasOperational).toBe(false);
+    });
+
+    it('reads an empty nav_modes as every mode off', () => {
+      const targetState = mapJsonAircraft({ hex: 'a0b1c2', nav_modes: [] })?.targetState;
+
+      expect(targetState?.autopilotEngaged).toBe(false);
+      expect(targetState?.lnavModeActive).toBe(false);
+      expect(targetState?.tcasOperational).toBe(false);
+    });
+
+    it('ignores nav_modes entries that are not strings', () => {
+      const targetState = mapJsonAircraft({
+        hex: 'a0b1c2',
+        nav_modes: ['autopilot', 7, null],
+      })?.targetState;
+
+      expect(targetState?.autopilotEngaged).toBe(true);
+      expect(targetState?.vnavModeActive).toBe(false);
+    });
+
+    it("encodes missing accuracy and integrity fields as the standard's unknown values", () => {
+      const targetState = mapJsonAircraft({ hex: 'a0b1c2', nav_heading: 90 })?.targetState;
+
+      expect(targetState?.navAccuracyCategoryPosition).toBe(0);
+      expect(targetState?.nicBaro).toBe(false);
+      expect(targetState?.sourceIntegrityLevel).toBe(0);
+    });
+  });
 });
 
 // Records below are verbatim entries from a live dump1090-fa aircraft.json
@@ -176,6 +265,21 @@ describe('mapJsonAircraft - real dump1090-fa capture', () => {
       squawk: '1330',
       emergencyState: 'none',
       category: 'heavy',
+      targetState: {
+        selectedAltitudeSource: 'mcpFcu',
+        selectedAltitudeFt: 38016,
+        baroPressureSettingMb: 1012.8,
+        selectedHeadingDeg: 227.8,
+        navAccuracyCategoryPosition: 0,
+        nicBaro: false,
+        sourceIntegrityLevel: 0,
+        autopilotEngaged: true,
+        vnavModeActive: true,
+        altitudeHoldModeActive: false,
+        approachModeActive: false,
+        lnavModeActive: true,
+        tcasOperational: true,
+      },
     });
   });
 

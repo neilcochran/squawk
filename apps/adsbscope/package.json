@@ -24,6 +24,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.server.json && vite build && node -e \"require('fs').chmodSync('dist/server/cli.js', 0o755)\"",
+    "dev:server": "tsc -p tsconfig.server.json && node dist/server/cli.js",
     "dev:ui": "vite",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

@@ -1,4 +1,6 @@
 import type { ScopeSnapshot, ScopeTarget } from '../../../shared/protocol.js';
+import { positionSymbol } from '../../scope/category.js';
+import type { PositionSymbol } from '../../scope/category.js';
 import {
   leaderBearingsOf,
   pickPlacedDataBlock,
@@ -11,11 +13,12 @@ import type {
   PlacedDataBlock,
 } from '../../scope/data-block-placement.js';
 import {
-  formatAlternateDataBlock,
-  formatDataBlock,
-  isTimeShareAlternate,
+  dataBlockLinesFor,
+  everyDataBlockLine,
+  formatDataBlockPhases,
+  timeSharePhase,
 } from '../../scope/data-block.js';
-import type { DataBlockLines } from '../../scope/data-block.js';
+import type { DataBlockLines, DataBlockPhases } from '../../scope/data-block.js';
 import { isEmergencyFlashOn } from '../../scope/emergency.js';
 import type { ScopeExtent } from '../../scope/extent.js';
 import {
@@ -44,6 +47,13 @@ export const COASTING_AFTER_MS = 15_000;
 
 /** How far ahead, in minutes of flight at the current ground speed, the velocity vector reaches. */
 export const VECTOR_MINUTES = 1;
+
+/**
+ * How many times its usual size a target's position symbol is drawn while
+ * the pilot is squawking ident. Held steady, in the usual color: a red or a
+ * flashing symbol would read as an emergency.
+ */
+export const IDENT_SYMBOL_SCALE = 2;
 
 /**
  * Sizes of the digital scope's target symbology, in rem. They are converted
@@ -120,10 +130,76 @@ function drawVelocityVector(
 interface PlottedTarget extends DataBlockRequest {
   /** The target. */
   target: ScopeTarget;
-  /** Its data block's lines, top first. */
-  lines: DataBlockLines;
-  /** The lines shown in their place during the alternate part of the time-share, if the target has any. */
-  alternateLines: DataBlockLines | undefined;
+  /** Everything its data block can show, by part of the time-share. */
+  phases: DataBlockPhases;
+}
+
+function tracePolygon(context: CanvasRenderingContext2D, points: readonly ScreenPoint[]): void {
+  context.beginPath();
+  points.forEach((point, index) => {
+    if (index === 0) {
+      context.moveTo(point.xPx, point.yPx);
+    } else {
+      context.lineTo(point.xPx, point.yPx);
+    }
+  });
+  context.closePath();
+}
+
+/**
+ * Draws a target's position symbol, filled when airborne and hollow on the
+ * ground. A cross has no inside to fill, so it is always stroked; a surface
+ * vehicle is never airborne anyway.
+ */
+function drawPositionSymbol(
+  context: CanvasRenderingContext2D,
+  symbol: PositionSymbol,
+  at: ScreenPoint,
+  halfSizePx: number,
+  hollow: boolean,
+): void {
+  const { xPx, yPx } = at;
+  switch (symbol) {
+    case 'square':
+      if (hollow) {
+        context.strokeRect(xPx - halfSizePx, yPx - halfSizePx, halfSizePx * 2, halfSizePx * 2);
+      } else {
+        context.fillRect(xPx - halfSizePx, yPx - halfSizePx, halfSizePx * 2, halfSizePx * 2);
+      }
+      return;
+    case 'circle':
+      context.beginPath();
+      context.arc(xPx, yPx, halfSizePx, 0, FULL_CIRCLE_RAD);
+      break;
+    case 'triangle':
+      tracePolygon(context, [
+        { xPx, yPx: yPx - halfSizePx },
+        { xPx: xPx + halfSizePx, yPx: yPx + halfSizePx },
+        { xPx: xPx - halfSizePx, yPx: yPx + halfSizePx },
+      ]);
+      break;
+    case 'diamond':
+      tracePolygon(context, [
+        { xPx, yPx: yPx - halfSizePx },
+        { xPx: xPx + halfSizePx, yPx },
+        { xPx, yPx: yPx + halfSizePx },
+        { xPx: xPx - halfSizePx, yPx },
+      ]);
+      break;
+    case 'cross':
+      context.beginPath();
+      context.moveTo(xPx - halfSizePx, yPx - halfSizePx);
+      context.lineTo(xPx + halfSizePx, yPx + halfSizePx);
+      context.moveTo(xPx + halfSizePx, yPx - halfSizePx);
+      context.lineTo(xPx - halfSizePx, yPx + halfSizePx);
+      context.stroke();
+      return;
+  }
+  if (hollow) {
+    context.stroke();
+  } else {
+    context.fill();
+  }
 }
 
 function drawSymbolAndDataBlock(
@@ -135,16 +211,18 @@ function drawSymbolAndDataBlock(
   lines: DataBlockLines,
 ): void {
   const { target, at } = plotted;
-  const halfSizePx = DIGITAL_LAYOUT_REM.symbolHalfSize * pxPerRem;
-  const sizePx = halfSizePx * 2;
+  const symbolScale = target.identActive === true ? IDENT_SYMBOL_SCALE : 1;
+  const halfSizePx = DIGITAL_LAYOUT_REM.symbolHalfSize * pxPerRem * symbolScale;
   context.fillStyle = color;
   context.strokeStyle = color;
   context.lineWidth = FURNITURE_LINE_WIDTH_PX;
-  if (target.onGround === true) {
-    context.strokeRect(at.xPx - halfSizePx, at.yPx - halfSizePx, sizePx, sizePx);
-  } else {
-    context.fillRect(at.xPx - halfSizePx, at.yPx - halfSizePx, sizePx, sizePx);
-  }
+  drawPositionSymbol(
+    context,
+    positionSymbol(target.category),
+    at,
+    halfSizePx,
+    target.onGround === true,
+  );
 
   const leaderStart = offsetByBearing(
     at,
@@ -191,17 +269,16 @@ function plotTargets(
     }
     const at = polarToScreen(viewport, target.position);
     if (isNearCanvas(viewport, at, marginPx)) {
-      const lines = formatDataBlock(target);
-      const alternateLines = formatAlternateDataBlock(target);
-      const everyLine = [...lines, ...(alternateLines ?? [])];
+      const phases = formatDataBlockPhases(target);
       plotted.push({
         id: target.icaoHex,
         at,
-        widthPx: Math.max(...everyLine.map((line) => context.measureText(line).width)),
-        heightPx: lines.length * lineHeightPx,
+        widthPx: Math.max(
+          ...everyDataBlockLine(phases).map((line) => context.measureText(line).width),
+        ),
+        heightPx: phases.usual.length * lineHeightPx,
         target,
-        lines,
-        alternateLines,
+        phases,
       });
     }
   }
@@ -245,15 +322,21 @@ function isSameInputs(a: PlacementInputs, b: PlacementInputs): boolean {
 /**
  * Creates the `digital` view style's renderer: a modern ATC scope with no
  * sweep. Every frame is drawn from scratch - the video map, range rings, a
- * compass rose, and for each target a position symbol (hollow when on the ground), fading
- * history dots, a one-minute velocity vector, and a leader line to its data
- * block. A target not heard from for {@link COASTING_AFTER_MS} is drawn
- * dimmed. A target in an emergency flashes in the emergency color instead,
- * and is never dimmed: it is the one target that must not fade from view.
+ * compass rose, and for each target a position symbol, fading history dots,
+ * a one-minute velocity vector, and a leader line to its data block. The
+ * symbol's shape follows the aircraft's category - a square for a fixed-wing
+ * aircraft, a circle for a rotorcraft, a triangle for a glider or balloon, a
+ * diamond for a drone, a cross for a surface vehicle - and is hollow on the
+ * ground and {@link IDENT_SYMBOL_SCALE} times its size while the pilot
+ * squawks ident. A target not heard from for {@link COASTING_AFTER_MS} is
+ * drawn dimmed. A target in an emergency flashes in the emergency color
+ * instead, and is never dimmed: it is the one target that must not fade
+ * from view.
  *
- * A target whose registered model is known time-shares the second line of
- * its block with it; a block is sized for the wider of the two, so it does
- * not move as they alternate.
+ * The second line of every block time-shares, in unison, between altitude
+ * and ground speed, the aircraft's type, and the altitude it is climbing or
+ * descending to, skipping any part a block has nothing for; a block is sized
+ * for the widest of them, so it does not move as they alternate.
  *
  * Data blocks are kept off one another: each leader line takes whichever of
  * eight directions leaves its block clear. The directions are worked out once
@@ -323,7 +406,7 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       if (snapshot === undefined) {
         return;
       }
-      const showAlternate = isTimeShareAlternate(frame.frameTimeMs);
+      const phase = timeSharePhase(frame.frameTimeMs);
       const isFlashOn = isEmergencyFlashOn(frame.frameTimeMs);
       for (const { request, placement } of placedTargets(context, viewport, snapshot)) {
         if (request.id === frame.selectedIcaoHex) {
@@ -347,7 +430,7 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
           viewport.pxPerRem,
           request,
           placement,
-          showAlternate ? (request.alternateLines ?? request.lines) : request.lines,
+          dataBlockLinesFor(request.phases, phase),
         );
       }
     },

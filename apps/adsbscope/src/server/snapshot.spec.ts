@@ -173,6 +173,139 @@ describe('toScopeTarget', () => {
       'aircraftModel',
     );
   });
+
+  it('carries the category, the transponder flags, and the airspeeds and heading, rounded', () => {
+    const aircraft: Aircraft = {
+      icaoHex: 'a1b2c3',
+      squawk: '3543',
+      squawkAlert: true,
+      identActive: true,
+      category: 'heavy',
+      indicatedAirspeedKt: 259.4,
+      trueAirspeedKt: 471.6,
+      magneticHeadingDeg: 228.26,
+      lastSeenAt: NOW,
+    };
+
+    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined)).toMatchObject({
+      squawk: '3543',
+      squawkAlert: true,
+      identActive: true,
+      category: 'heavy',
+      indicatedAirspeedKt: 259,
+      trueAirspeedKt: 472,
+      magneticHeadingDeg: 228.3,
+    });
+  });
+
+  it('leaves the transponder flags out unless they are set', () => {
+    const target = toScopeTarget(
+      { icaoHex: 'a1b2c3', squawkAlert: false, identActive: false, lastSeenAt: NOW },
+      [],
+      RECEIVER,
+      NOW,
+      undefined,
+    );
+
+    expect(target).not.toHaveProperty('squawkAlert');
+    expect(target).not.toHaveProperty('identActive');
+  });
+
+  it('drops the squawk alert of an emergency squawk, which lasts for as long as the code is set', () => {
+    const target = toScopeTarget(
+      { icaoHex: 'a1b2c3', squawk: '7700', squawkAlert: true, lastSeenAt: NOW },
+      [],
+      RECEIVER,
+      NOW,
+      undefined,
+    );
+
+    expect(target.emergency).toBe('general');
+    expect(target).not.toHaveProperty('squawkAlert');
+  });
+
+  it('reduces the target state to the selected altitude and heading and the autopilot', () => {
+    const aircraft: Aircraft = {
+      icaoHex: 'a1b2c3',
+      targetState: {
+        selectedAltitudeSource: 'mcpFcu',
+        selectedAltitudeFt: 38_016,
+        baroPressureSettingMb: 1012.8,
+        selectedHeadingDeg: 227.81,
+        navAccuracyCategoryPosition: 9,
+        nicBaro: true,
+        sourceIntegrityLevel: 3,
+        autopilotEngaged: true,
+        vnavModeActive: true,
+        altitudeHoldModeActive: false,
+        approachModeActive: false,
+        lnavModeActive: true,
+        tcasOperational: true,
+      },
+      lastSeenAt: NOW,
+    };
+
+    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined)).toMatchObject({
+      selectedAltitudeFt: 38_016,
+      selectedHeadingDeg: 227.8,
+      autopilot: { engaged: true, modes: ['vnav', 'lnav'] },
+    });
+  });
+
+  it('lists every engaged autopilot mode in a fixed order, and an autopilot that is off', () => {
+    const aircraft: Aircraft = {
+      icaoHex: 'a1b2c3',
+      targetState: {
+        selectedAltitudeSource: undefined,
+        selectedAltitudeFt: undefined,
+        baroPressureSettingMb: undefined,
+        selectedHeadingDeg: undefined,
+        navAccuracyCategoryPosition: 0,
+        nicBaro: false,
+        sourceIntegrityLevel: 0,
+        autopilotEngaged: false,
+        vnavModeActive: false,
+        altitudeHoldModeActive: true,
+        approachModeActive: true,
+        lnavModeActive: false,
+        tcasOperational: true,
+      },
+      lastSeenAt: NOW,
+    };
+
+    const target = toScopeTarget(aircraft, [], RECEIVER, NOW, undefined);
+
+    expect(target.autopilot).toEqual({ engaged: false, modes: ['altitudeHold', 'approach'] });
+    expect(target).not.toHaveProperty('selectedAltitudeFt');
+  });
+
+  it('carries no autopilot when the aircraft reports no mode status', () => {
+    const aircraft: Aircraft = {
+      icaoHex: 'a1b2c3',
+      targetState: {
+        selectedAltitudeSource: 'fms',
+        selectedAltitudeFt: 12_000,
+        baroPressureSettingMb: undefined,
+        selectedHeadingDeg: undefined,
+        navAccuracyCategoryPosition: 0,
+        nicBaro: false,
+        sourceIntegrityLevel: 0,
+        autopilotEngaged: undefined,
+        vnavModeActive: undefined,
+        altitudeHoldModeActive: undefined,
+        approachModeActive: undefined,
+        lnavModeActive: undefined,
+        tcasOperational: false,
+      },
+      lastSeenAt: NOW,
+    };
+
+    const target = toScopeTarget(aircraft, [], RECEIVER, NOW, undefined);
+
+    expect(target.selectedAltitudeFt).toBe(12_000);
+    expect(target).not.toHaveProperty('selectedHeadingDeg');
+    expect(target).not.toHaveProperty('autopilot');
+  });
 });
 
 describe('buildSnapshot', () => {

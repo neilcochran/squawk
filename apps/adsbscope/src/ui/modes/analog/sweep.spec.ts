@@ -19,6 +19,7 @@ function blipPaintedAt(paintedAtMs: number): Blip {
     position: { trueBearingDeg: 90, rangeNm: 10 },
     paintedAtMs,
     isEmergency: false,
+    isIdent: false,
   };
 }
 

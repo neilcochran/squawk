@@ -9,7 +9,8 @@ import { API_PREFIX, DEFAULT_LISTEN_PORT } from './src/shared/protocol.js';
  * the CLI can serve the UI from a path relative to itself.
  *
  * `npm run dev:ui` serves the UI with hot reload and proxies the API to an
- * `adsbscope` instance already running on its default port.
+ * `adsbscope` instance running on its default port, as `npm run dev:server`
+ * starts one.
  */
 export default defineConfig({
   plugins: [react()],

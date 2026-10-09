@@ -5,6 +5,7 @@ import { makeTarget } from '../scope/test-utils.js';
 import {
   buildInspectContent,
   LEVEL_FLIGHT_FT_PER_MIN,
+  SQUAWK_ALERT_NOTE,
   UNKNOWN_VALUE,
 } from './inspect-panel-content.js';
 import type { InspectContent } from './inspect-panel-content.js';
@@ -23,9 +24,16 @@ describe('buildInspectContent', () => {
         callsign: 'N409CC ',
         squawk: '1200',
         aircraftModel: 'PA-28-181 ARCHER III',
+        category: 'light',
         altitudeFt: 4500,
+        selectedAltitudeFt: 6000,
         groundSpeedKt: 1105,
+        indicatedAirspeedKt: 105,
+        trueAirspeedKt: 112,
         trueTrackDeg: 134.6,
+        magneticHeadingDeg: 149.5,
+        selectedHeadingDeg: 150,
+        autopilot: { engaged: true, modes: ['altitudeHold', 'lnav'] },
         verticalRateFtPerMin: 1500,
         position: { trueBearingDeg: 44.6, rangeNm: 12.34 },
         lastSeenAt: NOW - 3200,
@@ -38,14 +46,83 @@ describe('buildInspectContent', () => {
     expect(content.rows).toEqual([
       { label: 'ICAO hex', value: 'A4CE45' },
       { label: 'Model', value: 'PA-28-181 ARCHER III' },
+      { label: 'Category', value: 'Light (under 15,500 lb)' },
       { label: 'Squawk', value: '1200' },
       { label: 'Altitude', value: '4,500 ft' },
+      { label: 'Selected altitude', value: '6,000 ft' },
       { label: 'Vertical', value: '+1,500 ft/min' },
-      { label: 'Speed', value: '1,105 kt' },
+      { label: 'Ground speed', value: '1,105 kt' },
+      { label: 'Airspeed', value: '105 kt indicated, 112 kt true' },
       { label: 'Track', value: '135 true' },
+      { label: 'Heading', value: '150 magnetic' },
+      { label: 'Selected heading', value: '150' },
+      { label: 'Autopilot', value: 'on, altitude hold, LNAV' },
       { label: 'Position', value: '045 true, 12.3 nm' },
       { label: 'Heard', value: '3 s ago' },
     ]);
+  });
+
+  it('notes a squawk that has just changed', () => {
+    const changed = buildInspectContent(
+      makeTarget({ squawk: '3543', squawkAlert: true }),
+      NOW,
+      undefined,
+    );
+    const settled = buildInspectContent(makeTarget({ squawk: '3543' }), NOW, undefined);
+
+    expect(valueOf(changed, 'Squawk')).toBe(`3543, ${SQUAWK_ALERT_NOTE}`);
+    expect(valueOf(settled, 'Squawk')).toBe('3543');
+  });
+
+  it('carries the ident code in the title', () => {
+    expect(
+      buildInspectContent(makeTarget({ callsign: 'UAL123', identActive: true }), NOW, undefined)
+        .title,
+    ).toBe('UAL123 ID');
+  });
+
+  it('has no category row for an aircraft that broadcasts none, or an unknown one', () => {
+    expect(valueOf(buildInspectContent(makeTarget(), NOW, undefined), 'Category')).toBeUndefined();
+    expect(
+      valueOf(buildInspectContent(makeTarget({ category: 'unknown' }), NOW, undefined), 'Category'),
+    ).toBeUndefined();
+    expect(
+      valueOf(buildInspectContent(makeTarget({ category: 'heavy' }), NOW, undefined), 'Category'),
+    ).toBe('Heavy (over 300,000 lb)');
+  });
+
+  it('writes whichever airspeed the aircraft reports, and no row when it reports neither', () => {
+    const airspeedOf = (overrides: Parameters<typeof makeTarget>[0]): string | undefined =>
+      valueOf(buildInspectContent(makeTarget(overrides), NOW, undefined), 'Airspeed');
+
+    expect(airspeedOf({ indicatedAirspeedKt: 259 })).toBe('259 kt indicated');
+    expect(airspeedOf({ trueAirspeedKt: 472 })).toBe('472 kt true');
+    expect(airspeedOf({})).toBeUndefined();
+  });
+
+  it('describes an autopilot that is off, and one on with no mode reported', () => {
+    const autopilotOf = (engaged: boolean, modes: ('vnav' | 'approach')[]): string | undefined =>
+      valueOf(
+        buildInspectContent(makeTarget({ autopilot: { engaged, modes } }), NOW, undefined),
+        'Autopilot',
+      );
+
+    expect(autopilotOf(false, [])).toBe('off');
+    expect(autopilotOf(true, [])).toBe('on');
+    expect(autopilotOf(true, ['vnav', 'approach'])).toBe('on, VNAV, approach');
+    expect(valueOf(buildInspectContent(makeTarget(), NOW, undefined), 'Autopilot')).toBeUndefined();
+  });
+
+  it('writes the selected heading as a heading with no datum, and north as 360', () => {
+    const heading = (selectedHeadingDeg: number): string | undefined =>
+      valueOf(
+        buildInspectContent(makeTarget({ selectedHeadingDeg }), NOW, undefined),
+        'Selected heading',
+      );
+
+    expect(heading(227.8)).toBe('228');
+    expect(heading(0)).toBe('360');
+    expect(heading(7.2)).toBe('007');
   });
 
   it('keeps its shape for an aircraft that has sent almost nothing', () => {

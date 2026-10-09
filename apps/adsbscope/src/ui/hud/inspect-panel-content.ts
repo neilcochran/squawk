@@ -1,4 +1,10 @@
-import type { ScopeAircraftDetails, ScopeTarget } from '../../shared/protocol.js';
+import type {
+  ScopeAircraftDetails,
+  ScopeAutopilot,
+  ScopeAutopilotMode,
+  ScopeTarget,
+} from '../../shared/protocol.js';
+import { categoryLabel } from '../scope/category.js';
 import { formatDataBlock } from '../scope/data-block.js';
 import { formatCompassLabel, FULL_CIRCLE_DEG } from '../scope/furniture.js';
 
@@ -12,7 +18,7 @@ export interface InspectRow {
 
 /** What the inspect panel shows for an aircraft. */
 export interface InspectContent {
-  /** The aircraft's callsign (or ICAO hex) and emergency code, as on the first line of its data block. */
+  /** The aircraft's callsign (or ICAO hex) and emergency or ident code, as on the first line of its data block. */
   title: string;
   /** Everything known about the aircraft, in reading order. A value that is not known has no row. */
   rows: InspectRow[];
@@ -24,14 +30,29 @@ export const UNKNOWN_VALUE = '-';
 /** Vertical rate, in feet per minute, below which an aircraft is described as level. */
 export const LEVEL_FLIGHT_FT_PER_MIN = 100;
 
+/** Added to the squawk while the transponder flags that the code has just changed. */
+export const SQUAWK_ALERT_NOTE = 'just changed';
+
 const MS_PER_SECOND = 1000;
+
+/** How each autopilot mode is written in the Autopilot row, after whether the autopilot is on. */
+const AUTOPILOT_MODE_LABELS: Readonly<Record<ScopeAutopilotMode, string>> = {
+  vnav: 'VNAV',
+  altitudeHold: 'altitude hold',
+  approach: 'approach',
+  lnav: 'LNAV',
+};
 
 function formatNumber(value: number): string {
   return Math.round(value).toLocaleString('en-US');
 }
 
+function formatHeading(headingDeg: number): string {
+  return formatCompassLabel(Math.round(headingDeg) % FULL_CIRCLE_DEG);
+}
+
 function formatBearing(bearingDeg: number): string {
-  return `${formatCompassLabel(Math.round(bearingDeg) % FULL_CIRCLE_DEG)} true`;
+  return `${formatHeading(bearingDeg)} true`;
 }
 
 function formatAltitude(target: ScopeTarget): string {
@@ -49,13 +70,39 @@ function formatVerticalRate(verticalRateFtPerMin: number): string {
   return `${sign}${formatNumber(Math.abs(verticalRateFtPerMin))} ft/min`;
 }
 
+function formatSquawk(squawk: string, target: ScopeTarget): string {
+  return target.squawkAlert === true ? `${squawk}, ${SQUAWK_ALERT_NOTE}` : squawk;
+}
+
+function formatAirspeed(target: ScopeTarget): string | undefined {
+  const parts: string[] = [];
+  if (target.indicatedAirspeedKt !== undefined) {
+    parts.push(`${formatNumber(target.indicatedAirspeedKt)} kt indicated`);
+  }
+  if (target.trueAirspeedKt !== undefined) {
+    parts.push(`${formatNumber(target.trueAirspeedKt)} kt true`);
+  }
+  return parts.length === 0 ? undefined : parts.join(', ');
+}
+
+function formatAutopilot(autopilot: ScopeAutopilot): string {
+  return [
+    autopilot.engaged ? 'on' : 'off',
+    ...autopilot.modes.map((mode) => AUTOPILOT_MODE_LABELS[mode]),
+  ].join(', ');
+}
+
 /**
  * Builds the inspect panel's content for an aircraft: the values a data
  * block abbreviates or has no room for, written out in full. Identity,
  * altitude, and position always have a row, so the panel keeps its shape;
- * the rest appear only once the aircraft has reported them. What the
- * registry records about the aircraft is added once it has loaded, and is
- * simply absent for an aircraft the registry does not know.
+ * the rest appear only once the aircraft has reported them, so nothing ever
+ * reads as "off" under a source that cannot report it. What the registry
+ * records about the aircraft is added once it has loaded, and is simply
+ * absent for an aircraft the registry does not know.
+ *
+ * The squawk notes a code that has just changed. The selected heading
+ * carries no `true` or `magnetic`: the broadcast does not say which it is.
  *
  * @param target - The selected aircraft.
  * @param now - Unix epoch ms of the snapshot the aircraft came from.
@@ -78,6 +125,10 @@ export function buildInspectContent(
   if (model !== undefined) {
     rows.push({ label: 'Model', value: model });
   }
+  const category = categoryLabel(target.category);
+  if (category !== undefined) {
+    rows.push({ label: 'Category', value: category });
+  }
   if (details?.operator !== undefined) {
     rows.push({ label: 'Operator', value: details.operator });
   }
@@ -85,17 +136,36 @@ export function buildInspectContent(
     rows.push({ label: 'Built', value: String(details.yearManufactured) });
   }
   if (target.squawk !== undefined) {
-    rows.push({ label: 'Squawk', value: target.squawk });
+    rows.push({ label: 'Squawk', value: formatSquawk(target.squawk, target) });
   }
   rows.push({ label: 'Altitude', value: formatAltitude(target) });
+  if (target.selectedAltitudeFt !== undefined) {
+    rows.push({
+      label: 'Selected altitude',
+      value: `${formatNumber(target.selectedAltitudeFt)} ft`,
+    });
+  }
   if (target.verticalRateFtPerMin !== undefined && target.onGround !== true) {
     rows.push({ label: 'Vertical', value: formatVerticalRate(target.verticalRateFtPerMin) });
   }
   if (target.groundSpeedKt !== undefined) {
-    rows.push({ label: 'Speed', value: `${formatNumber(target.groundSpeedKt)} kt` });
+    rows.push({ label: 'Ground speed', value: `${formatNumber(target.groundSpeedKt)} kt` });
+  }
+  const airspeed = formatAirspeed(target);
+  if (airspeed !== undefined) {
+    rows.push({ label: 'Airspeed', value: airspeed });
   }
   if (target.trueTrackDeg !== undefined) {
     rows.push({ label: 'Track', value: formatBearing(target.trueTrackDeg) });
+  }
+  if (target.magneticHeadingDeg !== undefined) {
+    rows.push({ label: 'Heading', value: `${formatHeading(target.magneticHeadingDeg)} magnetic` });
+  }
+  if (target.selectedHeadingDeg !== undefined) {
+    rows.push({ label: 'Selected heading', value: formatHeading(target.selectedHeadingDeg) });
+  }
+  if (target.autopilot !== undefined) {
+    rows.push({ label: 'Autopilot', value: formatAutopilot(target.autopilot) });
   }
   rows.push({
     label: 'Position',

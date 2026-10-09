@@ -12,6 +12,8 @@ export interface RecordedCall {
   strokeStyle: string;
   /** `globalAlpha` at the time of the call. */
   globalAlpha: number;
+  /** `lineWidth` at the time of the call. */
+  lineWidth: number;
 }
 
 /** A stand-in 2D context that records every call made on it. */
@@ -71,6 +73,7 @@ export function createRecordingContext(): RecordingContext {
       fillStyle: String(state.fillStyle),
       strokeStyle: String(state.strokeStyle),
       globalAlpha: Number(state.globalAlpha),
+      lineWidth: Number(state.lineWidth),
     });
   }
   for (const method of RECORDED_METHODS) {
