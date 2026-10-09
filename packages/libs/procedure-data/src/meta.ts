@@ -11,11 +11,11 @@ import type { ProcedureDatasetProperties } from './node.js';
 
 /** Build metadata for the bundled procedure snapshot. */
 export const usBundledProceduresProperties: ProcedureDatasetProperties = {
-  generatedAt: '2026-08-29T21:25:31.533Z',
-  cifpCycleDate: '2026-09-03',
-  recordCount: 14338,
-  sidCount: 2190,
-  starCount: 1916,
-  iapCount: 10232,
-  legCount: 201038,
+  generatedAt: '2026-10-09T22:44:25.949Z',
+  cifpCycleDate: '2026-10-29',
+  recordCount: 14302,
+  sidCount: 2186,
+  starCount: 1946,
+  iapCount: 10170,
+  legCount: 200853,
 };
