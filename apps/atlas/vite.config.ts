@@ -5,7 +5,7 @@ import { defineConfig, mergeConfig } from 'vitest/config';
 
 import { sharedVitestConfig } from '../../vitest.shared.js';
 
-import tsrConfig from './tsr.config.json';
+import tsrConfig from './tsr.config.json' with { type: 'json' };
 
 /**
  * Atlas Vite + Vitest config. Vite plugins (TanStack Router, React, Tailwind)

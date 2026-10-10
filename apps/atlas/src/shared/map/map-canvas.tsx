@@ -1,13 +1,27 @@
 import { layers, namedFlavor } from '@protomaps/basemaps';
 import { Map, useMap } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent, ViewStateChangeEvent } from '@vis.gl/react-maplibre';
+import { setWorkerUrl } from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { ReactElement, ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useResolvedTheme } from '../styles/theme-context.ts';
 import type { ResolvedTheme } from '../styles/theme-context.ts';
+
+// MapLibre runs tile parsing in a web worker that it locates relative to
+// its own module URL. Under a bundler that URL points into the bundler's
+// module graph rather than at the package's `dist/` folder, so the worker
+// request 404s and the map mounts but never renders a tile - basemap and
+// chart overlays alike. Vite's `?worker&url` import routes the worker
+// through its worker pipeline, emitting a self-contained chunk (the worker
+// imports a sibling `maplibre-gl-shared.mjs` that a plain `?url` would
+// leave behind in production builds) and returning its URL. The setter is
+// global to the MapLibre module, so one call here covers every map the
+// app mounts.
+setWorkerUrl(maplibreWorkerUrl);
 
 /**
  * Prefix every atlas-owned MapLibre source and layer id starts with.
