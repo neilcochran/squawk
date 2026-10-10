@@ -104,7 +104,7 @@ export function registerAirspaceTools(server: McpServer): void {
     {
       title: 'Query airspace at a position and altitude',
       description:
-        'Returns every US airspace feature whose lateral polygon contains the given position and whose vertical bounds contain the given altitude (feet MSL). Covers Class A (18,000 ft MSL to FL600 over the contiguous states, Alaska, and Puerto Rico, derived from the ARTCC high strata; none over Hawaii), Class B/C/D/E controlled airspace, Special Use Airspace (MOA, restricted, prohibited, warning, alert, NSA), and ARTCC boundaries. The boundary polygon is summarized as a vertex count to keep responses compact - call this tool with multiple altitudes to walk a vertical profile.',
+        'Returns every US airspace feature whose lateral polygon contains the given position and whose vertical bounds contain the given altitude (feet MSL). Covers Class A (18,000 ft MSL to FL600 over the contiguous states, Alaska, and Puerto Rico, derived from the ARTCC high strata; none over Hawaii), Class B/C/D/E controlled airspace, Special Use Airspace (MOA, restricted, prohibited, warning, alert, NSA), and ARTCC boundaries. Class E areas beneath Class A carry a 17,999 ft MSL ceiling, so an altitude of 18,000 ft or above returns Class A rather than the Class E area under it; Class E areas outside Class A (Hawaii) have no upper limit. The boundary polygon is summarized as a vertex count to keep responses compact - call this tool with multiple altitudes to walk a vertical profile.',
       inputSchema: {
         lat: z.number().min(-90).max(90).describe('Latitude in decimal degrees (WGS84).'),
         lon: z.number().min(-180).max(180).describe('Longitude in decimal degrees (WGS84).'),

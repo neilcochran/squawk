@@ -11,6 +11,13 @@ const SHAPEFILE_UNDEFINED_VAL = '-9998';
 const FT_PER_FL = 100;
 
 /**
+ * Ceiling value the build stores for an upper limit the source leaves
+ * undefined or unlimited (the shapefile's `-9998`, AIXM's `UNL`): 99,999 ft
+ * MSL, so every feature carries a numeric bound to compare against.
+ */
+export const UNDEFINED_CEILING_FT = 99999;
+
+/**
  * Normalizes a Class_Airspace shapefile altitude field triplet into an
  * AltitudeBound. Handles the LOWER_VAL/LOWER_UOM/LOWER_CODE and
  * UPPER_VAL/UPPER_UOM/UPPER_CODE field sets from the Class_Airspace.dbf
@@ -33,7 +40,7 @@ export function normalizeShapefileAltitude(
   }
 
   if (val === null || val === SHAPEFILE_UNDEFINED_VAL) {
-    return { valueFt: 99999, reference: 'MSL' };
+    return { valueFt: UNDEFINED_CEILING_FT, reference: 'MSL' };
   }
 
   const numVal = parseInt(val, 10);
@@ -82,7 +89,7 @@ export function normalizeSaaAltitude(
   // "UNL" means unlimited ceiling. Appears as uom="OTHER" with value "UNL".
   // Represent as 99999 ft MSL, the same sentinel used for shapefile unlimited values.
   if (stringVal === 'UNL') {
-    return { valueFt: 99999, reference: 'MSL' };
+    return { valueFt: UNDEFINED_CEILING_FT, reference: 'MSL' };
   }
 
   // Remaining OTHER combinations are AirspaceUsage schedule placeholders, not geometry.

@@ -13,6 +13,11 @@ export type AltitudeReference = 'MSL' | 'AGL' | 'SFC';
  * A vertical altitude bound with its reference datum.
  * Used to represent airspace floor and ceiling values as sourced from FAA NASR data
  * without silently converting AGL values that would require terrain elevation data.
+ *
+ * A ceiling of `{ valueFt: 99999, reference: 'MSL' }` is a sentinel for an upper
+ * limit the FAA leaves undefined or unlimited: the upper ARTCC strata, some
+ * restricted and warning areas, and Class E areas outside Class A. See
+ * {@link AirspaceType} for how Class E ceilings beneath Class A are resolved.
  */
 export interface AltitudeBound {
   /** Altitude value in feet. For SFC reference this is 0. */
@@ -36,6 +41,14 @@ export interface AltitudeBound {
  * - CLASS_E5: Surface area with a 700 ft AGL floor (most common)
  * - CLASS_E6: Transition area (miscellaneous)
  * - CLASS_E7: Federal airway extensions
+ *
+ * The FAA publishes no upper limit for most Class E areas, because 14 CFR
+ * 71.71 ends them at the overlying controlled airspace rather than at a
+ * number. Where a Class E area lies beneath Class A, the data build resolves
+ * that to a ceiling of 17,999 ft MSL, the last foot below Class A; elsewhere
+ * (Hawaii, and beyond the lateral extent of Class A) the ceiling stays the
+ * 99999 sentinel. A Class E area with a published ceiling, such as a surface
+ * area under a Class B shelf, keeps it.
  *
  * MOA, RESTRICTED, PROHIBITED, WARNING, ALERT, and NSA are Special Use
  * Airspace (SUA) types.

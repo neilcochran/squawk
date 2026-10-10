@@ -7,6 +7,7 @@ import AdmZip from 'adm-zip';
 
 import { parseNasrArgs } from '@squawk/build-shared';
 
+import { capClassECeilings, hasUndefinedCeiling, isClassE } from './cap-class-e-ceiling.js';
 import { deriveClassA } from './derive-class-a.js';
 import { loadAirportStates } from './load-airport-states.js';
 import { parseArtcc } from './parse-artcc.js';
@@ -114,7 +115,22 @@ async function main(): Promise<void> {
       const classAFeatures = deriveClassA(artccFeatures);
       console.log(`[index] Derived ${classAFeatures.length} Class A features.`);
 
-      const allFeatures = [...classAFeatures, ...classFeatures, ...suaFeatures, ...artccFeatures];
+      console.log('[index] Capping Class E ceilings beneath Class A...');
+      const cappedClassFeatures = capClassECeilings(classFeatures, classAFeatures);
+      const undefinedBefore = classFeatures.filter((f) => isClassE(f) && hasUndefinedCeiling(f));
+      const undefinedAfter = cappedClassFeatures.filter(
+        (f) => isClassE(f) && hasUndefinedCeiling(f),
+      );
+      console.log(
+        `[index] Capped ${undefinedBefore.length - undefinedAfter.length} of ${undefinedBefore.length} undefined Class E ceilings.`,
+      );
+
+      const allFeatures = [
+        ...classAFeatures,
+        ...cappedClassFeatures,
+        ...suaFeatures,
+        ...artccFeatures,
+      ];
       console.log(`[index] Total features: ${allFeatures.length}`);
 
       await writeOutput(allFeatures, outputPath, nasrCycleDate);
