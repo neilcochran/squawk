@@ -108,7 +108,7 @@ export interface ScopeAutopilot {
 /**
  * The kinds of airspace a target is reported as being inside, in the order
  * they are listed: the special-use areas first, since a restricted area is
- * what matters most, then the tower-controlled classes.
+ * what matters most, then the controlled classes from A down.
  */
 export const SCOPE_AIRSPACE_KINDS = [
   'prohibited',
@@ -117,6 +117,7 @@ export const SCOPE_AIRSPACE_KINDS = [
   'alert',
   'moa',
   'nationalSecurity',
+  'classA',
   'classB',
   'classC',
   'classD',
@@ -129,7 +130,7 @@ export type ScopeAirspaceKind = (typeof SCOPE_AIRSPACE_KINDS)[number];
 export interface ScopeAirspace {
   /** What kind of airspace it is. */
   kind: ScopeAirspaceKind;
-  /** What it is called: the airport identifier of a Class B, C, or D (`BOS`), or the designator and place of a special-use area as charted (`R-4001A BRUNSWICK`). */
+  /** What it is called: the airport identifier of a Class B, C, or D (`BOS`), the designator and place of a special-use area as charted (`R-4001A BRUNSWICK`), or `CLASS A` for Class A, which is one block with no name of its own. */
   name: string;
 }
 

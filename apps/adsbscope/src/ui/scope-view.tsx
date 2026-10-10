@@ -138,6 +138,11 @@ export function ScopeView({
   if (snapshot !== undefined && selectedIcaoHex !== undefined && selectedTarget === undefined) {
     setSelectedIcaoHex(undefined);
   }
+  // A selection from the URL is spelled however it was typed; once a snapshot shows the aircraft,
+  // take the aircraft's own spelling, which is what the renderers match on and the URL then carries.
+  if (selectedTarget !== undefined && selectedTarget.icaoHex !== selectedIcaoHex) {
+    setSelectedIcaoHex(selectedTarget.icaoHex);
+  }
   if (measurement !== undefined && !isMeasurementLive(measurement, snapshot)) {
     setMeasurement(undefined);
   }

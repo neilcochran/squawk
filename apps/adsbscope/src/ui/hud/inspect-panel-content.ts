@@ -36,7 +36,7 @@ export const LEVEL_FLIGHT_FT_PER_MIN = 100;
 export const SQUAWK_ALERT_NOTE = 'just changed';
 
 /** Shown in the Airspace row for an aircraft in none of the airspace the scope checks. The data cannot tell Class E from G, so the row does not try. */
-export const OUTSIDE_AIRSPACE = 'outside Class B, C, D';
+export const OUTSIDE_AIRSPACE = 'outside Class A, B, C, D';
 
 const MS_PER_SECOND = 1000;
 
@@ -46,6 +46,9 @@ const AIRSPACE_CLASS_LABELS: Readonly<Partial<Record<ScopeAirspaceKind, string>>
   classC: 'Class C',
   classD: 'Class D',
 };
+
+/** How Class A is written in the Airspace row: alone, since it is one block with no airport to name. */
+const CLASS_A_LABEL = 'Class A';
 
 /** How each autopilot mode is written in the Autopilot row, after whether the autopilot is on. */
 const AUTOPILOT_MODE_LABELS: Readonly<Record<ScopeAutopilotMode, string>> = {
@@ -102,6 +105,9 @@ function formatAirspace(airspace: ScopeAirspace[]): string {
   }
   return airspace
     .map((entry) => {
+      if (entry.kind === 'classA') {
+        return CLASS_A_LABEL;
+      }
       const classLabel = AIRSPACE_CLASS_LABELS[entry.kind];
       return classLabel === undefined ? entry.name : `${classLabel} (${entry.name})`;
     })
