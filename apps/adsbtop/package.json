@@ -1,6 +1,6 @@
 {
   "name": "@squawk/adsbtop",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "type": "module",
   "description": "Terminal dashboard for live ADS-B aircraft tracking, built on @squawk/adsb-feed",
   "license": "MIT",
@@ -30,11 +30,11 @@
     "lint:pack": "publint"
   },
   "dependencies": {
-    "@squawk/adsb-feed": "^0.9.0",
-    "@squawk/geo": "^0.4.10",
-    "@squawk/icao-registry": "^0.5.8",
-    "@squawk/icao-registry-data": "^0.8.14",
-    "@squawk/types": "^0.9.0",
+    "@squawk/adsb-feed": "^0.9.1",
+    "@squawk/geo": "^0.4.11",
+    "@squawk/icao-registry": "^0.5.9",
+    "@squawk/icao-registry-data": "^0.8.15",
+    "@squawk/types": "^0.10.0",
     "@squawk/units": "^0.4.8",
     "ink": "^7.1.1",
     "ink-text-input": "^6.0.0",
