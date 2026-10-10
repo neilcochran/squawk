@@ -33,8 +33,8 @@ export interface Airspace3DAutoHideDialogProps {
  * Modal dialog rendered when the user enters 3D view (pitch transitions
  * from 0 to a positive value) while the auto-hide preference is set to
  * `'ask'` and at least one blanket airspace class is currently visible.
- * Lets the user choose whether to hide Class E, Warning, and ARTCC for
- * the duration of the tilt session, with an optional "remember this
+ * Lets the user choose whether to hide Class A, Class E, Warning, and
+ * ARTCC for the duration of the tilt session, with an optional "remember this
  * choice" checkbox that persists the decision into the auto-hide
  * preference so future tilt-ins skip the dialog.
  *
@@ -106,8 +106,8 @@ export function Airspace3DAutoHideDialog({
           Hide blanket airspace in 3D view?
         </h2>
         <p id={descriptionId} className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Class E, Warning, and ARTCC airspace cover wide swaths of the map and read as a uniform
-          ceiling when tilted. Hiding them while in 3D gives a clearer view of terminal and
+          Class A, Class E, Warning, and ARTCC airspace cover wide swaths of the map and read as a
+          uniform ceiling when tilted. Hiding them while in 3D gives a clearer view of terminal and
           special-use airspace structure. You can re-enable any of them from the Layers menu at any
           time.
         </p>

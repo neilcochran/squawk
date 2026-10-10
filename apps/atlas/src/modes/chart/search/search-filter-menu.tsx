@@ -10,10 +10,10 @@ import {
 import { MenuItemRow } from '../../../shared/ui/menu-item-row.tsx';
 import { isDefaultSearchFilter } from '../chart-filter-defaults.ts';
 import {
-  AIRSPACE_CLASS_OPTIONS,
   AIRWAY_CATEGORY_OPTIONS,
   EXPANDABLE_LAYERS,
   LAYER_OPTIONS,
+  SEARCHABLE_AIRSPACE_CLASS_OPTIONS,
 } from '../layer-toggle/layer-options.ts';
 import { CheckIcon } from '../layer-toggle/layer-toggle-icons.tsx';
 import {
@@ -22,13 +22,13 @@ import {
   SubRow,
 } from '../layer-toggle/layer-toggle-rows.tsx';
 import {
-  AIRSPACE_CLASSES,
   AIRWAY_CATEGORIES,
   CHART_DEFAULTS,
   CHART_ROUTE_PATH,
   LAYER_IDS,
+  SEARCHABLE_AIRSPACE_CLASSES,
 } from '../url-state.ts';
-import type { AirspaceClass, AirwayCategory, LayerId } from '../url-state.ts';
+import type { AirwayCategory, LayerId, SearchableAirspaceClass } from '../url-state.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 
@@ -57,11 +57,12 @@ function FunnelIcon(): ReactElement {
 
 /**
  * Search-scope filter dropdown whose trigger sits inside the chart search box,
- * anchored to the input's right edge. Mirrors
- * the Layers menu's feature-type and sub-class rows, but writes the search
- * filter URL fields (`searchLayers`, `searchAirspaceClasses`,
- * `searchAirwayCategories`) instead of the Layers-menu fields - this is the
- * user's "what to search" intent, independent of what the map currently draws.
+ * anchored to the input's right edge. Mirrors the Layers menu's feature-type
+ * and sub-class rows (minus Class A, which is never searchable - see
+ * `SEARCHABLE_AIRSPACE_CLASSES`), but writes the search filter URL fields
+ * (`searchLayers`, `searchAirspaceClasses`, `searchAirwayCategories`) instead
+ * of the Layers-menu fields - this is the user's "what to search" intent,
+ * independent of what the map currently draws.
  * {@link useChartSearch} reads those fields back, so toggling a row re-runs the
  * live search without this component threading any state through.
  *
@@ -122,9 +123,9 @@ export function SearchFilterMenu(): ReactElement {
       // emptied (which auto-unchecked the parent) refills the sub-array to all
       // so the layer is actually searchable again. A preserved non-empty
       // sub-array is left untouched.
-      let nextAirspaceClasses: readonly AirspaceClass[] = searchAirspaceClasses;
+      let nextAirspaceClasses: readonly SearchableAirspaceClass[] = searchAirspaceClasses;
       if (checked && id === 'airspace' && searchAirspaceClasses.length === 0) {
-        nextAirspaceClasses = [...AIRSPACE_CLASSES];
+        nextAirspaceClasses = [...SEARCHABLE_AIRSPACE_CLASSES];
       }
       let nextAirwayCategories: readonly AirwayCategory[] = searchAirwayCategories;
       if (checked && id === 'airways' && searchAirwayCategories.length === 0) {
@@ -145,14 +146,14 @@ export function SearchFilterMenu(): ReactElement {
   );
 
   const handleSearchAirspaceClassChange = useCallback(
-    (id: AirspaceClass, checked: boolean): void => {
-      const enabled = new Set<AirspaceClass>(searchAirspaceClasses);
+    (id: SearchableAirspaceClass, checked: boolean): void => {
+      const enabled = new Set<SearchableAirspaceClass>(searchAirspaceClasses);
       if (checked) {
         enabled.add(id);
       } else {
         enabled.delete(id);
       }
-      const nextSub = AIRSPACE_CLASSES.filter((classId) => enabled.has(classId));
+      const nextSub = SEARCHABLE_AIRSPACE_CLASSES.filter((classId) => enabled.has(classId));
 
       // Couple parent membership with sub-array non-emptiness so the parent
       // checkbox always matches whether anything airspace is searchable:
@@ -248,7 +249,7 @@ export function SearchFilterMenu(): ReactElement {
   const hasActiveFilter =
     searchIncludeHidden ||
     searchLayers.length < LAYER_IDS.length ||
-    searchAirspaceClasses.length < AIRSPACE_CLASSES.length ||
+    searchAirspaceClasses.length < SEARCHABLE_AIRSPACE_CLASSES.length ||
     searchAirwayCategories.length < AIRWAY_CATEGORIES.length;
 
   const atDefault = isDefaultSearchFilter({
@@ -318,7 +319,9 @@ export function SearchFilterMenu(): ReactElement {
                         : searchAirspaceClasses.length
                     }
                     totalCount={
-                      option.id === 'airways' ? AIRWAY_CATEGORIES.length : AIRSPACE_CLASSES.length
+                      option.id === 'airways'
+                        ? AIRWAY_CATEGORIES.length
+                        : SEARCHABLE_AIRSPACE_CLASSES.length
                     }
                     hintMinZoom={undefined}
                     dimmed={parentDimmed}
@@ -347,7 +350,7 @@ export function SearchFilterMenu(): ReactElement {
                     ))
                   : null}
                 {option.id === 'airspace' && expanded.has('airspace')
-                  ? AIRSPACE_CLASS_OPTIONS.map((cls) => (
+                  ? SEARCHABLE_AIRSPACE_CLASS_OPTIONS.map((cls) => (
                       <SubRow
                         key={cls.id}
                         label={cls.label}

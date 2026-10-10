@@ -1,4 +1,9 @@
-import type { AirspaceClass, AirwayCategory, LayerId } from '../url-state.ts';
+import type {
+  AirspaceClass,
+  AirwayCategory,
+  LayerId,
+  SearchableAirspaceClass,
+} from '../url-state.ts';
 
 /** A single top-level layer option rendered in a layer-selection menu. */
 export interface LayerOption {
@@ -35,6 +40,7 @@ export interface AirspaceClassOption {
 
 /** Airspace-class rows in display order: classes first, then special-use, then ARTCC. */
 export const AIRSPACE_CLASS_OPTIONS: readonly AirspaceClassOption[] = [
+  { id: 'CLASS_A', label: 'Class A' },
   { id: 'CLASS_B', label: 'Class B' },
   { id: 'CLASS_C', label: 'Class C' },
   { id: 'CLASS_D', label: 'Class D' },
@@ -47,6 +53,24 @@ export const AIRSPACE_CLASS_OPTIONS: readonly AirspaceClassOption[] = [
   { id: 'NSA', label: 'NSA' },
   { id: 'ARTCC', label: 'ARTCC' },
 ];
+
+/** A single airspace-class row rendered inside the search filter menu's airspace expansion. */
+export interface SearchableAirspaceClassOption {
+  /** Stable id matching one of {@link SearchableAirspaceClass}. */
+  id: SearchableAirspaceClass;
+  /** User-visible label. */
+  label: string;
+}
+
+/**
+ * Airspace-class rows for the search filter menu: {@link AIRSPACE_CLASS_OPTIONS}
+ * minus Class A, in the same order. Class A has no search row because it is
+ * never searchable - see `SEARCHABLE_AIRSPACE_CLASSES` in `url-state.ts`.
+ */
+export const SEARCHABLE_AIRSPACE_CLASS_OPTIONS: readonly SearchableAirspaceClassOption[] =
+  AIRSPACE_CLASS_OPTIONS.filter(
+    (option): option is SearchableAirspaceClassOption => option.id !== 'CLASS_A',
+  );
 
 /** A single airway-category row rendered inside an airways expansion. */
 export interface AirwayCategoryOption {

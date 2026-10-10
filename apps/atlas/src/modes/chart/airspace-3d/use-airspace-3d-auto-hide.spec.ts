@@ -10,6 +10,7 @@ import type { UseAirspace3DAutoHideParams } from './use-airspace-3d-auto-hide.ts
 const ALL_LAYERS: readonly LayerId[] = ['airports', 'navaids', 'fixes', 'airways', 'airspace'];
 
 const ALL_CLASSES: readonly AirspaceClass[] = [
+  'CLASS_A',
   'CLASS_B',
   'CLASS_C',
   'CLASS_D',
@@ -101,6 +102,7 @@ describe('useAirspace3DAutoHide', () => {
     }).rerender(buildInitialParams({ pitch: 60, applyAirspaceState }));
     expect(applyAirspaceState).toHaveBeenCalledTimes(1);
     const next = applyAirspaceState.mock.calls[0]?.[0];
+    expect(next.airspaceClasses).not.toContain('CLASS_A');
     expect(next.airspaceClasses).not.toContain('CLASS_E');
     expect(next.airspaceClasses).not.toContain('WARNING');
     expect(next.airspaceClasses).not.toContain('ARTCC');
@@ -208,6 +210,7 @@ describe('useAirspace3DAutoHide', () => {
     });
     expect(applyAirspaceState).toHaveBeenCalledTimes(2);
     const restore = applyAirspaceState.mock.calls[1]?.[0];
+    expect(restore.airspaceClasses).toContain('CLASS_A');
     expect(restore.airspaceClasses).toContain('CLASS_E');
     expect(restore.airspaceClasses).toContain('WARNING');
     expect(restore.airspaceClasses).toContain('ARTCC');

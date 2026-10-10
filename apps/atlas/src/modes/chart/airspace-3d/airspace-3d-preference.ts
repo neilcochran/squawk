@@ -5,15 +5,17 @@ import type { AirspaceClass } from '../url-state.ts';
 /**
  * Airspace classes auto-hidden when the user enters 3D view (pitch > 0)
  * and {@link Airspace3DAutoHidePreference} resolves to "apply". The set
- * is intentionally narrow: Class E forms a near-CONUS-wide controlled
+ * is intentionally narrow: Class A is one 18,000 ft MSL to FL600 slab
+ * over the whole country, Class E forms a near-CONUS-wide controlled
  * airspace blanket, Warning blocks line the coasts, and ARTCC sectors
- * cover the entire country in a single layer - all three would
+ * cover the entire country in a single layer - all four would
  * dominate the 3D scene and obscure smaller terminal / special-use
  * airspaces. Pilots can re-enable any of them mid-3D via the layer
  * toggle; the snapshot in `chart-mode.tsx` only restores the subset
  * that was active when the auto-hide ran.
  */
 export const AIRSPACE_3D_AUTO_HIDE_CLASSES: readonly AirspaceClass[] = [
+  'CLASS_A',
   'CLASS_E',
   'WARNING',
   'ARTCC',
