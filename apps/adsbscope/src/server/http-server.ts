@@ -18,6 +18,7 @@ import {
 import type { ScopeAircraftDetails, ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
 
 import type { AircraftModelLookup } from './aircraft-model.js';
+import type { AirspaceLookup } from './airspace.js';
 import { isAllowedHost } from './host-check.js';
 import { buildSnapshot } from './snapshot.js';
 import { contentTypeFor, resolveStaticPath } from './static-files.js';
@@ -56,6 +57,8 @@ export interface ScopeServerOptions {
   config: ScopeConfig;
   /** Looks up the model an aircraft is registered as, for the snapshots. */
   getAircraftModel: AircraftModelLookup;
+  /** Looks up the airspace an aircraft is in, by its position and altitude, for the snapshots. */
+  getAirspace: AirspaceLookup;
   /** Looks up everything the registry records about an aircraft, by its ICAO hex. Undefined when there is nothing to tell. */
   getAircraftDetails: (icaoHex: string) => ScopeAircraftDetails | undefined;
   /** Builds the video map for a scope range, given in nautical miles. */
@@ -135,6 +138,7 @@ export function createScopeServer(options: ScopeServerOptions): ScopeServer {
       options.config.receiver,
       now(),
       options.getAircraftModel,
+      options.getAirspace,
     );
     return `event: ${SNAPSHOT_EVENT}\ndata: ${JSON.stringify(snapshot)}\n\n`;
   }

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { APP_NAME } from '../shared/protocol.js';
 
 import { createAircraftModelProvider } from './aircraft-model.js';
+import { createAirspaceProvider } from './airspace.js';
 import { parseCliArgs, USAGE } from './cli-args.js';
 import type { CliOptions } from './cli-args.js';
 import { buildFeed, describeStation } from './create-feed.js';
@@ -40,6 +41,8 @@ export interface RunDependencies {
   createScopeServer: typeof createScopeServer;
   /** Creates the source of aircraft models. */
   createAircraftModelProvider: typeof createAircraftModelProvider;
+  /** Creates the source of the airspace aircraft are in. */
+  createAirspaceProvider: typeof createAirspaceProvider;
   /** Creates the source of video maps. */
   createVideoMapProvider: typeof createVideoMapProvider;
   /** Resolves whether a file exists and can be read. */
@@ -87,6 +90,7 @@ export const DEFAULT_RUN_DEPENDENCIES: RunDependencies = {
   buildFeed,
   createScopeServer,
   createAircraftModelProvider,
+  createAirspaceProvider,
   createVideoMapProvider,
   canRead: canReadFile,
   machineHostname: hostname,
@@ -126,9 +130,11 @@ async function start(
   const feed = dependencies.buildFeed(cli);
   const videoMaps = dependencies.createVideoMapProvider({ receiver: cli.location });
   const aircraftModels = dependencies.createAircraftModelProvider();
+  const airspace = dependencies.createAirspaceProvider();
   const server = dependencies.createScopeServer({
     feed,
     getAircraftModel: (icaoHex) => aircraftModels.lookup(icaoHex),
+    getAirspace: (position, altitudeFt) => airspace.lookup(position, altitudeFt),
     getAircraftDetails: (icaoHex) => aircraftModels.details(icaoHex),
     getVideoMap: (rangeNm) => videoMaps.get(rangeNm),
     config: {
@@ -155,6 +161,12 @@ async function start(
   // Warm the map data now, while nothing is connected, rather than during the first map
   // request. A failure here is not fatal: that request will try the load again.
   void videoMaps.preload().catch(() => undefined);
+  // The airspace is optional: without it the scope runs, and the inspect panel just has no airspace row.
+  void airspace.load().catch(() => {
+    io.stderr(
+      'Could not load the airspace data - the airspace an aircraft is in will not be shown.\n',
+    );
+  });
   // The registry is optional too: without it the scope runs, and data blocks just show no model.
   if (cli.registry) {
     void aircraftModels.load().catch(() => {
