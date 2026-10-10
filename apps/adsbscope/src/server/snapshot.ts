@@ -12,6 +12,7 @@ import type {
 } from '../shared/protocol.js';
 
 import type { AircraftModelLookup } from './aircraft-model.js';
+import type { AirspaceLookup } from './airspace.js';
 import { classifyEmergency } from './emergency.js';
 
 /** Minimum time between two points of a target's history trail. */
@@ -111,11 +112,17 @@ function toScopeAutopilot(
  * alert is dropped for an emergency squawk: the transponder holds it for as
  * long as the code is set, and the scope already marks the emergency itself.
  *
+ * The airspace the aircraft is in is looked up from its position and the
+ * altitude the target carries - barometric when there is one, which is what
+ * airspace floors and ceilings are compared against on a standard day. An
+ * aircraft with no altitude cannot be placed in a class, so it gets none.
+ *
  * @param aircraft - The aircraft's current normalized state.
  * @param history - The aircraft's retained position history, oldest first.
  * @param receiver - The receiving station's position.
  * @param now - Unix epoch ms the snapshot is being taken.
  * @param aircraftModel - The model the aircraft is registered as, if known.
+ * @param lookupAirspace - Looks up the airspace an aircraft is in, by its position and altitude.
  * @returns The scope target.
  */
 export function toScopeTarget(
@@ -124,8 +131,13 @@ export function toScopeTarget(
   receiver: Coordinates,
   now: number,
   aircraftModel: string | undefined,
+  lookupAirspace: AirspaceLookup,
 ): ScopeTarget {
   const altitudeFt = aircraft.position?.baroAltitudeFt ?? aircraft.position?.geoAltitudeFt;
+  const airspace =
+    aircraft.position !== undefined && altitudeFt !== undefined
+      ? lookupAirspace(aircraft.position, altitudeFt)
+      : undefined;
   const emergency = classifyEmergency(aircraft);
   const squawkAlert =
     aircraft.squawkAlert === true &&
@@ -168,6 +180,7 @@ export function toScopeTarget(
     ...(aircraft.position !== undefined && {
       position: toPolarPoint(receiver, aircraft.position),
     }),
+    ...(airspace !== undefined && { airspace }),
     history: sampleHistory(history, now).map((entry) => toPolarPoint(receiver, entry.position)),
     lastSeenAt: aircraft.lastSeenAt,
   };
@@ -180,6 +193,7 @@ export function toScopeTarget(
  * @param receiver - The receiving station's position.
  * @param now - Unix epoch ms the snapshot is being taken.
  * @param lookupModel - Looks up the model an aircraft is registered as.
+ * @param lookupAirspace - Looks up the airspace an aircraft is in.
  * @returns The snapshot, with targets ordered by ICAO hex so consecutive snapshots are stable.
  */
 export function buildSnapshot(
@@ -187,6 +201,7 @@ export function buildSnapshot(
   receiver: Coordinates,
   now: number,
   lookupModel: AircraftModelLookup,
+  lookupAirspace: AirspaceLookup,
 ): ScopeSnapshot {
   const targets = feed
     .getAllAircraft()
@@ -197,6 +212,7 @@ export function buildSnapshot(
         receiver,
         now,
         lookupModel(aircraft.icaoHex),
+        lookupAirspace,
       ),
     )
     .sort((a, b) => a.icaoHex.localeCompare(b.icaoHex));

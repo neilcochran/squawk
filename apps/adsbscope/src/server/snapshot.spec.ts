@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AircraftFeed, PositionHistoryEntry } from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
+import type { ScopeAirspace } from '../shared/protocol.js';
+
+import type { AirspaceLookup } from './airspace.js';
 import {
   buildSnapshot,
   HISTORY_POINT_COUNT,
@@ -14,6 +17,8 @@ import {
 
 const RECEIVER = { lat: 40, lon: -74 };
 const NOW = 1_000_000;
+const NO_AIRSPACE: AirspaceLookup = () => undefined;
+const CLASS_C: ScopeAirspace[] = [{ kind: 'classC', name: 'PWM' }];
 
 function entryAt(recordedAt: number, lat = 40.5): PositionHistoryEntry {
   return { position: { lat, lon: -74 }, recordedAt };
@@ -84,7 +89,14 @@ describe('sampleHistory', () => {
 describe('toScopeTarget', () => {
   it('carries only the identity and timestamp for a bare aircraft', () => {
     expect(
-      toScopeTarget({ icaoHex: 'a1b2c3', lastSeenAt: NOW }, [], RECEIVER, NOW, undefined),
+      toScopeTarget(
+        { icaoHex: 'a1b2c3', lastSeenAt: NOW },
+        [],
+        RECEIVER,
+        NOW,
+        undefined,
+        NO_AIRSPACE,
+      ),
     ).toEqual({
       icaoHex: 'a1b2c3',
       history: [],
@@ -105,7 +117,14 @@ describe('toScopeTarget', () => {
       lastSeenAt: NOW,
     };
 
-    const target = toScopeTarget(aircraft, [entryAt(NOW - 6000, 41.01)], RECEIVER, NOW, undefined);
+    const target = toScopeTarget(
+      aircraft,
+      [entryAt(NOW - 6000, 41.01)],
+      RECEIVER,
+      NOW,
+      undefined,
+      NO_AIRSPACE,
+    );
 
     expect(target).toMatchObject({
       icaoHex: 'a1b2c3',
@@ -137,6 +156,7 @@ describe('toScopeTarget', () => {
       RECEIVER,
       NOW,
       undefined,
+      NO_AIRSPACE,
     );
 
     expect(target.altitudeFt).toBe(36_000);
@@ -152,6 +172,7 @@ describe('toScopeTarget', () => {
       RECEIVER,
       NOW,
       undefined,
+      NO_AIRSPACE,
     );
 
     expect(target.altitudeFt).toBe(5500);
@@ -161,15 +182,21 @@ describe('toScopeTarget', () => {
     const emergency: Aircraft = { icaoHex: 'a1b2c3', squawk: '7700', lastSeenAt: NOW };
     const routine: Aircraft = { icaoHex: 'a1b2c3', squawk: '1200', lastSeenAt: NOW };
 
-    expect(toScopeTarget(emergency, [], RECEIVER, NOW, undefined).emergency).toBe('general');
-    expect(toScopeTarget(routine, [], RECEIVER, NOW, undefined)).not.toHaveProperty('emergency');
+    expect(toScopeTarget(emergency, [], RECEIVER, NOW, undefined, NO_AIRSPACE).emergency).toBe(
+      'general',
+    );
+    expect(toScopeTarget(routine, [], RECEIVER, NOW, undefined, NO_AIRSPACE)).not.toHaveProperty(
+      'emergency',
+    );
   });
 
   it('carries the registered model when one is known', () => {
     const aircraft: Aircraft = { icaoHex: 'a1b2c3', lastSeenAt: NOW };
 
-    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, 'PA-28-181').aircraftModel).toBe('PA-28-181');
-    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined)).not.toHaveProperty(
+    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, 'PA-28-181', NO_AIRSPACE).aircraftModel).toBe(
+      'PA-28-181',
+    );
+    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined, NO_AIRSPACE)).not.toHaveProperty(
       'aircraftModel',
     );
   });
@@ -187,7 +214,7 @@ describe('toScopeTarget', () => {
       lastSeenAt: NOW,
     };
 
-    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined)).toMatchObject({
+    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined, NO_AIRSPACE)).toMatchObject({
       squawk: '3543',
       squawkAlert: true,
       identActive: true,
@@ -205,6 +232,7 @@ describe('toScopeTarget', () => {
       RECEIVER,
       NOW,
       undefined,
+      NO_AIRSPACE,
     );
 
     expect(target).not.toHaveProperty('squawkAlert');
@@ -218,6 +246,7 @@ describe('toScopeTarget', () => {
       RECEIVER,
       NOW,
       undefined,
+      NO_AIRSPACE,
     );
 
     expect(target.emergency).toBe('general');
@@ -245,7 +274,7 @@ describe('toScopeTarget', () => {
       lastSeenAt: NOW,
     };
 
-    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined)).toMatchObject({
+    expect(toScopeTarget(aircraft, [], RECEIVER, NOW, undefined, NO_AIRSPACE)).toMatchObject({
       selectedAltitudeFt: 38_016,
       selectedHeadingDeg: 227.8,
       autopilot: { engaged: true, modes: ['vnav', 'lnav'] },
@@ -273,10 +302,75 @@ describe('toScopeTarget', () => {
       lastSeenAt: NOW,
     };
 
-    const target = toScopeTarget(aircraft, [], RECEIVER, NOW, undefined);
+    const target = toScopeTarget(aircraft, [], RECEIVER, NOW, undefined, NO_AIRSPACE);
 
     expect(target.autopilot).toEqual({ engaged: false, modes: ['altitudeHold', 'approach'] });
     expect(target).not.toHaveProperty('selectedAltitudeFt');
+  });
+
+  it('looks up the airspace from the position and the altitude it carries, and keeps the answer', () => {
+    const lookupAirspace = vi.fn((): ScopeAirspace[] => CLASS_C);
+    const aircraft: Aircraft = {
+      icaoHex: 'a1b2c3',
+      position: { lat: 41, lon: -74, baroAltitudeFt: 1500.4, geoAltitudeFt: 1700 },
+      lastSeenAt: NOW,
+    };
+
+    const target = toScopeTarget(aircraft, [], RECEIVER, NOW, undefined, lookupAirspace);
+
+    expect(lookupAirspace).toHaveBeenCalledWith(aircraft.position, 1500.4);
+    expect(target.airspace).toEqual(CLASS_C);
+  });
+
+  it('carries an empty airspace list, which says the aircraft is in none', () => {
+    const target = toScopeTarget(
+      { icaoHex: 'a1b2c3', position: { lat: 41, lon: -74, geoAltitudeFt: 5500 }, lastSeenAt: NOW },
+      [],
+      RECEIVER,
+      NOW,
+      undefined,
+      () => [],
+    );
+
+    expect(target.airspace).toEqual([]);
+  });
+
+  it('does not place an aircraft that has no altitude, or no position', () => {
+    const lookupAirspace = vi.fn((): ScopeAirspace[] => CLASS_C);
+
+    const unplaceable = toScopeTarget(
+      { icaoHex: 'a1b2c3', position: { lat: 41, lon: -74 }, lastSeenAt: NOW },
+      [],
+      RECEIVER,
+      NOW,
+      undefined,
+      lookupAirspace,
+    );
+    const unseen = toScopeTarget(
+      { icaoHex: 'a1b2c3', lastSeenAt: NOW },
+      [],
+      RECEIVER,
+      NOW,
+      undefined,
+      lookupAirspace,
+    );
+
+    expect(lookupAirspace).not.toHaveBeenCalled();
+    expect(unplaceable).not.toHaveProperty('airspace');
+    expect(unseen).not.toHaveProperty('airspace');
+  });
+
+  it('carries no airspace while there is no airspace data to answer with', () => {
+    const target = toScopeTarget(
+      { icaoHex: 'a1b2c3', position: { lat: 41, lon: -74, baroAltitudeFt: 3000 }, lastSeenAt: NOW },
+      [],
+      RECEIVER,
+      NOW,
+      undefined,
+      NO_AIRSPACE,
+    );
+
+    expect(target).not.toHaveProperty('airspace');
   });
 
   it('carries no autopilot when the aircraft reports no mode status', () => {
@@ -300,7 +394,7 @@ describe('toScopeTarget', () => {
       lastSeenAt: NOW,
     };
 
-    const target = toScopeTarget(aircraft, [], RECEIVER, NOW, undefined);
+    const target = toScopeTarget(aircraft, [], RECEIVER, NOW, undefined, NO_AIRSPACE);
 
     expect(target.selectedAltitudeFt).toBe(12_000);
     expect(target).not.toHaveProperty('selectedHeadingDeg');
@@ -312,7 +406,7 @@ describe('buildSnapshot', () => {
   it('snapshots every tracked aircraft, ordered by ICAO hex, with the connection state', () => {
     const aircraft: Aircraft[] = [
       { icaoHex: 'c0ffee', lastSeenAt: NOW },
-      { icaoHex: 'a1b2c3', position: { lat: 41, lon: -74 }, lastSeenAt: NOW },
+      { icaoHex: 'a1b2c3', position: { lat: 41, lon: -74, baroAltitudeFt: 2000 }, lastSeenAt: NOW },
     ];
     const getPositionHistory = vi.fn((): PositionHistoryEntry[] => []);
     const feed: AircraftFeed = Object.assign(new EventTarget(), {
@@ -328,7 +422,9 @@ describe('buildSnapshot', () => {
       icaoHex === 'a1b2c3' ? 'PA-28-181' : undefined,
     );
 
-    const snapshot = buildSnapshot(feed, RECEIVER, NOW, lookupModel);
+    const lookupAirspace = vi.fn((): ScopeAirspace[] => CLASS_C);
+
+    const snapshot = buildSnapshot(feed, RECEIVER, NOW, lookupModel, lookupAirspace);
 
     expect(snapshot.at).toBe(NOW);
     expect(snapshot.connection).toBe('connected');
@@ -339,5 +435,7 @@ describe('buildSnapshot', () => {
       'PA-28-181',
       undefined,
     ]);
+    expect(lookupAirspace).toHaveBeenCalledTimes(1);
+    expect(snapshot.targets.map((target) => target.airspace)).toEqual([CLASS_C, undefined]);
   });
 });
