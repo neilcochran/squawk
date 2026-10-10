@@ -51,17 +51,20 @@ Everything you can change while the scope is running has both an on-screen contr
 
 Under the selectors is a `Hide controls` button (`H`). It folds the view style and setting selectors away, leaving just a `Show controls` button and the zoom buttons, which makes room on a small screen; the keys all keep working while the selectors are hidden. On a phone-sized screen the scope starts with them hidden.
 
-| Key              | Action                                            |
-| ---------------- | ------------------------------------------------- |
-| `+`, `=`, or `]` | Zoom in to the next smaller scope range           |
-| `-`, `_`, or `[` | Zoom out to the next larger scope range           |
-| `M`              | Step to the next view style                       |
-| `V`              | Step the video map: basic, full, off              |
-| `T`              | Analog only: step the Tags setting (on, off)      |
-| `R`              | Analog only: step the Sweep setting (4.8 s, 12 s) |
-| `H`              | Hide or show the view style and setting controls  |
-| `.` and `,`      | Select the next or previous aircraft              |
-| `Esc`            | Clear the selection                               |
+| Key              | Action                                              |
+| ---------------- | --------------------------------------------------- |
+| `+`, `=`, or `]` | Zoom in to the next smaller scope range             |
+| `-`, `_`, or `[` | Zoom out to the next larger scope range             |
+| `M`              | Step to the next view style                         |
+| `V`              | Step the video map: basic, full, off                |
+| `L`              | Step the Leader setting (short, long)               |
+| `J`              | Step the Ring setting (off, 3 nm, 5 nm)             |
+| `P`              | Digital only: step the Vector setting (1, 2, 4 min) |
+| `T`              | Analog only: step the Tags setting (on, off)        |
+| `R`              | Analog only: step the Sweep setting (4.8 s, 12 s)   |
+| `H`              | Hide or show the view style and setting controls    |
+| `.` and `,`      | Select the next or previous aircraft                |
+| `Esc`            | Clear the selection                                 |
 
 The range steps are 5, 10, 20, 40, 60, 80, 100, 150, 200, and 250 nm, and each zoom button disables itself at the end of its travel. Keys held with Ctrl, Alt, or Cmd are left to the browser, so `Ctrl+R` still reloads the page.
 
@@ -81,10 +84,10 @@ A modern scope: no sweep, and every aircraft is redrawn at its latest position a
 
 - a **position symbol** - a filled square, or a hollow one for an aircraft on the ground. Where the source reports the aircraft's broadcast category, the shape follows it: a circle for a rotorcraft, a triangle for a glider, balloon, or ultralight, a diamond for a drone, and a cross for a surface vehicle; fixed-wing aircraft of every weight class keep the square. While the pilot is squawking ident the symbol is drawn at twice its size, held steady in the usual color - red and flashing both mean an emergency;
 - a **history trail** - up to five fading dots at five-second intervals behind it;
-- a **velocity vector** - a line showing where it will be in one minute at its current track and ground speed (not drawn on the ground);
+- a **velocity vector** - a line showing where it will be in one minute at its current track and ground speed (not drawn on the ground). The `Vector` selector, or `P`, stretches it to two or four minutes, which shows a converging pair sooner at the cost of a busier picture;
 - a **data block** on a leader line. Line one is the callsign, or the ICAO hex until the aircraft has sent one, followed by `ID` while the pilot is squawking ident. Line two is altitude in hundreds of feet, a climb (`^`) or descent (`v`) marker when the vertical rate is beyond 300 ft/min, and ground speed in tens of knots - so `236v42` is descending through 23,600 ft at 420 kt. An aircraft on the ground shows `GND` for altitude, and unknown values show as dashes. Line two time-shares, as the type does on a real scope: every block shows altitude and speed for 2.5 seconds, then the aircraft's [type](#aircraft-models) for 1.5, then the altitude it is climbing or descending to for 1.5, all in unison, and skips any part it has nothing for. The type is the registered model, `H/` first for a heavy (`H/777-222`). The selected altitude is written as a flight strip writes a clearance - `^380` climbing to FL380, `v290` descending to FL290 - and only while the aircraft has more than 300 ft to go, so a level aircraft's block stays quiet. A block is sized for the widest of its lines, so it does not move as they alternate.
 
-Data blocks are kept off one another. A leader line normally runs up and to the right, but when its block would cover another block, another aircraft's symbol, or hang off the edge of the window, it takes whichever of the eight compass directions leaves the block clear - or, in a real crowd, the one that covers the least. A block only moves when it has to, and one that has been moved aside stays there, as it does on a real scope when a controller moves it, so blocks do not flicker between directions as traffic shifts.
+Data blocks are kept off one another. A leader line normally runs up and to the right, but when its block would cover another block, another aircraft's symbol, or hang off the edge of the window, it takes whichever of the eight compass directions leaves the block clear - or, in a real crowd, the one that covers the least. A block only moves when it has to, and one that has been moved aside stays there, as it does on a real scope when a controller moves it, so blocks do not flicker between directions as traffic shifts. The `Leader` selector, or `L`, doubles the length of every leader line, which holds a block further clear of the trail and vector behind a fast aircraft.
 
 An aircraft that has not been heard from for 15 seconds is dimmed until it either updates or is dropped at the `--stale-after` threshold.
 
@@ -94,10 +97,12 @@ A sweep-era PPI scope in monochrome green. A beam rotates clockwise from north, 
 
 Switching to the analog style starts from a dark scope that fills in over one rotation, the way a tube warms up; so does resizing the window. If the page is left in a background tab, the scope repaints everything once when it comes back rather than spinning to catch up.
 
-The analog style has two settings:
+The analog style has two settings of its own:
 
 - **Tags** (`T`) - on by default: each aircraft's newest blip gets a faint two-line tag in the same format as the digital data block, on a short leader line. Tags are kept off one another the same way the digital data blocks are, so a leader runs whichever way leaves its tag readable. The scopes of the era had none - identity was tracked on paper strips - so turn them off for the authentic picture of anonymous blips.
 - **Sweep** (`R`) - 4.8 s per rotation, like a terminal approach radar, or 12 s, like a long-range en-route radar.
+
+It also has the `Leader`, `Ring`, and `Map` settings both view styles offer: `Leader` (`L`) doubles the length of the tags' leader lines, `Ring` (`J`) is described under [Measuring](#measuring), and `Map` under [Video map](#video-map).
 
 ### Video map
 
@@ -123,6 +128,12 @@ Click or tap an aircraft - its symbol or return, or its data block or tag - to s
 Click empty scope, press `Esc`, or use the panel's close button to clear the selection. `.` and `,` step forwards and backwards through every tracked aircraft in order of callsign, which is also the only way to select one that has no position and so is not on the scope. The selection is kept when you switch view styles, and is dropped when the aircraft stops being tracked: a selection always names an aircraft that is actually there.
 
 Only aircraft the view style draws can be clicked: the digital scope fills the window, so an aircraft beyond the outermost ring can be picked there, while the analog scope ends at it. In the analog style the ring sits on the aircraft's most recent return, which is where the aircraft was when the beam last crossed it.
+
+### Measuring
+
+Move the pointer over the scope and the readout in the top-left corner adds a line with the pointer's bearing and range from the receiver - `cursor 047 true, 12.3 nm` - the trackball readout of a real scope, for reading off where something is without selecting it. It reads the scope's geometry rather than the traffic, so it works over empty scope and beyond the outermost ring, and it goes away when the pointer leaves the scope. A touch screen has no pointer, so the line never appears there.
+
+The `Ring` selector, or `J`, draws a circle of 3 or 5 nm around the selected aircraft - the J-ring, or halo, of a real scope - for judging separation by eye: anything inside the ring is closer than that. It is drawn to scale, so it grows and shrinks with the range, and in the analog style it sits on the aircraft's most recent return, as the selection ring does. Each view style remembers its own choice, as it does for the map.
 
 ### Bookmarking a view
 
@@ -155,7 +166,7 @@ The registry is loaded in the background once the scope is serving, so models ap
 
 ### The readout
 
-The readout in the top-left corner shows the source and station, link health, how many aircraft are tracked and how many of those have a position to plot, and the current range. Link health reads `LIVE`, `STATION RECONNECTING` when `adsbscope` has lost its connection to dump1090-fa, or `NO LINK TO SERVER` when the browser has lost its connection to `adsbscope`; both reconnect on their own.
+The readout in the top-left corner shows the source and station, link health, how many aircraft are tracked and how many of those have a position to plot, and the current range. Link health reads `LIVE`, `STATION RECONNECTING` when `adsbscope` has lost its connection to dump1090-fa, or `NO LINK TO SERVER` when the browser has lost its connection to `adsbscope`; both reconnect on their own. While the pointer is over the scope, a last line reads its bearing and range from the receiver; see [Measuring](#measuring).
 
 ## Replay
 

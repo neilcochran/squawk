@@ -10,7 +10,9 @@ import { DESELECT_LABEL, INSPECT_PANEL_LABEL } from './hud/inspect-panel.js';
 import { LINK_STATUS_LABELS } from './hud/link-status.js';
 import { TAB_LIST_LABEL } from './hud/tab-list.js';
 import { SCOPE_MODES_BY_ID } from './modes/registry.js';
-import { makeSnapshot, makeTarget } from './scope/test-utils.js';
+import { createViewport, polarToScreen } from './scope/projection.js';
+import { createRecordingContext, makeSnapshot, makeTarget } from './scope/test-utils.js';
+import { DEFAULT_PX_PER_REM } from './scope/units.js';
 import { ScopeView } from './scope-view.js';
 import { themeCssVariables } from './styles/theme.js';
 import type { ScopeTheme } from './styles/theme.js';
@@ -179,6 +181,66 @@ describe('ScopeView', () => {
 
       expectSelected('Tags: Off');
     });
+
+    it('offers the leader and ring settings in every view style, each keeping its own choice', () => {
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+      expectSelected('Leader: Short');
+      expectSelected('Ring: Off');
+
+      fireEvent.keyDown(window, { key: 'l' });
+      fireEvent.keyDown(window, { key: 'j' });
+      expectSelected('Leader: Long');
+      expectSelected('Ring: 3 nm');
+
+      fireEvent.keyDown(window, { key: 'm' });
+      expectSelected('Leader: Short');
+      expectSelected('Ring: Off');
+
+      fireEvent.keyDown(window, { key: 'j' });
+      fireEvent.keyDown(window, { key: 'j' });
+      expectSelected('Ring: 5 nm');
+
+      fireEvent.keyDown(window, { key: 'm' });
+      expectSelected('Leader: Long');
+      expectSelected('Ring: 3 nm');
+    });
+
+    it('offers the vector length in the digital style only', () => {
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+      expectSelected('Vector: 1 min');
+
+      fireEvent.keyDown(window, { key: 'p' });
+      expectSelected('Vector: 2 min');
+
+      fireEvent.keyDown(window, { key: 'm' });
+      expect(screen.queryByRole('group', { name: 'Vector' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('reads out the bearing and range under the pointer once the scope has painted', async () => {
+    const { context } = createRecordingContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => context as unknown as null,
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(800);
+    vi.spyOn(HTMLCanvasElement.prototype, 'clientHeight', 'get').mockReturnValue(600);
+    render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+    const canvas = screen.getByLabelText('Radar scope');
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 800, 600));
+    await act(async () => {
+      await new Promise((resolve) => {
+        window.requestAnimationFrame(() => resolve(undefined));
+      });
+    });
+    expect(screen.queryByText(/cursor/)).not.toBeInTheDocument();
+
+    const viewport = createViewport(800, 600, 60, DEFAULT_PX_PER_REM);
+    const at = polarToScreen(viewport, { trueBearingDeg: 47, rangeNm: 12.3 });
+    fireEvent.pointerMove(canvas, { clientX: at.xPx, clientY: at.yPx, pointerType: 'mouse' });
+    expect(screen.getByText('cursor 047 true, 12.3 nm')).toBeInTheDocument();
+
+    fireEvent.pointerLeave(canvas);
+    expect(screen.queryByText(/cursor/)).not.toBeInTheDocument();
   });
 
   describe('range', () => {

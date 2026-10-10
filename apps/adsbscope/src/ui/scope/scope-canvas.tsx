@@ -1,12 +1,12 @@
-import type { MouseEvent, ReactElement } from 'react';
+import type { MouseEvent, PointerEvent, ReactElement } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
+import type { PolarPoint, ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
 
 import type { ScopeExtent } from './extent.js';
 import { fitCanvas } from './fit-canvas.js';
-import { createViewport } from './projection.js';
-import type { ScopeViewport } from './projection.js';
+import { createViewport, screenToPolar } from './projection.js';
+import type { ScopeViewport, ScreenPoint } from './projection.js';
 import type { ScopeRenderer } from './renderer.js';
 import styles from './scope-canvas.module.css';
 import { pickTarget } from './selection.js';
@@ -30,6 +30,14 @@ export interface ScopeCanvasProps {
   extent: ScopeExtent;
   /** Called when the scope is clicked or tapped: with the ICAO hex of the aircraft whose symbol, data block, or tag was picked, or undefined for empty scope. */
   onSelect: (icaoHex: string | undefined) => void;
+  /** Called as a pointer moves over the scope, with the bearing and range from the receiver under it, and with undefined when it leaves. A touch is not a pointer: it reports nothing. */
+  onHover: (position: PolarPoint | undefined) => void;
+}
+
+/** A pointer event's position, measured from the corner of the canvas it landed on. */
+function canvasPoint(event: MouseEvent<HTMLCanvasElement>): ScreenPoint {
+  const bounds = event.currentTarget.getBoundingClientRect();
+  return { xPx: event.clientX - bounds.left, yPx: event.clientY - bounds.top };
 }
 
 /**
@@ -42,6 +50,10 @@ export interface ScopeCanvasProps {
  * pixel density, the rem scale is re-read, and the renderer is reset - so the
  * scope follows a window resize, a device rotation, a browser zoom, or a
  * change of font size without any of them being handled specially.
+ *
+ * A click picks an aircraft, and a moving pointer reads out the bearing and
+ * range under it; both are measured against the viewport the last frame was
+ * painted with, so neither does anything before the first frame.
  */
 export function ScopeCanvas({
   renderer,
@@ -52,6 +64,7 @@ export function ScopeCanvas({
   selectedIcaoHex,
   extent,
   onSelect,
+  onHover,
 }: ScopeCanvasProps): ReactElement {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const latest = useRef({ renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex });
@@ -112,8 +125,7 @@ export function ScopeCanvas({
       if (viewport === undefined) {
         return;
       }
-      const bounds = event.currentTarget.getBoundingClientRect();
-      const point = { xPx: event.clientX - bounds.left, yPx: event.clientY - bounds.top };
+      const point = canvasPoint(event);
       const current = latest.current;
       onSelect(
         pickTarget(viewport, current.snapshot, point, extent) ??
@@ -123,12 +135,29 @@ export function ScopeCanvas({
     [extent, onSelect],
   );
 
+  const handlePointerMove = useCallback(
+    (event: PointerEvent<HTMLCanvasElement>): void => {
+      const viewport = paintedViewport.current;
+      if (viewport === undefined || event.pointerType === 'touch') {
+        return;
+      }
+      onHover(screenToPolar(viewport, canvasPoint(event)));
+    },
+    [onHover],
+  );
+
+  const handlePointerLeave = useCallback((): void => {
+    onHover(undefined);
+  }, [onHover]);
+
   return (
     <canvas
       ref={setCanvas}
       className={styles.scopeCanvas}
       aria-label="Radar scope"
       onClick={handleClick}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
     />
   );
 }

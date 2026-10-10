@@ -3,14 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ScopeSnapshot, ScopeTarget, ScopeVideoMap } from '../../../shared/protocol.js';
 import { TIME_SHARE_TYPE_MS, TIME_SHARE_USUAL_MS } from '../../scope/data-block.js';
 import { EMERGENCY_FLASH_PERIOD_MS } from '../../scope/emergency.js';
+import { FULL_CIRCLE_RAD } from '../../scope/furniture.js';
 import { createViewport, polarToScreen } from '../../scope/projection.js';
 import type { ScopeFrame } from '../../scope/renderer.js';
 import { createRecordingContext, makeSnapshot, makeTarget } from '../../scope/test-utils.js';
-import type { RecordingContext } from '../../scope/test-utils.js';
+import type { RecordedCall, RecordingContext } from '../../scope/test-utils.js';
 import { DEFAULT_PX_PER_REM } from '../../scope/units.js';
 import { canvasFont } from '../../styles/theme.js';
 import type { ScopeTheme } from '../../styles/theme.js';
-import { MAP_SETTING_ID } from '../shared-settings.js';
+import { HALO_SETTING_ID, LEADER_SETTING_ID, MAP_SETTING_ID } from '../shared-settings.js';
 
 import {
   COASTING_AFTER_MS,
@@ -18,6 +19,7 @@ import {
   DIGITAL_LAYOUT_REM,
   IDENT_SYMBOL_SCALE,
 } from './digital-renderer.js';
+import { VECTOR_SETTING_ID } from './digital-settings.js';
 import { DIGITAL_THEME } from './digital-theme.js';
 
 const WIDTH_PX = 800;
@@ -141,6 +143,21 @@ describe('createDigitalRenderer', () => {
       .find((call) => Math.abs(Number(call.args[1]) - at.yPx) < 1e-6 && call.args[0] !== at.xPx);
     expect(Number(tip?.args[0])).toBeCloseTo(at.xPx + 6 * VIEWPORT.pxPerNm);
     expect(tip?.strokeStyle).toBe(COLORS.vector);
+  });
+
+  it('draws the velocity vector as many minutes long as the vector setting asks', () => {
+    const position = { trueBearingDeg: 0, rangeNm: 20 };
+    const target = makeTarget({ position, trueTrackDeg: 90, groundSpeedKt: 360 });
+
+    const recording = renderFrame(makeSnapshot([target]), 60, DEFAULT_PX_PER_REM, DIGITAL_THEME, {
+      settings: { [VECTOR_SETTING_ID]: '4' },
+    });
+
+    const at = polarToScreen(VIEWPORT, position);
+    const tip = recording
+      .callsTo('lineTo')
+      .find((call) => Math.abs(Number(call.args[1]) - at.yPx) < 1e-6 && call.args[0] !== at.xPx);
+    expect(Number(tip?.args[0])).toBeCloseTo(at.xPx + 24 * VIEWPORT.pxPerNm);
   });
 
   it('draws no velocity vector without both track and ground speed', () => {
@@ -377,6 +394,42 @@ describe('createDigitalRenderer', () => {
     it('rings nothing when nothing is selected, or the selected aircraft is not plotted', () => {
       expect(selectionRings(undefined)).toEqual([]);
       expect(selectionRings('ffffff')).toEqual([]);
+    });
+
+    function haloArcs(settings: Record<string, string>): RecordedCall[] {
+      const recording = createRecordingContext();
+      createDigitalRenderer(DIGITAL_THEME).render(recording.context, {
+        viewport: VIEWPORT,
+        rangeNm: 60,
+        snapshot,
+        videoMap: undefined,
+        frameTimeMs: 0,
+        settings,
+        selectedIcaoHex: 'aaaaaa',
+      });
+      const at = polarToScreen(VIEWPORT, position);
+      return recording
+        .callsTo('arc')
+        .filter(
+          (call) =>
+            call.args[0] === at.xPx &&
+            call.args[1] === at.yPx &&
+            call.args[2] !== DIGITAL_LAYOUT_REM.selectionRadius * DEFAULT_PX_PER_REM,
+        );
+    }
+
+    it('adds a halo of the chosen radius around the selected target, to the scale of the range', () => {
+      const [halo] = haloArcs({ [HALO_SETTING_ID]: '3' });
+
+      expect(halo?.args[2]).toBe(3 * VIEWPORT.pxPerNm);
+      expect(halo?.args[4]).toBe(FULL_CIRCLE_RAD);
+      expect(halo?.strokeStyle).toBe(COLORS.selected);
+      expect(haloArcs({ [HALO_SETTING_ID]: '5' })[0]?.args[2]).toBe(5 * VIEWPORT.pxPerNm);
+    });
+
+    it('draws no halo while the ring setting is off', () => {
+      expect(haloArcs({})).toEqual([]);
+      expect(haloArcs({ [HALO_SETTING_ID]: 'off' })).toEqual([]);
     });
   });
 
@@ -656,7 +709,32 @@ describe('createDigitalRenderer', () => {
       expect(callsignAt(alternate)).toEqual(callsignAt(usual));
     });
 
-    it('works the placement out once per snapshot and viewport, not once per frame', () => {
+    it('runs the leader line as long as the leader setting asks', () => {
+      const target = makeTarget({ icaoHex: 'aaaaaa', callsign: 'N1', position: CENTER });
+      const short = createRecordingContext();
+      const long = createRecordingContext();
+
+      createDigitalRenderer(DIGITAL_THEME).render(short.context, frameOf([target]));
+      createDigitalRenderer(DIGITAL_THEME).render(
+        long.context,
+        frameOf([target], { settings: { [LEADER_SETTING_ID]: 'long' } }),
+      );
+
+      const callsignAt = (recording: RecordingContext): number[] =>
+        recording
+          .callsTo('fillText')
+          .find((call) => call.args[0] === 'N1')
+          ?.args.slice(1)
+          .map(Number) ?? [];
+      const furtherPx =
+        (DIGITAL_LAYOUT_REM.leaderLength.long - DIGITAL_LAYOUT_REM.leaderLength.short) *
+        DEFAULT_PX_PER_REM *
+        Math.SQRT1_2;
+      expect(callsignAt(long)[0]).toBeCloseTo(Number(callsignAt(short)[0]) + furtherPx);
+      expect(callsignAt(long)[1]).toBeCloseTo(Number(callsignAt(short)[1]) - furtherPx);
+    });
+
+    it('works the placement out once per snapshot, viewport, and leader length, not once per frame', () => {
       const renderer = createDigitalRenderer(DIGITAL_THEME);
       const recording = createRecordingContext();
       const measureText = vi.spyOn(recording.context, 'measureText');
@@ -667,6 +745,7 @@ describe('createDigitalRenderer', () => {
         { ...frame, viewport: { ...VIEWPORT, heightPx: HEIGHT_PX + 100 } },
         { ...frame, viewport: { ...VIEWPORT, pxPerNm: VIEWPORT.pxPerNm * 2 } },
         { ...frame, viewport: { ...VIEWPORT, pxPerRem: 32 } },
+        { ...frame, settings: { [LEADER_SETTING_ID]: 'long' } },
       ];
 
       renderer.render(recording.context, frame);

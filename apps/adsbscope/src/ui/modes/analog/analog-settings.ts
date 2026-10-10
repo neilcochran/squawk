@@ -1,6 +1,6 @@
 import { selectedChoice } from '../mode.js';
 import type { ModeSetting, ModeSettingValues } from '../mode.js';
-import { MAP_SETTING } from '../shared-settings.js';
+import { HALO_SETTING, LEADER_SETTING, MAP_SETTING } from '../shared-settings.js';
 
 /** Setting id: whether data tags are drawn beside the blips. */
 export const TAGS_SETTING_ID = 'tags';
@@ -50,7 +50,13 @@ export const SWEEP_SETTING: ModeSetting = {
 };
 
 /** Everything the user can adjust in the analog mode. */
-export const ANALOG_SETTINGS: readonly ModeSetting[] = [TAGS_SETTING, SWEEP_SETTING, MAP_SETTING];
+export const ANALOG_SETTINGS: readonly ModeSetting[] = [
+  TAGS_SETTING,
+  SWEEP_SETTING,
+  LEADER_SETTING,
+  HALO_SETTING,
+  MAP_SETTING,
+];
 
 /**
  * Reads whether data tags should be drawn.

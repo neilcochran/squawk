@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
 import type {
+  PolarPoint,
   ScopeAircraftDetails,
   ScopeConfig,
   ScopeModeId,
@@ -56,9 +57,10 @@ function initialControlsShowing(): boolean {
  * The working scope: the canvas in the active view style, with the status
  * readout and the on-screen controls over it. Owns everything the user can
  * change while running - the view style, that style's settings, and the range
- * - along with the selection, the live snapshot stream, and the video map for
- * the current range. The view style, range, and selection are mirrored in the
- * URL, so a view can be bookmarked, and are read back from it on load.
+ * - along with the selection, where the pointer is over the scope, the live
+ * snapshot stream, and the video map for the current range. The view style,
+ * range, and selection are mirrored in the URL, so a view can be bookmarked,
+ * and are read back from it on load.
  *
  * The selection always names an aircraft that is being tracked: one that a
  * snapshot no longer contains - or that a bookmarked URL named long ago - is
@@ -77,6 +79,7 @@ export function ScopeView({
   const [rangeNm, setRangeNm] = useState(urlState.rangeNm ?? config.rangeNm);
   const [settingValuesByMode, setSettingValuesByMode] = useState(defaultSettingValuesByMode);
   const [selectedIcaoHex, setSelectedIcaoHex] = useState(urlState.selectedIcaoHex);
+  const [cursor, setCursor] = useState<PolarPoint | undefined>(undefined);
   const [controlsShowing, setControlsShowing] = useState(initialControlsShowing);
   const stream = useScopeStream();
   const videoMap = useVideoMap(rangeNm, loadVideoMap);
@@ -196,12 +199,14 @@ export function ScopeView({
         selectedIcaoHex={selectedIcaoHex}
         extent={mode.extent}
         onSelect={setSelectedIcaoHex}
+        onHover={setCursor}
       />
       <StatusBar
         config={config}
         streamState={stream.state}
         snapshot={stream.snapshot}
         rangeNm={rangeNm}
+        cursor={cursor}
       />
       <TabList snapshot={stream.snapshot} />
       <EmergencyList snapshot={stream.snapshot} />

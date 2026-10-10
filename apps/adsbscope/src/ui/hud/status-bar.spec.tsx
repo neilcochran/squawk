@@ -21,7 +21,15 @@ describe('StatusBar', () => {
   it('shows the app name, source, station, link status, target count, and range', () => {
     const snapshot = makeSnapshot([makeTarget({ position: { trueBearingDeg: 0, rangeNm: 5 } })]);
 
-    render(<StatusBar config={CONFIG} streamState="open" snapshot={snapshot} rangeNm={40} />);
+    render(
+      <StatusBar
+        config={CONFIG}
+        streamState="open"
+        snapshot={snapshot}
+        rangeNm={40}
+        cursor={undefined}
+      />,
+    );
 
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent(APP_NAME);
@@ -33,12 +41,24 @@ describe('StatusBar', () => {
 
   it('shows the label for each link status', () => {
     const view = render(
-      <StatusBar config={CONFIG} streamState="lost" snapshot={undefined} rangeNm={60} />,
+      <StatusBar
+        config={CONFIG}
+        streamState="lost"
+        snapshot={undefined}
+        rangeNm={60}
+        cursor={undefined}
+      />,
     );
     expect(screen.getByText(LINK_STATUS_LABELS.serverLost)).toBeInTheDocument();
 
     view.rerender(
-      <StatusBar config={CONFIG} streamState="connecting" snapshot={undefined} rangeNm={60} />,
+      <StatusBar
+        config={CONFIG}
+        streamState="connecting"
+        snapshot={undefined}
+        rangeNm={60}
+        cursor={undefined}
+      />,
     );
     expect(screen.getByText(LINK_STATUS_LABELS.connecting)).toBeInTheDocument();
 
@@ -48,19 +68,61 @@ describe('StatusBar', () => {
         streamState="open"
         snapshot={makeSnapshot([], { connection: 'reconnecting' })}
         rangeNm={60}
+        cursor={undefined}
       />,
     );
     expect(screen.getByText(LINK_STATUS_LABELS.stationReconnecting)).toBeInTheDocument();
   });
 
+  it('adds the bearing and range under the pointer, outside the live region', () => {
+    render(
+      <StatusBar
+        config={CONFIG}
+        streamState="open"
+        snapshot={makeSnapshot()}
+        rangeNm={60}
+        cursor={{ trueBearingDeg: 47.4, rangeNm: 12.34 }}
+      />,
+    );
+
+    expect(screen.getByText('cursor 047 true, 12.3 nm')).toBeInTheDocument();
+    expect(screen.getByRole('status')).not.toHaveTextContent('cursor');
+  });
+
+  it('shows no pointer line while there is no pointer over the scope', () => {
+    render(
+      <StatusBar
+        config={CONFIG}
+        streamState="open"
+        snapshot={makeSnapshot()}
+        rangeNm={60}
+        cursor={undefined}
+      />,
+    );
+
+    expect(screen.queryByText(/cursor/)).not.toBeInTheDocument();
+  });
+
   it('styles a healthy status differently from one that needs attention', () => {
     const view = render(
-      <StatusBar config={CONFIG} streamState="open" snapshot={makeSnapshot()} rangeNm={60} />,
+      <StatusBar
+        config={CONFIG}
+        streamState="open"
+        snapshot={makeSnapshot()}
+        rangeNm={60}
+        cursor={undefined}
+      />,
     );
     const healthyClass = screen.getByText(LINK_STATUS_LABELS.live).className;
 
     view.rerender(
-      <StatusBar config={CONFIG} streamState="lost" snapshot={undefined} rangeNm={60} />,
+      <StatusBar
+        config={CONFIG}
+        streamState="lost"
+        snapshot={undefined}
+        rangeNm={60}
+        cursor={undefined}
+      />,
     );
 
     expect(screen.getByText(LINK_STATUS_LABELS.serverLost).className).not.toBe(healthyClass);

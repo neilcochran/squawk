@@ -2,6 +2,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { PolarPoint } from '../../shared/protocol.js';
+
 import { createViewport, polarToScreen } from './projection.js';
 import type { ScopeFrame, ScopeRenderer } from './renderer.js';
 import { ScopeCanvas } from './scope-canvas.js';
@@ -10,6 +12,7 @@ import { DEFAULT_PX_PER_REM } from './units.js';
 
 const SETTINGS = { tags: 'off' };
 const onSelect = vi.fn<(icaoHex: string | undefined) => void>();
+const onHover = vi.fn<(position: PolarPoint | undefined) => void>();
 
 let frameCallbacks: Map<number, FrameRequestCallback>;
 let nextFrameHandle: number;
@@ -81,6 +84,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(16);
@@ -110,6 +114,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(16);
@@ -125,6 +130,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(32);
@@ -148,6 +154,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(16);
@@ -175,6 +182,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(16);
@@ -195,6 +203,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(16);
@@ -211,6 +220,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(32);
@@ -235,6 +245,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(16);
@@ -249,6 +260,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(32);
@@ -272,6 +284,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
@@ -296,6 +309,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
 
@@ -324,6 +338,7 @@ describe('ScopeCanvas', () => {
           selectedIcaoHex="aaaaaa"
           extent={extent}
           onSelect={onSelect}
+          onHover={onHover}
         />,
       );
       const canvas = screen.getByLabelText('Radar scope');
@@ -344,6 +359,7 @@ describe('ScopeCanvas', () => {
           selectedIcaoHex="aaaaaa"
           extent="canvas"
           onSelect={onSelect}
+          onHover={onHover}
         />,
       );
       runFrame(16);
@@ -374,6 +390,7 @@ describe('ScopeCanvas', () => {
           selectedIcaoHex={undefined}
           extent="canvas"
           onSelect={onSelect}
+          onHover={onHover}
         />,
       );
       const canvas = screen.getByLabelText('Radar scope');
@@ -417,6 +434,75 @@ describe('ScopeCanvas', () => {
     });
   });
 
+  describe('reading the pointer', () => {
+    const position = { trueBearingDeg: 90, rangeNm: 30 };
+    const at = polarToScreen(createViewport(800, 600, 60, DEFAULT_PX_PER_REM), position);
+
+    function renderCanvas(): HTMLElement {
+      stubContext();
+      render(
+        <ScopeCanvas
+          renderer={makeRenderer()}
+          rangeNm={60}
+          snapshot={undefined}
+          videoMap={undefined}
+          settings={SETTINGS}
+          selectedIcaoHex={undefined}
+          extent="canvas"
+          onSelect={onSelect}
+          onHover={onHover}
+        />,
+      );
+      const canvas = screen.getByLabelText('Radar scope');
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 50, 800, 600));
+      onHover.mockClear();
+      return canvas;
+    }
+
+    it('reports the bearing and range under a mouse, measured from the corner of the canvas, and nothing once it leaves', () => {
+      const canvas = renderCanvas();
+      runFrame(16);
+
+      fireEvent.pointerMove(canvas, {
+        clientX: 100 + at.xPx,
+        clientY: 50 + at.yPx,
+        pointerType: 'mouse',
+      });
+      expect(onHover).toHaveBeenLastCalledWith({
+        trueBearingDeg: expect.closeTo(90),
+        rangeNm: expect.closeTo(30),
+      });
+
+      fireEvent.pointerLeave(canvas);
+      expect(onHover).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it('reads nothing from a touch, which has no pointer to read', () => {
+      const canvas = renderCanvas();
+      runFrame(16);
+
+      fireEvent.pointerMove(canvas, {
+        clientX: 100 + at.xPx,
+        clientY: 50 + at.yPx,
+        pointerType: 'touch',
+      });
+
+      expect(onHover).not.toHaveBeenCalled();
+    });
+
+    it('reads nothing before the first frame has been painted', () => {
+      const canvas = renderCanvas();
+
+      fireEvent.pointerMove(canvas, {
+        clientX: 100 + at.xPx,
+        clientY: 50 + at.yPx,
+        pointerType: 'mouse',
+      });
+
+      expect(onHover).not.toHaveBeenCalled();
+    });
+  });
+
   it('renders an inert canvas when no 2D context is available', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     const renderer = makeRenderer();
@@ -431,6 +517,7 @@ describe('ScopeCanvas', () => {
         selectedIcaoHex={undefined}
         extent="canvas"
         onSelect={onSelect}
+        onHover={onHover}
       />,
     );
     runFrame(16);

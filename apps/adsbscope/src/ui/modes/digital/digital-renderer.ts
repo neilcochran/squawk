@@ -30,6 +30,7 @@ import {
   FURNITURE_LINE_WIDTH_PX,
 } from '../../scope/furniture.js';
 import type { FurnitureColors } from '../../scope/furniture.js';
+import { drawHalo } from '../../scope/halo.js';
 import { isNearCanvas, offsetByBearing, polarToScreen } from '../../scope/projection.js';
 import type { ScopeViewport, ScreenPoint } from '../../scope/projection.js';
 import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
@@ -37,16 +38,16 @@ import { drawVideoMap } from '../../scope/video-map-draw.js';
 import type { VideoMapColors } from '../../scope/video-map-draw.js';
 import { canvasFont } from '../../styles/theme.js';
 import type { ScopeCanvasPalette, ScopeTheme } from '../../styles/theme.js';
-import { mapDetail } from '../shared-settings.js';
+import { haloRadiusNm, leaderLength, mapDetail } from '../shared-settings.js';
+import type { LeaderLength } from '../shared-settings.js';
+
+import { vectorMinutes } from './digital-settings.js';
 
 /** How far the digital scope reaches: the whole canvas, as a modern scope's rectangular display does. */
 export const DIGITAL_EXTENT: ScopeExtent = 'canvas';
 
 /** How long a target may go unheard, as of its snapshot, before it is drawn dimmed as coasting. */
 export const COASTING_AFTER_MS = 15_000;
-
-/** How far ahead, in minutes of flight at the current ground speed, the velocity vector reaches. */
-export const VECTOR_MINUTES = 1;
 
 /**
  * How many times its usual size a target's position symbol is drawn while
@@ -70,8 +71,13 @@ export const DIGITAL_LAYOUT_REM = {
   historyDotRadius: 0.125,
   /** Gap between the symbol's edge and the start of the leader line. */
   leaderGap: 0.1875,
-  /** Distance from the symbol's center to the end of the leader line. */
-  leaderLength: 1.625,
+  /** Distance from the symbol's center to the end of the leader line, for each choice of the leader setting. */
+  leaderLength: {
+    /** The short leader, which is the default. */
+    short: 1.625,
+    /** The long leader: twice the short one. */
+    long: 3.25,
+  },
   /** Gap between the end of the leader line and the data block's text. */
   dataBlockOffsetX: 0.1875,
   /** Height of one data block line. */
@@ -108,6 +114,7 @@ function drawVelocityVector(
   viewport: ScopeViewport,
   target: ScopeTarget,
   at: ScreenPoint,
+  minutes: number,
 ): void {
   if (
     target.trueTrackDeg === undefined ||
@@ -116,7 +123,7 @@ function drawVelocityVector(
   ) {
     return;
   }
-  const vectorNm = (target.groundSpeedKt / MINUTES_PER_HOUR) * VECTOR_MINUTES;
+  const vectorNm = (target.groundSpeedKt / MINUTES_PER_HOUR) * minutes;
   const tip = offsetByBearing(at, target.trueTrackDeg, vectorNm * viewport.pxPerNm);
   context.strokeStyle = palette.vector;
   context.lineWidth = FURNITURE_LINE_WIDTH_PX;
@@ -285,10 +292,10 @@ function plotTargets(
   return plotted;
 }
 
-function dataBlockGeometry(viewport: ScopeViewport): DataBlockGeometry {
+function dataBlockGeometry(viewport: ScopeViewport, leader: LeaderLength): DataBlockGeometry {
   const { pxPerRem } = viewport;
   return {
-    leaderLengthPx: DIGITAL_LAYOUT_REM.leaderLength * pxPerRem,
+    leaderLengthPx: DIGITAL_LAYOUT_REM.leaderLength[leader] * pxPerRem,
     blockGapPx: DIGITAL_LAYOUT_REM.dataBlockOffsetX * pxPerRem,
     symbolClearancePx: DIGITAL_LAYOUT_REM.symbolClearance * pxPerRem,
     bounds: { leftPx: 0, topPx: 0, rightPx: viewport.widthPx, bottomPx: viewport.heightPx },
@@ -307,6 +314,8 @@ interface PlacementInputs {
   pxPerNm: number;
   /** Type scale. */
   pxPerRem: number;
+  /** How long the leader lines were. */
+  leader: LeaderLength;
 }
 
 function isSameInputs(a: PlacementInputs, b: PlacementInputs): boolean {
@@ -315,7 +324,8 @@ function isSameInputs(a: PlacementInputs, b: PlacementInputs): boolean {
     a.widthPx === b.widthPx &&
     a.heightPx === b.heightPx &&
     a.pxPerNm === b.pxPerNm &&
-    a.pxPerRem === b.pxPerRem
+    a.pxPerRem === b.pxPerRem &&
+    a.leader === b.leader
   );
 }
 
@@ -323,7 +333,10 @@ function isSameInputs(a: PlacementInputs, b: PlacementInputs): boolean {
  * Creates the `digital` view style's renderer: a modern ATC scope with no
  * sweep. Every frame is drawn from scratch - the video map, range rings, a
  * compass rose, and for each target a position symbol, fading history dots,
- * a one-minute velocity vector, and a leader line to its data block. The
+ * a velocity vector as many minutes long as the vector setting asks, and a
+ * leader line, short or long as the leader setting asks, to its data block.
+ * The selected target is ringed, and gets a halo of the radius the ring
+ * setting asks for, if any. The
  * symbol's shape follows the aircraft's category - a square for a fixed-wing
  * aircraft, a circle for a rotorcraft, a triangle for a glider or balloon, a
  * diamond for a drone, a cross for a surface vehicle - and is hollow on the
@@ -367,6 +380,7 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
     context: CanvasRenderingContext2D,
     viewport: ScopeViewport,
     snapshot: ScopeSnapshot,
+    leader: LeaderLength,
   ): readonly PlacedDataBlock<PlottedTarget>[] {
     const inputs: PlacementInputs = {
       snapshot,
@@ -374,11 +388,12 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       heightPx: viewport.heightPx,
       pxPerNm: viewport.pxPerNm,
       pxPerRem: viewport.pxPerRem,
+      leader,
     };
     if (placedFor === undefined || !isSameInputs(placedFor, inputs)) {
       placed = placeDataBlocks(
         plotTargets(context, viewport, snapshot),
-        dataBlockGeometry(viewport),
+        dataBlockGeometry(viewport, leader),
         leaderBearingsOf(placed),
       );
       placedFor = inputs;
@@ -408,7 +423,10 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       }
       const phase = timeSharePhase(frame.frameTimeMs);
       const isFlashOn = isEmergencyFlashOn(frame.frameTimeMs);
-      for (const { request, placement } of placedTargets(context, viewport, snapshot)) {
+      const minutes = vectorMinutes(frame.settings);
+      const haloNm = haloRadiusNm(frame.settings);
+      const placedNow = placedTargets(context, viewport, snapshot, leaderLength(frame.settings));
+      for (const { request, placement } of placedNow) {
         if (request.id === frame.selectedIcaoHex) {
           context.strokeStyle = palette.selected;
           context.lineWidth = FURNITURE_LINE_WIDTH_PX;
@@ -421,9 +439,12 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
             FULL_CIRCLE_RAD,
           );
           context.stroke();
+          if (haloNm !== undefined) {
+            drawHalo(context, palette.selected, viewport, request.at, haloNm);
+          }
         }
         drawHistory(context, palette, viewport, request.target);
-        drawVelocityVector(context, palette, viewport, request.target, request.at);
+        drawVelocityVector(context, palette, viewport, request.target, request.at, minutes);
         drawSymbolAndDataBlock(
           context,
           targetColor(palette, request.target, snapshot, isFlashOn),

@@ -6,6 +6,7 @@ import {
   offsetByBearing,
   polarToScreen,
   SCOPE_MARGIN_REM,
+  screenToPolar,
 } from './projection.js';
 import { DEFAULT_PX_PER_REM } from './units.js';
 
@@ -94,5 +95,36 @@ describe('polarToScreen', () => {
 
     expect(northEast.xPx).toBeCloseTo(viewport.center.xPx + edge);
     expect(northEast.yPx).toBeCloseTo(viewport.center.yPx - edge);
+  });
+});
+
+describe('screenToPolar', () => {
+  const viewport = createViewport(800, 600, 60, DEFAULT_PX_PER_REM);
+
+  it('reads the receiver at the center as range zero, bearing north', () => {
+    expect(screenToPolar(viewport, viewport.center)).toEqual({ trueBearingDeg: 0, rangeNm: 0 });
+  });
+
+  it('inverts polarToScreen, all the way round the compass', () => {
+    for (const trueBearingDeg of [0, 45, 90, 135, 180, 225, 270, 359]) {
+      const point = { trueBearingDeg, rangeNm: 24 };
+
+      const back = screenToPolar(viewport, polarToScreen(viewport, point));
+
+      expect(back.trueBearingDeg).toBeCloseTo(trueBearingDeg);
+      expect(back.rangeNm).toBeCloseTo(24);
+    }
+  });
+
+  it('reads a point left of the center as west, never as a negative bearing', () => {
+    const west = { xPx: viewport.center.xPx - 10, yPx: viewport.center.yPx };
+
+    expect(screenToPolar(viewport, west).trueBearingDeg).toBeCloseTo(270);
+  });
+
+  it('reads range through the viewport scale, beyond the range circle too', () => {
+    const point = { xPx: viewport.center.xPx, yPx: viewport.center.yPx - viewport.radiusPx * 1.5 };
+
+    expect(screenToPolar(viewport, point).rangeNm).toBeCloseTo(90);
   });
 });

@@ -112,3 +112,21 @@ export function isNearCanvas(
 export function polarToScreen(viewport: ScopeViewport, point: PolarPoint): ScreenPoint {
   return offsetByBearing(viewport.center, point.trueBearingDeg, point.rangeNm * viewport.pxPerNm);
 }
+
+/**
+ * Projects a canvas position back into the scope's polar coordinates: the
+ * inverse of {@link polarToScreen}, for reading what is under the pointer.
+ *
+ * @param viewport - The current viewport.
+ * @param point - The canvas position.
+ * @returns Bearing from the receiver in degrees true, from 0 up to but excluding 360, and range in nautical miles.
+ */
+export function screenToPolar(viewport: ScopeViewport, point: ScreenPoint): PolarPoint {
+  const eastPx = point.xPx - viewport.center.xPx;
+  const northPx = viewport.center.yPx - point.yPx;
+  const bearingDeg = (Math.atan2(eastPx, northPx) * 180) / Math.PI;
+  return {
+    trueBearingDeg: (bearingDeg + 360) % 360,
+    rangeNm: Math.hypot(eastPx, northPx) / viewport.pxPerNm,
+  };
+}
