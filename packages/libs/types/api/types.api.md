@@ -163,7 +163,7 @@ export interface AirportFrequency {
 }
 
 // @public
-export const AIRSPACE_TYPES: readonly ["CLASS_B", "CLASS_C", "CLASS_D", "CLASS_E2", "CLASS_E3", "CLASS_E4", "CLASS_E5", "CLASS_E6", "CLASS_E7", "MOA", "RESTRICTED", "PROHIBITED", "WARNING", "ALERT", "NSA", "ARTCC"];
+export const AIRSPACE_TYPES: readonly ["CLASS_A", "CLASS_B", "CLASS_C", "CLASS_D", "CLASS_E2", "CLASS_E3", "CLASS_E4", "CLASS_E5", "CLASS_E6", "CLASS_E7", "MOA", "RESTRICTED", "PROHIBITED", "WARNING", "ALERT", "NSA", "ARTCC"];
 
 // Warning: (tsdoc-characters-after-block-tag) The token "@squawk" looks like a TSDoc tag but contains an invalid character "/"; if it is not a tag, use a backslash to escape the "@"
 //
@@ -182,7 +182,7 @@ export interface AirspaceFeature {
 }
 
 // @public
-export type AirspaceType = 'CLASS_B' | 'CLASS_C' | 'CLASS_D' | 'CLASS_E2' | 'CLASS_E3' | 'CLASS_E4' | 'CLASS_E5' | 'CLASS_E6' | 'CLASS_E7' | 'MOA' | 'RESTRICTED' | 'PROHIBITED' | 'WARNING' | 'ALERT' | 'NSA' | 'ARTCC';
+export type AirspaceType = 'CLASS_A' | 'CLASS_B' | 'CLASS_C' | 'CLASS_D' | 'CLASS_E2' | 'CLASS_E3' | 'CLASS_E4' | 'CLASS_E5' | 'CLASS_E6' | 'CLASS_E7' | 'MOA' | 'RESTRICTED' | 'PROHIBITED' | 'WARNING' | 'ALERT' | 'NSA' | 'ARTCC';
 
 // @public
 export interface Airway {

@@ -10,6 +10,9 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 
 ## Coverage
 
+- Class A, one feature per domestic ARTCC: 18,000 ft MSL to FL600 over the
+  contiguous states, Alaska, and Puerto Rico and their adjacent offshore
+  airspace, none over Hawaii (see [Data source](#data-source))
 - Class B, C, D, and E controlled airspace (E2 through E7 subtypes)
 - Special Use Airspace: MOAs, restricted, prohibited, warning, alert, and national security areas
 - ARTCC (Air Route Traffic Control Center) lateral boundaries for all
@@ -112,3 +115,15 @@ boundaries come from the NASR ESRI Shapefile, SUA boundaries from the AIXM
 5.0 XML files, and ARTCC boundaries from the `ARB_BASE.csv` and
 `ARB_SEG.csv` tables in the NASR CSV distribution. The build pipeline that
 produces this dataset lives in [tools/build-airspace-data](https://github.com/neilcochran/squawk/tree/main/tools/build-airspace-data).
+
+Class A is the one feature the FAA does not publish as geometry. 14 CFR 71.33
+states it as a rule - 18,000 ft MSL to FL600 over the contiguous states, Alaska,
+and Puerto Rico, their coastal waters, and the designated offshore areas within
+domestic radar coverage - and the HIGH stratum of each domestic center traces
+that lateral extent, so the build emits one `CLASS_A` feature per HIGH stratum
+shape (and one from San Juan's single combined stratum) with that vertical block.
+Each is named `CLASS A` with an empty `identifier`. Honolulu and the oceanic
+centers publish no HIGH stratum and get none, matching the regulation. Two
+carve-outs are not applied: the Alaska Peninsula west of 160 W, which ZAN's
+stratum covers, and the airspace within 1,500 ft of the surface, which only
+matters over terrain above 16,500 ft.

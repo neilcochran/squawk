@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.13.0"]
+      "args": ["-y", "@squawk/mcp@0.14.0"]
     }
   }
 }
@@ -172,7 +172,7 @@ Pinning works the same way:
         "-p",
         "@squawk/icao-registry-data@0.8.12",
         "-p",
-        "@squawk/mcp@0.13.0",
+        "@squawk/mcp@0.14.0",
         "squawk-mcp"
       ]
     }
@@ -276,7 +276,7 @@ directly.
 
 | Tool                         | Purpose                                                                                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `query_airspace_at_position` | Class B/C/D/E, SUA, and ARTCC features whose lateral polygon and vertical bounds contain a point + altitude                                     |
+| `query_airspace_at_position` | Class A/B/C/D/E, SUA, and ARTCC features whose lateral polygon and vertical bounds contain a point + altitude                                   |
 | `get_airspace_for_airport`   | Class B/C/D/E2 surface-area sectors associated with an airport, with full polygon boundaries                                                    |
 | `find_artcc_for_position`    | US ARTCC features containing a given position and altitude (typically one feature; multiple for oceanic CTA+FIR overlaps or stratum boundaries) |
 | `find_artcc_by_identifier`   | All ARTCC features for a 3-letter center code (e.g. "ZNY"), optionally narrowed to a single stratum, with full polygon boundaries               |

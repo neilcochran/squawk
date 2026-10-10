@@ -87,6 +87,50 @@ describe('createAirspaceResolver with real data', () => {
     });
   });
 
+  describe('Class A', () => {
+    it('returns CLASS_A above 18,000 ft over the contiguous states, and none below', () => {
+      const cruise = resolve_.query({ lat: 42.36, lon: -71.0, altitudeFt: 25_000 });
+      const classA = cruise.filter((f) => f.type === 'CLASS_A');
+      assert(classA.length > 0, 'expected CLASS_A over Boston at FL250');
+      for (const feature of classA) {
+        expect(feature.floor).toEqual({ valueFt: 18000, reference: 'MSL' });
+        expect(feature.ceiling).toEqual({ valueFt: 60000, reference: 'MSL' });
+        expect(feature.identifier).toBe('');
+        expect(feature.artccStratum).toBe(null);
+      }
+
+      const below = resolve_.query({ lat: 42.36, lon: -71.0, altitudeFt: 17_000 });
+      expect(below.filter((f) => f.type === 'CLASS_A').length).toBe(0);
+    });
+
+    it('returns CLASS_A over Alaska, Puerto Rico, and the near-offshore waters', () => {
+      for (const [lat, lon, where] of [
+        [61.2, -149.9, 'Anchorage'],
+        [18.44, -66.0, 'San Juan'],
+        [43.9, -68.5, 'the Gulf of Maine'],
+      ] as const) {
+        const results = resolve_.query({ lat, lon, altitudeFt: 25_000 });
+        assert(
+          results.some((f) => f.type === 'CLASS_A'),
+          `expected CLASS_A over ${where} at FL250`,
+        );
+      }
+    });
+
+    it('returns no CLASS_A over Hawaii or the oceanic FIRs, where 71.33 designates none', () => {
+      for (const [lat, lon, where] of [
+        [21.32, -157.92, 'Honolulu'],
+        [38, -60, 'the mid-Atlantic'],
+      ] as const) {
+        const results = resolve_.query({ lat, lon, altitudeFt: 25_000 });
+        expect(
+          results.filter((f) => f.type === 'CLASS_A').length,
+          `expected no CLASS_A over ${where}`,
+        ).toBe(0);
+      }
+    });
+  });
+
   describe('Class C', () => {
     // SDF Louisville: 38.1744 N, 85.736 W
     it('returns CLASS_C for a point at Louisville SDF', () => {

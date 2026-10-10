@@ -71,6 +71,7 @@ console.log('  Breakdown:', JSON.stringify(typeCounts, null, 2).replace(/\n/g, '
 // Expected approximate counts from NASR 2026-01-22 cycle (with tolerance for
 // multi-component airspace and minor variations across cycles).
 const expectedRanges = {
+  CLASS_A: [15, 40],
   CLASS_B: [150, 400],
   CLASS_C: [300, 700],
   CLASS_D: [400, 700],

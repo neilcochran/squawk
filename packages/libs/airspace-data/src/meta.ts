@@ -12,6 +12,6 @@ import type { AirspaceDatasetProperties } from './node.js';
 /** Build metadata for the bundled airspace snapshot. */
 export const usBundledAirspaceProperties: AirspaceDatasetProperties = {
   nasrCycleDate: '2026-10-29',
-  generatedAt: '2026-10-09T22:25:21.224Z',
-  featureCount: 6923,
+  generatedAt: '2026-10-10T02:22:51.229Z',
+  featureCount: 6946,
 };
