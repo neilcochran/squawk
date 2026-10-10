@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AircraftFeed } from '@squawk/adsb-feed';
 
+import type { ScopeAirspace } from '../shared/protocol.js';
+
 import type { AircraftModelProvider } from './aircraft-model.js';
+import type { AirspaceProvider } from './airspace.js';
 import { USAGE } from './cli-args.js';
 import type { ScopeServer, ScopeServerOptions } from './http-server.js';
 import { DEFAULT_RUN_DEPENDENCIES, EXIT_FAILURE, EXIT_OK, formatScopeUrl, run } from './run.js';
@@ -25,6 +28,7 @@ interface Harness {
     lookup: ReturnType<typeof vi.fn>;
     details: ReturnType<typeof vi.fn>;
   };
+  airspace: { load: ReturnType<typeof vi.fn>; lookup: ReturnType<typeof vi.fn> };
   out: string[];
   err: string[];
   io: { stdout(text: string): void; stderr(text: string): void };
@@ -55,6 +59,12 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
       icaoHex === 'a1b2c3' ? { icaoHex: 'A1B2C3', registration: 'N409CC' } : undefined,
     ),
   };
+  const airspace = {
+    load: vi.fn(() => Promise.resolve()),
+    lookup: vi.fn((position: { lat: number }): ScopeAirspace[] =>
+      position.lat === 41 ? [{ kind: 'classC', name: 'PWM' }] : [],
+    ),
+  };
   const out: string[] = [];
   const err: string[] = [];
   return {
@@ -63,6 +73,7 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
     serverOptions,
     videoMaps,
     aircraftModels,
+    airspace,
     out,
     err,
     io: { stdout: (text) => out.push(text), stderr: (text) => err.push(text) },
@@ -73,6 +84,7 @@ function makeHarness(overrides: Partial<RunDependencies> = {}): Harness {
         return server;
       }),
       createAircraftModelProvider: vi.fn((): AircraftModelProvider => aircraftModels),
+      createAirspaceProvider: vi.fn((): AirspaceProvider => airspace),
       createVideoMapProvider: vi.fn((): VideoMapProvider => videoMaps),
       canRead: vi.fn(() => Promise.resolve(true)),
       machineHostname: () => 'MyPC',
@@ -250,6 +262,32 @@ describe('run', () => {
       registration: 'N409CC',
     });
     expect(harness.serverOptions[0]?.getAircraftDetails('c0ffee')).toBeUndefined();
+  });
+
+  it('loads the airspace once serving, and looks it up for the scope server', async () => {
+    const harness = makeHarness();
+
+    await run(LOCATION, harness.io, harness.dependencies);
+
+    expect(harness.airspace.load).toHaveBeenCalledTimes(1);
+    expect(harness.serverOptions[0]?.getAirspace({ lat: 41, lon: -74 }, 1500)).toEqual([
+      { kind: 'classC', name: 'PWM' },
+    ]);
+    expect(harness.airspace.lookup).toHaveBeenCalledWith({ lat: 41, lon: -74 }, 1500);
+    expect(harness.serverOptions[0]?.getAirspace({ lat: 39, lon: -74 }, 1500)).toEqual([]);
+  });
+
+  it('starts anyway, with a warning, when the airspace cannot be loaded', async () => {
+    const harness = makeHarness();
+    harness.airspace.load.mockRejectedValue(new Error('snapshot unreadable'));
+
+    const result = await run(LOCATION, harness.io, harness.dependencies);
+    await Promise.resolve();
+
+    expectRunning(result);
+    expect(harness.err).toEqual([
+      'Could not load the airspace data - the airspace an aircraft is in will not be shown.\n',
+    ]);
   });
 
   it('does not load the aircraft registry with --no-registry', async () => {

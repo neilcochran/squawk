@@ -105,6 +105,34 @@ export interface ScopeAutopilot {
   modes: ScopeAutopilotMode[];
 }
 
+/**
+ * The kinds of airspace a target is reported as being inside, in the order
+ * they are listed: the special-use areas first, since a restricted area is
+ * what matters most, then the tower-controlled classes.
+ */
+export const SCOPE_AIRSPACE_KINDS = [
+  'prohibited',
+  'restricted',
+  'warning',
+  'alert',
+  'moa',
+  'nationalSecurity',
+  'classB',
+  'classC',
+  'classD',
+] as const;
+
+/** A kind of airspace a target can be inside. */
+export type ScopeAirspaceKind = (typeof SCOPE_AIRSPACE_KINDS)[number];
+
+/** One airspace a target is inside. */
+export interface ScopeAirspace {
+  /** What kind of airspace it is. */
+  kind: ScopeAirspaceKind;
+  /** What it is called: the airport identifier of a Class B, C, or D (`BOS`), or the designator and place of a special-use area as charted (`R-4001A BRUNSWICK`). */
+  name: string;
+}
+
 /** One tracked aircraft as the scope draws it. */
 export interface ScopeTarget {
   /** 24-bit ICAO hexadecimal address. */
@@ -147,6 +175,8 @@ export interface ScopeTarget {
   autopilot?: ScopeAutopilot;
   /** Current position relative to the receiver. Absent until the aircraft has a resolved position. */
   position?: PolarPoint;
+  /** Every Class B, C, or D and special-use area containing the aircraft's position and altitude, in the order of {@link SCOPE_AIRSPACE_KINDS}. Empty when it is in none of them. Absent when the aircraft has no position or no altitude to place it with, or there is no airspace data to check. */
+  airspace?: ScopeAirspace[];
   /** Recent past positions for the history trail, oldest first, excluding the current position. */
   history: PolarPoint[];
   /** Unix epoch ms the aircraft was last heard from. */

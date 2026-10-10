@@ -10,8 +10,14 @@ import type { AircraftFeed } from '@squawk/adsb-feed';
 import type { Aircraft } from '@squawk/types';
 
 import { MAX_RANGE_NM } from '../shared/protocol.js';
-import type { ScopeAircraftDetails, ScopeConfig, ScopeVideoMap } from '../shared/protocol.js';
+import type {
+  ScopeAircraftDetails,
+  ScopeAirspace,
+  ScopeConfig,
+  ScopeVideoMap,
+} from '../shared/protocol.js';
 
+import type { AirspaceLookup } from './airspace.js';
 import { createScopeServer, parseVideoMapRange, STREAM_RETRY_MS } from './http-server.js';
 import type { ScopeServer } from './http-server.js';
 
@@ -35,6 +41,8 @@ let aircraft: Aircraft[] = [];
 const getVideoMap = vi.fn<(rangeNm: number) => Promise<ScopeVideoMap>>();
 const getAircraftModel = (icaoHex: string): string | undefined =>
   icaoHex === 'a1b2c3' ? 'PA-28-181' : undefined;
+const CLASS_C: ScopeAirspace[] = [{ kind: 'classC', name: 'PWM' }];
+const getAirspace: AirspaceLookup = (position) => (position.lat === 41 ? CLASS_C : undefined);
 const DETAILS: ScopeAircraftDetails = {
   icaoHex: 'A1B2C3',
   registration: 'N409CC',
@@ -63,6 +71,7 @@ async function startServer(snapshotIntervalMs = 1000): Promise<number> {
     feed: makeFeed(),
     config: CONFIG,
     getAircraftModel,
+    getAirspace,
     getAircraftDetails,
     getVideoMap,
     publicDir,
@@ -359,6 +368,48 @@ describe('createScopeServer', () => {
     });
   });
 
+  it('places each aircraft in its airspace for the snapshot', async () => {
+    aircraft = [
+      {
+        icaoHex: 'a1b2c3',
+        position: { lat: 41, lon: -74, baroAltitudeFt: 1500 },
+        lastSeenAt: 999_000,
+      },
+      {
+        icaoHex: 'c0ffee',
+        position: { lat: 39, lon: -74, baroAltitudeFt: 1500 },
+        lastSeenAt: 999_000,
+      },
+    ];
+    const port = await startServer();
+
+    const response = await readStream(port, 1);
+
+    const firstData = response.body.split('\n').find((line) => line.startsWith('data: '));
+    expect(JSON.parse(firstData?.slice('data: '.length) ?? 'null')).toEqual({
+      at: 1_000_000,
+      connection: 'connected',
+      targets: [
+        {
+          icaoHex: 'a1b2c3',
+          aircraftModel: 'PA-28-181',
+          altitudeFt: 1500,
+          position: expect.any(Object),
+          airspace: CLASS_C,
+          history: [],
+          lastSeenAt: 999_000,
+        },
+        {
+          icaoHex: 'c0ffee',
+          altitudeFt: 1500,
+          position: expect.any(Object),
+          history: [],
+          lastSeenAt: 999_000,
+        },
+      ],
+    });
+  });
+
   it('does not route HEAD to the stream', async () => {
     const port = await startServer();
 
@@ -401,6 +452,7 @@ describe('createScopeServer', () => {
       feed: makeFeed(),
       config: CONFIG,
       getAircraftModel,
+      getAirspace,
       getAircraftDetails,
       getVideoMap,
       publicDir,

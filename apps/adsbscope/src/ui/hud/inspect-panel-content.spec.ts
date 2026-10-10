@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import type { ScopeAirspace } from '../../shared/protocol.js';
 import { makeTarget } from '../scope/test-utils.js';
 
 import {
   buildInspectContent,
   LEVEL_FLIGHT_FT_PER_MIN,
+  OUTSIDE_AIRSPACE,
   SQUAWK_ALERT_NOTE,
   UNKNOWN_VALUE,
 } from './inspect-panel-content.js';
@@ -36,6 +38,10 @@ describe('buildInspectContent', () => {
         autopilot: { engaged: true, modes: ['altitudeHold', 'lnav'] },
         verticalRateFtPerMin: 1500,
         position: { trueBearingDeg: 44.6, rangeNm: 12.34 },
+        airspace: [
+          { kind: 'restricted', name: 'R-4001A BRUNSWICK' },
+          { kind: 'classD', name: 'NHZ' },
+        ],
         lastSeenAt: NOW - 3200,
       }),
       NOW,
@@ -58,8 +64,28 @@ describe('buildInspectContent', () => {
       { label: 'Selected heading', value: '150' },
       { label: 'Autopilot', value: 'on, altitude hold, LNAV' },
       { label: 'Position', value: '045 true, 12.3 nm' },
+      { label: 'Airspace', value: 'R-4001A BRUNSWICK, Class D (NHZ)' },
       { label: 'Heard', value: '3 s ago' },
     ]);
+  });
+
+  it('writes each class by its airport, and reads outside for an aircraft in none', () => {
+    const airspaceOf = (airspace: ScopeAirspace[]): string | undefined =>
+      valueOf(buildInspectContent(makeTarget({ airspace }), NOW, undefined), 'Airspace');
+
+    expect(airspaceOf([{ kind: 'classB', name: 'BOS' }])).toBe('Class B (BOS)');
+    expect(
+      airspaceOf([
+        { kind: 'warning', name: 'W-102L LOW' },
+        { kind: 'moa', name: 'YANKEE 1 MOA' },
+        { kind: 'classC', name: 'PWM' },
+      ]),
+    ).toBe('W-102L LOW, YANKEE 1 MOA, Class C (PWM)');
+    expect(airspaceOf([])).toBe(OUTSIDE_AIRSPACE);
+  });
+
+  it('has no airspace row for an aircraft that could not be placed', () => {
+    expect(valueOf(buildInspectContent(makeTarget(), NOW, undefined), 'Airspace')).toBeUndefined();
   });
 
   it('notes a squawk that has just changed', () => {
