@@ -1,6 +1,6 @@
 {
   "name": "@squawk/weather",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "description": "Parse raw aviation weather strings (METAR, SPECI, TAF, SIGMET, AIRMET, PIREP) into structured objects",
   "author": "Neil Cochran",
@@ -45,7 +45,7 @@
     "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.fetch.json"
   },
   "dependencies": {
-    "@squawk/types": "^0.9.0"
+    "@squawk/types": "^0.10.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.4"

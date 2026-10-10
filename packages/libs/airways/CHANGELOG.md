@@ -1,5 +1,12 @@
 # @squawk/airways
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [841d8dd]
+  - @squawk/types@0.10.0
+
 ## 0.5.1
 
 ### Patch Changes

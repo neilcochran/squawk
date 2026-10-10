@@ -1,5 +1,52 @@
 # @squawk/mcp
 
+## 0.14.0
+
+### Minor Changes
+
+- 841d8dd: **@squawk/types**
+
+  ### Added
+  - `CLASS_A` on `AirspaceType` and `AIRSPACE_TYPES`.
+
+  **@squawk/airspace-data**
+
+  ### Added
+  - Class A airspace, which the FAA publishes as a rule rather than as geometry: one `CLASS_A` feature per domestic ARTCC HIGH stratum shape (and San Juan's combined stratum), carrying 18,000 ft MSL to FL600 over the stratum's polygon. Honolulu and the oceanic centers have no HIGH stratum and get none, as 14 CFR 71.33 designates no Class A there. Each feature is named `CLASS A` with an empty identifier; adjacent centers' polygons abut, so dedupe by type for a single answer.
+
+  **@squawk/airspace**
+
+  ### Changed
+  - README documents Class A coverage and the dedupe note.
+
+  **@squawk/mcp**
+
+  ### Added
+  - `query_airspace_at_position` and `search_airspace` accept `CLASS_A` as a type filter, and the position query describes Class A coverage.
+
+### Patch Changes
+
+- Updated dependencies [841d8dd]
+  - @squawk/types@0.10.0
+  - @squawk/airspace-data@0.7.0
+  - @squawk/airspace@0.9.2
+  - @squawk/airport-data@0.8.2
+  - @squawk/airports@0.7.2
+  - @squawk/airway-data@0.6.2
+  - @squawk/airways@0.5.2
+  - @squawk/fix-data@0.7.2
+  - @squawk/fixes@0.5.2
+  - @squawk/flightplan@0.6.2
+  - @squawk/geo@0.4.11
+  - @squawk/icao-registry@0.5.9
+  - @squawk/icao-registry-data@0.8.15
+  - @squawk/navaid-data@0.7.2
+  - @squawk/navaids@0.6.2
+  - @squawk/notams@0.3.13
+  - @squawk/procedure-data@0.8.2
+  - @squawk/procedures@0.7.2
+  - @squawk/weather@0.6.2
+
 ## 0.13.0
 
 ### Minor Changes
