@@ -63,6 +63,7 @@ describe('toScopeAirspace', () => {
         feature('WARNING', 'W102L', 'W-102L LOW, MACHIAS, ME'),
         feature('CLASS_B', 'BOS', 'BOSTON CLASS B'),
         feature('NSA', 'NEVERETT', 'EVERETT NSA, WA'),
+        feature('CLASS_A', '', 'CLASS A', 18_000, 60_000),
         feature('ALERT', 'A291C', 'A-291C MIAMI, FL'),
         feature('CLASS_C', 'PWM', 'PORTLAND INTL JETPORT CLASS C'),
         feature('CLASS_D', 'BXM', 'BRUNSWICK EXECUTIVE CLASS D'),
@@ -71,11 +72,21 @@ describe('toScopeAirspace', () => {
       'warning W-102L LOW',
       'alert A-291C MIAMI',
       'nationalSecurity EVERETT NSA',
+      'classA CLASS A',
       'classB BOS',
       'classC PWM',
       'classD BXM',
       'classD NHZ',
     ]);
+  });
+
+  it('reports one Class A for the pieces of adjacent centers, which all share its name', () => {
+    expect(
+      toScopeAirspace([
+        feature('CLASS_A', '', 'CLASS A', 18_000, 60_000),
+        feature('CLASS_A', '', 'CLASS A', 18_000, 60_000),
+      ]),
+    ).toEqual([{ kind: 'classA', name: 'CLASS A' }]);
   });
 
   it('falls back to the name for a class with no airport identifier', () => {
@@ -101,7 +112,7 @@ describe('toScopeAirspace', () => {
 
 describe('isReportedAirspaceType', () => {
   it('accepts the classes and special-use areas the scope reports', () => {
-    for (const type of ['CLASS_B', 'CLASS_D', 'RESTRICTED', 'MOA', 'NSA']) {
+    for (const type of ['CLASS_A', 'CLASS_B', 'CLASS_D', 'RESTRICTED', 'MOA', 'NSA']) {
       expect(isReportedAirspaceType(type)).toBe(true);
     }
   });
@@ -162,6 +173,9 @@ describe('loadBundledAirspace', () => {
     ).toBe(true);
     expect(provider.lookup({ lat: 42.3656, lon: -71.0096 }, 5000)).toEqual([
       { kind: 'classB', name: 'BOS' },
+    ]);
+    expect(provider.lookup({ lat: 42.3656, lon: -71.0096 }, 25_000)).toEqual([
+      { kind: 'classA', name: 'CLASS A' },
     ]);
   }, 30_000);
 

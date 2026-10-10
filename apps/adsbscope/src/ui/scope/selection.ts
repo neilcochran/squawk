@@ -55,7 +55,9 @@ export function pickTarget(
 }
 
 /**
- * Finds the selected aircraft in a snapshot.
+ * Finds the selected aircraft in a snapshot. The hex is matched in either
+ * case: one picked on the scope is spelled as the feed spells it, while one
+ * from a bookmarked URL is spelled however it was typed.
  *
  * @param snapshot - The most recent snapshot, or undefined before the first one arrives.
  * @param selectedIcaoHex - The ICAO hex of the selected aircraft, if there is one.
@@ -68,7 +70,8 @@ export function findSelectedTarget(
   if (selectedIcaoHex === undefined) {
     return undefined;
   }
-  return snapshot?.targets.find((target) => target.icaoHex === selectedIcaoHex);
+  const wanted = selectedIcaoHex.toLowerCase();
+  return snapshot?.targets.find((target) => target.icaoHex.toLowerCase() === wanted);
 }
 
 /**

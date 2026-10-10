@@ -389,6 +389,22 @@ describe('ScopeView', () => {
       expect(window.location.search).toBe('?selected=aaaaaa');
     });
 
+    it('honors a bookmarked selection whatever its case, and takes the spelling the feed uses', () => {
+      window.history.replaceState(null, '', '/?selected=a4ce45');
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+
+      act(() => {
+        FakeEventSource.latest().emitOpen();
+        FakeEventSource.latest().emit(
+          'snapshot',
+          JSON.stringify(makeSnapshot([makeTarget({ icaoHex: 'A4CE45', callsign: 'N409CC' })])),
+        );
+      });
+
+      expect(screen.getByRole('region', { name: INSPECT_PANEL_LABEL })).toHaveTextContent('N409CC');
+      expect(window.location.search).toBe('?selected=A4CE45');
+    });
+
     it('drops a bookmarked selection that names an aircraft no longer there', () => {
       window.history.replaceState(null, '', '/?mode=analog&selected=c0ffee');
       render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);

@@ -48,6 +48,7 @@ export interface AirspaceProvider {
  * boundaries, which every aircraft is always inside one of.
  */
 const KIND_BY_TYPE: Readonly<Partial<Record<AirspaceType, ScopeAirspaceKind>>> = {
+  CLASS_A: 'classA',
   CLASS_B: 'classB',
   CLASS_C: 'classC',
   CLASS_D: 'classD',
@@ -76,7 +77,9 @@ export function isReportedAirspaceType(type: unknown): boolean {
  * Names a feature as the scope shows it. A Class B, C, or D is named by its
  * airport, which is what it is called. A special-use area is named as
  * charted - its designator and place - which the data carries with the state
- * after a comma: `R-4001A BRUNSWICK, ME`.
+ * after a comma: `R-4001A BRUNSWICK, ME`. Class A has no identifier and is
+ * named `CLASS A` in the data, one piece per center, so every piece ends up
+ * with the same name and they collapse to one entry.
  */
 function nameOf(feature: AirspaceFeature, kind: ScopeAirspaceKind): string {
   if (CLASS_KINDS.has(kind) && feature.identifier !== '') {

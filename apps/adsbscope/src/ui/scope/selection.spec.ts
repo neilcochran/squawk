@@ -82,6 +82,13 @@ describe('findSelectedTarget', () => {
     expect(findSelectedTarget(makeSnapshot([target]), 'aaaaaa')).toBe(target);
   });
 
+  it('matches the hex in either case, as a bookmarked URL may spell it differently from the feed', () => {
+    const uppercase = makeTarget({ icaoHex: 'A4CE45' });
+
+    expect(findSelectedTarget(makeSnapshot([uppercase]), 'a4ce45')).toBe(uppercase);
+    expect(findSelectedTarget(makeSnapshot([target]), 'AAAAAA')).toBe(target);
+  });
+
   it('finds nothing when nothing is selected, or the aircraft is no longer tracked', () => {
     expect(findSelectedTarget(makeSnapshot([target]), undefined)).toBeUndefined();
     expect(findSelectedTarget(makeSnapshot([target]), 'bbbbbb')).toBeUndefined();

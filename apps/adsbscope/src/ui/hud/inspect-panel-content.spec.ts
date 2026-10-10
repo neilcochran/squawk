@@ -84,6 +84,19 @@ describe('buildInspectContent', () => {
     expect(airspaceOf([])).toBe(OUTSIDE_AIRSPACE);
   });
 
+  it('writes Class A alone, since it has no airport to name', () => {
+    const airspaceOf = (airspace: ScopeAirspace[]): string | undefined =>
+      valueOf(buildInspectContent(makeTarget({ airspace }), NOW, undefined), 'Airspace');
+
+    expect(airspaceOf([{ kind: 'classA', name: 'CLASS A' }])).toBe('Class A');
+    expect(
+      airspaceOf([
+        { kind: 'warning', name: 'W-102H HIGH' },
+        { kind: 'classA', name: 'CLASS A' },
+      ]),
+    ).toBe('W-102H HIGH, Class A');
+  });
+
   it('has no airspace row for an aircraft that could not be placed', () => {
     expect(valueOf(buildInspectContent(makeTarget(), NOW, undefined), 'Airspace')).toBeUndefined();
   });
