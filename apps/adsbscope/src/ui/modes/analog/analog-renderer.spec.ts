@@ -9,11 +9,12 @@ import { createRecordingContext, makeSnapshot, makeTarget } from '../../scope/te
 import type { RecordedCall, RecordingContext } from '../../scope/test-utils.js';
 import { DEFAULT_PX_PER_REM } from '../../scope/units.js';
 import { canvasFont } from '../../styles/theme.js';
-import { MAP_SETTING_ID } from '../shared-settings.js';
+import { HALO_SETTING_ID, LEADER_SETTING_ID, MAP_SETTING_ID } from '../shared-settings.js';
 
 import {
   AFTERGLOW_ALPHA,
   AFTERGLOW_DEG,
+  ANALOG_LAYOUT_REM,
   bearingToCanvasRad,
   createAnalogRenderer,
   EMERGENCY_BLOOM_ARCS,
@@ -55,6 +56,7 @@ function renderAt(
     frameTimeMs,
     settings: options.settings ?? {},
     selectedIcaoHex: options.selectedIcaoHex,
+    measureLine: undefined,
   });
   return recording;
 }
@@ -211,6 +213,34 @@ describe('createAnalogRenderer', () => {
     expect(blipArcs(resumed)).toHaveLength(2);
   });
 
+  it('draws the range/bearing line the frame carries, labeled, at full brightness', () => {
+    const measureLine = {
+      from: { trueBearingDeg: 0, rangeNm: 10 },
+      to: { trueBearingDeg: 90, rangeNm: 10 },
+      trueBearingDeg: 135,
+      distanceNm: 10 * Math.SQRT2,
+    };
+    const recording = createRecordingContext();
+
+    createAnalogRenderer(ANALOG_THEME).render(recording.context, {
+      viewport: createViewport(WIDTH_PX, HEIGHT_PX, 60, DEFAULT_PX_PER_REM),
+      rangeNm: 60,
+      snapshot: undefined,
+      videoMap: undefined,
+      frameTimeMs: 0,
+      settings: {},
+      selectedIcaoHex: undefined,
+      measureLine,
+    });
+
+    const label = recording.callsTo('fillText').find((call) => call.args[0] === '135/14.1');
+    expect(label?.fillStyle).toBe(COLORS.measure);
+    expect(label?.globalAlpha).toBe(1);
+    expect(recording.callsTo('stroke').some((call) => call.strokeStyle === COLORS.measure)).toBe(
+      true,
+    );
+  });
+
   describe('afterglow', () => {
     it('trails the beam as a wedge that fades from the beam backward', () => {
       const renderer = createAnalogRenderer(ANALOG_THEME);
@@ -246,6 +276,7 @@ describe('createAnalogRenderer', () => {
         frameTimeMs: 0,
         settings: {},
         selectedIcaoHex: undefined,
+        measureLine: undefined,
       });
 
       expect(recording.callsTo('closePath')).toHaveLength(0);
@@ -367,6 +398,26 @@ describe('createAnalogRenderer', () => {
         for (const recording of [beforeTheBeam, noSuchAircraft]) {
           expect(recording.callsTo('arc').filter((call) => call.args[0] === at.xPx)).toEqual([]);
         }
+      });
+
+      it('adds a halo of the chosen radius around the selected blip, to the scale of the range', () => {
+        const renderer = createAnalogRenderer(ANALOG_THEME);
+        const settings = { [TAGS_SETTING_ID]: TAGS_OFF, [HALO_SETTING_ID]: '5' };
+        renderAt(renderer, 0, { snapshot, settings });
+
+        const recording = renderAt(renderer, QUARTER_TURN_MS, {
+          snapshot,
+          settings,
+          selectedIcaoHex: 'aaaaaa',
+        });
+
+        const viewport = createViewport(WIDTH_PX, HEIGHT_PX, 60, DEFAULT_PX_PER_REM);
+        const at = polarToScreen(viewport, position);
+        const halo = recording
+          .callsTo('arc')
+          .find((call) => call.args[0] === at.xPx && call.args[2] === 5 * viewport.pxPerNm);
+        expect(halo?.args[4]).toBe(FULL_CIRCLE_RAD);
+        expect(ringStrokes(recording)).toHaveLength(2);
       });
     });
 
@@ -536,6 +587,7 @@ describe('createAnalogRenderer', () => {
           frameTimeMs: 0,
           settings: {},
           selectedIcaoHex: undefined,
+          measureLine: undefined,
         };
 
         renderer.render(context, frame);
@@ -577,6 +629,43 @@ describe('createAnalogRenderer', () => {
           });
           expect(measured).toHaveBeenCalledTimes(callsPerPlacement * (4 + index));
         });
+
+        renderer.render(context, {
+          ...unchangedSnapshot,
+          frameTimeMs: QUARTER_TURN_MS + 64 + changedViewports.length * 16,
+          viewport: {
+            ...viewport,
+            widthPx: WIDTH_PX + 100,
+            heightPx: HEIGHT_PX + 100,
+            pxPerNm: 9,
+            pxPerRem: 32,
+          },
+          settings: { [LEADER_SETTING_ID]: 'long' },
+        });
+        expect(measured).toHaveBeenCalledTimes(callsPerPlacement * (4 + changedViewports.length));
+      });
+
+      it('runs the tag leader as long as the leader setting asks', () => {
+        const short = createAnalogRenderer(ANALOG_THEME);
+        const long = createAnalogRenderer(ANALOG_THEME);
+        const snapshot = makeSnapshot([lead]);
+        const settings = { [LEADER_SETTING_ID]: 'long' };
+        renderAt(short, 0, { snapshot });
+        renderAt(long, 0, { snapshot, settings });
+
+        const shortTag = renderAt(short, QUARTER_TURN_MS, { snapshot })
+          .callsTo('fillText')
+          .find((call) => call.args[0] === 'LEAD1');
+        const longTag = renderAt(long, QUARTER_TURN_MS, { snapshot, settings })
+          .callsTo('fillText')
+          .find((call) => call.args[0] === 'LEAD1');
+
+        const furtherPx =
+          (ANALOG_LAYOUT_REM.tagLeaderLength.long - ANALOG_LAYOUT_REM.tagLeaderLength.short) *
+          DEFAULT_PX_PER_REM *
+          Math.SQRT1_2;
+        expect(Number(longTag?.args[1])).toBeCloseTo(Number(shortTag?.args[1]) + furtherPx);
+        expect(Number(longTag?.args[2])).toBeCloseTo(Number(shortTag?.args[2]) - furtherPx);
       });
     });
 

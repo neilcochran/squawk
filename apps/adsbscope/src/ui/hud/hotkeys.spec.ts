@@ -4,8 +4,9 @@ import { TAGS_SETTING } from '../modes/analog/analog-settings.js';
 import { SCOPE_MODES_BY_ID } from '../modes/registry.js';
 
 import {
+  CLEAR_HOTKEY,
   CONTROLS_HOTKEY,
-  DESELECT_HOTKEY,
+  MEASURE_HOTKEY,
   MODE_HOTKEY,
   resolveHotkey,
   SELECT_NEXT_HOTKEY,
@@ -59,7 +60,14 @@ describe('resolveHotkey', () => {
       type: 'select',
       direction: 'previous',
     });
-    expect(resolveHotkey(press(DESELECT_HOTKEY), ANALOG)).toEqual({ type: 'deselect' });
+    expect(resolveHotkey(press(CLEAR_HOTKEY), ANALOG)).toEqual({ type: 'clear' });
+  });
+
+  it('resolves the range/bearing line key in any mode, in either case', () => {
+    expect(resolveHotkey(press(MEASURE_HOTKEY), DIGITAL)).toEqual({ type: 'measure' });
+    expect(resolveHotkey(press(MEASURE_HOTKEY.toUpperCase()), ANALOG)).toEqual({
+      type: 'measure',
+    });
   });
 
   it('ignores keys that mean nothing', () => {

@@ -16,8 +16,11 @@ export const SELECT_NEXT_HOTKEY = '.';
 /** The `KeyboardEvent.key` that selects the previous aircraft. */
 export const SELECT_PREVIOUS_HOTKEY = ',';
 
-/** The `KeyboardEvent.key` that clears the selection. */
-export const DESELECT_HOTKEY = 'Escape';
+/** The `KeyboardEvent.key` that clears the range/bearing line if there is one, and otherwise the selection. */
+export const CLEAR_HOTKEY = 'Escape';
+
+/** The `KeyboardEvent.key`, lowercase, that starts a range/bearing line, or clears the one there is. */
+export const MEASURE_HOTKEY = 'b';
 
 /** What a key press asks the scope to do. */
 export type HotkeyAction =
@@ -38,8 +41,12 @@ export type HotkeyAction =
       direction: SelectionDirection;
     }
   | {
-      /** Clear the selection. */
-      type: 'deselect';
+      /** Clear the range/bearing line if there is one, otherwise the selection. */
+      type: 'clear';
+    }
+  | {
+      /** Start a range/bearing line, or clear the one there is. */
+      type: 'measure';
     }
   | {
       /** Hide the view style and setting controls, or show them again. */
@@ -95,8 +102,8 @@ export function resolveHotkey(
   if (press.key === SELECT_PREVIOUS_HOTKEY) {
     return { type: 'select', direction: 'previous' };
   }
-  if (press.key === DESELECT_HOTKEY) {
-    return { type: 'deselect' };
+  if (press.key === CLEAR_HOTKEY) {
+    return { type: 'clear' };
   }
   const key = press.key.toLowerCase();
   if (key === MODE_HOTKEY) {
@@ -104,6 +111,9 @@ export function resolveHotkey(
   }
   if (key === CONTROLS_HOTKEY) {
     return { type: 'toggleControls' };
+  }
+  if (key === MEASURE_HOTKEY) {
+    return { type: 'measure' };
   }
   const setting = mode.settings.find((candidate) => candidate.hotkey === key);
   return setting === undefined ? undefined : { type: 'setting', setting };

@@ -20,9 +20,12 @@
 }
 
 /*
- * Lines a control up with the options of the selectors above it, rather than
- * with their captions: the caption column, its margin, and the gap after it.
+ * Lines a row of controls up with the options of the selectors above it,
+ * rather than with their captions: the caption column, its margin, and the
+ * gap after it.
  */
 .underOptions {
+  display: flex;
+  gap: var(--scope-space-sm);
   margin-left: calc(var(--scope-caption-width) + var(--scope-space-sm) + var(--scope-space-xs));
 }

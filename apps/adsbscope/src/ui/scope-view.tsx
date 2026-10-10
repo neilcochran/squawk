@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
 import type {
+  PolarPoint,
   ScopeAircraftDetails,
   ScopeConfig,
   ScopeModeId,
@@ -28,11 +29,20 @@ import { defaultSettingValuesByMode, withModeSettingValues } from './modes/mode-
 import { selectSetting, stepSetting } from './modes/mode.js';
 import type { ModeSetting } from './modes/mode.js';
 import { nextScopeMode, SCOPE_MODES, SCOPE_MODES_BY_ID } from './modes/registry.js';
+import {
+  anchorMeasurement,
+  anchorOf,
+  formatMeasureReadout,
+  isMeasurementLive,
+  resolveMeasurement,
+  startMeasurement,
+} from './scope/measure.js';
+import type { Measurement } from './scope/measure.js';
 import { stepRange } from './scope/range.js';
 import type { RangeDirection } from './scope/range.js';
 import { ScopeCanvas } from './scope/scope-canvas.js';
 import { findSelectedTarget, stepSelection } from './scope/selection.js';
-import type { SelectionDirection } from './scope/selection.js';
+import type { ScopePick, SelectionDirection } from './scope/selection.js';
 import styles from './scope-view.module.css';
 import { applyTheme } from './styles/theme.js';
 
@@ -56,14 +66,18 @@ function initialControlsShowing(): boolean {
  * The working scope: the canvas in the active view style, with the status
  * readout and the on-screen controls over it. Owns everything the user can
  * change while running - the view style, that style's settings, and the range
- * - along with the selection, the live snapshot stream, and the video map for
- * the current range. The view style, range, and selection are mirrored in the
- * URL, so a view can be bookmarked, and are read back from it on load.
+ * - along with the selection, the range/bearing line, where the pointer is
+ * over the scope, the live snapshot stream, and the video map for the current
+ * range. The view style, range, and selection are mirrored in the URL, so a
+ * view can be bookmarked, and are read back from it on load.
  *
  * The selection always names an aircraft that is being tracked: one that a
  * snapshot no longer contains - or that a bookmarked URL named long ago - is
  * dropped, and with it the URL parameter, rather than left claiming a
- * selection that is not there. Every change is reachable both from
+ * selection that is not there. A range/bearing line anchored to an aircraft
+ * is dropped the same way once the aircraft is gone. Both live here rather
+ * than in a renderer, so they survive a change of view style or range, and
+ * reach the renderer through the frame. Every change is reachable both from
  * an on-screen control, which selects an option directly, and from a hotkey,
  * which steps to the next one.
  */
@@ -77,6 +91,8 @@ export function ScopeView({
   const [rangeNm, setRangeNm] = useState(urlState.rangeNm ?? config.rangeNm);
   const [settingValuesByMode, setSettingValuesByMode] = useState(defaultSettingValuesByMode);
   const [selectedIcaoHex, setSelectedIcaoHex] = useState(urlState.selectedIcaoHex);
+  const [cursor, setCursor] = useState<PolarPoint | undefined>(undefined);
+  const [measurement, setMeasurement] = useState<Measurement | undefined>(undefined);
   const [controlsShowing, setControlsShowing] = useState(initialControlsShowing);
   const stream = useScopeStream();
   const videoMap = useVideoMap(rangeNm, loadVideoMap);
@@ -122,6 +138,10 @@ export function ScopeView({
   if (snapshot !== undefined && selectedIcaoHex !== undefined && selectedTarget === undefined) {
     setSelectedIcaoHex(undefined);
   }
+  if (measurement !== undefined && !isMeasurementLive(measurement, snapshot)) {
+    setMeasurement(undefined);
+  }
+  const measureLine = resolveMeasurement(measurement, snapshot, cursor);
   const aircraftDetails = useAircraftDetails(selectedIcaoHex, loadAircraftDetails);
 
   useEffect(() => {
@@ -143,6 +163,31 @@ export function ScopeView({
     setSelectedIcaoHex(undefined);
   }, []);
 
+  const handlePick = useCallback(
+    (pick: ScopePick): void => {
+      if (measurement !== undefined && measurement.phase !== 'complete') {
+        setMeasurement(anchorMeasurement(measurement, anchorOf(pick)));
+      } else {
+        setSelectedIcaoHex(pick.icaoHex);
+      }
+    },
+    [measurement],
+  );
+
+  const handleToggleMeasure = useCallback((): void => {
+    setMeasurement((current) =>
+      current === undefined ? startMeasurement(selectedTarget) : undefined,
+    );
+  }, [selectedTarget]);
+
+  const handleClear = useCallback((): void => {
+    if (measurement !== undefined) {
+      setMeasurement(undefined);
+    } else {
+      setSelectedIcaoHex(undefined);
+    }
+  }, [measurement]);
+
   const handleToggleControls = useCallback((): void => {
     setControlsShowing((current) => !current);
   }, []);
@@ -163,8 +208,11 @@ export function ScopeView({
         case 'select':
           handleStepSelection(action.direction);
           break;
-        case 'deselect':
-          handleDeselect();
+        case 'clear':
+          handleClear();
+          break;
+        case 'measure':
+          handleToggleMeasure();
           break;
         case 'toggleControls':
           handleToggleControls();
@@ -179,7 +227,8 @@ export function ScopeView({
       handleNextMode,
       handleStepSetting,
       handleStepSelection,
-      handleDeselect,
+      handleClear,
+      handleToggleMeasure,
       handleToggleControls,
     ],
   );
@@ -194,14 +243,18 @@ export function ScopeView({
         videoMap={videoMap}
         settings={settingValues}
         selectedIcaoHex={selectedIcaoHex}
+        measureLine={measureLine}
         extent={mode.extent}
-        onSelect={setSelectedIcaoHex}
+        onPick={handlePick}
+        onHover={setCursor}
       />
       <StatusBar
         config={config}
         streamState={stream.state}
         snapshot={stream.snapshot}
         rangeNm={rangeNm}
+        cursor={cursor}
+        measure={formatMeasureReadout(measurement, measureLine)}
       />
       <TabList snapshot={stream.snapshot} />
       <EmergencyList snapshot={stream.snapshot} />
@@ -219,6 +272,8 @@ export function ScopeView({
         onSelectSetting={handleSelectSetting}
         expanded={controlsShowing}
         onToggleExpanded={handleToggleControls}
+        measuring={measurement !== undefined}
+        onToggleMeasure={handleToggleMeasure}
       />
       <RangeControls rangeNm={rangeNm} onStep={handleStepRange} />
     </div>

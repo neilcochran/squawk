@@ -1,4 +1,4 @@
-import type { ScopeSnapshot, ScopeTarget } from '../../shared/protocol.js';
+import type { PolarPoint, ScopeSnapshot, ScopeTarget } from '../../shared/protocol.js';
 
 import { formatDataBlock } from './data-block.js';
 import { isWithinExtent } from './extent.js';
@@ -8,6 +8,14 @@ import type { ScopeViewport, ScreenPoint } from './projection.js';
 
 /** How close to an aircraft's position a click or tap must land to select it, in rem: generous enough for a fingertip. */
 export const PICK_RADIUS_REM = 1.25;
+
+/** What a click or tap on the scope landed on: the aircraft it picked, if any, and where it fell. */
+export interface ScopePick {
+  /** The ICAO hex of the aircraft whose symbol, data block, or tag was picked, or undefined for empty scope. */
+  icaoHex: string | undefined;
+  /** Where the click or tap landed, relative to the receiver. */
+  position: PolarPoint;
+}
 
 /** Which way {@link stepSelection} moves through the aircraft. */
 export type SelectionDirection = 'next' | 'previous';

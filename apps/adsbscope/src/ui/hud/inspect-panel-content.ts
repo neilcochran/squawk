@@ -6,7 +6,7 @@ import type {
 } from '../../shared/protocol.js';
 import { categoryLabel } from '../scope/category.js';
 import { formatDataBlock } from '../scope/data-block.js';
-import { formatCompassLabel, FULL_CIRCLE_DEG } from '../scope/furniture.js';
+import { formatHeading, formatPolarPosition, formatTrueBearing } from '../scope/position-format.js';
 
 /** One labeled value in the inspect panel. */
 export interface InspectRow {
@@ -45,14 +45,6 @@ const AUTOPILOT_MODE_LABELS: Readonly<Record<ScopeAutopilotMode, string>> = {
 
 function formatNumber(value: number): string {
   return Math.round(value).toLocaleString('en-US');
-}
-
-function formatHeading(headingDeg: number): string {
-  return formatCompassLabel(Math.round(headingDeg) % FULL_CIRCLE_DEG);
-}
-
-function formatBearing(bearingDeg: number): string {
-  return `${formatHeading(bearingDeg)} true`;
 }
 
 function formatAltitude(target: ScopeTarget): string {
@@ -156,7 +148,7 @@ export function buildInspectContent(
     rows.push({ label: 'Airspeed', value: airspeed });
   }
   if (target.trueTrackDeg !== undefined) {
-    rows.push({ label: 'Track', value: formatBearing(target.trueTrackDeg) });
+    rows.push({ label: 'Track', value: formatTrueBearing(target.trueTrackDeg) });
   }
   if (target.magneticHeadingDeg !== undefined) {
     rows.push({ label: 'Heading', value: `${formatHeading(target.magneticHeadingDeg)} magnetic` });
@@ -169,10 +161,7 @@ export function buildInspectContent(
   }
   rows.push({
     label: 'Position',
-    value:
-      target.position === undefined
-        ? 'not yet known'
-        : `${formatBearing(target.position.trueBearingDeg)}, ${target.position.rangeNm.toFixed(1)} nm`,
+    value: target.position === undefined ? 'not yet known' : formatPolarPosition(target.position),
   });
   const heardSecondsAgo = Math.max(0, Math.round((now - target.lastSeenAt) / MS_PER_SECOND));
   rows.push({ label: 'Heard', value: `${heardSecondsAgo} s ago` });

@@ -24,13 +24,16 @@ import {
   FURNITURE_LINE_WIDTH_PX,
 } from '../../scope/furniture.js';
 import type { FurnitureColors } from '../../scope/furniture.js';
+import { drawHalo } from '../../scope/halo.js';
+import { drawMeasureLine } from '../../scope/measure-draw.js';
 import { offsetByBearing, polarToScreen } from '../../scope/projection.js';
 import type { ScopeViewport, ScreenPoint } from '../../scope/projection.js';
 import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
 import { drawVideoMap } from '../../scope/video-map-draw.js';
 import type { VideoMapColors } from '../../scope/video-map-draw.js';
 import { canvasFont } from '../../styles/theme.js';
-import { mapDetail } from '../shared-settings.js';
+import { haloRadiusNm, leaderLength, mapDetail } from '../shared-settings.js';
+import type { LeaderLength } from '../shared-settings.js';
 
 import { areTagsVisible, sweepPeriodMs } from './analog-settings.js';
 import type { AnalogTheme } from './analog-theme.js';
@@ -84,8 +87,13 @@ export const ANALOG_LAYOUT_REM = {
   bloomSpacing: 0.4375,
   /** Gap between the center of a blip and the start of its tag's leader line. */
   tagLeaderGap: 0.375,
-  /** Distance from the center of a blip to the end of its tag's leader line. */
-  tagLeaderLength: 1,
+  /** Distance from the center of a blip to the end of its tag's leader line, for each choice of the leader setting. */
+  tagLeaderLength: {
+    /** The short leader, which is the default. */
+    short: 1,
+    /** The long leader: twice the short one. */
+    long: 2,
+  },
   /** Gap between the end of the leader line and the tag's text. */
   tagGap: 0.1875,
   /** Half the side of the square around every tagged blip that tags are kept off. */
@@ -236,6 +244,8 @@ interface TagPlacementInputs {
   pxPerNm: number;
   /** Type scale. */
   pxPerRem: number;
+  /** How long the leader lines were. */
+  leader: LeaderLength;
 }
 
 function isSameTagInputs(a: TagPlacementInputs, b: TagPlacementInputs): boolean {
@@ -245,7 +255,8 @@ function isSameTagInputs(a: TagPlacementInputs, b: TagPlacementInputs): boolean 
     a.widthPx === b.widthPx &&
     a.heightPx === b.heightPx &&
     a.pxPerNm === b.pxPerNm &&
-    a.pxPerRem === b.pxPerRem
+    a.pxPerRem === b.pxPerRem &&
+    a.leader === b.leader
   );
 }
 
@@ -282,10 +293,10 @@ function tagBlips(
   return tagged;
 }
 
-function tagGeometry(viewport: ScopeViewport): DataBlockGeometry {
+function tagGeometry(viewport: ScopeViewport, leader: LeaderLength): DataBlockGeometry {
   const { pxPerRem } = viewport;
   return {
-    leaderLengthPx: ANALOG_LAYOUT_REM.tagLeaderLength * pxPerRem,
+    leaderLengthPx: ANALOG_LAYOUT_REM.tagLeaderLength[leader] * pxPerRem,
     blockGapPx: ANALOG_LAYOUT_REM.tagGap * pxPerRem,
     symbolClearancePx: ANALOG_LAYOUT_REM.tagClearance * pxPerRem,
     bounds: { leftPx: 0, topPx: 0, rightPx: viewport.widthPx, bottomPx: viewport.heightPx },
@@ -353,11 +364,16 @@ function drawTags(
  * stretched a return. Both are properties of the blip, painted as the beam
  * crossed the aircraft, so they fade with it.
  *
- * Tags hang off each target's newest blip on a short leader line, and are
- * kept off one another the way the digital style's data blocks are: a leader
- * takes whichever of eight directions leaves its tag clear, and keeps it
- * until it has to move. The directions are worked out again only when a blip
- * is painted or the snapshot changes, not every frame.
+ * Tags hang off each target's newest blip on a leader line, short or long as
+ * the leader setting asks, and are kept off one another the way the digital
+ * style's data blocks are: a leader takes whichever of eight directions
+ * leaves its tag clear, and keeps it until it has to move. The directions are
+ * worked out again only when a blip is painted or the snapshot changes, not
+ * every frame. The selected aircraft's newest blip is ringed, and gets a halo
+ * of the radius the ring setting asks for, if any. A range/bearing line, when
+ * the frame carries one, is drawn over the furniture and under the beam and
+ * the returns, where its ends follow the aircraft's live positions rather
+ * than their last returns.
  *
  * @param theme - Colors and type to draw with. Canvas colors must be six-digit hex.
  * @returns The renderer.
@@ -385,6 +401,7 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
     context: CanvasRenderingContext2D,
     viewport: ScopeViewport,
     snapshot: ScopeSnapshot,
+    leader: LeaderLength,
   ): readonly PlacedDataBlock<TaggedBlip>[] {
     const newestByHex = newestBlipsByHex(blips);
     const inputs: TagPlacementInputs = {
@@ -394,11 +411,12 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
       heightPx: viewport.heightPx,
       pxPerNm: viewport.pxPerNm,
       pxPerRem: viewport.pxPerRem,
+      leader,
     };
     if (tagsPlacedFor === undefined || !isSameTagInputs(tagsPlacedFor, inputs)) {
       tags = placeDataBlocks(
         tagBlips(context, viewport, snapshot.targets, newestByHex),
-        tagGeometry(viewport),
+        tagGeometry(viewport, leader),
         leaderBearingsOf(tags),
       );
       tagsPlacedFor = inputs;
@@ -433,6 +451,9 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
       drawCompassRose(context, furnitureColors, viewport);
       drawReceiverMarker(context, furnitureColors, viewport);
+      if (frame.measureLine !== undefined) {
+        drawMeasureLine(context, palette.measure, viewport, frame.measureLine);
+      }
       drawAfterglow(context, palette.sweep, viewport, sweepDeg);
       drawBeam(context, palette.sweep, viewport, sweepDeg);
       for (const blip of blips) {
@@ -457,13 +478,17 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
           FULL_CIRCLE_RAD,
         );
         context.stroke();
+        const haloNm = haloRadiusNm(frame.settings);
+        if (haloNm !== undefined) {
+          drawHalo(context, palette.selected, viewport, at, haloNm);
+        }
       }
       if (snapshot !== undefined && areTagsVisible(frame.settings)) {
         drawTags(
           context,
           palette.target,
           viewport.pxPerRem,
-          placedTags(context, viewport, snapshot),
+          placedTags(context, viewport, snapshot, leaderLength(frame.settings)),
           palette.emergency,
           frameTimeMs,
           periodMs,

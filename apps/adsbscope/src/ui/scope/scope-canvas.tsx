@@ -1,15 +1,17 @@
-import type { MouseEvent, ReactElement } from 'react';
+import type { MouseEvent, PointerEvent, ReactElement } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
+import type { PolarPoint, ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
 
 import type { ScopeExtent } from './extent.js';
 import { fitCanvas } from './fit-canvas.js';
-import { createViewport } from './projection.js';
-import type { ScopeViewport } from './projection.js';
+import type { MeasuredLine } from './measure.js';
+import { createViewport, screenToPolar } from './projection.js';
+import type { ScopeViewport, ScreenPoint } from './projection.js';
 import type { ScopeRenderer } from './renderer.js';
 import styles from './scope-canvas.module.css';
 import { pickTarget } from './selection.js';
+import type { ScopePick } from './selection.js';
 import { readPxPerRem } from './units.js';
 
 /** Props for {@link ScopeCanvas}. */
@@ -26,10 +28,20 @@ export interface ScopeCanvasProps {
   settings: Readonly<Record<string, string>>;
   /** The ICAO hex of the selected aircraft, or undefined if none is selected. */
   selectedIcaoHex: string | undefined;
+  /** The range/bearing line to draw, or undefined if there is none. */
+  measureLine: MeasuredLine | undefined;
   /** How far the active mode's scope reaches: only aircraft within it can be picked. */
   extent: ScopeExtent;
-  /** Called when the scope is clicked or tapped: with the ICAO hex of the aircraft whose symbol, data block, or tag was picked, or undefined for empty scope. */
-  onSelect: (icaoHex: string | undefined) => void;
+  /** Called when the scope is clicked or tapped, with the aircraft whose symbol, data block, or tag was picked, if any, and where the click landed. */
+  onPick: (pick: ScopePick) => void;
+  /** Called as a pointer moves over the scope, with the bearing and range from the receiver under it, and with undefined when it leaves. A touch is not a pointer: it reports nothing. */
+  onHover: (position: PolarPoint | undefined) => void;
+}
+
+/** A pointer event's position, measured from the corner of the canvas it landed on. */
+function canvasPoint(event: MouseEvent<HTMLCanvasElement>): ScreenPoint {
+  const bounds = event.currentTarget.getBoundingClientRect();
+  return { xPx: event.clientX - bounds.left, yPx: event.clientY - bounds.top };
 }
 
 /**
@@ -42,6 +54,11 @@ export interface ScopeCanvasProps {
  * pixel density, the rem scale is re-read, and the renderer is reset - so the
  * scope follows a window resize, a device rotation, a browser zoom, or a
  * change of font size without any of them being handled specially.
+ *
+ * A click reports what it picked and where it landed, and a moving pointer
+ * reads out the bearing and range under it; both are measured against the
+ * viewport the last frame was painted with, so neither does anything before
+ * the first frame.
  */
 export function ScopeCanvas({
   renderer,
@@ -50,16 +67,34 @@ export function ScopeCanvas({
   videoMap,
   settings,
   selectedIcaoHex,
+  measureLine,
   extent,
-  onSelect,
+  onPick,
+  onHover,
 }: ScopeCanvasProps): ReactElement {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
-  const latest = useRef({ renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex });
+  const latest = useRef({
+    renderer,
+    rangeNm,
+    snapshot,
+    videoMap,
+    settings,
+    selectedIcaoHex,
+    measureLine,
+  });
   const paintedViewport = useRef<ScopeViewport | undefined>(undefined);
 
   useEffect(() => {
-    latest.current = { renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex };
-  }, [renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex]);
+    latest.current = {
+      renderer,
+      rangeNm,
+      snapshot,
+      videoMap,
+      settings,
+      selectedIcaoHex,
+      measureLine,
+    };
+  }, [renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex, measureLine]);
 
   useEffect(() => {
     renderer.reset();
@@ -95,6 +130,7 @@ export function ScopeCanvas({
         frameTimeMs,
         settings: current.settings,
         selectedIcaoHex: current.selectedIcaoHex,
+        measureLine: current.measureLine,
       });
       frameHandle = window.requestAnimationFrame(paint);
     }
@@ -112,16 +148,32 @@ export function ScopeCanvas({
       if (viewport === undefined) {
         return;
       }
-      const bounds = event.currentTarget.getBoundingClientRect();
-      const point = { xPx: event.clientX - bounds.left, yPx: event.clientY - bounds.top };
+      const point = canvasPoint(event);
       const current = latest.current;
-      onSelect(
-        pickTarget(viewport, current.snapshot, point, extent) ??
+      onPick({
+        icaoHex:
+          pickTarget(viewport, current.snapshot, point, extent) ??
           current.renderer.pickDataBlock(point),
-      );
+        position: screenToPolar(viewport, point),
+      });
     },
-    [extent, onSelect],
+    [extent, onPick],
   );
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent<HTMLCanvasElement>): void => {
+      const viewport = paintedViewport.current;
+      if (viewport === undefined || event.pointerType === 'touch') {
+        return;
+      }
+      onHover(screenToPolar(viewport, canvasPoint(event)));
+    },
+    [onHover],
+  );
+
+  const handlePointerLeave = useCallback((): void => {
+    onHover(undefined);
+  }, [onHover]);
 
   return (
     <canvas
@@ -129,6 +181,8 @@ export function ScopeCanvas({
       className={styles.scopeCanvas}
       aria-label="Radar scope"
       onClick={handleClick}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
     />
   );
 }

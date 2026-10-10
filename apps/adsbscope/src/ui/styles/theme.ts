@@ -36,6 +36,8 @@ export interface ScopeCanvasPalette {
   history: string;
   /** Velocity vector lines. */
   vector: string;
+  /** A range/bearing line and its label. */
+  measure: string;
 }
 
 /** Colors of the HTML UI drawn over and around the canvas: the page, the HUD, and notices. */

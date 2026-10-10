@@ -2,14 +2,18 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { PolarPoint } from '../../shared/protocol.js';
+
 import { createViewport, polarToScreen } from './projection.js';
 import type { ScopeFrame, ScopeRenderer } from './renderer.js';
 import { ScopeCanvas } from './scope-canvas.js';
+import type { ScopePick } from './selection.js';
 import { createRecordingContext, makeSnapshot, makeTarget } from './test-utils.js';
 import { DEFAULT_PX_PER_REM } from './units.js';
 
 const SETTINGS = { tags: 'off' };
-const onSelect = vi.fn<(icaoHex: string | undefined) => void>();
+const onPick = vi.fn<(pick: ScopePick) => void>();
+const onHover = vi.fn<(position: PolarPoint | undefined) => void>();
 
 let frameCallbacks: Map<number, FrameRequestCallback>;
 let nextFrameHandle: number;
@@ -80,7 +84,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(16);
@@ -109,7 +115,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(16);
@@ -124,7 +132,9 @@ describe('ScopeCanvas', () => {
         settings={changed}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(32);
@@ -147,7 +157,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(16);
@@ -174,7 +186,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(16);
@@ -194,7 +208,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(16);
@@ -210,7 +226,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(32);
@@ -234,7 +252,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(16);
@@ -248,7 +268,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(32);
@@ -271,7 +293,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
@@ -295,7 +319,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
 
@@ -323,7 +349,9 @@ describe('ScopeCanvas', () => {
           settings={SETTINGS}
           selectedIcaoHex="aaaaaa"
           extent={extent}
-          onSelect={onSelect}
+          onPick={onPick}
+          onHover={onHover}
+          measureLine={undefined}
         />,
       );
       const canvas = screen.getByLabelText('Radar scope');
@@ -343,7 +371,9 @@ describe('ScopeCanvas', () => {
           settings={SETTINGS}
           selectedIcaoHex="aaaaaa"
           extent="canvas"
-          onSelect={onSelect}
+          onPick={onPick}
+          onHover={onHover}
+          measureLine={undefined}
         />,
       );
       runFrame(16);
@@ -357,7 +387,7 @@ describe('ScopeCanvas', () => {
 
       fireEvent.click(canvas, { clientX: 100 + at.xPx, clientY: 50 + at.yPx });
 
-      expect(onSelect).toHaveBeenLastCalledWith('aaaaaa');
+      expect(onPick).toHaveBeenLastCalledWith(expect.objectContaining({ icaoHex: 'aaaaaa' }));
     });
 
     it('selects the aircraft whose data block was clicked, asking the renderer where the blocks are', () => {
@@ -373,7 +403,9 @@ describe('ScopeCanvas', () => {
           settings={SETTINGS}
           selectedIcaoHex={undefined}
           extent="canvas"
-          onSelect={onSelect}
+          onPick={onPick}
+          onHover={onHover}
+          measureLine={undefined}
         />,
       );
       const canvas = screen.getByLabelText('Radar scope');
@@ -382,10 +414,10 @@ describe('ScopeCanvas', () => {
 
       fireEvent.click(canvas, { clientX: 110, clientY: 60 });
       expect(renderer.pickDataBlock).toHaveBeenLastCalledWith({ xPx: 10, yPx: 10 });
-      expect(onSelect).toHaveBeenLastCalledWith('bbbbbb');
+      expect(onPick).toHaveBeenLastCalledWith(expect.objectContaining({ icaoHex: 'bbbbbb' }));
 
       fireEvent.click(canvas, { clientX: 100 + at.xPx, clientY: 50 + at.yPx });
-      expect(onSelect).toHaveBeenLastCalledWith('aaaaaa');
+      expect(onPick).toHaveBeenLastCalledWith(expect.objectContaining({ icaoHex: 'aaaaaa' }));
       expect(renderer.pickDataBlock).toHaveBeenCalledTimes(1);
     });
 
@@ -395,7 +427,7 @@ describe('ScopeCanvas', () => {
 
       fireEvent.click(canvas, { clientX: 110, clientY: 60 });
 
-      expect(onSelect).toHaveBeenLastCalledWith(undefined);
+      expect(onPick).toHaveBeenLastCalledWith(expect.objectContaining({ icaoHex: undefined }));
     });
 
     it('picks only what the view style draws: nothing beyond the range circle of a round scope', () => {
@@ -404,16 +436,136 @@ describe('ScopeCanvas', () => {
 
       fireEvent.click(canvas, { clientX: 100 + at.xPx, clientY: 50 + at.yPx });
 
-      expect(onSelect).toHaveBeenLastCalledWith(undefined);
+      expect(onPick).toHaveBeenLastCalledWith(expect.objectContaining({ icaoHex: undefined }));
     });
 
     it('ignores a click that lands before the first frame has been painted', () => {
       const canvas = renderCanvas('canvas');
-      onSelect.mockClear();
+      onPick.mockClear();
 
       fireEvent.click(canvas, { clientX: 100 + at.xPx, clientY: 50 + at.yPx });
 
-      expect(onSelect).not.toHaveBeenCalled();
+      expect(onPick).not.toHaveBeenCalled();
+    });
+
+    it('reports where the click landed, relative to the receiver, with or without an aircraft under it', () => {
+      const canvas = renderCanvas('canvas');
+      runFrame(16);
+
+      fireEvent.click(canvas, { clientX: 100 + at.xPx, clientY: 50 + at.yPx });
+      expect(onPick).toHaveBeenLastCalledWith({
+        icaoHex: 'aaaaaa',
+        position: { trueBearingDeg: expect.closeTo(90), rangeNm: expect.closeTo(70) },
+      });
+
+      const elsewhere = polarToScreen(createViewport(800, 600, 60, DEFAULT_PX_PER_REM), {
+        trueBearingDeg: 45,
+        rangeNm: 20,
+      });
+      fireEvent.click(canvas, { clientX: 100 + elsewhere.xPx, clientY: 50 + elsewhere.yPx });
+      expect(onPick).toHaveBeenLastCalledWith({
+        icaoHex: undefined,
+        position: { trueBearingDeg: expect.closeTo(45), rangeNm: expect.closeTo(20) },
+      });
+    });
+  });
+
+  it('hands the range/bearing line to the renderer with every frame', () => {
+    stubContext();
+    const renderer = makeRenderer();
+    const measureLine = {
+      from: { trueBearingDeg: 0, rangeNm: 10 },
+      to: { trueBearingDeg: 90, rangeNm: 10 },
+      trueBearingDeg: 135,
+      distanceNm: 10 * Math.SQRT2,
+    };
+
+    render(
+      <ScopeCanvas
+        renderer={renderer}
+        rangeNm={60}
+        snapshot={undefined}
+        videoMap={undefined}
+        settings={SETTINGS}
+        selectedIcaoHex={undefined}
+        measureLine={measureLine}
+        extent="canvas"
+        onPick={onPick}
+        onHover={onHover}
+      />,
+    );
+    runFrame(16);
+
+    expect(lastFrame(renderer)?.measureLine).toBe(measureLine);
+  });
+
+  describe('reading the pointer', () => {
+    const position = { trueBearingDeg: 90, rangeNm: 30 };
+    const at = polarToScreen(createViewport(800, 600, 60, DEFAULT_PX_PER_REM), position);
+
+    function renderCanvas(): HTMLElement {
+      stubContext();
+      render(
+        <ScopeCanvas
+          renderer={makeRenderer()}
+          rangeNm={60}
+          snapshot={undefined}
+          videoMap={undefined}
+          settings={SETTINGS}
+          selectedIcaoHex={undefined}
+          extent="canvas"
+          onPick={onPick}
+          onHover={onHover}
+          measureLine={undefined}
+        />,
+      );
+      const canvas = screen.getByLabelText('Radar scope');
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 50, 800, 600));
+      onHover.mockClear();
+      return canvas;
+    }
+
+    it('reports the bearing and range under a mouse, measured from the corner of the canvas, and nothing once it leaves', () => {
+      const canvas = renderCanvas();
+      runFrame(16);
+
+      fireEvent.pointerMove(canvas, {
+        clientX: 100 + at.xPx,
+        clientY: 50 + at.yPx,
+        pointerType: 'mouse',
+      });
+      expect(onHover).toHaveBeenLastCalledWith({
+        trueBearingDeg: expect.closeTo(90),
+        rangeNm: expect.closeTo(30),
+      });
+
+      fireEvent.pointerLeave(canvas);
+      expect(onHover).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it('reads nothing from a touch, which has no pointer to read', () => {
+      const canvas = renderCanvas();
+      runFrame(16);
+
+      fireEvent.pointerMove(canvas, {
+        clientX: 100 + at.xPx,
+        clientY: 50 + at.yPx,
+        pointerType: 'touch',
+      });
+
+      expect(onHover).not.toHaveBeenCalled();
+    });
+
+    it('reads nothing before the first frame has been painted', () => {
+      const canvas = renderCanvas();
+
+      fireEvent.pointerMove(canvas, {
+        clientX: 100 + at.xPx,
+        clientY: 50 + at.yPx,
+        pointerType: 'mouse',
+      });
+
+      expect(onHover).not.toHaveBeenCalled();
     });
   });
 
@@ -430,7 +582,9 @@ describe('ScopeCanvas', () => {
         settings={SETTINGS}
         selectedIcaoHex={undefined}
         extent="canvas"
-        onSelect={onSelect}
+        onPick={onPick}
+        onHover={onHover}
+        measureLine={undefined}
       />,
     );
     runFrame(16);
