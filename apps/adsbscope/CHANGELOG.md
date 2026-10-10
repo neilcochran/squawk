@@ -1,5 +1,14 @@
 # @squawk/adsbscope
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [aa1e979]
+  - @squawk/airspace-data@0.8.0
+  - @squawk/types@0.10.1
+  - @squawk/airspace@0.9.3
+
 ## 0.4.0
 
 ### Minor Changes
