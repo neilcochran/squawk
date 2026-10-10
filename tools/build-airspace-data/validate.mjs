@@ -1,17 +1,27 @@
 /**
- * Validates the generated airspace GeoJSON file against known NASR data
- * characteristics, structural requirements, and geographic sanity checks.
+ * Validates the generated airspace GeoJSON bundle against known NASR data
+ * characteristics, structural requirements, geographic sanity checks, and
+ * the values the build derives rather than copies (Class A, Class E
+ * ceilings beneath Class A).
  *
- * Usage: node validate.mjs [path-to-geojson]
- * Defaults to ../../packages/libs/airspace-data/data/airspace.geojson
+ * Usage: node validate.mjs [path-to-geojson-or-gz]
+ * Defaults to ../../packages/libs/airspace-data/data/airspace.geojson.gz.
+ * A path ending in .gz is decompressed before parsing.
  */
 
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
+
+import { polygonGeoJson } from '@squawk/geo';
+import { AIRSPACE_TYPES } from '@squawk/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const defaultPath = resolve(__dirname, '../../packages/libs/airspace-data/data/airspace.geojson');
+const defaultPath = resolve(
+  __dirname,
+  '../../packages/libs/airspace-data/data/airspace.geojson.gz',
+);
 const inputPath = process.argv[2] ? resolve(process.argv[2]) : defaultPath;
 
 let pass = 0;
@@ -36,7 +46,8 @@ function warning(label, detail) {
 // ── Load ──
 
 console.log(`\nValidating: ${inputPath}\n`);
-const text = await readFile(inputPath, 'utf-8');
+const raw = await readFile(inputPath);
+const text = inputPath.endsWith('.gz') ? gunzipSync(raw).toString('utf-8') : raw.toString('utf-8');
 const json = JSON.parse(text);
 
 // ── Top-level structure ──
@@ -68,19 +79,28 @@ for (const f of features) {
 }
 console.log('  Breakdown:', JSON.stringify(typeCounts, null, 2).replace(/\n/g, '\n  '));
 
-// Expected approximate counts from NASR 2026-01-22 cycle (with tolerance for
-// multi-component airspace and minor variations across cycles).
+// Expected approximate counts from the NASR 2026-10-29 cycle (with tolerance
+// for multi-component airspace and minor variations across cycles). Every
+// AirspaceType has an entry so the unexpected-type check below stays aligned
+// with the type union.
 const expectedRanges = {
   CLASS_A: [15, 40],
   CLASS_B: [150, 400],
   CLASS_C: [300, 700],
   CLASS_D: [400, 700],
+  CLASS_E2: [350, 700],
+  CLASS_E3: [40, 120],
+  CLASS_E4: [180, 400],
+  CLASS_E5: [2500, 4500],
+  CLASS_E6: [40, 120],
+  CLASS_E7: [40, 140],
   MOA: [300, 550],
   RESTRICTED: [200, 550],
   WARNING: [80, 220],
   ALERT: [15, 50],
   PROHIBITED: [5, 20],
   NSA: [5, 30],
+  ARTCC: [50, 90],
 };
 
 for (const [type, [min, max]] of Object.entries(expectedRanges)) {
@@ -92,24 +112,32 @@ for (const [type, [min, max]] of Object.entries(expectedRanges)) {
   );
 }
 
-// Check for unexpected types.
-const validTypes = new Set(Object.keys(expectedRanges));
+// Check for unexpected types against the AirspaceType union, and make sure
+// every member of the union has a count range above.
+const validTypes = new Set(AIRSPACE_TYPES);
 const unknownTypes = Object.keys(typeCounts).filter((t) => !validTypes.has(t));
 check(
   'no unexpected airspace types',
   unknownTypes.length === 0,
   unknownTypes.length > 0 ? `found: ${unknownTypes.join(', ')}` : undefined,
 );
+const unrangedTypes = AIRSPACE_TYPES.filter((t) => !(t in expectedRanges));
+check(
+  'every AirspaceType has an expected count range',
+  unrangedTypes.length === 0,
+  unrangedTypes.length > 0 ? `missing: ${unrangedTypes.join(', ')}` : undefined,
+);
 
 // ── Geographic bounds ──
 
 console.log('\n=== Geographic Bounds ===');
 
-// US bounding box (generous, includes territories: AK, HI, PR, GU, Marianas).
-// Alaska extends above 70N, Guam/Marianas are near 10-15N / 145E.
+// US bounding box (generous, includes territories: AK, HI, PR, GU, Marianas,
+// American Samoa). Alaska extends above 70N, Guam/Marianas are near 10-15N /
+// 145E, and Pago Pago is near 14S.
 const US_LON_MIN = -180;
 const US_LON_MAX = 180;
-const US_LAT_MIN = 10;
+const US_LAT_MIN = -15;
 const US_LAT_MAX = 82;
 
 let lonMin = Infinity,
@@ -231,6 +259,87 @@ check(
   floorAboveCeiling > 0 ? `${floorAboveCeiling} features` : undefined,
 );
 
+// ── Derived values ──
+
+console.log('\n=== Derived Values ===');
+
+// Class A is derived from the ARTCC HIGH strata rather than parsed, so every
+// feature should carry exactly the 14 CFR 71.33 block and the fixed name.
+const classA = features.filter((f) => f.properties?.type === 'CLASS_A');
+check(
+  'every Class A feature carries 18,000 ft MSL to FL600, the CLASS A name, and no identifier',
+  classA.length > 0 &&
+    classA.every(
+      (f) =>
+        f.properties?.floor?.valueFt === 18000 &&
+        f.properties?.floor?.reference === 'MSL' &&
+        f.properties?.ceiling?.valueFt === 60000 &&
+        f.properties?.ceiling?.reference === 'MSL' &&
+        f.properties?.name === 'CLASS A' &&
+        f.properties?.identifier === '',
+    ),
+);
+
+// Class E ceilings beneath Class A are resolved to 17,999 ft MSL by the build;
+// elsewhere the undefined sentinel (99,999) stays. Re-derive the overlap here
+// with the same vertex test the build uses so the output can be checked
+// independently of the build step.
+const classAPolygons = classA.map((f) => f.geometry);
+const classABoxes = classAPolygons.map((p) => polygonGeoJson.polygonBoundingBox(p));
+
+function overlapsClassA(polygon) {
+  const box = polygonGeoJson.polygonBoundingBox(polygon);
+  const ring = polygon.coordinates[0] ?? [];
+  return classAPolygons.some((candidate, i) => {
+    if (!polygonGeoJson.boundingBoxesOverlap(box, classABoxes[i])) {
+      return false;
+    }
+    if (ring.some(([lon, lat]) => polygonGeoJson.pointInPolygon([lon, lat], candidate))) {
+      return true;
+    }
+    const candidateRing = candidate.coordinates[0] ?? [];
+    return candidateRing.some(([lon, lat]) => polygonGeoJson.pointInPolygon([lon, lat], polygon));
+  });
+}
+
+const classE = features.filter((f) => f.properties?.type?.startsWith('CLASS_E'));
+const cappedE = classE.filter((f) => f.properties?.ceiling?.valueFt === 17999);
+const undefinedE = classE.filter((f) => f.properties?.ceiling?.valueFt === 99999);
+const betweenE = classE.filter((f) => {
+  const v = f.properties?.ceiling?.valueFt;
+  return v >= 18000 && v < 99999;
+});
+
+check(
+  `Class E ceilings are published, 17,999 ft MSL, or undefined (${cappedE.length} capped, ${undefinedE.length} undefined)`,
+  betweenE.length === 0,
+  betweenE.length > 0 ? `${betweenE.length} between 18,000 and 99,998` : undefined,
+);
+
+const cappedOutsideClassA = cappedE.filter((f) => !overlapsClassA(f.geometry));
+check(
+  'every capped Class E area overlaps Class A',
+  cappedOutsideClassA.length === 0,
+  cappedOutsideClassA.length > 0
+    ? `${cappedOutsideClassA.length} outside: ${cappedOutsideClassA
+        .slice(0, 5)
+        .map((f) => f.properties?.name)
+        .join('; ')}`
+    : undefined,
+);
+
+const undefinedUnderClassA = undefinedE.filter((f) => overlapsClassA(f.geometry));
+check(
+  'no undefined Class E ceiling remains beneath Class A',
+  undefinedUnderClassA.length === 0,
+  undefinedUnderClassA.length > 0
+    ? `${undefinedUnderClassA.length} beneath: ${undefinedUnderClassA
+        .slice(0, 5)
+        .map((f) => f.properties?.name)
+        .join('; ')}`
+    : undefined,
+);
+
 // ── Required properties ──
 
 console.log('\n=== Required Properties ===');
@@ -239,9 +348,31 @@ let missingName = 0;
 let missingIdentifier = 0;
 let missingType = 0;
 
+// Types NASR gives an identifier of their own: the airport for Class B/C/D,
+// the designator for SUA, the center code for ARTCC. Class E areas are
+// frequently keyed by name alone, and Class A is one unnamed block by
+// construction, so neither is expected to carry one.
+const IDENTIFIED_TYPES = new Set([
+  'CLASS_B',
+  'CLASS_C',
+  'CLASS_D',
+  'MOA',
+  'RESTRICTED',
+  'PROHIBITED',
+  'WARNING',
+  'ALERT',
+  'NSA',
+  'ARTCC',
+]);
+
 for (const f of features) {
   if (!f.properties?.name) missingName++;
-  if (f.properties?.identifier === '' || f.properties?.identifier == null) missingIdentifier++;
+  if (
+    IDENTIFIED_TYPES.has(f.properties?.type) &&
+    (f.properties?.identifier === '' || f.properties?.identifier == null)
+  ) {
+    missingIdentifier++;
+  }
   if (!f.properties?.type) missingType++;
 }
 
@@ -253,10 +384,10 @@ check(
 // A small number of shapefile records have null IDENT (e.g. LYNDEN CLASS D).
 // This is a source data issue, not a parsing bug.
 if (missingIdentifier > 0 && missingIdentifier <= 5) {
-  warning(`${missingIdentifier} features missing identifier (source data issue)`);
+  warning(`${missingIdentifier} identified-type features missing identifier (source data issue)`);
 } else {
   check(
-    'all features have identifier',
+    'all Class B/C/D, SUA, and ARTCC features have identifier',
     missingIdentifier === 0,
     missingIdentifier > 0 ? `${missingIdentifier} missing` : undefined,
   );

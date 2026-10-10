@@ -105,7 +105,9 @@ representing one airspace boundary. Feature properties include:
 | `scheduleDescription` | string or null       | Operating schedule text                                                                                     |
 | `artccStratum`        | ArtccStratum or null | For ARTCC features, the stratum (`LOW`, `HIGH`, `UTA`, `CTA`, `FIR`, `CTA/FIR`); `null` for all other types |
 
-`AltitudeBound` is `{ valueFt: number, reference: 'MSL' | 'AGL' | 'SFC' }`.
+`AltitudeBound` is `{ valueFt: number, reference: 'MSL' | 'AGL' | 'SFC' }`. A
+`ceiling` of `{ valueFt: 99999, reference: 'MSL' }` is a sentinel for an upper limit
+the FAA leaves undefined or unlimited.
 
 ## Data source
 
@@ -127,3 +129,13 @@ centers publish no HIGH stratum and get none, matching the regulation. Two
 carve-outs are not applied: the Alaska Peninsula west of 160 W, which ZAN's
 stratum covers, and the airspace within 1,500 ft of the surface, which only
 matters over terrain above 16,500 ft.
+
+Class E ceilings beneath Class A are the one attribute the build resolves rather
+than copies. NASR leaves the upper limit of nearly every Class E area undefined,
+because 14 CFR 71.71 ends those areas at the overlying controlled airspace rather
+than at a number. Where a Class E area overlaps a Class A feature, the build sets
+its ceiling to 17,999 ft MSL, the last foot below Class A; where it does not
+(Hawaii, and beyond the lateral extent of Class A) the ceiling stays the 99,999
+sentinel, and a Class E area with a published ceiling keeps it. Special Use
+Airspace with an undefined ceiling is left alone, since restricted and warning
+areas genuinely extend through Class A.

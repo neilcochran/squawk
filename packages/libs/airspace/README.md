@@ -132,6 +132,17 @@ for (const f of features) {
 }
 ```
 
+## Class E ceilings
+
+NASR leaves the upper limit of nearly every Class E area undefined, because 14 CFR
+71.71 ends those areas at the overlying controlled airspace rather than at a number.
+The bundled data resolves that for `query()`: a Class E area that lies beneath Class
+A carries a ceiling of 17,999 ft MSL, so a query at 18,000 ft or above returns Class
+A rather than the Class E area under it. Class E areas outside Class A (Hawaii, and
+beyond the lateral extent of Class A) keep the `99,999` sentinel described under
+[ARTCC altitude bounds](#artcc-altitude-bounds) and match at any altitude above
+their floor.
+
 ## API
 
 ### `createAirspaceResolver(options)`

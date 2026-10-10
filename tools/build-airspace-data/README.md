@@ -24,11 +24,19 @@ The default output path is `packages/libs/airspace-data/data/airspace.geojson.gz
 
 ### Validating output
 
-After generating a new GeoJSON file, run the validation script to check for
-structural issues, geographic anomalies, and altitude bound errors:
+After generating a new bundle, run the validation script to check for
+structural issues, geographic anomalies, altitude bound errors, and the values
+the build derives (Class A, Class E ceilings beneath Class A):
 
 ```bash
 npm run validate
+```
+
+It reads the gzipped bundle at the default output path. Pass a path to validate
+another file, gzipped or plain GeoJSON:
+
+```bash
+node validate.mjs <path-to-airspace.geojson.gz>
 ```
 
 ## How it works
@@ -47,8 +55,14 @@ npm run validate
    combined stratum), carrying the 18,000 ft MSL to FL600 block over the
    stratum's polygon. Honolulu and the oceanic centers have no HIGH stratum
    and get none, matching 14 CFR 71.33
-5. Enriches Class B/C/D/E features with state codes from `APT_BASE.csv`
-6. Merges all features, rounds coordinates to 5 decimal places (~1.1m precision),
+5. Caps Class E ceilings beneath Class A. NASR leaves the upper limit of
+   nearly every Class E area undefined, so each Class E feature with an
+   undefined ceiling that overlaps a Class A polygon gets 17,999 ft MSL, the
+   last foot below Class A. Class E outside Class A (Hawaii) keeps the
+   undefined sentinel, published ceilings are kept, and Special Use Airspace
+   is untouched
+6. Enriches Class B/C/D/E features with state codes from `APT_BASE.csv`
+7. Merges all features, rounds coordinates to 5 decimal places (~1.1m precision),
    and writes a single GeoJSON FeatureCollection (~6,950 features)
 
 ## Input files
