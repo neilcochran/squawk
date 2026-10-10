@@ -144,6 +144,7 @@ const DEFAULT_SEARCH: ChartSearch = {
   pitch: 0,
   layers: ['airports', 'navaids', 'fixes', 'airways', 'airspace'],
   airspaceClasses: [
+    'CLASS_A',
     'CLASS_B',
     'CLASS_C',
     'CLASS_D',

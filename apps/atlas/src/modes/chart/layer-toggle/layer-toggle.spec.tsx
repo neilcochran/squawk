@@ -2,7 +2,13 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_DEFAULTS, LAYER_IDS } from '../url-state.ts';
+import {
+  AIRSPACE_CLASSES,
+  AIRWAY_CATEGORIES,
+  CHART_DEFAULTS,
+  LAYER_IDS,
+  SEARCHABLE_AIRSPACE_CLASSES,
+} from '../url-state.ts';
 import type { ChartSearch } from '../url-state.ts';
 
 import { LayerToggle } from './layer-toggle.tsx';
@@ -183,7 +189,7 @@ function makePrev(overrides: Partial<ChartSearch> = {}): ChartSearch {
     airspaceClasses: [...AIRSPACE_CLASSES],
     airwayCategories: [...AIRWAY_CATEGORIES],
     searchLayers: [...LAYER_IDS],
-    searchAirspaceClasses: [...AIRSPACE_CLASSES],
+    searchAirspaceClasses: [...SEARCHABLE_AIRSPACE_CLASSES],
     searchAirwayCategories: [...AIRWAY_CATEGORIES],
     searchIncludeHidden: false,
     ...overrides,
@@ -311,8 +317,8 @@ describe('LayerToggle', () => {
     expect(within(airwaysRow).getByLabelText('1 of 3 enabled')).toBeInTheDocument();
 
     const airspaceRow = getParentRow('airspace');
-    expect(within(airspaceRow).getByText('2/11')).toBeInTheDocument();
-    expect(within(airspaceRow).getByLabelText('2 of 11 enabled')).toBeInTheDocument();
+    expect(within(airspaceRow).getByText('2/12')).toBeInTheDocument();
+    expect(within(airspaceRow).getByLabelText('2 of 12 enabled')).toBeInTheDocument();
   });
 
   it('reveals airway sub-rows with the new 3-bucket layout (no Colored row)', () => {
@@ -334,6 +340,22 @@ describe('LayerToggle', () => {
     );
     // The retired "Colored" row should not appear anywhere in the menu.
     expect(screen.queryByRole('menuitemcheckbox', { name: /colored/i })).not.toBeInTheDocument();
+  });
+
+  it('offers a Class A sub-row that follows airspaceClasses', () => {
+    useSearchMock.mockReturnValue(makeSearch({ airspaceClasses: ['CLASS_A'] }));
+    render(<LayerToggle />);
+    expandLayer('airspace');
+
+    // Anchored: the auto-hide settings row's label also names Class A.
+    expect(screen.getByRole('menuitemcheckbox', { name: /^class a$/i })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByRole('menuitemcheckbox', { name: /class b/i })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
   });
 
   it('reveals airspace sub-rows with checked state matching airspaceClasses', () => {
@@ -367,6 +389,7 @@ describe('LayerToggle', () => {
     expect(navigateMock).toHaveBeenCalledTimes(1);
     const next = applyLatestSearchUpdate(makePrev());
     expect(next.airspaceClasses).toEqual([
+      'CLASS_A',
       'CLASS_B',
       'CLASS_C',
       'CLASS_D',

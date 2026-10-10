@@ -61,6 +61,8 @@ export interface ChartAirwayColors {
  * the default for any unrecognized future `AirspaceType` value.
  */
 export interface ChartAirspaceColors {
+  /** Class A: the 18,000 ft MSL to FL600 slab, one feature per ARTCC high stratum. */
+  classA: string;
   /** Class B terminal airspace. */
   classB: string;
   /** Class C terminal airspace. */
@@ -148,6 +150,7 @@ const LIGHT_PALETTE: ChartColorPalette = {
     regional: '#94a3b8',
   },
   airspace: {
+    classA: '#0f766e',
     classB: '#1e3a8a',
     classC: '#be185d',
     classD: '#2563eb',
@@ -193,6 +196,7 @@ const DARK_PALETTE: ChartColorPalette = {
     regional: '#94a3b8',
   },
   airspace: {
+    classA: '#2dd4bf',
     classB: '#3b82f6',
     classC: '#ec4899',
     classD: '#60a5fa',

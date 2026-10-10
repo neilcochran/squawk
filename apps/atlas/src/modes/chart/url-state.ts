@@ -57,6 +57,7 @@ export const LAYER_MIN_ZOOM: Partial<Record<LayerId, number>> = {
  * airspace; the others are 1:1 with their AirspaceType counterparts.
  */
 export const AIRSPACE_CLASSES = [
+  'CLASS_A',
   'CLASS_B',
   'CLASS_C',
   'CLASS_D',
@@ -82,6 +83,7 @@ export type AirspaceClass = (typeof AIRSPACE_CLASSES)[number];
  * to all six E-stratum variants; the rest are identity mappings.
  */
 export const AIRSPACE_CLASS_TYPES: Record<AirspaceClass, readonly AirspaceType[]> = {
+  CLASS_A: ['CLASS_A'],
   CLASS_B: ['CLASS_B'],
   CLASS_C: ['CLASS_C'],
   CLASS_D: ['CLASS_D'],
@@ -113,6 +115,23 @@ export const AIRSPACE_CLASS_FOR_TYPE: Record<AirspaceType, AirspaceClass> = (() 
   // narrows the partial map to the total record.
   return map as Record<AirspaceType, AirspaceClass>;
 })();
+
+/**
+ * Discriminated string-literal type for an airspace class the feature search
+ * can query: every user-facing class except Class A.
+ */
+export type SearchableAirspaceClass = Exclude<AirspaceClass, 'CLASS_A'>;
+
+/**
+ * The subset of {@link AIRSPACE_CLASSES} the feature search queries, in the
+ * same order. Class A is left out: the dataset carries one feature per ARTCC
+ * high stratum, every one named `CLASS A` with no identifier, so a query for
+ * it would return two dozen identical rows that answer no question a search
+ * asks. The class stays drawable and inspectable from the map; it just has no
+ * search-filter row and never reaches the airspace resolver's `search`.
+ */
+export const SEARCHABLE_AIRSPACE_CLASSES: readonly SearchableAirspaceClass[] =
+  AIRSPACE_CLASSES.filter((cls): cls is SearchableAirspaceClass => cls !== 'CLASS_A');
 
 /**
  * User-facing airway categories exposed by the layer toggle. Groups the
@@ -168,9 +187,11 @@ export const AIRWAY_CATEGORY_FOR_TYPE: Record<AirwayType, AirwayCategory> = (() 
 /**
  * Default chart-mode map view: continental US center at a zoom that shows the
  * full CONUS area, with every data layer enabled and most airspace classes
- * enabled. ARTCC is opted out by default because its sector boundaries cover
- * essentially the entire chart and dominate every other airspace tint at the
- * default CONUS zoom; users who want it can flip it on from the layer toggle.
+ * enabled. Class A and ARTCC are opted out by default because each blankets
+ * essentially the entire chart - Class A as the 18,000 ft MSL to FL600 slab
+ * over every ARTCC high stratum, ARTCC as the sector boundaries themselves -
+ * and would dominate every other airspace tint at the default CONUS zoom;
+ * users who want either can flip it on from the layer toggle.
  */
 export const CHART_DEFAULTS = {
   /** Default map center latitude in decimal degrees, positive north. */
@@ -184,10 +205,11 @@ export const CHART_DEFAULTS = {
   /** Default active layer set: every layer visible. */
   layers: LAYER_IDS,
   /**
-   * Default active airspace classes. Every class except ARTCC is on; ARTCC
-   * is excluded so the CONUS view is not dominated by sector outlines.
+   * Default active airspace classes. Every class except Class A and ARTCC is
+   * on; those two are excluded so the CONUS view is not dominated by one
+   * country-wide slab and the sector outlines beneath it.
    */
-  airspaceClasses: AIRSPACE_CLASSES.filter((cls) => cls !== 'ARTCC'),
+  airspaceClasses: AIRSPACE_CLASSES.filter((cls) => cls !== 'CLASS_A' && cls !== 'ARTCC'),
   /** Default active airway categories: every category visible. */
   airwayCategories: AIRWAY_CATEGORIES,
   /**
@@ -198,12 +220,14 @@ export const CHART_DEFAULTS = {
    */
   searchLayers: LAYER_IDS,
   /**
-   * Default searchable airspace classes: every class, including ARTCC. Unlike
-   * the map default this includes ARTCC, because the filter expresses intent
-   * to search the class; whether ARTCC results actually surface still depends
-   * on its Layers-menu visibility unless include-hidden is on.
+   * Default searchable airspace classes: every searchable class, including
+   * ARTCC. Unlike the map default this includes ARTCC, because the filter
+   * expresses intent to search the class; whether ARTCC results actually
+   * surface still depends on its Layers-menu visibility unless include-hidden
+   * is on. Class A is absent because it is never searchable (see
+   * {@link SEARCHABLE_AIRSPACE_CLASSES}).
    */
-  searchAirspaceClasses: AIRSPACE_CLASSES,
+  searchAirspaceClasses: SEARCHABLE_AIRSPACE_CLASSES,
   /** Default searchable airway categories: every category. */
   searchAirwayCategories: AIRWAY_CATEGORIES,
   /**
@@ -250,9 +274,9 @@ export const chartSearchSchema = z.object({
     .catch([...CHART_DEFAULTS.layers]),
   /**
    * Active airspace classes (consulted only when `layers` includes `airspace`).
-   * Default is every class except ARTCC; an empty array yields a layer that
-   * renders no features. Unknown ids or non-array values fall back to the
-   * default.
+   * Default is every class except Class A and ARTCC; an empty array yields a
+   * layer that renders no features. Unknown ids or non-array values fall back
+   * to the default.
    */
   airspaceClasses: z
     .array(z.enum(AIRSPACE_CLASSES))
@@ -280,12 +304,13 @@ export const chartSearchSchema = z.object({
     .catch([...CHART_DEFAULTS.searchLayers]),
   /**
    * Search-filter airspace classes (consulted only when `searchLayers`
-   * includes `airspace`). Default is every class; an empty array drops
-   * airspace from search. Unknown ids or non-array values fall back to the
-   * default.
+   * includes `airspace`). Default is every searchable class; an empty array
+   * drops airspace from search. Class A is not a member of the enum, so a URL
+   * naming it falls back to the default the same way any unknown id or
+   * non-array value does.
    */
   searchAirspaceClasses: z
-    .array(z.enum(AIRSPACE_CLASSES))
+    .array(z.enum(SEARCHABLE_AIRSPACE_CLASSES))
     .default([...CHART_DEFAULTS.searchAirspaceClasses])
     .catch([...CHART_DEFAULTS.searchAirspaceClasses]),
   /**

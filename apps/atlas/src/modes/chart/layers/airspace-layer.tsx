@@ -327,6 +327,8 @@ function buildTypeColorExpression(airspace: ChartAirspaceColors): ExpressionSpec
   return [
     'match',
     ['get', 'type'],
+    'CLASS_A',
+    airspace.classA,
     'CLASS_B',
     airspace.classB,
     'CLASS_C',

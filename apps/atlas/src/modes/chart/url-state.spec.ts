@@ -6,6 +6,7 @@ import {
   CHART_DEFAULTS,
   LAYER_IDS,
   LAYER_MIN_ZOOM,
+  SEARCHABLE_AIRSPACE_CLASSES,
   chartSearchSchema,
 } from './url-state.ts';
 
@@ -112,13 +113,30 @@ describe('chartSearchSchema', () => {
     const result = chartSearchSchema.parse({ airspaceClasses: ['CLASS_B', 'CLASS_E2'] });
     // CLASS_E2 is an underlying AirspaceType but not a user-facing class id;
     // the schema treats it as unknown and falls back to the default. The
-    // default is every user-facing class except ARTCC.
+    // default is every user-facing class except Class A and ARTCC.
     expect(result.airspaceClasses).toEqual([...CHART_DEFAULTS.airspaceClasses]);
   });
 
   it('falls back to the default airspace classes when airspaceClasses is not an array', () => {
     const result = chartSearchSchema.parse({ airspaceClasses: 'CLASS_B' });
     expect(result.airspaceClasses).toEqual([...CHART_DEFAULTS.airspaceClasses]);
+  });
+
+  it('preserves Class A in airspaceClasses', () => {
+    const result = chartSearchSchema.parse({ airspaceClasses: ['CLASS_A'] });
+    expect(result.airspaceClasses).toEqual(['CLASS_A']);
+  });
+
+  it('preserves a valid subset of searchable airspace classes', () => {
+    const result = chartSearchSchema.parse({ searchAirspaceClasses: ['CLASS_B', 'ARTCC'] });
+    expect(result.searchAirspaceClasses).toEqual(['CLASS_B', 'ARTCC']);
+  });
+
+  it('falls back to the default searchable classes when Class A appears in searchAirspaceClasses', () => {
+    // Class A is drawable but never searchable, so it is not a member of the
+    // search enum and reads as an unknown id like any other.
+    const result = chartSearchSchema.parse({ searchAirspaceClasses: ['CLASS_A', 'CLASS_B'] });
+    expect(result.searchAirspaceClasses).toEqual([...CHART_DEFAULTS.searchAirspaceClasses]);
   });
 
   it('preserves a valid subset of airway categories', () => {
@@ -163,26 +181,41 @@ describe('chartSearchSchema', () => {
 });
 
 describe('CHART_DEFAULTS', () => {
-  it('excludes ARTCC from the default airspace classes', () => {
-    // ARTCC sectors blanket the entire chart at the CONUS default zoom and
+  it('excludes Class A and ARTCC from the default airspace classes', () => {
+    // Both blanket the entire chart at the CONUS default zoom - Class A as
+    // one 18,000 ft MSL to FL600 slab, ARTCC as the sector boundaries - and
     // visually drown out every other airspace tint, so they're opted out of
-    // the first-load view. The toggle still exposes ARTCC as an option, just
-    // not as a default.
+    // the first-load view. The toggle still exposes both as options, just
+    // not as defaults.
+    expect(CHART_DEFAULTS.airspaceClasses).not.toContain('CLASS_A');
     expect(CHART_DEFAULTS.airspaceClasses).not.toContain('ARTCC');
+    expect(AIRSPACE_CLASSES).toContain('CLASS_A');
     expect(AIRSPACE_CLASSES).toContain('ARTCC');
   });
 
   it('includes every other airspace class in the defaults', () => {
-    // Every class besides ARTCC is in the default-on set. Re-asserting this
-    // here (rather than just trusting the filter expression) catches a
-    // future drift if someone reorders or renames a class without updating
-    // the default.
+    // Every class besides Class A and ARTCC is in the default-on set.
+    // Re-asserting this here (rather than just trusting the filter
+    // expression) catches a future drift if someone reorders or renames a
+    // class without updating the default.
     for (const cls of AIRSPACE_CLASSES) {
-      if (cls === 'ARTCC') {
+      if (cls === 'CLASS_A' || cls === 'ARTCC') {
         continue;
       }
       expect(CHART_DEFAULTS.airspaceClasses).toContain(cls);
     }
+  });
+
+  it('searches every class except Class A by default', () => {
+    // The search default keeps ARTCC (the filter is intent, not visibility)
+    // but never Class A, whose two dozen identically-named features would
+    // only pad the result list.
+    expect(CHART_DEFAULTS.searchAirspaceClasses).toEqual(SEARCHABLE_AIRSPACE_CLASSES);
+    expect(SEARCHABLE_AIRSPACE_CLASSES).not.toContain('CLASS_A');
+    expect(SEARCHABLE_AIRSPACE_CLASSES).toContain('ARTCC');
+    expect(SEARCHABLE_AIRSPACE_CLASSES).toEqual(
+      AIRSPACE_CLASSES.filter((cls) => cls !== 'CLASS_A'),
+    );
   });
 });
 

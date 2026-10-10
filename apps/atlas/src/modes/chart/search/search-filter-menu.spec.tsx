@@ -2,7 +2,13 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_DEFAULTS, LAYER_IDS } from '../url-state.ts';
+import {
+  AIRSPACE_CLASSES,
+  AIRWAY_CATEGORIES,
+  CHART_DEFAULTS,
+  LAYER_IDS,
+  SEARCHABLE_AIRSPACE_CLASSES,
+} from '../url-state.ts';
 import type { ChartSearch } from '../url-state.ts';
 
 import { SearchFilterMenu } from './search-filter-menu.tsx';
@@ -177,7 +183,7 @@ function makeSearch(overrides: Partial<FilterSearch> = {}): FilterSearch {
     airspaceClasses: [...AIRSPACE_CLASSES],
     airwayCategories: [...AIRWAY_CATEGORIES],
     searchLayers: [...LAYER_IDS],
-    searchAirspaceClasses: [...AIRSPACE_CLASSES],
+    searchAirspaceClasses: [...SEARCHABLE_AIRSPACE_CLASSES],
     searchAirwayCategories: [...AIRWAY_CATEGORIES],
     searchIncludeHidden: false,
     ...overrides,
@@ -195,7 +201,7 @@ function makePrev(overrides: Partial<ChartSearch> = {}): ChartSearch {
     airspaceClasses: [...AIRSPACE_CLASSES],
     airwayCategories: [...AIRWAY_CATEGORIES],
     searchLayers: [...LAYER_IDS],
-    searchAirspaceClasses: [...AIRSPACE_CLASSES],
+    searchAirspaceClasses: [...SEARCHABLE_AIRSPACE_CLASSES],
     searchAirwayCategories: [...AIRWAY_CATEGORIES],
     searchIncludeHidden: false,
     ...overrides,
@@ -347,6 +353,16 @@ describe('SearchFilterMenu', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('offers no Class A sub-row, since Class A is never searchable', () => {
+      render(<SearchFilterMenu />);
+      expandLayer('airspace');
+
+      expect(screen.getByRole('menuitemcheckbox', { name: /class b/i })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('menuitemcheckbox', { name: /^class a$/i }),
+      ).not.toBeInTheDocument();
+    });
+
     it('reveals airspace sub-rows reflecting searchAirspaceClasses', () => {
       useSearchMock.mockReturnValue(makeSearch({ searchAirspaceClasses: ['CLASS_B', 'MOA'] }));
       render(<SearchFilterMenu />);
@@ -456,7 +472,7 @@ describe('SearchFilterMenu', () => {
         }),
       );
       expect(next.searchLayers).toEqual([...LAYER_IDS]);
-      expect(next.searchAirspaceClasses).toEqual([...AIRSPACE_CLASSES]);
+      expect(next.searchAirspaceClasses).toEqual([...SEARCHABLE_AIRSPACE_CLASSES]);
     });
 
     it('preserves a non-empty searchable sub-array when the parent is re-checked', () => {

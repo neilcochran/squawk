@@ -19,6 +19,7 @@ import {
 import type { ChartDatasetStates, ResolvedEntityState } from './entity-resolver.ts';
 
 const ALL_CLASSES = [
+  'CLASS_A',
   'CLASS_B',
   'CLASS_C',
   'CLASS_D',

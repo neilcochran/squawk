@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 
 import { isDefaultLayers, isDefaultSearchFilter } from './chart-filter-defaults.ts';
-import { AIRSPACE_CLASSES, AIRWAY_CATEGORIES, CHART_DEFAULTS, LAYER_IDS } from './url-state.ts';
+import {
+  AIRSPACE_CLASSES,
+  AIRWAY_CATEGORIES,
+  CHART_DEFAULTS,
+  LAYER_IDS,
+  SEARCHABLE_AIRSPACE_CLASSES,
+} from './url-state.ts';
 import type { AirspaceClass } from './url-state.ts';
 
 describe('isDefaultLayers', () => {
@@ -45,11 +51,21 @@ describe('isDefaultLayers', () => {
     ).toBe(false);
   });
 
-  it('returns false when ARTCC is added (the Layers default omits it)', () => {
+  it('returns false when every class is on (the Layers default omits Class A and ARTCC)', () => {
     expect(
       isDefaultLayers({
         layers: [...CHART_DEFAULTS.layers],
         airspaceClasses: [...AIRSPACE_CLASSES],
+        airwayCategories: [...CHART_DEFAULTS.airwayCategories],
+      }),
+    ).toBe(false);
+  });
+
+  it('returns false when Class A alone is added to the default classes', () => {
+    expect(
+      isDefaultLayers({
+        layers: [...CHART_DEFAULTS.layers],
+        airspaceClasses: [...CHART_DEFAULTS.airspaceClasses, 'CLASS_A'],
         airwayCategories: [...CHART_DEFAULTS.airwayCategories],
       }),
     ).toBe(false);
@@ -106,11 +122,11 @@ describe('isDefaultSearchFilter', () => {
     ).toBe(true);
   });
 
-  it('treats the all-classes default (including ARTCC) as default', () => {
+  it('treats every searchable class (including ARTCC) as default', () => {
     expect(
       isDefaultSearchFilter({
         searchLayers: [...CHART_DEFAULTS.searchLayers],
-        searchAirspaceClasses: [...AIRSPACE_CLASSES],
+        searchAirspaceClasses: [...SEARCHABLE_AIRSPACE_CLASSES],
         searchAirwayCategories: [...AIRWAY_CATEGORIES],
         searchIncludeHidden: false,
       }),

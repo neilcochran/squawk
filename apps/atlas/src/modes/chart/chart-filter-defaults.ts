@@ -28,14 +28,14 @@ function isSameSet<T>(a: readonly T[], b: readonly T[]): boolean {
 
 /**
  * Whether the Layers-menu URL fields are all at their `CHART_DEFAULTS` values:
- * every layer enabled, the all-except-ARTCC airspace-class set, and every
- * airway category. Drives the enablement of the Layers menu's reset row, which
- * is inert while this returns true.
+ * every layer enabled, the airspace-class set that omits Class A and ARTCC,
+ * and every airway category. Drives the enablement of the Layers menu's reset
+ * row, which is inert while this returns true.
  *
  * The airspace check must be a set comparison, not a length comparison: the
- * Layers default omits ARTCC, so an eleven-element set that swaps ARTCC in for
- * another class has the same length as the ten-element default yet is not the
- * default.
+ * Layers default omits Class A and ARTCC, so a ten-element set that swaps
+ * ARTCC in for another class has the same length as the ten-element default
+ * yet is not the default.
  *
  * @param search - The Layers-menu slice of the chart search params.
  * @returns True when `layers`, `airspaceClasses`, and `airwayCategories` all match their defaults.
@@ -52,10 +52,10 @@ export function isDefaultLayers(
 
 /**
  * Whether the search-filter URL fields are all at their `CHART_DEFAULTS`
- * values: every layer searchable, every airspace class (including ARTCC, unlike
- * the Layers default), every airway category, and include-hidden off. Drives
- * the enablement of the search-filter menu's reset row, which is inert while
- * this returns true.
+ * values: every layer searchable, every searchable airspace class (including
+ * ARTCC, unlike the Layers default; Class A is never searchable), every airway
+ * category, and include-hidden off. Drives the enablement of the search-filter
+ * menu's reset row, which is inert while this returns true.
  *
  * @param search - The search-filter slice of the chart search params.
  * @returns True when `searchLayers`, `searchAirspaceClasses`, `searchAirwayCategories`, and `searchIncludeHidden` all match their defaults.

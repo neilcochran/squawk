@@ -292,7 +292,7 @@ export function LayerToggle(): ReactElement {
                 <CheckIcon />
               </DropdownMenu.ItemIndicator>
             </span>
-            <span className="flex-1">Auto-hide Class E, Warning, ARTCC in 3D</span>
+            <span className="flex-1">Auto-hide Class A, E, Warning, ARTCC in 3D</span>
           </MenuItemRow>
           {/*
             Reset action at the very bottom behind its own separator. Disabled
