@@ -31,6 +31,7 @@ import {
 } from '../../scope/furniture.js';
 import type { FurnitureColors } from '../../scope/furniture.js';
 import { drawHalo } from '../../scope/halo.js';
+import { drawMeasureLine } from '../../scope/measure-draw.js';
 import { isNearCanvas, offsetByBearing, polarToScreen } from '../../scope/projection.js';
 import type { ScopeViewport, ScreenPoint } from '../../scope/projection.js';
 import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
@@ -336,7 +337,8 @@ function isSameInputs(a: PlacementInputs, b: PlacementInputs): boolean {
  * a velocity vector as many minutes long as the vector setting asks, and a
  * leader line, short or long as the leader setting asks, to its data block.
  * The selected target is ringed, and gets a halo of the radius the ring
- * setting asks for, if any. The
+ * setting asks for, if any; a range/bearing line, when the frame carries
+ * one, is drawn over the furniture and under the traffic. The
  * symbol's shape follows the aircraft's category - a square for a fixed-wing
  * aircraft, a circle for a rotorcraft, a triangle for a glider or balloon, a
  * diamond for a drone, a cross for a surface vehicle - and is hollow on the
@@ -418,6 +420,9 @@ export function createDigitalRenderer(theme: ScopeTheme): ScopeRenderer {
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
       drawCompassRose(context, furnitureColors, viewport);
       drawReceiverMarker(context, furnitureColors, viewport);
+      if (frame.measureLine !== undefined) {
+        drawMeasureLine(context, palette.measure, viewport, frame.measureLine);
+      }
       if (snapshot === undefined) {
         return;
       }

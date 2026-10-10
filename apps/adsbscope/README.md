@@ -49,7 +49,7 @@ The three sources are the same ones `@squawk/adsb-feed` and [`adsbtop`](../adsbt
 
 Everything you can change while the scope is running has both an on-screen control and a key. The zoom buttons sit in the bottom-right corner. In the bottom-left is the view style selector, followed by a selector for each setting the current view style has. A selector shows all of its options side by side with the active one filled in - `Digital | Analog`, `Tags On | Off` - so it always shows both what is selected and what else can be; press an option to select it. The keys step to the next option instead.
 
-Under the selectors is a `Hide controls` button (`H`). It folds the view style and setting selectors away, leaving just a `Show controls` button and the zoom buttons, which makes room on a small screen; the keys all keep working while the selectors are hidden. On a phone-sized screen the scope starts with them hidden.
+Under the selectors are two buttons. `Measure` (`B`) starts a [range/bearing line](#measuring), and reads `Stop measuring` while one is armed or drawn. `Hide controls` (`H`) folds the view style and setting selectors away, leaving just a `Show controls` button and the zoom buttons, which makes room on a small screen; the keys all keep working while the selectors are hidden. On a phone-sized screen the scope starts with them hidden.
 
 | Key              | Action                                              |
 | ---------------- | --------------------------------------------------- |
@@ -64,7 +64,8 @@ Under the selectors is a `Hide controls` button (`H`). It folds the view style a
 | `R`              | Analog only: step the Sweep setting (4.8 s, 12 s)   |
 | `H`              | Hide or show the view style and setting controls    |
 | `.` and `,`      | Select the next or previous aircraft                |
-| `Esc`            | Clear the selection                                 |
+| `B`              | Start a range/bearing line, or clear the one drawn  |
+| `Esc`            | Clear the range/bearing line, or else the selection |
 
 The range steps are 5, 10, 20, 40, 60, 80, 100, 150, 200, and 250 nm, and each zoom button disables itself at the end of its travel. Keys held with Ctrl, Alt, or Cmd are left to the browser, so `Ctrl+R` still reloads the page.
 
@@ -125,7 +126,7 @@ The bundled data covers the United States only, so a receiver elsewhere gets an 
 
 Click or tap an aircraft - its symbol or return, or its data block or tag - to select it. It is ringed on the scope, and a panel in the bottom-right corner writes out what its data block abbreviates or has no room for: ICAO hex, registered model in full, broadcast category, squawk (noting one that has just changed), altitude in feet, the altitude selected on the autopilot, vertical rate, ground speed, indicated and true airspeed, track, magnetic heading, selected heading, whether the autopilot is on and which of its modes are, bearing and range from the receiver, and how long ago it was last heard from. Only what the aircraft has actually reported gets a row, so under a source that cannot report something the row is absent rather than reading as off; see [What each source can show](#what-each-source-can-show). The selected heading carries no `true` or `magnetic`, because the broadcast does not say which it is. On a screen too short for every row, the panel stops below the lists in the top corners and scrolls. If the aircraft is in the [registry](#aircraft-models), its registration, make, operator, and year of manufacture are fetched and added a moment later; for an aircraft the registry does not know, or with `--no-registry`, those rows are simply absent.
 
-Click empty scope, press `Esc`, or use the panel's close button to clear the selection. `.` and `,` step forwards and backwards through every tracked aircraft in order of callsign, which is also the only way to select one that has no position and so is not on the scope. The selection is kept when you switch view styles, and is dropped when the aircraft stops being tracked: a selection always names an aircraft that is actually there.
+Click empty scope, press `Esc` (which first clears a [range/bearing line](#measuring), if there is one), or use the panel's close button to clear the selection. `.` and `,` step forwards and backwards through every tracked aircraft in order of callsign, which is also the only way to select one that has no position and so is not on the scope. The selection is kept when you switch view styles, and is dropped when the aircraft stops being tracked: a selection always names an aircraft that is actually there.
 
 Only aircraft the view style draws can be clicked: the digital scope fills the window, so an aircraft beyond the outermost ring can be picked there, while the analog scope ends at it. In the analog style the ring sits on the aircraft's most recent return, which is where the aircraft was when the beam last crossed it.
 
@@ -134,6 +135,8 @@ Only aircraft the view style draws can be clicked: the digital scope fills the w
 Move the pointer over the scope and the readout in the top-left corner adds a line with the pointer's bearing and range from the receiver - `cursor 047 true, 12.3 nm` - the trackball readout of a real scope, for reading off where something is without selecting it. It reads the scope's geometry rather than the traffic, so it works over empty scope and beyond the outermost ring, and it goes away when the pointer leaves the scope. A touch screen has no pointer, so the line never appears there.
 
 The `Ring` selector, or `J`, draws a circle of 3 or 5 nm around the selected aircraft - the J-ring, or halo, of a real scope - for judging separation by eye: anything inside the ring is closer than that. It is drawn to scale, so it grows and shrinks with the range, and in the analog style it sits on the aircraft's most recent return, as the selection ring does. Each view style remembers its own choice, as it does for the map.
+
+The `Measure` button under the selectors, or `B`, starts a range/bearing line, for reading the bearing and distance between any two aircraft or points. With an aircraft selected the line starts from it, and the next click or tap on the scope is the far end; with nothing selected, the next two are the two ends. An end on an aircraft follows it as it moves, and the readout moves with it; an end on empty scope stays put. The readout in the top-left corner says which end it is waiting for, then reads the line - `measure 135 true, 14.1 nm`, the bearing from the first end to the second - and while the far end is still to be picked the line runs from the first end to the pointer, so a distance can be read before it is fixed. On the scope the line is labeled `135/14.1` beside its middle. It is kept when you change the view style or the range, is dropped when an aircraft it is anchored to stops being tracked, and is cleared by the button (now reading `Stop measuring`), by `B` again, or by `Esc`, which clears a line before it clears the selection. While a line is waiting for an end, clicking the scope takes the end rather than selecting an aircraft. One line at a time; it is measured on the scope's own flat plane, as a ruler laid on the screen would, which at these ranges is within a fraction of a percent of the distance over the earth.
 
 ### Bookmarking a view
 
@@ -166,7 +169,7 @@ The registry is loaded in the background once the scope is serving, so models ap
 
 ### The readout
 
-The readout in the top-left corner shows the source and station, link health, how many aircraft are tracked and how many of those have a position to plot, and the current range. Link health reads `LIVE`, `STATION RECONNECTING` when `adsbscope` has lost its connection to dump1090-fa, or `NO LINK TO SERVER` when the browser has lost its connection to `adsbscope`; both reconnect on their own. While the pointer is over the scope, a last line reads its bearing and range from the receiver; see [Measuring](#measuring).
+The readout in the top-left corner shows the source and station, link health, how many aircraft are tracked and how many of those have a position to plot, and the current range. Link health reads `LIVE`, `STATION RECONNECTING` when `adsbscope` has lost its connection to dump1090-fa, or `NO LINK TO SERVER` when the browser has lost its connection to `adsbscope`; both reconnect on their own. While the pointer is over the scope, a further line reads its bearing and range from the receiver, and while a range/bearing line is being drawn or is drawn, another reads what it measures; see [Measuring](#measuring).
 
 ## Replay
 

@@ -29,6 +29,7 @@ const THEME: ScopeTheme = {
     selected: '#444446',
     history: '#555555',
     vector: '#666666',
+    measure: '#666667',
   },
   ui: {
     background: '#001100',

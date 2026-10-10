@@ -56,6 +56,7 @@ function renderAt(
     frameTimeMs,
     settings: options.settings ?? {},
     selectedIcaoHex: options.selectedIcaoHex,
+    measureLine: undefined,
   });
   return recording;
 }
@@ -212,6 +213,34 @@ describe('createAnalogRenderer', () => {
     expect(blipArcs(resumed)).toHaveLength(2);
   });
 
+  it('draws the range/bearing line the frame carries, labeled, at full brightness', () => {
+    const measureLine = {
+      from: { trueBearingDeg: 0, rangeNm: 10 },
+      to: { trueBearingDeg: 90, rangeNm: 10 },
+      trueBearingDeg: 135,
+      distanceNm: 10 * Math.SQRT2,
+    };
+    const recording = createRecordingContext();
+
+    createAnalogRenderer(ANALOG_THEME).render(recording.context, {
+      viewport: createViewport(WIDTH_PX, HEIGHT_PX, 60, DEFAULT_PX_PER_REM),
+      rangeNm: 60,
+      snapshot: undefined,
+      videoMap: undefined,
+      frameTimeMs: 0,
+      settings: {},
+      selectedIcaoHex: undefined,
+      measureLine,
+    });
+
+    const label = recording.callsTo('fillText').find((call) => call.args[0] === '135/14.1');
+    expect(label?.fillStyle).toBe(COLORS.measure);
+    expect(label?.globalAlpha).toBe(1);
+    expect(recording.callsTo('stroke').some((call) => call.strokeStyle === COLORS.measure)).toBe(
+      true,
+    );
+  });
+
   describe('afterglow', () => {
     it('trails the beam as a wedge that fades from the beam backward', () => {
       const renderer = createAnalogRenderer(ANALOG_THEME);
@@ -247,6 +276,7 @@ describe('createAnalogRenderer', () => {
         frameTimeMs: 0,
         settings: {},
         selectedIcaoHex: undefined,
+        measureLine: undefined,
       });
 
       expect(recording.callsTo('closePath')).toHaveLength(0);
@@ -557,6 +587,7 @@ describe('createAnalogRenderer', () => {
           frameTimeMs: 0,
           settings: {},
           selectedIcaoHex: undefined,
+          measureLine: undefined,
         };
 
         renderer.render(context, frame);

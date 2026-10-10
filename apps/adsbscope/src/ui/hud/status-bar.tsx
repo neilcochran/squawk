@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { APP_NAME } from '../../shared/protocol.js';
 import type { PolarPoint, ScopeConfig, ScopeSnapshot } from '../../shared/protocol.js';
 import type { StreamState } from '../data/use-scope-stream.js';
+import { formatPolarPosition } from '../scope/position-format.js';
 
 import {
   formatTargetCount,
@@ -10,7 +11,6 @@ import {
   LINK_STATUS_LABELS,
   resolveLinkStatus,
 } from './link-status.js';
-import { formatPolarPosition } from './position-format.js';
 import styles from './status-bar.module.css';
 
 /** Props for {@link StatusBar}. */
@@ -25,14 +25,16 @@ export interface StatusBarProps {
   rangeNm: number;
   /** Where the pointer is over the scope, relative to the receiver, or undefined while it is off the scope or there is no pointer. */
   cursor: PolarPoint | undefined;
+  /** What the range/bearing line measures, or what it is waiting for, or undefined while there is none. */
+  measure: string | undefined;
 }
 
 /**
  * The readout in the corner of the scope: source, link health, target counts,
  * and range, followed by the bearing and range under the pointer while there
- * is one. The pointer line sits outside the live region, since it changes
- * with every movement of the mouse and is only of use to whoever is moving
- * it.
+ * is one, and the range/bearing line's readout while there is a line. Those
+ * two sit outside the live region, since they change with every movement of
+ * the mouse and are only of use to whoever is moving it.
  */
 export function StatusBar({
   config,
@@ -40,6 +42,7 @@ export function StatusBar({
   snapshot,
   rangeNm,
   cursor,
+  measure,
 }: StatusBarProps): ReactElement {
   const status = resolveLinkStatus(streamState, snapshot);
   return (
@@ -56,6 +59,7 @@ export function StatusBar({
         <span>range {rangeNm} nm</span>
       </div>
       {cursor !== undefined && <span>cursor {formatPolarPosition(cursor)}</span>}
+      {measure !== undefined && <span>{measure}</span>}
     </div>
   );
 }

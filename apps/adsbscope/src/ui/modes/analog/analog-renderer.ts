@@ -25,6 +25,7 @@ import {
 } from '../../scope/furniture.js';
 import type { FurnitureColors } from '../../scope/furniture.js';
 import { drawHalo } from '../../scope/halo.js';
+import { drawMeasureLine } from '../../scope/measure-draw.js';
 import { offsetByBearing, polarToScreen } from '../../scope/projection.js';
 import type { ScopeViewport, ScreenPoint } from '../../scope/projection.js';
 import type { ScopeFrame, ScopeRenderer } from '../../scope/renderer.js';
@@ -369,7 +370,10 @@ function drawTags(
  * leaves its tag clear, and keeps it until it has to move. The directions are
  * worked out again only when a blip is painted or the snapshot changes, not
  * every frame. The selected aircraft's newest blip is ringed, and gets a halo
- * of the radius the ring setting asks for, if any.
+ * of the radius the ring setting asks for, if any. A range/bearing line, when
+ * the frame carries one, is drawn over the furniture and under the beam and
+ * the returns, where its ends follow the aircraft's live positions rather
+ * than their last returns.
  *
  * @param theme - Colors and type to draw with. Canvas colors must be six-digit hex.
  * @returns The renderer.
@@ -447,6 +451,9 @@ export function createAnalogRenderer(theme: AnalogTheme): ScopeRenderer {
       drawRangeRings(context, furnitureColors, viewport, frame.rangeNm);
       drawCompassRose(context, furnitureColors, viewport);
       drawReceiverMarker(context, furnitureColors, viewport);
+      if (frame.measureLine !== undefined) {
+        drawMeasureLine(context, palette.measure, viewport, frame.measureLine);
+      }
       drawAfterglow(context, palette.sweep, viewport, sweepDeg);
       drawBeam(context, palette.sweep, viewport, sweepDeg);
       for (const blip of blips) {

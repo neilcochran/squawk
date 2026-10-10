@@ -1,5 +1,6 @@
 import type { PolarPoint } from '../../shared/protocol.js';
-import { formatCompassLabel, FULL_CIRCLE_DEG } from '../scope/furniture.js';
+
+import { formatCompassLabel, FULL_CIRCLE_DEG } from './furniture.js';
 
 /**
  * Formats a heading or bearing the way the compass rose labels one: rounded

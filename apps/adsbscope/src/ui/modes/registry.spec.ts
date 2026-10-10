@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SCOPE_MODE_ID, SCOPE_MODE_IDS } from '../../shared/protocol.js';
 import {
   CONTROLS_HOTKEY,
+  MEASURE_HOTKEY,
   MODE_HOTKEY,
   SELECT_NEXT_HOTKEY,
   SELECT_PREVIOUS_HOTKEY,
@@ -50,6 +51,7 @@ describe('the mode registry', () => {
     const reserved = [
       MODE_HOTKEY,
       CONTROLS_HOTKEY,
+      MEASURE_HOTKEY,
       SELECT_NEXT_HOTKEY,
       SELECT_PREVIOUS_HOTKEY,
       ...RANGE_KEYS.in,

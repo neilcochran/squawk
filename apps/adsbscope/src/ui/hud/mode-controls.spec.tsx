@@ -13,7 +13,12 @@ import type { ScopeModeDefinition } from '../modes/mode.js';
 import { SCOPE_MODES, SCOPE_MODES_BY_ID } from '../modes/registry.js';
 
 import { HIDE_CONTROLS_LABEL, SHOW_CONTROLS_LABEL } from './controls-visibility.js';
-import { ModeControls, VIEW_STYLE_CAPTION } from './mode-controls.js';
+import {
+  MEASURE_LABEL,
+  ModeControls,
+  STOP_MEASURING_LABEL,
+  VIEW_STYLE_CAPTION,
+} from './mode-controls.js';
 
 const ANALOG = SCOPE_MODES_BY_ID.analog;
 const DIGITAL = SCOPE_MODES_BY_ID.digital;
@@ -30,6 +35,8 @@ describe('ModeControls', () => {
         onSelectSetting={vi.fn()}
         expanded
         onToggleExpanded={vi.fn()}
+        measuring={false}
+        onToggleMeasure={vi.fn()}
       />,
     );
 
@@ -56,6 +63,8 @@ describe('ModeControls', () => {
         onSelectSetting={vi.fn()}
         expanded
         onToggleExpanded={vi.fn()}
+        measuring={false}
+        onToggleMeasure={vi.fn()}
       />,
     );
 
@@ -72,6 +81,8 @@ describe('ModeControls', () => {
         onSelectSetting={vi.fn()}
         expanded
         onToggleExpanded={vi.fn()}
+        measuring={false}
+        onToggleMeasure={vi.fn()}
       />,
     );
 
@@ -102,6 +113,8 @@ describe('ModeControls', () => {
         onSelectSetting={vi.fn()}
         expanded
         onToggleExpanded={vi.fn()}
+        measuring={false}
+        onToggleMeasure={vi.fn()}
       />,
     );
 
@@ -127,6 +140,8 @@ describe('ModeControls', () => {
         onSelectSetting={onSelectSetting}
         expanded
         onToggleExpanded={vi.fn()}
+        measuring={false}
+        onToggleMeasure={vi.fn()}
       />,
     );
 
@@ -151,6 +166,8 @@ describe('ModeControls', () => {
         onSelectSetting={vi.fn()}
         expanded
         onToggleExpanded={vi.fn()}
+        measuring={false}
+        onToggleMeasure={vi.fn()}
       />,
     );
 
@@ -162,6 +179,49 @@ describe('ModeControls', () => {
       'title',
       'T changes tags',
     );
+  });
+
+  describe('measuring', () => {
+    it('offers to start a range/bearing line, naming the keys that start and clear one', () => {
+      const onToggleMeasure = vi.fn();
+      render(
+        <ModeControls
+          modes={SCOPE_MODES}
+          mode={DIGITAL}
+          settingValues={defaultSettingValues(DIGITAL)}
+          onSelectMode={vi.fn()}
+          onSelectSetting={vi.fn()}
+          expanded
+          onToggleExpanded={vi.fn()}
+          measuring={false}
+          onToggleMeasure={onToggleMeasure}
+        />,
+      );
+
+      const button = screen.getByRole('button', { name: MEASURE_LABEL });
+      expect(button).toHaveAttribute('title', 'B starts a range/bearing line; Escape clears it');
+      fireEvent.click(button);
+      expect(onToggleMeasure).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers to stop measuring while a line is armed or drawn', () => {
+      render(
+        <ModeControls
+          modes={SCOPE_MODES}
+          mode={DIGITAL}
+          settingValues={defaultSettingValues(DIGITAL)}
+          onSelectMode={vi.fn()}
+          onSelectSetting={vi.fn()}
+          expanded
+          onToggleExpanded={vi.fn()}
+          measuring
+          onToggleMeasure={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole('button', { name: STOP_MEASURING_LABEL })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: MEASURE_LABEL })).not.toBeInTheDocument();
+    });
   });
 
   describe('hiding and showing', () => {
@@ -176,6 +236,8 @@ describe('ModeControls', () => {
           onSelectSetting={vi.fn()}
           expanded
           onToggleExpanded={onToggleExpanded}
+          measuring={false}
+          onToggleMeasure={vi.fn()}
         />,
       );
 
@@ -196,6 +258,8 @@ describe('ModeControls', () => {
           onSelectSetting={vi.fn()}
           expanded={false}
           onToggleExpanded={vi.fn()}
+          measuring={false}
+          onToggleMeasure={vi.fn()}
         />,
       );
 

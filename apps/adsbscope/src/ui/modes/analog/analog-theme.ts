@@ -36,6 +36,7 @@ export const ANALOG_THEME: AnalogTheme = {
     selected: '#d6ffe0',
     history: '#7dffa0',
     vector: '#7dffa0',
+    measure: '#d6ffe0',
     sweep: '#3dff7a',
   },
   ui: {

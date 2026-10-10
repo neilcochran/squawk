@@ -28,6 +28,7 @@ describe('StatusBar', () => {
         snapshot={snapshot}
         rangeNm={40}
         cursor={undefined}
+        measure={undefined}
       />,
     );
 
@@ -47,6 +48,7 @@ describe('StatusBar', () => {
         snapshot={undefined}
         rangeNm={60}
         cursor={undefined}
+        measure={undefined}
       />,
     );
     expect(screen.getByText(LINK_STATUS_LABELS.serverLost)).toBeInTheDocument();
@@ -58,6 +60,7 @@ describe('StatusBar', () => {
         snapshot={undefined}
         rangeNm={60}
         cursor={undefined}
+        measure={undefined}
       />,
     );
     expect(screen.getByText(LINK_STATUS_LABELS.connecting)).toBeInTheDocument();
@@ -69,6 +72,7 @@ describe('StatusBar', () => {
         snapshot={makeSnapshot([], { connection: 'reconnecting' })}
         rangeNm={60}
         cursor={undefined}
+        measure={undefined}
       />,
     );
     expect(screen.getByText(LINK_STATUS_LABELS.stationReconnecting)).toBeInTheDocument();
@@ -82,6 +86,7 @@ describe('StatusBar', () => {
         snapshot={makeSnapshot()}
         rangeNm={60}
         cursor={{ trueBearingDeg: 47.4, rangeNm: 12.34 }}
+        measure={undefined}
       />,
     );
 
@@ -97,10 +102,27 @@ describe('StatusBar', () => {
         snapshot={makeSnapshot()}
         rangeNm={60}
         cursor={undefined}
+        measure={undefined}
       />,
     );
 
     expect(screen.queryByText(/cursor/)).not.toBeInTheDocument();
+  });
+
+  it("adds the range/bearing line's readout, outside the live region", () => {
+    render(
+      <StatusBar
+        config={CONFIG}
+        streamState="open"
+        snapshot={makeSnapshot()}
+        rangeNm={60}
+        cursor={undefined}
+        measure="measure 135 true, 14.1 nm"
+      />,
+    );
+
+    expect(screen.getByText('measure 135 true, 14.1 nm')).toBeInTheDocument();
+    expect(screen.getByRole('status')).not.toHaveTextContent('measure');
   });
 
   it('styles a healthy status differently from one that needs attention', () => {
@@ -111,6 +133,7 @@ describe('StatusBar', () => {
         snapshot={makeSnapshot()}
         rangeNm={60}
         cursor={undefined}
+        measure={undefined}
       />,
     );
     const healthyClass = screen.getByText(LINK_STATUS_LABELS.live).className;
@@ -122,6 +145,7 @@ describe('StatusBar', () => {
         snapshot={undefined}
         rangeNm={60}
         cursor={undefined}
+        measure={undefined}
       />,
     );
 

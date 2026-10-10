@@ -43,6 +43,7 @@ function renderFrame(
     frameTimeMs: 0,
     settings: extras.settings ?? {},
     selectedIcaoHex: undefined,
+    measureLine: undefined,
   };
   createDigitalRenderer(theme).render(recording.context, frame);
   return recording;
@@ -158,6 +159,37 @@ describe('createDigitalRenderer', () => {
       .callsTo('lineTo')
       .find((call) => Math.abs(Number(call.args[1]) - at.yPx) < 1e-6 && call.args[0] !== at.xPx);
     expect(Number(tip?.args[0])).toBeCloseTo(at.xPx + 24 * VIEWPORT.pxPerNm);
+  });
+
+  it('draws the range/bearing line the frame carries, labeled, in its own color', () => {
+    const measureLine = {
+      from: { trueBearingDeg: 0, rangeNm: 10 },
+      to: { trueBearingDeg: 90, rangeNm: 10 },
+      trueBearingDeg: 135,
+      distanceNm: 10 * Math.SQRT2,
+    };
+    const recording = createRecordingContext();
+
+    createDigitalRenderer(DIGITAL_THEME).render(recording.context, {
+      viewport: VIEWPORT,
+      rangeNm: 60,
+      snapshot: makeSnapshot(),
+      videoMap: undefined,
+      frameTimeMs: 0,
+      settings: {},
+      selectedIcaoHex: undefined,
+      measureLine,
+    });
+
+    const to = polarToScreen(VIEWPORT, measureLine.to);
+    const line = recording
+      .callsTo('lineTo')
+      .find((call) => call.args[0] === to.xPx && call.args[1] === to.yPx);
+    expect(line).toBeDefined();
+    expect(recording.callsTo('stroke').some((call) => call.strokeStyle === COLORS.measure)).toBe(
+      true,
+    );
+    expect(recording.texts()).toContain('135/14.1');
   });
 
   it('draws no velocity vector without both track and ground speed', () => {
@@ -340,6 +372,7 @@ describe('createDigitalRenderer', () => {
         frameTimeMs: 0,
         settings: {},
         selectedIcaoHex,
+        measureLine: undefined,
       });
       const ringAt = recording.calls.findIndex(
         (call) => call.method === 'stroke' && call.strokeStyle === COLORS.selected,
@@ -380,6 +413,7 @@ describe('createDigitalRenderer', () => {
         frameTimeMs: 0,
         settings: {},
         selectedIcaoHex: undefined,
+        measureLine: undefined,
       });
 
       const label = recording.callsTo('fillText').find((call) => call.args[0] === 'AAAAAA');
@@ -406,6 +440,7 @@ describe('createDigitalRenderer', () => {
         frameTimeMs: 0,
         settings,
         selectedIcaoHex: 'aaaaaa',
+        measureLine: undefined,
       });
       const at = polarToScreen(VIEWPORT, position);
       return recording
@@ -537,6 +572,7 @@ describe('createDigitalRenderer', () => {
         frameTimeMs,
         settings: {},
         selectedIcaoHex: undefined,
+        measureLine: undefined,
       });
       return recording.callsTo('fillRect').at(-1)?.fillStyle;
     }
@@ -586,6 +622,7 @@ describe('createDigitalRenderer', () => {
         frameTimeMs: 0,
         settings: {},
         selectedIcaoHex: undefined,
+        measureLine: undefined,
         ...overrides,
       };
     }

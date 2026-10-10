@@ -5,11 +5,13 @@ import type { PolarPoint, ScopeSnapshot, ScopeVideoMap } from '../../shared/prot
 
 import type { ScopeExtent } from './extent.js';
 import { fitCanvas } from './fit-canvas.js';
+import type { MeasuredLine } from './measure.js';
 import { createViewport, screenToPolar } from './projection.js';
 import type { ScopeViewport, ScreenPoint } from './projection.js';
 import type { ScopeRenderer } from './renderer.js';
 import styles from './scope-canvas.module.css';
 import { pickTarget } from './selection.js';
+import type { ScopePick } from './selection.js';
 import { readPxPerRem } from './units.js';
 
 /** Props for {@link ScopeCanvas}. */
@@ -26,10 +28,12 @@ export interface ScopeCanvasProps {
   settings: Readonly<Record<string, string>>;
   /** The ICAO hex of the selected aircraft, or undefined if none is selected. */
   selectedIcaoHex: string | undefined;
+  /** The range/bearing line to draw, or undefined if there is none. */
+  measureLine: MeasuredLine | undefined;
   /** How far the active mode's scope reaches: only aircraft within it can be picked. */
   extent: ScopeExtent;
-  /** Called when the scope is clicked or tapped: with the ICAO hex of the aircraft whose symbol, data block, or tag was picked, or undefined for empty scope. */
-  onSelect: (icaoHex: string | undefined) => void;
+  /** Called when the scope is clicked or tapped, with the aircraft whose symbol, data block, or tag was picked, if any, and where the click landed. */
+  onPick: (pick: ScopePick) => void;
   /** Called as a pointer moves over the scope, with the bearing and range from the receiver under it, and with undefined when it leaves. A touch is not a pointer: it reports nothing. */
   onHover: (position: PolarPoint | undefined) => void;
 }
@@ -51,9 +55,10 @@ function canvasPoint(event: MouseEvent<HTMLCanvasElement>): ScreenPoint {
  * scope follows a window resize, a device rotation, a browser zoom, or a
  * change of font size without any of them being handled specially.
  *
- * A click picks an aircraft, and a moving pointer reads out the bearing and
- * range under it; both are measured against the viewport the last frame was
- * painted with, so neither does anything before the first frame.
+ * A click reports what it picked and where it landed, and a moving pointer
+ * reads out the bearing and range under it; both are measured against the
+ * viewport the last frame was painted with, so neither does anything before
+ * the first frame.
  */
 export function ScopeCanvas({
   renderer,
@@ -62,17 +67,34 @@ export function ScopeCanvas({
   videoMap,
   settings,
   selectedIcaoHex,
+  measureLine,
   extent,
-  onSelect,
+  onPick,
   onHover,
 }: ScopeCanvasProps): ReactElement {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
-  const latest = useRef({ renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex });
+  const latest = useRef({
+    renderer,
+    rangeNm,
+    snapshot,
+    videoMap,
+    settings,
+    selectedIcaoHex,
+    measureLine,
+  });
   const paintedViewport = useRef<ScopeViewport | undefined>(undefined);
 
   useEffect(() => {
-    latest.current = { renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex };
-  }, [renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex]);
+    latest.current = {
+      renderer,
+      rangeNm,
+      snapshot,
+      videoMap,
+      settings,
+      selectedIcaoHex,
+      measureLine,
+    };
+  }, [renderer, rangeNm, snapshot, videoMap, settings, selectedIcaoHex, measureLine]);
 
   useEffect(() => {
     renderer.reset();
@@ -108,6 +130,7 @@ export function ScopeCanvas({
         frameTimeMs,
         settings: current.settings,
         selectedIcaoHex: current.selectedIcaoHex,
+        measureLine: current.measureLine,
       });
       frameHandle = window.requestAnimationFrame(paint);
     }
@@ -127,12 +150,14 @@ export function ScopeCanvas({
       }
       const point = canvasPoint(event);
       const current = latest.current;
-      onSelect(
-        pickTarget(viewport, current.snapshot, point, extent) ??
+      onPick({
+        icaoHex:
+          pickTarget(viewport, current.snapshot, point, extent) ??
           current.renderer.pickDataBlock(point),
-      );
+        position: screenToPolar(viewport, point),
+      });
     },
-    [extent, onSelect],
+    [extent, onPick],
   );
 
   const handlePointerMove = useCallback(

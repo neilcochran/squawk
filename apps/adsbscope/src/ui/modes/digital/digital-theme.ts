@@ -24,6 +24,7 @@ export const DIGITAL_THEME: ScopeTheme = {
     selected: '#4dd2ff',
     history: '#3f7fe0',
     vector: '#c8d4c8',
+    measure: '#e6d98a',
   },
   ui: {
     background: '#02060a',

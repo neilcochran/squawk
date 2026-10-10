@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import type { ScopeAircraftDetails, ScopeTarget } from '../../shared/protocol.js';
 
 import { ControlButton } from './control-button.js';
-import { DESELECT_HOTKEY } from './hotkeys.js';
+import { CLEAR_HOTKEY } from './hotkeys.js';
 import { buildInspectContent } from './inspect-panel-content.js';
 import styles from './inspect-panel.module.css';
 
@@ -47,7 +47,7 @@ export function InspectPanel({
         <ControlButton
           label={DESELECT_LABEL}
           shape="square"
-          hint={`${DESELECT_HOTKEY} deselects`}
+          hint={`${CLEAR_HOTKEY} deselects`}
           onPress={onDeselect}
         >
           x

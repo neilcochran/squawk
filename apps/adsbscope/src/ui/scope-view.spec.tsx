@@ -8,6 +8,7 @@ import { HIDE_CONTROLS_LABEL, SHOW_CONTROLS_LABEL } from './hud/controls-visibil
 import { EMERGENCY_LIST_LABEL } from './hud/emergency-list.js';
 import { DESELECT_LABEL, INSPECT_PANEL_LABEL } from './hud/inspect-panel.js';
 import { LINK_STATUS_LABELS } from './hud/link-status.js';
+import { MEASURE_LABEL, STOP_MEASURING_LABEL } from './hud/mode-controls.js';
 import { TAB_LIST_LABEL } from './hud/tab-list.js';
 import { SCOPE_MODES_BY_ID } from './modes/registry.js';
 import { createViewport, polarToScreen } from './scope/projection.js';
@@ -538,6 +539,122 @@ describe('ScopeView', () => {
       expect(await screen.findByText('N409CC')).toBeInTheDocument();
       expect(screen.getByText('PAPPY AIR LLC')).toBeInTheDocument();
       expect(loadAircraftDetails).toHaveBeenCalledWith('aaaaaa');
+    });
+  });
+
+  describe('range/bearing line', () => {
+    const snapshot = makeSnapshot([
+      makeTarget({
+        icaoHex: 'aaaaaa',
+        callsign: 'AAL7',
+        position: { trueBearingDeg: 0, rangeNm: 10 },
+      }),
+      makeTarget({ icaoHex: 'bbbbbb', callsign: 'DAL45' }),
+    ]);
+
+    function renderWithTraffic(): void {
+      render(<ScopeView config={CONFIG} loadVideoMap={loadVideoMap} />);
+      act(() => {
+        FakeEventSource.latest().emitOpen();
+        FakeEventSource.latest().emit('snapshot', JSON.stringify(snapshot));
+      });
+    }
+
+    it('arms a line from the B key and prompts for both ends when nothing is selected', () => {
+      renderWithTraffic();
+      expect(screen.queryByText(/measure/)).not.toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: 'b' });
+
+      expect(screen.getByText('measure: pick the first point')).toBeInTheDocument();
+    });
+
+    it('starts the line from the selected aircraft, waiting only for the far end', () => {
+      renderWithTraffic();
+      fireEvent.keyDown(window, { key: '.' });
+
+      fireEvent.keyDown(window, { key: 'B' });
+
+      expect(screen.getByText('measure: pick the second point')).toBeInTheDocument();
+    });
+
+    it('clears a line from the B key, and from Escape before Escape clears the selection', () => {
+      renderWithTraffic();
+      fireEvent.keyDown(window, { key: '.' });
+      fireEvent.keyDown(window, { key: 'b' });
+      expect(screen.getByText(/measure/)).toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: 'b' });
+      expect(screen.queryByText(/measure/)).not.toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: 'b' });
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(screen.queryByText(/measure/)).not.toBeInTheDocument();
+      expect(screen.getByRole('region', { name: INSPECT_PANEL_LABEL })).toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(screen.queryByRole('region', { name: INSPECT_PANEL_LABEL })).not.toBeInTheDocument();
+    });
+
+    it('starts and stops a line from the button under the selectors', () => {
+      renderWithTraffic();
+
+      fireEvent.click(screen.getByRole('button', { name: MEASURE_LABEL }));
+      expect(screen.getByText('measure: pick the first point')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: MEASURE_LABEL })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: STOP_MEASURING_LABEL }));
+      expect(screen.queryByText(/measure/)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: MEASURE_LABEL })).toBeInTheDocument();
+    });
+
+    it('drops a line anchored to an aircraft once the aircraft is no longer tracked', () => {
+      renderWithTraffic();
+      fireEvent.keyDown(window, { key: '.' });
+      fireEvent.keyDown(window, { key: 'b' });
+      expect(screen.getByText(/measure/)).toBeInTheDocument();
+
+      act(() => {
+        FakeEventSource.latest().emit('snapshot', JSON.stringify(makeSnapshot()));
+      });
+
+      expect(screen.queryByText(/measure/)).not.toBeInTheDocument();
+    });
+
+    it('takes its ends from clicks on the scope, reads the line out, and keeps it across a view style and range change', async () => {
+      const { context } = createRecordingContext();
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+        () => context as unknown as null,
+      );
+      vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(800);
+      vi.spyOn(HTMLCanvasElement.prototype, 'clientHeight', 'get').mockReturnValue(600);
+      renderWithTraffic();
+      const canvas = screen.getByLabelText('Radar scope');
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 800, 600));
+      await act(async () => {
+        await new Promise((resolve) => {
+          window.requestAnimationFrame(() => resolve(undefined));
+        });
+      });
+      const viewport = createViewport(800, 600, 60, DEFAULT_PX_PER_REM);
+      const onAircraft = polarToScreen(viewport, { trueBearingDeg: 0, rangeNm: 10 });
+      const onEmptyScope = polarToScreen(viewport, { trueBearingDeg: 90, rangeNm: 10 });
+
+      fireEvent.keyDown(window, { key: 'b' });
+      fireEvent.click(canvas, { clientX: onAircraft.xPx, clientY: onAircraft.yPx });
+      expect(screen.getByText('measure: pick the second point')).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: INSPECT_PANEL_LABEL })).not.toBeInTheDocument();
+
+      fireEvent.click(canvas, { clientX: onEmptyScope.xPx, clientY: onEmptyScope.yPx });
+      expect(screen.getByText('measure 135 true, 14.1 nm')).toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: 'm' });
+      fireEvent.keyDown(window, { key: '+' });
+      expect(screen.getByText('measure 135 true, 14.1 nm')).toBeInTheDocument();
+
+      fireEvent.click(canvas, { clientX: onAircraft.xPx, clientY: onAircraft.yPx });
+      expect(screen.getByText('measure 135 true, 14.1 nm')).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: INSPECT_PANEL_LABEL })).toHaveTextContent('AAL7');
     });
   });
 

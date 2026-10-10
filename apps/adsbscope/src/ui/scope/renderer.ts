@@ -1,5 +1,6 @@
 import type { ScopeSnapshot, ScopeVideoMap } from '../../shared/protocol.js';
 
+import type { MeasuredLine } from './measure.js';
 import type { ScopeViewport, ScreenPoint } from './projection.js';
 
 /** Everything a renderer needs to paint one frame. */
@@ -18,6 +19,8 @@ export interface ScopeFrame {
   settings: Readonly<Record<string, string>>;
   /** The ICAO hex of the selected aircraft, or undefined if none is selected. */
   selectedIcaoHex: string | undefined;
+  /** The range/bearing line to draw, already resolved to where its ends are now, or undefined if there is none. */
+  measureLine: MeasuredLine | undefined;
 }
 
 /**

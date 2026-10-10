@@ -6,8 +6,7 @@ import type {
 } from '../../shared/protocol.js';
 import { categoryLabel } from '../scope/category.js';
 import { formatDataBlock } from '../scope/data-block.js';
-
-import { formatHeading, formatPolarPosition, formatTrueBearing } from './position-format.js';
+import { formatHeading, formatPolarPosition, formatTrueBearing } from '../scope/position-format.js';
 
 /** One labeled value in the inspect panel. */
 export interface InspectRow {
