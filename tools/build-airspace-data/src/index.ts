@@ -7,6 +7,7 @@ import AdmZip from 'adm-zip';
 
 import { parseNasrArgs } from '@squawk/build-shared';
 
+import { deriveClassA } from './derive-class-a.js';
 import { loadAirportStates } from './load-airport-states.js';
 import { parseArtcc } from './parse-artcc.js';
 import { parseClassAirspace } from './parse-class-airspace.js';
@@ -109,7 +110,11 @@ async function main(): Promise<void> {
       const artccFeatures = await parseArtcc(arbBaseCsvPath, arbSegCsvPath);
       console.log(`[index] Parsed ${artccFeatures.length} ARTCC features.`);
 
-      const allFeatures = [...classFeatures, ...suaFeatures, ...artccFeatures];
+      console.log('[index] Deriving Class A airspace from the ARTCC HIGH strata...');
+      const classAFeatures = deriveClassA(artccFeatures);
+      console.log(`[index] Derived ${classAFeatures.length} Class A features.`);
+
+      const allFeatures = [...classAFeatures, ...classFeatures, ...suaFeatures, ...artccFeatures];
       console.log(`[index] Total features: ${allFeatures.length}`);
 
       await writeOutput(allFeatures, outputPath, nasrCycleDate);

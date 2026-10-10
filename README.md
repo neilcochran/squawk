@@ -65,20 +65,20 @@ To try the whole suite with no code, point an MCP-compatible LLM client at `npx 
 
 Each query library is listed with its companion data package. The bundled snapshots are built from FAA sources and cover US data only.
 
-| Package                                                  | Description                                                                                                                             |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@squawk/airports`](packages/libs/airports)             | Airport queries by identifier, location, or fuzzy search                                                                                |
-| [`@squawk/airport-data`](packages/libs/airport-data)     | Pre-processed FAA NASR airport snapshot with runways, frequencies, and ILS data                                                         |
-| [`@squawk/airspace`](packages/libs/airspace)             | Airspace queries by position and altitude, identifier, or fuzzy search across Class B/C/D/E, Special Use Airspace, and ARTCC boundaries |
-| [`@squawk/airspace-data`](packages/libs/airspace-data)   | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`                                                        |
-| [`@squawk/navaids`](packages/libs/navaids)               | Navaid queries by identifier, frequency, type, location, or fuzzy search                                                                |
-| [`@squawk/navaid-data`](packages/libs/navaid-data)       | Pre-processed FAA NASR navaid snapshot for use with `@squawk/navaids`                                                                   |
-| [`@squawk/fixes`](packages/libs/fixes)                   | Fix/waypoint queries by identifier, location, or fuzzy search                                                                           |
-| [`@squawk/fix-data`](packages/libs/fix-data)             | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`                                                               |
-| [`@squawk/airways`](packages/libs/airways)               | Airway lookup, traversal, and expansion by designation, fix, or search                                                                  |
-| [`@squawk/airway-data`](packages/libs/airway-data)       | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`                                                                   |
-| [`@squawk/procedures`](packages/libs/procedures)         | Instrument procedure lookup and expansion for SIDs, STARs, and IAPs (CIFP)                                                              |
-| [`@squawk/procedure-data`](packages/libs/procedure-data) | Pre-processed FAA CIFP procedure snapshot for use with `@squawk/procedures`                                                             |
+| Package                                                  | Description                                                                                                                               |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@squawk/airports`](packages/libs/airports)             | Airport queries by identifier, location, or fuzzy search                                                                                  |
+| [`@squawk/airport-data`](packages/libs/airport-data)     | Pre-processed FAA NASR airport snapshot with runways, frequencies, and ILS data                                                           |
+| [`@squawk/airspace`](packages/libs/airspace)             | Airspace queries by position and altitude, identifier, or fuzzy search across Class A/B/C/D/E, Special Use Airspace, and ARTCC boundaries |
+| [`@squawk/airspace-data`](packages/libs/airspace-data)   | Pre-processed FAA NASR airspace GeoJSON snapshot for use with `@squawk/airspace`                                                          |
+| [`@squawk/navaids`](packages/libs/navaids)               | Navaid queries by identifier, frequency, type, location, or fuzzy search                                                                  |
+| [`@squawk/navaid-data`](packages/libs/navaid-data)       | Pre-processed FAA NASR navaid snapshot for use with `@squawk/navaids`                                                                     |
+| [`@squawk/fixes`](packages/libs/fixes)                   | Fix/waypoint queries by identifier, location, or fuzzy search                                                                             |
+| [`@squawk/fix-data`](packages/libs/fix-data)             | Pre-processed FAA NASR fix/waypoint snapshot for use with `@squawk/fixes`                                                                 |
+| [`@squawk/airways`](packages/libs/airways)               | Airway lookup, traversal, and expansion by designation, fix, or search                                                                    |
+| [`@squawk/airway-data`](packages/libs/airway-data)       | Pre-processed FAA NASR airway snapshot for use with `@squawk/airways`                                                                     |
+| [`@squawk/procedures`](packages/libs/procedures)         | Instrument procedure lookup and expansion for SIDs, STARs, and IAPs (CIFP)                                                                |
+| [`@squawk/procedure-data`](packages/libs/procedure-data) | Pre-processed FAA CIFP procedure snapshot for use with `@squawk/procedures`                                                               |
 
 ### Flight planning
 

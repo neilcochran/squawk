@@ -184,6 +184,23 @@ describe('usBundledAirspace', () => {
     }
   });
 
+  it('carries one derived Class A feature per domestic high stratum, with the Class A block', () => {
+    const classA = usBundledAirspace.features.filter((f) => f.properties?.type === 'CLASS_A');
+    const highStrata = usBundledAirspace.features.filter(
+      (f) => f.properties?.type === 'ARTCC' && f.properties.artccStratum === 'HIGH',
+    );
+    // Every HIGH stratum shape, plus San Juan's single combined stratum.
+    expect(classA.length).toBe(highStrata.length + 1);
+    for (const feature of classA) {
+      assert(feature.properties !== null);
+      expect(feature.properties.name).toBe('CLASS A');
+      expect(feature.properties.identifier).toBe('');
+      expect(feature.properties.floor).toEqual({ valueFt: 18000, reference: 'MSL' });
+      expect(feature.properties.ceiling).toEqual({ valueFt: 60000, reference: 'MSL' });
+      expect(feature.properties.artccStratum).toBe(null);
+    }
+  });
+
   it('keeps every ARTCC sub-polygon within standard [-180, 180] longitude range', () => {
     const artccFeatures = usBundledAirspace.features.filter((f) => f.properties?.type === 'ARTCC');
     for (const feature of artccFeatures) {

@@ -24,7 +24,11 @@ export interface AltitudeBound {
 /**
  * The type or class designation of an airspace feature.
  *
- * CLASS_B, CLASS_C, CLASS_D, and CLASS_E variants are controlled airspace.
+ * CLASS_A, CLASS_B, CLASS_C, CLASS_D, and CLASS_E variants are controlled
+ * airspace. CLASS_A is not published by the FAA as geometry: it is derived
+ * by the data build from the HIGH stratum of each domestic ARTCC (plus San
+ * Juan's single stratum), carrying the 18,000 ft MSL to FL600 block that
+ * 14 CFR 71.33 designates, so one Class A feature exists per stratum shape.
  * Class E subtypes follow FAA NASR LOCAL_TYPE designations:
  * - CLASS_E2: Surface area (SFC floor) around airports without an operating control tower
  * - CLASS_E3: Airspace extending to SFC for instrument approach procedures
@@ -43,6 +47,7 @@ export interface AltitudeBound {
  * {@link ArtccStratum} for the stratum identifier carried on each feature.
  */
 export type AirspaceType =
+  | 'CLASS_A'
   | 'CLASS_B'
   | 'CLASS_C'
   | 'CLASS_D'
@@ -70,6 +75,7 @@ export type AirspaceType =
  * union member without updating the array fails the build.
  */
 export const AIRSPACE_TYPES = [
+  'CLASS_A',
   'CLASS_B',
   'CLASS_C',
   'CLASS_D',

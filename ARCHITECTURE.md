@@ -161,6 +161,8 @@ Sources:
 
 Each builder writes its output snapshot directly into the corresponding `packages/libs/<pkg>-data/data/` directory. Local copies of the source cycles live under `reference-data/` (gitignored).
 
+One feature in the airspace bundle is derived rather than published. The FAA states Class A as a rule (14 CFR 71.33: 18,000 ft MSL to FL600 over the contiguous states, Alaska, and Puerto Rico, their coastal waters, and the designated offshore areas within domestic radar coverage) and ships no polygon for it, so `tools/build-airspace-data` emits one `CLASS_A` feature per domestic ARTCC HIGH stratum shape, which traces exactly that lateral extent, with the Class A vertical block attached. The precedent is the ARTCC strata themselves, whose floors and ceilings are operational values the builder attaches rather than source data. Everything else in every bundle is the FAA's own geometry and attributes; a new derived feature needs the same justification, a note here, and a sentence in the data package's README.
+
 The date embedded in each data package's README matches the cycle date inside the bundled JSON; [scripts/check-readme-dates.js](scripts/check-readme-dates.js) enforces this in CI, so a snapshot bump without a matching README update fails the build.
 
 ---

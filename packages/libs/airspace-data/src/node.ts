@@ -48,9 +48,11 @@ const dataPath = resolve(dirname(fileURLToPath(import.meta.url)), '../data/airsp
  * Pre-processed GeoJSON snapshot of US airspace geometry derived from the
  * FAA NASR 28-day subscription cycle.
  *
- * Covers Class B, C, D, and E controlled airspace (E2 through E7 subtypes),
- * and Special Use Airspace (MOAs, restricted, prohibited, warning, alert,
- * and national security areas).
+ * Covers Class A, B, C, D, and E controlled airspace (E2 through E7
+ * subtypes), Special Use Airspace (MOAs, restricted, prohibited, warning,
+ * alert, and national security areas), and ARTCC boundaries. Class A is
+ * derived by the build from each domestic center's HIGH stratum, since the
+ * FAA publishes it as a rule rather than as geometry.
  *
  * Each feature's `geometry` is a GeoJSON Polygon representing one airspace
  * boundary. Each feature's `properties` object contains:

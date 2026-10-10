@@ -749,6 +749,30 @@ describe('airspace tools', () => {
     }
   });
 
+  it('query_airspace_at_position accepts CLASS_A as a type filter and finds it at cruise altitude', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'query_airspace_at_position',
+        arguments: {
+          lat: 40.6413,
+          lon: -73.7781,
+          altitudeFt: 25_000,
+          airspaceTypes: ['CLASS_A'],
+        },
+      });
+      const parsed = z
+        .object({ features: z.array(z.object({ type: z.string() }).passthrough()) })
+        .parse(result.structuredContent);
+      assert(parsed.features.length > 0);
+      for (const feat of parsed.features) {
+        expect(feat.type).toBe('CLASS_A');
+      }
+    } finally {
+      await close();
+    }
+  });
+
   it('get_airspace_for_airport returns null for unknown identifier', async () => {
     const { client, close } = await connectTestClient();
     try {

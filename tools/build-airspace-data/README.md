@@ -42,9 +42,14 @@ npm run validate
 3. Parses ARTCC center boundaries from `ARB_BASE.csv` and `ARB_SEG.csv`,
    emitting one feature per `(center, stratum)` shape (LOW, HIGH, UTA, plus
    oceanic CTA/FIR for US-controlled centers)
-4. Enriches Class B/C/D/E features with state codes from `APT_BASE.csv`
-5. Merges all features, rounds coordinates to 5 decimal places (~1.1m precision),
-   and writes a single GeoJSON FeatureCollection (~6,900 features)
+4. Derives Class A airspace, which the FAA publishes as a rule rather than
+   as geometry: one feature per domestic HIGH stratum shape (and San Juan's
+   combined stratum), carrying the 18,000 ft MSL to FL600 block over the
+   stratum's polygon. Honolulu and the oceanic centers have no HIGH stratum
+   and get none, matching 14 CFR 71.33
+5. Enriches Class B/C/D/E features with state codes from `APT_BASE.csv`
+6. Merges all features, rounds coordinates to 5 decimal places (~1.1m precision),
+   and writes a single GeoJSON FeatureCollection (~6,950 features)
 
 ## Input files
 

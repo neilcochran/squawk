@@ -13,7 +13,7 @@ describe('AIRSPACE_TYPES / isAirspaceType', () => {
     const nonMembers = [
       '',
       'class_b',
-      'CLASS_A',
+      'CLASS_F',
       'CLASS_E1',
       'CLASS_E8',
       'TFR',

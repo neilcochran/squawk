@@ -11,6 +11,12 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 
 ## Coverage
 
+- Class A, as one feature per domestic ARTCC: 18,000 ft MSL to FL600 over
+  the contiguous states, Alaska, and Puerto Rico and their adjacent offshore
+  airspace, none over Hawaii. The FAA publishes no Class A geometry, so
+  `@squawk/airspace-data` derives it from each center's HIGH stratum.
+  Adjacent centers' polygons abut, so a point on a shared boundary falls
+  inside two Class A features; dedupe by `type` for a single answer.
 - Class B, C, D, and E controlled airspace (E2 through E7 subtypes)
 - Special Use Airspace: MOAs, restricted, prohibited, warning, alert, and national security areas
 - ARTCC (Air Route Traffic Control Center) lateral boundaries for every
