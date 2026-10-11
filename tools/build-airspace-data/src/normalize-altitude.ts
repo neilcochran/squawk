@@ -62,6 +62,12 @@ export function normalizeShapefileAltitude(
  * SAA AIXM 5.0 subscriber files, where the value is the parsed numeric
  * text content, uom is the element's uom attribute, and reference is the
  * text content of the paired upperLimitReference/lowerLimitReference element.
+ *
+ * The subscriber files encode the surface itself as the value "GND", so a
+ * numeric value paired with the "SFC" reference is a height above the
+ * surface and becomes an AGL bound, the same reading `normalizeShapefileAltitude`
+ * gives the Class_Airspace shapefile. A flight level is resolved to feet MSL
+ * whatever reference accompanies it.
  */
 export function normalizeSaaAltitude(
   /**
@@ -75,12 +81,9 @@ export function normalizeSaaAltitude(
   /** Altitude reference from the paired reference element (e.g. "MSL", "AGL", "SFC", "STD", "OTHER"). */
   reference: string,
 ): AltitudeBound | null {
-  if (reference === 'SFC') {
-    return { valueFt: 0, reference: 'SFC' };
-  }
-
   // "GND" means ground level. It appears with various uom/reference combinations
-  // (including uom="FT" with no reference, or uom/reference="OTHER"). Always SFC.
+  // (usually uom="FT" with reference "SFC", but also with no reference or with
+  // uom/reference="OTHER"). Always SFC.
   const stringVal = String(value).trim().toUpperCase();
   if (stringVal === 'GND') {
     return { valueFt: 0, reference: 'SFC' };
@@ -100,9 +103,18 @@ export function normalizeSaaAltitude(
   const numVal = typeof value === 'number' ? value : parseFloat(String(value));
 
   // Flight level: always multiply by 100 to get feet MSL. The reference element
-  // is typically "STD" but is sometimes missing entirely.
+  // is typically "STD" but is sometimes missing or given as "SFC".
   if (uom === 'FL') {
     return { valueFt: numVal * FT_PER_FL, reference: 'MSL' };
+  }
+
+  // A positive height against the SFC reference is feet above the surface;
+  // zero is the surface itself.
+  if (reference === 'SFC') {
+    if (numVal > 0) {
+      return { valueFt: numVal, reference: 'AGL' };
+    }
+    return { valueFt: 0, reference: 'SFC' };
   }
 
   if (reference === 'AGL') {
