@@ -1,5 +1,20 @@
 # @squawk/mcp
 
+## 0.14.3
+
+### Patch Changes
+
+- 9600515: ### Fixed
+
+  - The `parse_flightplan_route` tool description's example route is `KLAX DCT LAX J60 SAX DCT KJFK` and its dotted procedure example is `DEEZZ6.CANDR`; the previous `KJFK DCT MERIT J60 MARTN DCT KLAX` and `NUBLE4.JJIMY` do not resolve against the bundled data. The `find_procedures_by_identifier` examples replace `NUBLE4` with `DEEZZ6` for the same reason, and the README's example prompt uses the new route.
+
+- Updated dependencies [9600515]
+- Updated dependencies [9600515]
+- Updated dependencies [9600515]
+  - @squawk/airway-data@0.6.3
+  - @squawk/airways@0.5.3
+  - @squawk/flightplan@0.6.4
+
 ## 0.14.2
 
 ### Patch Changes
