@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/geo)](https://www.npmjs.com/package/@squawk/geo) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Geospatial utilities for aviation applications: great-circle distance, initial bearing, midpoint, destination point, and polygon containment.
+Geospatial utilities for aviation applications: great-circle distance, initial bearing, midpoint, destination point, polygon containment, and polygon label anchors.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_geo.html)**
 
@@ -19,7 +19,7 @@ npm install @squawk/geo
 Exports are grouped by domain namespace to keep call sites self-documenting:
 
 ```ts
-import { greatCircle, polygon } from '@squawk/geo';
+import { greatCircle, polygon, polygonGeoJson } from '@squawk/geo';
 
 // Great-circle calculations (WGS84 lat/lon in decimal degrees)
 const distNm = greatCircle.distanceNm(40.6413, -73.7781, 33.9425, -118.4081);
@@ -42,6 +42,10 @@ if (polygon.pointInBoundingBox(-118.4, 33.945, box)) {
     // point is inside the polygon
   }
 }
+
+// Where to put a label: the point deepest inside a GeoJSON polygon,
+// which stays inside crescents and rings whose centroid falls outside
+const anchor = polygonGeoJson.poleOfInaccessibility({ type: 'Polygon', coordinates: [ring] });
 ```
 
 ## Key Features
@@ -51,6 +55,7 @@ if (polygon.pointInBoundingBox(-118.4, 33.945, box)) {
 - **Midpoint** and **destination point** along a great-circle path
 - **Point-in-polygon** ray casting for arbitrary closed rings
 - **Axis-aligned bounding box** computation and containment test, useful as a fast rejection filter before the full polygon test
+- **Pole of inaccessibility** of a GeoJSON polygon, the interior point farthest from every edge, for label placement that never lands outside the shape
 
 ## Conventions
 

@@ -11,6 +11,9 @@ import type { Polygon } from 'geojson';
 
 import type { BoundingBox } from './polygon.js';
 
+export { poleOfInaccessibility } from './pole-of-inaccessibility.js';
+export type { PoleOfInaccessibilityOptions } from './pole-of-inaccessibility.js';
+
 /**
  * Tests whether a point lies inside a polygon, treating the first ring
  * as the outer boundary and any subsequent rings as holes (a point

@@ -115,6 +115,7 @@ vi.mock('./layers/airports-layer.tsx', async (importOriginal) => {
   const actual = (await importOriginal()) as typeof import('./layers/airports-layer.tsx');
   return { ...actual, AirportsLayer: () => null };
 });
+vi.mock('./layers/airspace-feature-badges.tsx', () => ({ AirspaceFeatureBadges: () => null }));
 vi.mock('./layers/airspace-layer.tsx', async (importOriginal) => {
   const actual = (await importOriginal()) as typeof import('./layers/airspace-layer.tsx');
   return {

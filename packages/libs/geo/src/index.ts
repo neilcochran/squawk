@@ -29,6 +29,9 @@
  *     // ...
  *   }
  * }
+ *
+ * // Label anchor guaranteed to lie inside the shape
+ * const anchor = polygonGeoJson.poleOfInaccessibility(geojsonPolygon);
  * ```
  */
 

@@ -1,6 +1,6 @@
 import type { GeoJsonProperties } from 'geojson';
 
-import type { AltitudeBound } from '@squawk/types';
+import type { AirspaceFeature, AltitudeBound } from '@squawk/types';
 
 /**
  * Synthetic per-feature property added at airspace source-projection
@@ -75,6 +75,37 @@ export function compareAirspaceByAltitudeDesc(
   b: AirspaceAltitudeKey,
 ): number {
   return b.ceilingFt - a.ceilingFt || b.floorFt - a.floorFt;
+}
+
+/**
+ * Orders the features of one multi-feature airspace grouping into the
+ * sequence both the inspector panel and the map badges present: highest
+ * vertical layer first per {@link compareAirspaceByAltitudeDesc}, with
+ * ties kept in input order. The panel's "Feature N" section titles and
+ * the numbered badges on the map both take their N from a position in
+ * this sequence, so every consumer must build it through this function
+ * from the same dataset-ordered input; a second sort elsewhere is how
+ * the two drift apart.
+ *
+ * @param features - The grouping's features in dataset order.
+ * @param altitudeKey - Reads the floor / ceiling pair off one feature.
+ * @returns A new array in presentation order.
+ */
+export function orderAirspaceFeatures<T>(
+  features: readonly T[],
+  altitudeKey: (feature: T) => AirspaceAltitudeKey,
+): T[] {
+  return [...features].sort((a, b) =>
+    compareAirspaceByAltitudeDesc(altitudeKey(a), altitudeKey(b)),
+  );
+}
+
+/**
+ * {@link AirspaceAltitudeKey} of a full dataset record, for use with
+ * {@link orderAirspaceFeatures} and {@link compareAirspaceByAltitudeDesc}.
+ */
+export function altitudeKeyOfAirspaceFeature(feature: AirspaceFeature): AirspaceAltitudeKey {
+  return { ceilingFt: feature.ceiling.valueFt, floorFt: feature.floor.valueFt };
 }
 
 /**

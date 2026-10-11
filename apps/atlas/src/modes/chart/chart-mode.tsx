@@ -24,6 +24,7 @@ import { DisambiguationPopover } from './interaction/disambiguation-popover.tsx'
 import { InspectableHoverCursor } from './interaction/inspectable-cursor.tsx';
 import { LayerToggle } from './layer-toggle/layer-toggle.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
+import { AirspaceFeatureBadges } from './layers/airspace-feature-badges.tsx';
 import {
   AirspaceExtrusionLayer,
   AirspaceFeatureOverlayLayers,
@@ -343,22 +344,30 @@ export function ChartMode(): ReactElement {
           */}
           {layers.includes('airspace') ? <AirspaceExtrusionLayer /> : null}
           {/*
-            Airspace feature-focus outline and per-feature badge labels
-            mount LAST so MapLibre stacks them above every other source's
-            layers - airport / navaid / fix circles included. Without
-            this trailing position the badges sit underneath the point
-            symbols and get visually clipped.
+            The airspace feature-focus outline mounts LAST so MapLibre
+            stacks it above every other source's layers - airport /
+            navaid / fix circles included - and so the top-of-stack
+            order it re-asserts is applied after every other layer has
+            registered.
           */}
           {layers.includes('airspace') ? <AirspaceFeatureOverlayLayers /> : null}
           {/*
             Airway-leg focus mounts after the airspace overlay so a
             hovered leg's brighter stroke sits above every base layer
-            and above the airspace feature focus / badge stack. The
+            and above the airspace feature focus outline. The
             component returns null whenever the active selection is
             not an airway, so it costs nothing for non-airway views.
           */}
           {layers.includes('airways') ? <AirwayLegFocusLayer /> : null}
         </MapCanvas>
+        {/*
+          Numbered badges for the selected multi-feature airspace. A DOM
+          overlay rather than a symbol layer so each badge can be lifted
+          onto its feature's box top in the tilted view; it sits right
+          after the canvas so every later sibling (search, controls,
+          inspector) paints above it.
+        */}
+        {layers.includes('airspace') ? <AirspaceFeatureBadges /> : null}
         <InspectableHoverCursor />
         <ChartViewResetListener />
         <SearchBox onSelectResult={handleSearchSelect} />

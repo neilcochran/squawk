@@ -10,10 +10,9 @@ import {
 } from '../../../shared/inspector/airspace-feature.ts';
 
 import {
-  AIRSPACE_BADGE_OFFSET_PROPERTY,
-  AIRSPACE_FEATURE_COUNT_PROPERTY,
   AIRSPACE_FEATURE_INDEX_PROPERTY,
-  AIRSPACE_FEATURE_LABEL_PROPERTY,
+  airspaceBadgeGroups,
+  getAirspaceProjection,
   projectAirspaceSource,
 } from './airspace-source-projection.ts';
 
@@ -52,6 +51,18 @@ const SQUARE_AT_TEN: Polygon = {
   ],
 };
 
+/** A zero-area polygon: no pole of inaccessibility can be found for it. */
+const DEGENERATE_LINE: Polygon = {
+  type: 'Polygon',
+  coordinates: [
+    [
+      [5, 5],
+      [6, 5],
+      [5, 5],
+    ],
+  ],
+};
+
 function buildFeature(params: BuildFeatureParams): Feature {
   const props: Record<string, unknown> = {
     type: params.type,
@@ -84,82 +95,152 @@ function loadedState(features: Feature[]): Parameters<typeof projectAirspaceSour
   };
 }
 
+/** Two rings of one Class B in dataset order: the lower ring first. */
+function twoRingClassB(): Feature[] {
+  return [
+    buildFeature({
+      type: 'CLASS_B',
+      identifier: 'BOS',
+      floor: { valueFt: 1000, reference: 'MSL' },
+      ceiling: { valueFt: 7000, reference: 'MSL' },
+      geometry: SQUARE_AT_ORIGIN,
+    }),
+    buildFeature({
+      type: 'CLASS_B',
+      identifier: 'BOS',
+      floor: { valueFt: 4000, reference: 'MSL' },
+      ceiling: { valueFt: 7000, reference: 'MSL' },
+      geometry: SQUARE_AT_TEN,
+    }),
+  ];
+}
+
 describe('projectAirspaceSource', () => {
   it('returns undefined when the dataset is still loading', () => {
     expect(projectAirspaceSource({ status: 'loading' })).toBeUndefined();
+    expect(airspaceBadgeGroups({ status: 'loading' })).toBeUndefined();
   });
 
   it('returns undefined when the dataset has errored', () => {
     expect(projectAirspaceSource({ status: 'error', error: new Error('x') })).toBeUndefined();
   });
 
-  it('annotates a single-feature airspace with index 0 and count 1', () => {
-    const result = projectAirspaceSource(
-      loadedState([
-        buildFeature({
-          type: 'CLASS_B',
-          identifier: 'BOS',
-          floor: { valueFt: 0, reference: 'SFC' },
-          ceiling: { valueFt: 10000, reference: 'MSL' },
-        }),
-      ]),
-    );
+  it('annotates a single-feature airspace with index 0 and no badge group', () => {
+    const state = loadedState([
+      buildFeature({
+        type: 'CLASS_B',
+        identifier: 'BOS',
+        floor: { valueFt: 0, reference: 'SFC' },
+        ceiling: { valueFt: 10000, reference: 'MSL' },
+      }),
+    ]);
+    const result = projectAirspaceSource(state);
     expect(result).toBeDefined();
     const projected = (result as FeatureCollection).features[0];
     const props = projected?.properties;
     expect(props?.[AIRSPACE_MATCH_KEY_PROPERTY]).toBe('CLASS_B/BOS');
     expect(props?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(0);
-    expect(props?.[AIRSPACE_FEATURE_COUNT_PROPERTY]).toBe(1);
-    expect(props?.[AIRSPACE_FEATURE_LABEL_PROPERTY]).toBe('1');
     expect(props?.[AIRSPACE_FLOOR_FT_PROPERTY]).toBe(0);
     expect(props?.[AIRSPACE_FLOOR_REF_PROPERTY]).toBe('SFC');
     expect(props?.[AIRSPACE_CEILING_FT_PROPERTY]).toBe(10000);
     expect(props?.[AIRSPACE_CEILING_REF_PROPERTY]).toBe('MSL');
-    // Single-feature group: badge offset is centered at 0.
-    expect(props?.[AIRSPACE_BADGE_OFFSET_PROPERTY]).toEqual([0, 0]);
+    expect(airspaceBadgeGroups(state)?.get('CLASS_B/BOS')).toBeUndefined();
   });
 
-  it('assigns running indices and centered badge offsets across a multi-feature group', () => {
+  it('numbers a multi-feature group highest layer first, not in dataset order', () => {
+    const result = projectAirspaceSource(loadedState(twoRingClassB()));
+    const features = (result as FeatureCollection).features;
+    expect(features).toHaveLength(2);
+    // The 4000 ft ring is dataset feature 2 but presents as Feature 1.
+    expect(features[0]?.properties?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(1);
+    expect(features[1]?.properties?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(0);
+  });
+
+  it('keeps dataset order for features that tie on altitude', () => {
     const result = projectAirspaceSource(
       loadedState([
-        buildFeature({ type: 'CLASS_B', identifier: 'BOS' }),
-        buildFeature({ type: 'CLASS_B', identifier: 'BOS' }),
+        buildFeature({ type: 'CLASS_B', identifier: 'BOS', geometry: SQUARE_AT_ORIGIN }),
+        buildFeature({ type: 'CLASS_B', identifier: 'BOS', geometry: SQUARE_AT_TEN }),
       ]),
     );
     const features = (result as FeatureCollection).features;
-    expect(features).toHaveLength(2);
     expect(features[0]?.properties?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(0);
     expect(features[1]?.properties?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(1);
-    for (const feature of features) {
-      expect(feature.properties?.[AIRSPACE_FEATURE_COUNT_PROPERTY]).toBe(2);
-    }
-    // Two-feature column straddles the centroid: -0.7em then +0.7em.
-    expect((features[0]?.properties?.[AIRSPACE_BADGE_OFFSET_PROPERTY] as number[])[1]).toBeCloseTo(
-      -0.7,
-    );
-    expect((features[1]?.properties?.[AIRSPACE_BADGE_OFFSET_PROPERTY] as number[])[1]).toBeCloseTo(
-      0.7,
-    );
   });
 
-  it('uses the artccStratum string as the badge label when present', () => {
-    const result = projectAirspaceSource(
+  it('builds one badge per feature of a multi-feature group, anchored inside its own polygon', () => {
+    const badges = airspaceBadgeGroups(loadedState(twoRingClassB()))?.get('CLASS_B/BOS');
+    expect(badges).toBeDefined();
+    expect(badges).toHaveLength(2);
+    const first = badges?.[0];
+    const second = badges?.[1];
+    // Presentation order: the 4000 ft ring (at 10..11) is Feature 1.
+    expect(first?.featureIndex).toBe(0);
+    expect(first?.label).toBe('1');
+    expect(first?.anchor[0]).toBeGreaterThan(10);
+    expect(first?.anchor[0]).toBeLessThan(11);
+    expect(first?.anchor[1]).toBeGreaterThan(10);
+    expect(first?.anchor[1]).toBeLessThan(11);
+    expect(first?.ceiling).toEqual({ valueFt: 7000, reference: 'MSL' });
+    expect(second?.featureIndex).toBe(1);
+    expect(second?.label).toBe('2');
+    expect(second?.anchor[0]).toBeGreaterThan(0);
+    expect(second?.anchor[0]).toBeLessThan(1);
+    // Distinct anchors: no column spreading.
+    expect(first?.columnOffsetEm).toBe(0);
+    expect(second?.columnOffsetEm).toBe(0);
+  });
+
+  it('spreads badges that share an anchor into a centered column', () => {
+    const badges = airspaceBadgeGroups(
       loadedState([
         buildFeature({ type: 'ARTCC', identifier: 'ZBW', artccStratum: 'LOW' }),
         buildFeature({ type: 'ARTCC', identifier: 'ZBW', artccStratum: 'HIGH' }),
       ]),
-    );
-    const features = (result as FeatureCollection).features;
-    expect(features[0]?.properties?.[AIRSPACE_FEATURE_LABEL_PROPERTY]).toBe('LOW');
-    expect(features[1]?.properties?.[AIRSPACE_FEATURE_LABEL_PROPERTY]).toBe('HIGH');
+    )?.get('ARTCC/ZBW');
+    expect(badges).toHaveLength(2);
+    expect(badges?.[0]?.columnOffsetEm).toBeCloseTo(-0.7);
+    expect(badges?.[1]?.columnOffsetEm).toBeCloseTo(0.7);
   });
 
-  it('falls back to a numeric index label when artccStratum is empty', () => {
-    const result = projectAirspaceSource(
-      loadedState([buildFeature({ type: 'ARTCC', identifier: 'ZBW', artccStratum: '' })]),
-    );
-    const feature = (result as FeatureCollection).features[0];
-    expect(feature?.properties?.[AIRSPACE_FEATURE_LABEL_PROPERTY]).toBe('1');
+  it('uses the artccStratum string as the badge label when present', () => {
+    const badges = airspaceBadgeGroups(
+      loadedState([
+        buildFeature({ type: 'ARTCC', identifier: 'ZBW', artccStratum: 'LOW' }),
+        buildFeature({ type: 'ARTCC', identifier: 'ZBW', artccStratum: 'HIGH' }),
+      ]),
+    )?.get('ARTCC/ZBW');
+    expect(badges?.map((badge) => badge.label)).toEqual(['LOW', 'HIGH']);
+  });
+
+  it('falls back to a numeric label when artccStratum is empty', () => {
+    const badges = airspaceBadgeGroups(
+      loadedState([
+        buildFeature({ type: 'ARTCC', identifier: 'ZBW', artccStratum: '' }),
+        buildFeature({ type: 'ARTCC', identifier: 'ZBW', artccStratum: '' }),
+      ]),
+    )?.get('ARTCC/ZBW');
+    expect(badges?.map((badge) => badge.label)).toEqual(['1', '2']);
+  });
+
+  it('skips the badge of a feature whose polygon has no interior', () => {
+    const badges = airspaceBadgeGroups(
+      loadedState([
+        buildFeature({ type: 'CLASS_B', identifier: 'BOS', geometry: SQUARE_AT_ORIGIN }),
+        buildFeature({ type: 'CLASS_B', identifier: 'BOS', geometry: DEGENERATE_LINE }),
+      ]),
+    )?.get('CLASS_B/BOS');
+    expect(badges).toHaveLength(1);
+    expect(badges?.[0]?.featureIndex).toBe(0);
+  });
+
+  it('memoizes the projection on the dataset object', () => {
+    const state = loadedState(twoRingClassB());
+    if (state.status !== 'loaded') {
+      throw new Error('expected a loaded state');
+    }
+    expect(getAirspaceProjection(state.dataset)).toBe(getAirspaceProjection(state.dataset));
+    expect(projectAirspaceSource(state)).toBe(projectAirspaceSource(state));
   });
 
   it('omits primitive altitude properties when the source bound is malformed', () => {
@@ -224,19 +305,20 @@ describe('projectAirspaceSource', () => {
   });
 
   it('uses a polygon-centroid match key when the identifier is empty', () => {
-    const result = projectAirspaceSource(
-      loadedState([
-        buildFeature({ type: 'CLASS_E5', identifier: '', geometry: SQUARE_AT_ORIGIN }),
-        buildFeature({ type: 'CLASS_E5', identifier: '', geometry: SQUARE_AT_TEN }),
-      ]),
-    );
+    const state = loadedState([
+      buildFeature({ type: 'CLASS_E5', identifier: '', geometry: SQUARE_AT_ORIGIN }),
+      buildFeature({ type: 'CLASS_E5', identifier: '', geometry: SQUARE_AT_TEN }),
+    ]);
+    const result = projectAirspaceSource(state);
     const features = (result as FeatureCollection).features;
     const keys = features.map((f) => f.properties?.[AIRSPACE_MATCH_KEY_PROPERTY]);
     expect(keys[0]).toMatch(/^CLASS_E5\/c:0\.\d{5},0\.\d{5}$/);
     expect(keys[1]).toMatch(/^CLASS_E5\/c:10\.\d{5},10\.\d{5}$/);
     expect(keys[0]).not.toEqual(keys[1]);
-    // Two distinct centroids -> distinct groups, both at index 0 / count 1.
-    expect(features[0]?.properties?.[AIRSPACE_FEATURE_COUNT_PROPERTY]).toBe(1);
-    expect(features[1]?.properties?.[AIRSPACE_FEATURE_COUNT_PROPERTY]).toBe(1);
+    // Two distinct centroids -> distinct single-feature groups: index 0
+    // each and no badges.
+    expect(features[0]?.properties?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(0);
+    expect(features[1]?.properties?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(0);
+    expect(airspaceBadgeGroups(state)?.size).toBe(0);
   });
 });
