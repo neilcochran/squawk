@@ -1,5 +1,13 @@
 # @squawk/adsbscope
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [316f4a4]
+  - @squawk/geo@0.5.0
+  - @squawk/airspace@0.9.4
+
 ## 0.4.1
 
 ### Patch Changes
