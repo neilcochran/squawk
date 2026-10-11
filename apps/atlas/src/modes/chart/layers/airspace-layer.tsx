@@ -9,15 +9,11 @@ import type { AirspaceType } from '@squawk/types';
 
 import { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
 import {
-  AIRSPACE_CEILING_FT_PROPERTY,
-  AIRSPACE_CEILING_REF_PROPERTY,
-  AIRSPACE_FLOOR_FT_PROPERTY,
   AIRSPACE_FLOOR_REF_PROPERTY,
   AIRSPACE_MATCH_KEY_PROPERTY,
 } from '../../../shared/inspector/airspace-feature.ts';
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import type {
-  ChartAirspaceBadgeColors,
   ChartAirspaceColors,
   ChartHighlightColors,
 } from '../../../shared/styles/chart-colors.ts';
@@ -25,17 +21,21 @@ import { useActiveHighlightRef, useHoveredFeatureIndex } from '../highlight-cont
 import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 
 import { AIRPORTS_HIGHLIGHT_LAYER_ID } from './airports-layer.tsx';
+import {
+  GROUND_ANCHORED_ALTITUDE_REFS,
+  buildExtrusionBaseExpression,
+  buildExtrusionHeightExpression,
+  extrusionExaggerationForZoom,
+} from './airspace-extrusion-scale.ts';
 import { hatchImageId, useHatchPatternImage } from './airspace-hatch-pattern.ts';
 import {
-  AIRSPACE_BADGE_OFFSET_PROPERTY,
-  AIRSPACE_FEATURE_COUNT_PROPERTY,
   AIRSPACE_FEATURE_INDEX_PROPERTY,
-  AIRSPACE_FEATURE_LABEL_PROPERTY,
   projectAirspaceSource,
 } from './airspace-source-projection.ts';
 import { AIRWAYS_HIGHLIGHT_LAYER_ID } from './airways-layer.tsx';
 import { FIXES_HIGHLIGHT_LAYER_ID } from './fixes-layer.tsx';
 import { NAVAIDS_HIGHLIGHT_LAYER_ID } from './navaids-layer.tsx';
+import { useMapZoom } from './use-map-zoom.ts';
 import { useTopOfStack } from './use-top-of-stack.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
@@ -60,42 +60,52 @@ export const AIRSPACE_LINE_LAYER_ID = 'atlas-airspace-line';
  */
 export const AIRSPACE_FILL_EXTRUSION_LAYER_ID = 'atlas-airspace-fill-extrusion';
 
-/** MapLibre layer id for the airspace selection-highlight outline overlay. */
-const AIRSPACE_HIGHLIGHT_LAYER_ID = 'atlas-airspace-highlight';
+/**
+ * MapLibre layer id for the airspace selection-highlight outline
+ * overlay. Draws at ground level, so once the camera tilts it is
+ * restricted to airspace whose 3D box rests on the ground (see
+ * {@link restrictToGroundAnchoredWhenTilted}); for everything else the
+ * 3D selection indicator is {@link AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID}.
+ */
+export const AIRSPACE_HIGHLIGHT_LAYER_ID = 'atlas-airspace-highlight';
 
 /**
  * MapLibre layer id for the cross-hatched fill rendered on top of the
  * selected airspace's interior. Helps the user spot the selection even
- * when the polygon's outline is partially or fully offscreen.
+ * when the polygon's outline is partially or fully offscreen. Subject
+ * to the same tilted-view restriction as {@link AIRSPACE_HIGHLIGHT_LAYER_ID}.
  */
-const AIRSPACE_HIGHLIGHT_FILL_LAYER_ID = 'atlas-airspace-highlight-fill';
+export const AIRSPACE_HIGHLIGHT_FILL_LAYER_ID = 'atlas-airspace-highlight-fill';
 
 /**
  * MapLibre layer id for the 3D selection-highlight extrusion. Renders
- * the currently-selected airspace as a high-opacity yellow box on top
- * of the regular low-opacity airspace extrusion so the selection is
- * unmistakable in 3D view (the 2D ring + cross-hatch on the ground
- * are hard to spot from a tilted camera looking through translucent
- * stacked boxes). Hidden in plan view (pitch === 0) where the 2D
- * ring on the ground is the natural selection indicator.
+ * the currently-selected airspace as a high-opacity yellow box so the
+ * selection is unmistakable in 3D view (the 2D ring + cross-hatch on
+ * the ground are hard to spot from a tilted camera looking through
+ * translucent stacked boxes). It sits BENEATH the regular extrusion in
+ * the draw stack: boxes that overlap the selection blend over it at
+ * their own low opacity, so the whole selected shape stays visible,
+ * tinted wherever another box is in front, which is what tells the
+ * user it is behind. The regular extrusion leaves the selected
+ * airspace out so the box is not tinted by its own class color.
+ * Hidden in plan view (pitch === 0) where the 2D ring on the ground
+ * is the natural selection indicator. While an inspector section is
+ * hovered, that feature's box is painted in the lighter focus color
+ * (see {@link buildHighlightExtrusionColor}) so the per-feature focus
+ * ring has a 3D counterpart.
  */
-const AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID = 'atlas-airspace-highlight-extrusion';
+export const AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID = 'atlas-airspace-highlight-extrusion';
 
 /**
  * MapLibre layer id for the per-feature focus outline that brightens a
  * single polygon inside a multi-feature airspace grouping when the user
  * hovers its section in the inspector. Sits above the entity-level
- * highlight so the focused ring stands out against its siblings.
+ * highlight so the focused ring stands out against its siblings. Draws
+ * at ground level, so in the tilted view it is restricted to features
+ * whose box rests on the ground; a floating feature is focused by
+ * recoloring its box in {@link AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID}.
  */
-const AIRSPACE_FEATURE_FOCUS_LAYER_ID = 'atlas-airspace-feature-focus';
-
-/**
- * MapLibre layer id for the per-feature badge rendered at each polygon's
- * centroid when an airspace with multiple features is selected. The
- * badge text is the feature's index ("1", "2", "3") or its ARTCC
- * stratum name ("LOW", "HIGH"); matches the inspector section title.
- */
-const AIRSPACE_FEATURE_BADGE_LAYER_ID = 'atlas-airspace-feature-badge';
+export const AIRSPACE_FEATURE_FOCUS_LAYER_ID = 'atlas-airspace-feature-focus';
 
 /**
  * Stable array of layer ids that {@link AirspaceFeatureOverlayLayers}
@@ -108,43 +118,58 @@ const AIRSPACE_FEATURE_BADGE_LAYER_ID = 'atlas-airspace-feature-badge';
  * The chart-mode draw stack at high pitch (lowest -> highest):
  * 1. Ground-feature layers (airports / navaids / fixes / airways /
  *    airspace 2D fill + line). Mount first in JSX, paint at z=0.
- * 2. {@link AIRSPACE_FILL_EXTRUSION_LAYER_ID} - the regular
- *    low-opacity 3D airspace box. Must paint above the ground layers
- *    so it visually occludes them at high pitch (the user expects
- *    the airspace volume to be on top of the ground points it
- *    covers, since the box is at altitude and the points are not).
- *    JSX child order alone is not sufficient because each ground
- *    layer mounts only when its dataset finishes loading - if
- *    navaids load after airspace, the navaid layer ends up topmost
- *    at the moment of registration.
+ * 2. Airspace 2D selection overlays (cross-hatch, ring) and the
+ *    per-feature focus outline. These also paint at z=0 and sit
+ *    BELOW the extrusions on purpose: MapLibre disables depth
+ *    testing for every 2D layer stacked above the first 3D layer,
+ *    so a ground ring pinned above the box would paint straight
+ *    through the box's walls and top face. Below the box, the
+ *    translucent extrusion blends over the ring instead, and the
+ *    ring reads as the base edge of a box that rests on the ground.
+ *    In plan view the extrusions are hidden, so these still land
+ *    above every ground feature.
  * 3. {@link AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID} - high-opacity
- *    yellow 3D box for the currently-selected airspace, sitting on
- *    top of the regular extrusion so the selection pops out of the
- *    surrounding low-opacity field.
- * 4. Ground-feature highlight layers (airspace ring, airport /
- *    navaid / fix / airway selection rings). Pinned above the 3D
- *    extrusion so the selection indicator stays visible for
- *    features whose lateral position falls inside an extruded box -
- *    without this pin the 3D box's stacked alpha would wash the
- *    yellow ring out at high pitch.
- * 5. Airspace per-feature focus outline + numbered badges. Pinned
- *    last so they sit above every other indicator when an airspace
- *    with multiple sub-polygons is active.
+ *    yellow 3D box for the currently-selected airspace. Drawn before
+ *    the regular boxes so the ones in front of it blend over it
+ *    instead of hiding it: the whole selected shape stays visible,
+ *    and the tint says which boxes are in front.
+ * 4. {@link AIRSPACE_FILL_EXTRUSION_LAYER_ID} - the regular
+ *    low-opacity 3D airspace boxes, minus the selected airspace. Must
+ *    paint above the ground layers so it visually occludes them at
+ *    high pitch (the user expects the airspace volume to be on top of
+ *    the ground points it covers, since the box is at altitude and
+ *    the points are not). JSX child order alone is not sufficient
+ *    because each ground layer mounts only when its dataset finishes
+ *    loading - if navaids load after airspace, the navaid layer ends
+ *    up topmost at the moment of registration.
+ * 5. Ground point / line highlight layers (airport / navaid / fix /
+ *    airway selection rings). Pinned above the 3D extrusion so the
+ *    selection indicator stays visible for features whose lateral
+ *    position falls inside an extruded box - without this pin the
+ *    3D box's stacked alpha would wash the yellow ring out at high
+ *    pitch. The same no-depth-test behavior that is a problem for
+ *    the airspace ring is what keeps these legible.
  *
- * JSX-order pinning would also work for items 2-3 in isolation, but
+ * The numbered feature badges are not in this stack at all: they are a
+ * DOM overlay (`AirspaceFeatureBadges`) above the whole canvas, which is
+ * what lets them ride on a box's top face in the tilted view.
+ *
+ * JSX-order pinning would also work for items 3-4 in isolation, but
  * spelling out the order centrally here makes the priority explicit
  * and removes the cross-component coupling.
  */
 const TOP_OF_STACK_LAYER_IDS = [
-  // Regular 3D extrusion (low opacity), pinned above ground features.
-  AIRSPACE_FILL_EXTRUSION_LAYER_ID,
-  // Selection-highlight 3D extrusion, pinned above the regular one.
-  AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID,
-  // 2D selection-highlight overlays for airspace, above the 3D box
-  // so the ring stays visible when looking through the translucent
-  // extrusion at high pitch.
+  // Airspace 2D selection overlays + focus outline, above the ground
+  // features but below the 3D boxes so a box blends over them rather
+  // than having them paint through it.
   AIRSPACE_HIGHLIGHT_FILL_LAYER_ID,
   AIRSPACE_HIGHLIGHT_LAYER_ID,
+  AIRSPACE_FEATURE_FOCUS_LAYER_ID,
+  // Selection-highlight 3D extrusion, pinned beneath the regular one
+  // so overlapping boxes blend over the selection instead of hiding it.
+  AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID,
+  // Regular 3D extrusion (low opacity), pinned above ground features.
+  AIRSPACE_FILL_EXTRUSION_LAYER_ID,
   // 2D selection-highlight overlays for ground point / line
   // features. Pinned above the 3D box so an airport / navaid / fix /
   // airway selection stays visible inside an overlapping airspace
@@ -156,10 +181,6 @@ const TOP_OF_STACK_LAYER_IDS = [
   NAVAIDS_HIGHLIGHT_LAYER_ID,
   FIXES_HIGHLIGHT_LAYER_ID,
   AIRWAYS_HIGHLIGHT_LAYER_ID,
-  // Per-feature focus outline + numbered badges, pinned last so they
-  // remain above every selection indicator above.
-  AIRSPACE_FEATURE_FOCUS_LAYER_ID,
-  AIRSPACE_FEATURE_BADGE_LAYER_ID,
 ] as const;
 
 /**
@@ -173,143 +194,42 @@ const MATCH_NONE_FILTER: ExpressionSpecification = [
 ];
 
 /**
- * Conversion factor from feet to meters. MapLibre's
- * `fill-extrusion-base` and `fill-extrusion-height` paint properties
- * accept altitudes in meters, while the airspace dataset and every
- * downstream consumer in atlas use feet, so the extrusion expressions
- * scale by this constant exactly once at the MapLibre boundary.
+ * Filter clause matching features whose floor is one of
+ * {@link GROUND_ANCHORED_ALTITUDE_REFS}, i.e. whose 3D box starts at
+ * the surface.
  */
-const FT_TO_METERS = 0.3048;
+const GROUND_ANCHORED_FLOOR_CLAUSE: ExpressionSpecification = [
+  'in',
+  ['get', AIRSPACE_FLOOR_REF_PROPERTY],
+  ['literal', [...GROUND_ANCHORED_ALTITUDE_REFS]],
+];
 
 /**
- * Upper clamp applied to the raw ceiling feet value before
- * exaggeration. The bundled airspace dataset uses `99999` as a
- * sentinel for "no upper limit" (every Class E5/E6/E7 ceiling, plus
- * many Class E2/E3/E4 surface areas, plus a smaller subset of Warning,
- * Restricted, and ARTCC features). Multiplying that sentinel through
- * the zoom-driven exaggeration produces extrusions on the order of
- * thousands of kilometres at low zoom - the side walls extend above
- * the camera and clip at the top of the screen, the top face covers
- * the entire visible viewport, and the layer reads as a uniform
- * "ghost carpet" that hides every feature stacked underneath. FL600
- * (60,000 ft) is the top of conventional high-altitude airspace
- * structure, so capping there keeps "unlimited" features tall enough
- * to read as a stratum without producing visual artifacts. Real
- * features that already exceed FL600 (one outlier Restricted at
- * 100,000 ft) clamp to the same ceiling - the inspector / popover
- * still surface the true value via the un-projected `ceiling` field.
+ * Restricts a ground-level airspace layer (fill, outline, selection
+ * hatch and ring, per-feature focus ring) to features whose 3D box
+ * rests on the ground once the camera is tilted. Every one of those
+ * layers draws at z=0 regardless of pitch, so in the tilted view a
+ * floating airspace (Class B outer rings at 3000-4000 ft MSL, MOAs
+ * starting at FL050, and so on) would otherwise get a misleading
+ * footprint on the ground beneath its box - and, for the selection
+ * and focus overlays, a highlight on the ground instead of on the
+ * feature. Clamping to {@link GROUND_ANCHORED_FLOOR_CLAUSE} keeps the
+ * footprint only where the box meets the ground, where it reads as
+ * the box's base edge; floating airspace reads purely as a 3D box,
+ * with its selection and focus carried by the extrusion layers.
+ *
+ * In plan view the filter passes through untouched so every enabled
+ * airspace keeps its full 2D rendering.
  */
-const CEILING_CAP_FT = 60000;
-
-/**
- * Builds the `fill-extrusion-base` / `fill-extrusion-height` expression
- * for the airspace 3D extrusion layer. The structure is forced by a
- * MapLibre constraint - the `zoom` expression may only be used as
- * input to a top-level `interpolate` or `step`, so the per-feature
- * `match` (which collapses SFC/AGL refs to 0 so the extrusion
- * anchors to MSL=0 rather than tracking ground elevation) lives
- * inside each interpolation stop value rather than wrapping the
- * whole expression.
- *
- * The stops apply zoom-driven vertical exaggeration so airspace
- * volume stays readable at continental zooms, where true-scale
- * altitude (e.g. 18,000 ft / 5.5 km Class B ceiling) is dwarfed by
- * camera distance and collapses to a paper-thin slab regardless of
- * pitch. The curve is intentionally restrained - early iterations
- * used 100x at zoom 4, which made every airspace appear as a
- * continent-scale tower and amplified the visual artifact where
- * panning forward at a tilted camera "shrinks" the boxes (the same
- * lateral feature occupies a smaller proportion of the screen as the
- * effective zoom changes mid-pan):
- *
- * | zoom | exaggeration | rationale                                |
- * |------|--------------|------------------------------------------|
- * |  4   |   20x        | CONUS view: 18k ft -> ~110 km           |
- * |  6   |    8x        | regional view: 18k ft -> ~44 km         |
- * |  8   |    3x        | metro view: 18k ft -> ~16 km            |
- * | 10   |  1.5x        | terminal view: 18k ft -> ~8 km          |
- * | 12+  |    1x        | airport view: true scale                |
- *
- * Linear interpolation between stops; values clamp to 20x below zoom
- * 4 and 1x above zoom 12. Each stop bakes the feet-to-meters
- * conversion together with the stop's exaggeration factor into a
- * single multiplier so the runtime arithmetic per feature is one
- * `coalesce` plus one `*`. Symmetric application to base and height
- * preserves vertical proportions between stacked features (Class B
- * inner ring at 1500 ft floor vs outer at SFC) at every zoom.
- *
- * SFC/AGL references collapse to 0; MSL (and any unrecognized future
- * reference) multiplies the feet value by the baked multiplier. A
- * missing feet primitive coalesces to 0 so the per-feature output is
- * always a finite number.
- *
- * @param refProperty - GeoJSON property name carrying the altitude
- *   reference datum (`'MSL'` / `'AGL'` / `'SFC'`).
- * @param ftProperty - GeoJSON property name carrying the altitude
- *   value in feet.
- * @param capFt - Optional upper clamp applied to the raw feet value
- *   before exaggeration. Used on the ceiling expression to bound the
- *   `99999` "no upper limit" sentinel (see {@link CEILING_CAP_FT});
- *   `undefined` for the floor expression where real values are
- *   bounded.
- * @returns A MapLibre expression suitable for `fill-extrusion-base` or
- *   `fill-extrusion-height`.
- */
-function buildExtrusionAltitudeExpression(
-  refProperty: string,
-  ftProperty: string,
-  capFt: number | undefined,
+function restrictToGroundAnchoredWhenTilted(
+  filter: ExpressionSpecification,
+  pitch: number,
 ): ExpressionSpecification {
-  const rawFt: ExpressionSpecification = ['coalesce', ['get', ftProperty], 0];
-  const altFt: ExpressionSpecification = capFt === undefined ? rawFt : ['min', rawFt, capFt];
-  function stop(metersPerFoot: number): ExpressionSpecification {
-    return ['match', ['get', refProperty], ['SFC', 'AGL'], 0, ['*', altFt, metersPerFoot]];
+  if (pitch > 0) {
+    return ['all', filter, GROUND_ANCHORED_FLOOR_CLAUSE];
   }
-  return [
-    'interpolate',
-    ['linear'],
-    ['zoom'],
-    4,
-    stop(FT_TO_METERS * 20),
-    6,
-    stop(FT_TO_METERS * 8),
-    8,
-    stop(FT_TO_METERS * 3),
-    10,
-    stop(FT_TO_METERS * 1.5),
-    12,
-    stop(FT_TO_METERS * 1),
-  ];
+  return filter;
 }
-
-/**
- * `fill-extrusion-base` expression for the airspace 3D extrusion layer.
- * No ceiling-cap is applied to the floor: real floor values are bounded
- * (Class B / MOA inner rings climb to ~10 k ft, restricted areas top
- * out near 18 k ft) and the `99999` sentinel only ever appears on
- * ceilings. See {@link buildExtrusionAltitudeExpression} for the
- * structure rationale.
- */
-const FILL_EXTRUSION_BASE_EXPRESSION = buildExtrusionAltitudeExpression(
-  AIRSPACE_FLOOR_REF_PROPERTY,
-  AIRSPACE_FLOOR_FT_PROPERTY,
-  undefined,
-);
-
-/**
- * `fill-extrusion-height` expression for the airspace 3D extrusion layer.
- * Same shape as {@link FILL_EXTRUSION_BASE_EXPRESSION} but reads the ceiling
- * primitives and applies {@link CEILING_CAP_FT} to bound the `99999`
- * sentinel before the zoom-driven exaggeration multiplies it into orbit.
- * Special-use airspace with an AGL ceiling collapses to a zero-thickness
- * extrusion (since SFC and AGL refs both collapse to MSL=0); the 2D fill /
- * outline below still renders unchanged so the airspace stays selectable.
- */
-const FILL_EXTRUSION_HEIGHT_EXPRESSION = buildExtrusionAltitudeExpression(
-  AIRSPACE_CEILING_REF_PROPERTY,
-  AIRSPACE_CEILING_FT_PROPERTY,
-  CEILING_CAP_FT,
-);
 
 /**
  * Builds the MapLibre `match` expression that maps airspace type to
@@ -363,8 +283,11 @@ function buildTypeColorExpression(airspace: ChartAirspaceColors): ExpressionSpec
  * client-side projection step. The fill and line layers share a MapLibre
  * `filter` expression built from the active `airspaceClasses` URL state,
  * so toggling sub-classes shows or hides only the matching features
- * without rebuilding the source. Returns `null` while the dataset is still
- * being fetched or if the load failed.
+ * without rebuilding the source. Every layer here draws on the ground;
+ * once the camera tilts they are restricted to airspace whose 3D box
+ * rests on the ground (see {@link restrictToGroundAnchoredWhenTilted}).
+ * Returns `null` while the dataset is still being fetched or if the
+ * load failed.
  */
 export function AirspaceLayer(): ReactElement | null {
   const { airspaceClasses, pitch } = route.useSearch();
@@ -383,22 +306,13 @@ export function AirspaceLayer(): ReactElement | null {
     [enabledTypes],
   );
 
-  // Outline filter for the polygon line layer. In plan view (pitch ===
-  // 0) it matches the regular type filter, so every enabled airspace
-  // gets a ground-level outline. Once the camera tilts, the line layer
-  // still draws at z = 0, which would render a misleading "ground
-  // outline" beneath floating airspaces (Class B inner ring at 1500 ft
-  // MSL, MOAs starting at FL050, etc.) that don't actually touch the
-  // ground. Restricting the line layer to features whose floor
-  // reference is `'SFC'` keeps the ground outline only where the
-  // airspace really meets the ground; floating airspaces lose the
-  // misleading 2D outline and read purely as 3D boxes.
-  const lineFilter = useMemo<ExpressionSpecification>(() => {
-    if (pitch === 0) {
-      return filter;
-    }
-    return ['all', filter, ['==', ['get', AIRSPACE_FLOOR_REF_PROPERTY], 'SFC']];
-  }, [filter, pitch]);
+  // Footprint filter shared by the fill and outline layers: the type
+  // filter in plan view, narrowed to ground-anchored floors once the
+  // camera tilts so floating airspace reads purely as a 3D box.
+  const groundFilter = useMemo<ExpressionSpecification>(
+    () => restrictToGroundAnchoredWhenTilted(filter, pitch),
+    [filter, pitch],
+  );
 
   // Polygon fill layer. Uses a low alpha so airspace boundaries read
   // as gentle tints rather than dominant blocks of color, leaving the
@@ -409,13 +323,13 @@ export function AirspaceLayer(): ReactElement | null {
       id: AIRSPACE_FILL_LAYER_ID,
       source: AIRSPACE_SOURCE_ID,
       type: 'fill',
-      filter,
+      filter: groundFilter,
       paint: {
         'fill-color': buildTypeColorExpression(colors.airspace),
         'fill-opacity': 0.08,
       },
     }),
-    [filter, colors],
+    [groundFilter, colors],
   );
 
   // Polygon outline layer. Stroke color matches the fill so each
@@ -430,14 +344,14 @@ export function AirspaceLayer(): ReactElement | null {
         'line-cap': 'round',
         'line-join': 'round',
       },
-      filter: lineFilter,
+      filter: groundFilter,
       paint: {
         'line-color': buildTypeColorExpression(colors.airspace),
         'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.6, 8, 1.2, 12, 2],
         'line-opacity': 0.7,
       },
     }),
-    [lineFilter, colors],
+    [groundFilter, colors],
   );
 
   // Project the source dataset to add a synthetic match-key property
@@ -445,19 +359,26 @@ export function AirspaceLayer(): ReactElement | null {
   // `airspace:{TYPE}/{IDENTIFIER}` (named) or
   // `airspace:{TYPE}/c:{LON},{LAT}` (empty-id, centroid disambiguator);
   // mirroring that exact format here lets the highlight filter use a
-  // single equality check that works for both. Memoized so the
-  // re-projection runs once per dataset load, not per render.
+  // single equality check that works for both. Memoized per dataset
+  // inside the projection module, so the re-projection runs once per
+  // dataset load, not per render.
   const sourceData = useMemo(() => projectAirspaceSource(state), [state]);
 
   // Same filter is shared between the highlight outline and the
   // cross-hatched highlight fill, so the outline + interior pattern
-  // render together for whatever airspace is currently selected.
+  // render together for whatever airspace is currently selected. Both
+  // draw on the ground, so in the tilted view the selection match is
+  // narrowed to ground-anchored floors and the 3D box in
+  // {@link AirspaceExtrusionLayer} carries the selection for the rest.
   const highlightFilter = useMemo<ExpressionSpecification>(() => {
     if (activeRef?.type === 'airspace' && activeRef.id.length > 0) {
-      return ['==', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id];
+      return restrictToGroundAnchoredWhenTilted(
+        ['==', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id],
+        pitch,
+      );
     }
     return MATCH_NONE_FILTER;
-  }, [activeRef]);
+  }, [activeRef, pitch]);
 
   // Highlight outline overlay for the currently-selected (or
   // chip-hovered) airspace. Thick yellow stroke makes the active
@@ -542,25 +463,37 @@ export function AirspaceLayer(): ReactElement | null {
  *
  * `visibility` is gated on the URL pitch so the box is hidden in
  * plan view (pitch === 0) and only appears once the user tilts. The
- * flat fill in {@link AirspaceLayer} stays visible underneath the
- * box at any pitch so the lateral footprint reads as a stable 2D
- * anchor and clicks keep landing on the fill layer (the extrusion
- * is intentionally not registered as an inspectable layer).
+ * flat fill and outline in {@link AirspaceLayer} stay drawn beneath a
+ * box that rests on the ground, where they read as its base edge;
+ * beneath a floating box they are filtered out, so the box is the
+ * whole rendering. Clicks land on the boxes as well as on the flat
+ * footprint - both extrusions are registered in `INSPECTABLE_LAYER_IDS`
+ * alongside the fill and line layers.
+ *
+ * The box heights follow the live camera zoom through
+ * {@link useMapZoom} and {@link extrusionExaggerationForZoom}: the
+ * exaggeration multiplier is computed here and baked into the base /
+ * height expressions as a constant, so every tile draws the same
+ * altitude at the same height. A `['zoom']` expression would instead
+ * be evaluated per tile at that tile's zoom level, and a tilted camera
+ * loads distant tiles at lower zoom than nearby ones.
  *
  * `fill-extrusion-opacity` tuned to balance two competing goals: low
  * enough that stacked airspaces (Class B + ARTCC at the same
  * lat/lon) read as overlapping translucent boxes rather than the
  * topmost occluding the rest, but high enough that side-wall
  * silhouettes plus the default `fill-extrusion-vertical-gradient`
- * shading approximate visible edges - MapLibre 5 has no
- * fill-extrusion outline / edge paint property, so explicit edge
- * strokes on the 3D box would require a different rendering library
- * (deck.gl) or custom WebGL.
+ * shading approximate visible edges - MapLibre has no fill-extrusion
+ * outline / edge paint property, so explicit edge strokes on the 3D
+ * box would require a different rendering library (deck.gl) or
+ * custom WebGL.
  */
 export function AirspaceExtrusionLayer(): ReactElement | null {
-  const { airspaceClasses, pitch } = route.useSearch();
+  const { airspaceClasses, pitch, zoom: urlZoom } = route.useSearch();
+  const zoom = useMapZoom(urlZoom);
   const state = useAirspaceDataset();
   const activeRef = useActiveHighlightRef();
+  const hoveredFeatureIndex = useHoveredFeatureIndex();
   const colors = useChartColors();
 
   const enabledTypes = useMemo<readonly AirspaceType[]>(
@@ -568,9 +501,36 @@ export function AirspaceExtrusionLayer(): ReactElement | null {
     [airspaceClasses],
   );
 
-  const filter = useMemo<ExpressionSpecification>(
-    () => ['in', ['get', 'type'], ['literal', [...enabledTypes]]],
-    [enabledTypes],
+  // Regular boxes: every enabled type except the selected airspace,
+  // which the highlight extrusion draws instead. Leaving it in here
+  // would blend its class color over the yellow highlight box.
+  const filter = useMemo<ExpressionSpecification>(() => {
+    const typeFilter: ExpressionSpecification = [
+      'in',
+      ['get', 'type'],
+      ['literal', [...enabledTypes]],
+    ];
+    if (activeRef?.type === 'airspace' && activeRef.id.length > 0) {
+      return ['all', typeFilter, ['!=', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id]];
+    }
+    return typeFilter;
+  }, [enabledTypes, activeRef]);
+
+  const exaggeration = extrusionExaggerationForZoom(zoom);
+
+  // Base and height expressions at the live exaggeration. The builders
+  // own the ceiling cap, the ground-anchored collapse, and the per-type
+  // depth lift that keeps coincident tops from blending into each
+  // other; a feature whose ceiling is itself SFC / AGL collapses to a
+  // zero-thickness extrusion, and its ground-anchored floor keeps its
+  // 2D fill / outline drawn at any pitch so it stays selectable.
+  const baseExpression = useMemo<ExpressionSpecification>(
+    () => buildExtrusionBaseExpression(exaggeration),
+    [exaggeration],
+  );
+  const heightExpression = useMemo<ExpressionSpecification>(
+    () => buildExtrusionHeightExpression(exaggeration),
+    [exaggeration],
   );
 
   const fillExtrusionLayerProps = useMemo<LayerProps>(
@@ -584,12 +544,12 @@ export function AirspaceExtrusionLayer(): ReactElement | null {
       },
       paint: {
         'fill-extrusion-color': buildTypeColorExpression(colors.airspace),
-        'fill-extrusion-base': FILL_EXTRUSION_BASE_EXPRESSION,
-        'fill-extrusion-height': FILL_EXTRUSION_HEIGHT_EXPRESSION,
+        'fill-extrusion-base': baseExpression,
+        'fill-extrusion-height': heightExpression,
         'fill-extrusion-opacity': 0.5,
       },
     }),
-    [filter, colors, pitch],
+    [filter, colors, pitch, baseExpression, heightExpression],
   );
 
   // 3D selection-highlight extrusion. Renders only the polygon whose
@@ -599,7 +559,12 @@ export function AirspaceExtrusionLayer(): ReactElement | null {
   // selection in 3D view is signalled only by the 2D ring + cross-
   // hatch on the ground, which is hard to spot from a tilted camera
   // looking through the regular 0.5-opacity extrusion of every
-  // overlapping class.
+  // overlapping class. It is pinned beneath the regular boxes (see
+  // TOP_OF_STACK_LAYER_IDS) so the ones in front tint it rather than
+  // hide it. While an inspector section is hovered, that
+  // feature's box takes the lighter focus color so the per-feature
+  // focus has a 3D counterpart - the 2D focus ring draws on the
+  // ground and is filtered out beneath a floating feature.
   const highlightFilter = useMemo<ExpressionSpecification>(() => {
     if (activeRef?.type === 'airspace' && activeRef.id.length > 0) {
       return ['==', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id];
@@ -617,96 +582,79 @@ export function AirspaceExtrusionLayer(): ReactElement | null {
         visibility: pitch > 0 ? 'visible' : 'none',
       },
       paint: {
-        'fill-extrusion-color': colors.highlight.primary,
-        'fill-extrusion-base': FILL_EXTRUSION_BASE_EXPRESSION,
-        'fill-extrusion-height': FILL_EXTRUSION_HEIGHT_EXPRESSION,
+        'fill-extrusion-color': buildHighlightExtrusionColor(colors.highlight, hoveredFeatureIndex),
+        'fill-extrusion-base': baseExpression,
+        'fill-extrusion-height': heightExpression,
         'fill-extrusion-opacity': 0.9,
       },
     }),
-    [highlightFilter, colors, pitch],
+    [highlightFilter, colors, pitch, hoveredFeatureIndex, baseExpression, heightExpression],
   );
 
   // Bail until the airspace source is mounted; layers referencing a
   // not-yet-registered source generate noisy warnings and never
   // paint. The top-of-stack pinning that keeps these extrusions above
   // the ground-feature layers lives in {@link AirspaceFeatureOverlayLayers}
-  // alongside the rest of the chart-mode top-stack chrome (focus
-  // outline, badges) so the order is centrally specified.
+  // alongside the rest of the chart-mode top-stack chrome so the
+  // order is centrally specified.
   if (state.status !== 'loaded') {
     return null;
   }
 
   return (
     <>
-      <Layer {...fillExtrusionLayerProps} />
       <Layer {...highlightExtrusionLayerProps} />
+      <Layer {...fillExtrusionLayerProps} />
     </>
   );
 }
 
 /**
- * Top-of-stack overlay layers for an airspace's per-feature focus
- * outline and numbered badges. Mounted as a sibling of every other
- * chart layer (and rendered AFTER airports / navaids / fixes so the
- * badges sit above their circles), it references the airspace source
- * mounted by {@link AirspaceLayer} by id rather than wrapping its own
- * `<Source>` - one source, two layer subtrees.
+ * Top-of-stack overlay layer for an airspace's per-feature focus
+ * outline. Mounted as a sibling of every other chart layer (and
+ * rendered AFTER airports / navaids / fixes), it references the
+ * airspace source mounted by {@link AirspaceLayer} by id rather than
+ * wrapping its own `<Source>` - one source, two layer subtrees. It also
+ * owns the {@link useTopOfStack} call that re-asserts the chart-mode
+ * overlay order, so the order is specified in one place.
  *
  * Renders nothing while the airspace dataset is still loading; the
- * filters resolve to "match nothing" when no airspace is selected, so
- * the layers are present but invisible until selection lands.
+ * filter resolves to "match nothing" when no airspace section is
+ * hovered, so the layer is present but invisible until then. The
+ * numbered feature badges are a DOM overlay (`AirspaceFeatureBadges`)
+ * rather than a MapLibre layer, so they can be lifted onto a box's top
+ * face in the tilted view.
  */
 export function AirspaceFeatureOverlayLayers(): ReactElement | null {
+  const { pitch } = route.useSearch();
   const state = useAirspaceDataset();
   const activeRef = useActiveHighlightRef();
   const hoveredFeatureIndex = useHoveredFeatureIndex();
   const colors = useChartColors();
 
-  // Badge filter: visible when an airspace with 2+ features is the
-  // active selection. Single-feature airspaces don't need disambiguation
-  // so the count > 1 clause keeps badges off when they would add noise.
-  const badgeFilter = useMemo<ExpressionSpecification>(() => {
-    if (activeRef?.type === 'airspace' && activeRef.id.length > 0) {
-      return [
-        'all',
-        ['==', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id],
-        ['>', ['get', AIRSPACE_FEATURE_COUNT_PROPERTY], 1],
-      ];
-    }
-    return MATCH_NONE_FILTER;
-  }, [activeRef]);
-
-  // Per-feature badge label rendered at each polygon centroid. Symbol
-  // layers default to point-placement on Polygon source features, so
-  // MapLibre auto-positions the label at the polygon's representative
-  // point without a separate Point source. The dark halo gives the
-  // text legibility against any basemap or fill underneath. Filter is
-  // empty when no airspace is selected or when the selected airspace
-  // has only one feature (single-feature airspaces need no
-  // disambiguation).
-  const badgeLayerProps = useMemo<LayerProps>(
-    () => buildBadgeLayerProps(badgeFilter, colors.airspaceBadge),
-    [badgeFilter, colors],
-  );
-
   // Feature-focus filter: matches the polygon whose inspector section
   // is currently hovered. When no section is hovered (or no airspace
   // selected) the filter matches nothing so the layer is effectively
-  // absent.
+  // absent. The ring draws on the ground, so in the tilted view it is
+  // narrowed to ground-anchored floors; a floating feature is focused
+  // by the recolored highlight extrusion instead.
   const featureFocusFilter = useMemo<ExpressionSpecification>(() => {
     if (
       activeRef?.type === 'airspace' &&
       activeRef.id.length > 0 &&
       hoveredFeatureIndex !== undefined
     ) {
-      return [
-        'all',
-        ['==', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id],
-        ['==', ['get', AIRSPACE_FEATURE_INDEX_PROPERTY], hoveredFeatureIndex],
-      ];
+      return restrictToGroundAnchoredWhenTilted(
+        [
+          'all',
+          ['==', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id],
+          ['==', ['get', AIRSPACE_FEATURE_INDEX_PROPERTY], hoveredFeatureIndex],
+        ],
+        pitch,
+      );
     }
     return MATCH_NONE_FILTER;
-  }, [activeRef, hoveredFeatureIndex]);
+  }, [activeRef, hoveredFeatureIndex, pitch]);
 
   // Per-feature focus outline. Rendered on top of the entity-level
   // highlight stroke so the hovered feature stands out from its
@@ -718,26 +666,47 @@ export function AirspaceFeatureOverlayLayers(): ReactElement | null {
     [featureFocusFilter, colors],
   );
 
-  // Force the focus + badge layers to the very top of MapLibre's layer
-  // stack on every render. Without this, any subsequent re-add by the
+  // Re-assert the chart-mode overlay order (see TOP_OF_STACK_LAYER_IDS)
+  // on every render. Without this, any subsequent re-add by the
   // airport / navaid / fix layer components (e.g. when their filter
-  // expression changes due to a URL toggle) would push our layers back
-  // down, and the badges would render underneath the point symbols
-  // they are meant to label.
+  // expression changes due to a URL toggle) would push these layers
+  // back down, and the selection rings would render underneath the
+  // point symbols they are meant to frame.
   useTopOfStack(TOP_OF_STACK_LAYER_IDS);
 
-  // Bail until the airspace source is mounted; layers referencing a
-  // not-yet-registered source generate noisy warnings and never paint.
+  // Bail until the airspace source is mounted; a layer referencing a
+  // not-yet-registered source generates noisy warnings and never paints.
   if (state.status !== 'loaded') {
     return null;
   }
 
-  return (
-    <>
-      <Layer {...featureFocusLayerProps} />
-      <Layer {...badgeLayerProps} />
-    </>
-  );
+  return <Layer {...featureFocusLayerProps} />;
+}
+
+/**
+ * Builds the `fill-extrusion-color` for the 3D selection-highlight box.
+ * With no inspector section hovered the whole selection is the primary
+ * highlight color. While one is hovered, the feature at that index is
+ * painted in the lighter focus color and its siblings stay primary, so
+ * the hovered ring of a Class B or stratum of an ARTCC stands out in
+ * 3D the way the focus ring does in plan view. Color is the only
+ * per-feature paint lever on a fill-extrusion (opacity is layer-wide),
+ * and keeping it inside the one highlight layer avoids depth-test
+ * interplay between two extrusions of the same geometry.
+ */
+function buildHighlightExtrusionColor(
+  highlight: ChartHighlightColors,
+  hoveredFeatureIndex: number | undefined,
+): string | ExpressionSpecification {
+  if (hoveredFeatureIndex === undefined) {
+    return highlight.primary;
+  }
+  return [
+    'case',
+    ['==', ['get', AIRSPACE_FEATURE_INDEX_PROPERTY], hoveredFeatureIndex],
+    highlight.focusOutline,
+    highlight.primary,
+  ];
 }
 
 /**
@@ -763,40 +732,6 @@ function buildFeatureFocusLayerProps(
       'line-color': highlight.focusOutline,
       'line-width': 5,
       'line-opacity': 1,
-    },
-  };
-}
-
-/**
- * Builds the {@link LayerProps} for the per-feature badge label,
- * sourcing the text and halo colors from the resolved badge palette.
- */
-function buildBadgeLayerProps(
-  filter: ExpressionSpecification,
-  badge: ChartAirspaceBadgeColors,
-): LayerProps {
-  return {
-    id: AIRSPACE_FEATURE_BADGE_LAYER_ID,
-    source: AIRSPACE_SOURCE_ID,
-    type: 'symbol',
-    layout: {
-      'text-field': ['get', AIRSPACE_FEATURE_LABEL_PROPERTY],
-      'text-font': ['Noto Sans Bold'],
-      'text-size': 13,
-      // Per-feature offset attached at projection time. Distributes
-      // badges into a vertical column centered on the polygon
-      // centroid so concentric rings (Class B) and stacked strata
-      // (ARTCC) - whose centroids would otherwise sit on the same
-      // pixel - end up readable at any zoom.
-      'text-offset': ['get', AIRSPACE_BADGE_OFFSET_PROPERTY],
-      'text-allow-overlap': true,
-      'text-ignore-placement': true,
-    },
-    filter,
-    paint: {
-      'text-color': badge.text,
-      'text-halo-color': badge.halo,
-      'text-halo-width': 2.5,
     },
   };
 }

@@ -76,6 +76,20 @@ function pointInPolygon(x: number, y: number, ring: number[][]): boolean;
 // @public
 function pointInPolygon_2(point: readonly [number, number], polygon: Polygon): boolean;
 
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/geo" does not have an export "polygonCentroid"
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/geo" does not have an export "polygonCentroid"
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/geo" does not have an export "PoleOfInaccessibilityOptions"
+//
+// @public
+function poleOfInaccessibility(polygon: Polygon, options?: PoleOfInaccessibilityOptions): [number, number] | undefined;
+
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/geo" does not have an export "poleOfInaccessibility"
+//
+// @public
+interface PoleOfInaccessibilityOptions {
+    precision?: number;
+}
+
 declare namespace polygon {
     export {
         pointInPolygon,
@@ -102,7 +116,9 @@ declare namespace polygonGeoJson {
         polygonsIdentical,
         polygonsSubstantiallyOverlap,
         boundingBoxesOverlap,
-        pointInBoundingBox_2 as pointInBoundingBox
+        pointInBoundingBox_2 as pointInBoundingBox,
+        poleOfInaccessibility,
+        PoleOfInaccessibilityOptions
     }
 }
 

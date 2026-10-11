@@ -13,7 +13,7 @@ import type { FixDatasetState } from '../data/fix-dataset.ts';
 import { getNavaidResolver, useNavaidDataset } from '../data/navaid-dataset.ts';
 import type { NavaidDatasetState } from '../data/navaid-dataset.ts';
 
-import { compareAirspaceByAltitudeDesc } from './airspace-feature.ts';
+import { altitudeKeyOfAirspaceFeature, orderAirspaceFeatures } from './airspace-feature.ts';
 import { decodePointId, parseSelected } from './entity.ts';
 import type { AmbiguousPointIdentifiers, EntityRef } from './entity.ts';
 
@@ -315,19 +315,15 @@ export function resolveSelectionFromState(
       if (features === undefined) {
         return { status: 'not-found', ref };
       }
-      // Sort the matched features so the highest "vertical layer" is
+      // Order the matched features so the highest "vertical layer" is
       // first. Without this the panel's per-feature sub-sections render
       // in dataset order, which is essentially random for stacked
       // airspaces (ARTCC LOW/HIGH, MOA altitude bands, Class B
       // concentric rings) and forces the user to scan to find the
-      // section they care about.
-      features.sort((a, b) =>
-        compareAirspaceByAltitudeDesc(
-          { ceilingFt: a.ceiling.valueFt, floorFt: a.floor.valueFt },
-          { ceilingFt: b.ceiling.valueFt, floorFt: b.floor.valueFt },
-        ),
-      );
-      const first = features[0];
+      // section they care about. The map's numbered badges are built
+      // from the same function, so "Feature 3" here is badge "3" there.
+      const ordered = orderAirspaceFeatures(features, altitudeKeyOfAirspaceFeature);
+      const first = ordered[0];
       if (first === undefined) {
         return { status: 'not-found', ref };
       }
@@ -340,7 +336,7 @@ export function resolveSelectionFromState(
           kind: 'airspace',
           airspaceType: first.type,
           identifier: first.identifier,
-          features,
+          features: ordered,
         },
       };
     }
