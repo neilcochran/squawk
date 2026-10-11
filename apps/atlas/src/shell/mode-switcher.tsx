@@ -4,6 +4,7 @@ import type { MouseEvent, ReactElement, ReactNode } from 'react';
 
 import { CHART_ROUTE_PATH } from '../modes/chart/url-state.ts';
 import { dispatchChartViewReset } from '../modes/chart/view-reset-bus.ts';
+import { PLAN_ROUTE_PATH } from '../modes/plan/url-state.ts';
 
 /**
  * Top-level mode switcher rendered in the shell header. Each mode declares its
@@ -23,6 +24,7 @@ export function ModeSwitcher(): ReactElement {
   return (
     <nav aria-label="Mode" className="flex items-center gap-1">
       <ModeLink to={CHART_ROUTE_PATH}>Chart</ModeLink>
+      <ModeLink to={PLAN_ROUTE_PATH}>Plan</ModeLink>
     </nav>
   );
 }
@@ -32,7 +34,7 @@ export function ModeSwitcher(): ReactElement {
  */
 interface ModeLinkProps {
   /** Typed route path the link navigates to. Extend the union as new modes land. */
-  to: typeof CHART_ROUTE_PATH;
+  to: typeof CHART_ROUTE_PATH | typeof PLAN_ROUTE_PATH;
   /** Visible label for the mode. */
   children: ReactNode;
 }
