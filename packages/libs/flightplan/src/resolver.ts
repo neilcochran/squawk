@@ -429,8 +429,8 @@ function tryAirport(
  * the arrival airport - but since the route is parsed left-to-right,
  * the most recent airport is the best available hint).
  *
- * Accepts both the bare CIFP identifier (e.g. `NUBLE4`) and the dotted
- * identifier-with-transition form (e.g. `NUBLE4.JJIMY`). When a
+ * Accepts both the bare CIFP identifier (e.g. `DEEZZ6`) and the dotted
+ * identifier-with-transition form (e.g. `DEEZZ6.CANDR`). When a
  * transition is supplied it is forwarded to the procedure resolver so
  * that the transition's legs are merged into the expansion.
  */
@@ -563,7 +563,7 @@ function tryNavaid(
  *   procedures: createProcedureResolver({ data: usBundledProcedures.records }),
  * });
  *
- * const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+ * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
  * for (const element of route.elements) {
  *   console.log(element.type, element.raw);
  * }

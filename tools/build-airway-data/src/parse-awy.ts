@@ -10,13 +10,13 @@ export interface Awy1Record {
   airwayTypeChar: string;
   /** Airway point sequence number. */
   sequenceNumber: number;
-  /** Distance to next point in nautical miles. */
+  /** Distance to next point in nautical miles (column 45). NASR writes `000.00` where none is published. */
   distanceToNextNm: number | undefined;
   /** Segment magnetic course. */
   magneticCourseDeg: number | undefined;
   /** Segment magnetic course - opposite direction. */
   magneticCourseOppositeDeg: number | undefined;
-  /** Segment distance in NM (second distance field). */
+  /** Distance to next point in segment in nautical miles (column 69). NASR writes `000.00` where none is published. */
   segmentDistanceNm: number | undefined;
   /** MEA in feet. */
   minimumEnrouteAltitudeFt: number | undefined;
@@ -128,6 +128,32 @@ function intField(line: string, start: number, length: number): number | undefin
 function strField(line: string, start: number, length: number): string | undefined {
   const val = field(line, start, length);
   return val === '' ? undefined : val;
+}
+
+/**
+ * Picks the published distance from an airway point to the next one out of
+ * the two NASR distance fields. The segment distance (`AWY1` column 69,
+ * `ATS1` column 79) is the field the FAA populates and wins when it is
+ * positive; the header distance (column 45 / 55) is the fallback. NASR writes
+ * `000.00` rather than blanks where no leg follows - the last point of an
+ * airway, or a gap - so a zero in either field means the distance is not
+ * published, never that the leg has zero length.
+ *
+ * @param segmentDistanceNm - Distance to the next point in the segment, in nautical miles.
+ * @param distanceToNextNm - Distance to the next point from the header field, in nautical miles.
+ * @returns The first positive distance, or `undefined` when neither field is published.
+ */
+export function publishedDistanceNm(
+  segmentDistanceNm: number | undefined,
+  distanceToNextNm: number | undefined,
+): number | undefined {
+  if (segmentDistanceNm !== undefined && segmentDistanceNm > 0) {
+    return segmentDistanceNm;
+  }
+  if (distanceToNextNm !== undefined && distanceToNextNm > 0) {
+    return distanceToNextNm;
+  }
+  return undefined;
 }
 
 /**
@@ -262,7 +288,37 @@ export function classifyWaypointType(facilityType: string, name: string): Airway
 }
 
 /**
- * Builds an AirwayWaypoint from a paired AWY1 + AWY2 record.
+ * Keeps the waypoints of one airway that could be built, in sequence order.
+ *
+ * A waypoint's `distanceToNextNm` is the FAA's distance to the point that
+ * follows it in the source sequence. When that point was not built (a border
+ * crossing without coordinates, say), or when nothing follows at all, the
+ * published value no longer describes a leg to the next waypoint in the
+ * output, so it is cleared.
+ *
+ * @param sequence - Build results in sequence order, `undefined` where a point could not be built.
+ * @returns The built waypoints, with `distanceToNextNm` only where it runs to the next one.
+ */
+export function assembleWaypoints(sequence: (AirwayWaypoint | undefined)[]): AirwayWaypoint[] {
+  const waypoints: AirwayWaypoint[] = [];
+  for (let i = 0; i < sequence.length; i++) {
+    const wp = sequence[i];
+    if (wp === undefined) {
+      continue;
+    }
+    if (sequence[i + 1] === undefined) {
+      delete wp.distanceToNextNm;
+    }
+    waypoints.push(wp);
+  }
+  return waypoints;
+}
+
+/**
+ * Builds an AirwayWaypoint from a paired AWY1 + AWY2 record. The distance to
+ * the next point is left unset when the airway is discontinued after this
+ * point (the gap flag), since the FAA's value then does not describe a leg
+ * to the next waypoint.
  */
 export function buildWaypoint(awy1: Awy1Record, awy2: Awy2Record): AirwayWaypoint | undefined {
   const lat = parseDms(awy2.latStr);
@@ -345,10 +401,11 @@ export function buildWaypoint(awy1: Awy1Record, awy2: Awy2Record): AirwayWaypoin
   if (awy1.minimumCrossingAltitudeOppositeDirection) {
     wp.minimumCrossingAltitudeOppositeDirection = awy1.minimumCrossingAltitudeOppositeDirection;
   }
-  if (awy1.distanceToNextNm !== undefined) {
-    wp.distanceToNextNm = awy1.distanceToNextNm;
-  } else if (awy1.segmentDistanceNm !== undefined) {
-    wp.distanceToNextNm = awy1.segmentDistanceNm;
+  const distanceToNextNm = awy1.discontinued
+    ? undefined
+    : publishedDistanceNm(awy1.segmentDistanceNm, awy1.distanceToNextNm);
+  if (distanceToNextNm !== undefined) {
+    wp.distanceToNextNm = distanceToNextNm;
   }
   if (awy1.magneticCourseDeg !== undefined) {
     wp.magneticCourseDeg = awy1.magneticCourseDeg;

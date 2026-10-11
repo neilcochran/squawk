@@ -6,7 +6,7 @@ import type { Airway, AirwayType, AirwayRegion, AirwayWaypoint } from '@squawk/t
 import { AWY_TYPE_MAP, ATS_TYPE_MAP, AIRWAY_REGION_MAP } from '@squawk/types';
 
 import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
-import { parseAwy1, parseAwy2, buildWaypoint } from './parse-awy.js';
+import { parseAwy1, parseAwy2, buildWaypoint, assembleWaypoints } from './parse-awy.js';
 import { writeOutput } from './write-output.js';
 
 /** Fixed-width data files within the NASR subscription directory. */
@@ -92,19 +92,13 @@ function parseAwyFile(filePath: string): Airway[] {
       continue;
     }
 
-    const waypoints: AirwayWaypoint[] = [];
+    const sequence: (AirwayWaypoint | undefined)[] = [];
     for (const seq of seqNumbers) {
       const awy1 = awy1Points.get(seq)!;
       const awy2 = awy2Points.get(seq);
-      if (!awy2) {
-        continue;
-      }
-
-      const wp = buildWaypoint(awy1, awy2);
-      if (wp) {
-        waypoints.push(wp);
-      }
+      sequence.push(awy2 ? buildWaypoint(awy1, awy2) : undefined);
     }
+    const waypoints = assembleWaypoints(sequence);
 
     if (waypoints.length === 0) {
       continue;
@@ -170,19 +164,13 @@ function parseAtsFile(filePath: string): Airway[] {
       continue;
     }
 
-    const waypoints: AirwayWaypoint[] = [];
+    const sequence: (AirwayWaypoint | undefined)[] = [];
     for (const seq of seqNumbers) {
       const ats1 = ats1Points.get(seq)!;
       const ats2 = ats2Points.get(seq);
-      if (!ats2) {
-        continue;
-      }
-
-      const wp = buildAtsWaypoint(ats1, ats2);
-      if (wp) {
-        waypoints.push(wp);
-      }
+      sequence.push(ats2 ? buildAtsWaypoint(ats1, ats2) : undefined);
     }
+    const waypoints = assembleWaypoints(sequence);
 
     if (waypoints.length === 0) {
       continue;

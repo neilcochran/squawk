@@ -2,6 +2,23 @@ import { describe, it, expect, assert } from 'vitest';
 
 import { usBundledAirways } from './node.js';
 
+/** Mean Earth radius in nautical miles. */
+const EARTH_RADIUS_NM = 3440.065;
+
+function toRadians(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
+/** Haversine great-circle distance in nautical miles between two positions. */
+function greatCircleNm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_NM * Math.asin(Math.sqrt(a));
+}
+
 describe('usBundledAirways', () => {
   it('loads with a reasonable number of records', () => {
     assert(usBundledAirways.records.length > 1000);
@@ -61,11 +78,39 @@ describe('usBundledAirways', () => {
     assert(waypointTypes.has('FIX'), 'expected FIX waypoints');
   });
 
-  it('contains waypoints with distance to next', () => {
-    const withDistance = usBundledAirways.records.find((a) =>
-      a.waypoints.some((wp) => wp.distanceToNextNm !== undefined),
+  it('publishes a positive distance to next on most waypoints', () => {
+    let total = 0;
+    let positive = 0;
+    for (const airway of usBundledAirways.records) {
+      for (const wp of airway.waypoints) {
+        total++;
+        if (wp.distanceToNextNm !== undefined && wp.distanceToNextNm > 0) {
+          positive++;
+        }
+      }
+    }
+    assert(
+      positive / total > 0.8,
+      `expected most waypoints to carry a distance to next, got ${positive} of ${total}`,
     );
-    assert(withDistance !== undefined, 'expected at least one waypoint with distanceToNextNm');
+  });
+
+  it('leaves distance to next unset rather than zero where none is published', () => {
+    const zeros = usBundledAirways.records.reduce(
+      (sum, a) => sum + a.waypoints.filter((wp) => wp.distanceToNextNm === 0).length,
+      0,
+    );
+    expect(zeros).toBe(0);
+  });
+
+  it('publishes the distance to next as the leg to the following waypoint', () => {
+    const j60 = usBundledAirways.records.find((r) => r.designation === 'J60');
+    assert(j60 !== undefined, 'expected to find J60 jet route');
+    const [first, second] = j60.waypoints;
+    assert(first !== undefined && second !== undefined, 'expected at least two J60 waypoints');
+    assert(first.distanceToNextNm !== undefined, 'expected a distance on the first J60 waypoint');
+    const directNm = greatCircleNm(first.lat, first.lon, second.lat, second.lon);
+    expect(Math.abs(first.distanceToNextNm - directNm)).toBeLessThan(1);
   });
 
   it('can find a known airway by scanning records', () => {

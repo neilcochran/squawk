@@ -1,6 +1,6 @@
 import type { AirwayWaypoint } from '@squawk/types';
 
-import { parseDms, classifyWaypointType } from './parse-awy.js';
+import { parseDms, classifyWaypointType, publishedDistanceNm } from './parse-awy.js';
 
 /**
  * Parsed fields from an ATS1 (segment data) record.
@@ -18,13 +18,13 @@ export interface Ats1Record {
   airwayTypeChar: string;
   /** Airway point sequence number. */
   sequenceNumber: number;
-  /** Distance to next point in nautical miles. */
+  /** Distance to next point in nautical miles (column 55). NASR writes `000.00` where none is published. */
   distanceToNextNm: number | undefined;
   /** Segment magnetic course. */
   magneticCourseDeg: number | undefined;
   /** Segment magnetic course - opposite direction. */
   magneticCourseOppositeDeg: number | undefined;
-  /** Segment distance in NM. */
+  /** Distance to next point in segment in nautical miles (column 79). NASR writes `000.00` where none is published. */
   segmentDistanceNm: number | undefined;
   /** MEA in feet. */
   minimumEnrouteAltitudeFt: number | undefined;
@@ -201,7 +201,10 @@ export function parseAts2(line: string): Ats2Record {
 }
 
 /**
- * Builds an AirwayWaypoint from a paired ATS1 + ATS2 record.
+ * Builds an AirwayWaypoint from a paired ATS1 + ATS2 record. The distance to
+ * the next point is left unset when the airway is discontinued after this
+ * point (the gap flag), since the FAA's value then does not describe a leg
+ * to the next waypoint.
  */
 export function buildAtsWaypoint(ats1: Ats1Record, ats2: Ats2Record): AirwayWaypoint | undefined {
   const lat = parseDms(ats2.latStr);
@@ -284,10 +287,11 @@ export function buildAtsWaypoint(ats1: Ats1Record, ats2: Ats2Record): AirwayWayp
   if (ats1.minimumCrossingAltitudeOppositeDirection) {
     wp.minimumCrossingAltitudeOppositeDirection = ats1.minimumCrossingAltitudeOppositeDirection;
   }
-  if (ats1.distanceToNextNm !== undefined) {
-    wp.distanceToNextNm = ats1.distanceToNextNm;
-  } else if (ats1.segmentDistanceNm !== undefined) {
-    wp.distanceToNextNm = ats1.segmentDistanceNm;
+  const distanceToNextNm = ats1.discontinued
+    ? undefined
+    : publishedDistanceNm(ats1.segmentDistanceNm, ats1.distanceToNextNm);
+  if (distanceToNextNm !== undefined) {
+    wp.distanceToNextNm = distanceToNextNm;
   }
   if (ats1.magneticCourseDeg !== undefined) {
     wp.magneticCourseDeg = ats1.magneticCourseDeg;

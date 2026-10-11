@@ -125,6 +125,12 @@ Each `AirwayWaypoint` contains:
 | `distanceToNextNm`                      | number or undefined | Distance to next waypoint in NM         |
 | `magneticCourseDeg`                     | number or undefined | Magnetic course to next waypoint        |
 
+`distanceToNextNm` is set only where the FAA publishes a distance to the next
+waypoint in the sequence. It is unset on the last waypoint of an airway, on a
+waypoint after which the airway is discontinued, and on a waypoint whose
+successor in the NASR file is a border crossing without coordinates (those
+points are not included).
+
 ## Data source
 
 All data is derived from the [FAA National Airspace System Resource (NASR)](https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/) 28-day

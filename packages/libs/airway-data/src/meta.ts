@@ -11,7 +11,7 @@ import type { AirwayDatasetProperties } from './node.js';
 
 /** Build metadata for the bundled airway snapshot. */
 export const usBundledAirwaysProperties: AirwayDatasetProperties = {
-  generatedAt: '2026-10-09T22:25:13.123Z',
+  generatedAt: '2026-10-11T17:22:07.987Z',
   nasrCycleDate: '2026-10-29',
   recordCount: 1515,
   waypointCount: 19081,
