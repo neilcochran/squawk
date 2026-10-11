@@ -1,5 +1,13 @@
 # @squawk/geo
 
+## 0.5.0
+
+### Minor Changes
+
+- 316f4a4: ### Added
+
+  - `polygonGeoJson.poleOfInaccessibility()` finds the interior point of a GeoJSON polygon farthest from every edge, so a label anchor never lands outside a crescent, sector, or ring whose centroid does.
+
 ## 0.4.11
 
 ### Patch Changes
