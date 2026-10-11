@@ -45,14 +45,26 @@ describe('normalizeShapefileAltitude', () => {
 });
 
 describe('normalizeSaaAltitude', () => {
-  it('normalizes SFC reference to zero SFC', () => {
+  it('normalizes a zero value with the SFC reference to SFC', () => {
     const result = normalizeSaaAltitude(0, 'FT', 'SFC');
     expect(result).toEqual({ valueFt: 0, reference: 'SFC' });
   });
 
-  it('treats the GND string value as SFC regardless of uom', () => {
-    const result = normalizeSaaAltitude('GND', 'FT', '');
-    expect(result).toEqual({ valueFt: 0, reference: 'SFC' });
+  it('treats the GND string value as SFC regardless of uom or reference', () => {
+    expect(normalizeSaaAltitude('GND', 'FT', 'SFC')).toEqual({ valueFt: 0, reference: 'SFC' });
+    expect(normalizeSaaAltitude('GND', 'FT', '')).toEqual({ valueFt: 0, reference: 'SFC' });
+    expect(normalizeSaaAltitude('GND', 'FT', 'OTHER')).toEqual({ valueFt: 0, reference: 'SFC' });
+  });
+
+  it('treats a positive value with the SFC reference as feet AGL', () => {
+    expect(normalizeSaaAltitude(800, 'FT', 'SFC')).toEqual({ valueFt: 800, reference: 'AGL' });
+    expect(normalizeSaaAltitude(500, 'FT', 'SFC')).toEqual({ valueFt: 500, reference: 'AGL' });
+    expect(normalizeSaaAltitude('00800', 'FT', 'SFC')).toEqual({ valueFt: 800, reference: 'AGL' });
+  });
+
+  it('resolves a flight level with the SFC reference to feet MSL', () => {
+    const result = normalizeSaaAltitude(180, 'FL', 'SFC');
+    expect(result).toEqual({ valueFt: 18000, reference: 'MSL' });
   });
 
   it('treats the UNL string value as unlimited (99999 MSL)', () => {
