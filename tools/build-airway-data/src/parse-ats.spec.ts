@@ -172,4 +172,32 @@ describe('buildAtsWaypoint', () => {
     expect(wp?.distanceToNextNm).toBe(100);
     expect(wp?.signalGap).toBe(true);
   });
+
+  it('uses the segment distance from a record whose primary distance field is 000.00', () => {
+    const line = fixedWidthLine([
+      { col: 1, len: 4, value: 'ATS1' },
+      { col: 5, len: 2, value: 'AT' },
+      { col: 7, len: 12, value: 'A315        ' },
+      { col: 21, len: 5, value: '    1' },
+      { col: 55, len: 6, value: '000.00' },
+      { col: 79, len: 6, value: '018.46' },
+    ]);
+    const rec = parseAts1(line);
+    expect(rec.distanceToNextNm).toBe(0);
+    expect(rec.segmentDistanceNm).toBe(18.46);
+    expect(buildAtsWaypoint(rec, ats2())?.distanceToNextNm).toBe(18.46);
+  });
+
+  it('leaves distanceToNextNm unset when both distance fields are zero', () => {
+    const wp = buildAtsWaypoint(ats1({ distanceToNextNm: 0, segmentDistanceNm: 0 }), ats2());
+    assert(wp);
+    expect(wp.distanceToNextNm).toBe(undefined);
+  });
+
+  it('leaves distanceToNextNm unset when the airway is discontinued after this point', () => {
+    const wp = buildAtsWaypoint(ats1({ segmentDistanceNm: 18.46, discontinued: true }), ats2());
+    assert(wp);
+    expect(wp.discontinued).toBe(true);
+    expect(wp.distanceToNextNm).toBe(undefined);
+  });
 });

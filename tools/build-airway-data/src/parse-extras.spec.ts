@@ -271,7 +271,7 @@ describe('buildAtsWaypoint - all optional fields', () => {
     expect(wp.minimumCrossingAltitudeDirection).toBe('NE');
     expect(wp.minimumCrossingAltitudeOppositeFt).toBe(11500);
     expect(wp.minimumCrossingAltitudeOppositeDirection).toBe('SW');
-    expect(wp.distanceToNextNm).toBe(100);
+    expect(wp.distanceToNextNm).toBe(undefined);
     expect(wp.magneticCourseDeg).toBe(45);
     expect(wp.magneticCourseOppositeDeg).toBe(225);
     expect(wp.changeoverDistanceNm).toBe(25);
@@ -283,9 +283,10 @@ describe('buildAtsWaypoint - all optional fields', () => {
     expect(wp.icaoRegionCode).toBe('TJ');
   });
 
-  it('falls back to segmentDistanceNm when distanceToNextNm is undefined', () => {
+  it('takes segmentDistanceNm when the airway continues past this point', () => {
     const a1 = fullAts1();
     a1.distanceToNextNm = undefined;
+    a1.discontinued = false;
     const wp = buildAtsWaypoint(a1, fullAts2());
     expect(wp?.distanceToNextNm).toBe(80);
   });
@@ -383,7 +384,7 @@ describe('buildWaypoint - all optional fields', () => {
     expect(wp.minimumCrossingAltitudeDirection).toBe('NE');
     expect(wp.minimumCrossingAltitudeOppositeFt).toBe(4500);
     expect(wp.minimumCrossingAltitudeOppositeDirection).toBe('SW');
-    expect(wp.distanceToNextNm).toBe(100);
+    expect(wp.distanceToNextNm).toBe(undefined);
     expect(wp.magneticCourseDeg).toBe(60);
     expect(wp.magneticCourseOppositeDeg).toBe(240);
     expect(wp.changeoverDistanceNm).toBe(12);
@@ -395,9 +396,10 @@ describe('buildWaypoint - all optional fields', () => {
     expect(wp.minimumReceptionAltitudeFt).toBe(4000);
   });
 
-  it('falls back to segmentDistanceNm when distanceToNextNm is undefined', () => {
+  it('takes segmentDistanceNm when the airway continues past this point', () => {
     const a1 = fullAwy1();
     a1.distanceToNextNm = undefined;
+    a1.discontinued = false;
     const wp = buildWaypoint(a1, fullAwy2());
     expect(wp?.distanceToNextNm).toBe(50);
   });

@@ -158,6 +158,35 @@ describe('extractRoutePoints', () => {
     );
   });
 
+  it('suppresses consecutive points that differ only by coordinate rounding', () => {
+    const points = extractRoutePoints(
+      route([
+        makeWaypoint('CIVET', 34.03526666, -117.38993888),
+        makeAirway('J60', [
+          { identifier: 'CIVET', lat: 34.035267, lon: -117.389939 },
+          { identifier: 'RESOR', lat: 34.3, lon: -117.0 },
+        ]),
+      ]),
+    );
+
+    assert.deepEqual(
+      points.map((p) => p.label),
+      ['CIVET', 'RESOR'],
+    );
+  });
+
+  it('keeps consecutive points that are genuinely distinct', () => {
+    // 0.0001 degrees is roughly ten metres, well outside rounding noise.
+    const points = extractRoutePoints(
+      route([makeWaypoint('A', 40.0, -74.0), makeWaypoint('B', 40.0001, -74.0)]),
+    );
+
+    assert.deepEqual(
+      points.map((p) => p.label),
+      ['A', 'B'],
+    );
+  });
+
   it('contributes no points for DCT, speed/altitude, and unresolved elements', () => {
     const points = extractRoutePoints(
       route([makeDirect(), makeSpeedAltitude(), makeUnresolved('XYZZY')]),

@@ -73,7 +73,7 @@ export function registerFlightplanTools(server: McpServer): void {
     {
       title: 'Parse a flight plan route string',
       description:
-        'Parses a whitespace-separated flight plan route string (e.g. "KJFK DCT MERIT J60 MARTN DCT KLAX") into structured route elements. Each token is classified as an airport, SID, STAR, airway, direct (DCT), waypoint, lat/lon coordinate, speed/altitude group, or unresolved. Airway tokens are expanded into waypoint sequences between the entry and exit fixes. SID/STAR tokens are expanded into their first common route, and the dotted PROCCODE.TRANSITION form (e.g. "NUBLE4.JJIMY") additionally merges the named transition\'s waypoints into the expansion.',
+        'Parses a whitespace-separated flight plan route string (e.g. "KLAX DCT LAX J60 SAX DCT KJFK") into structured route elements. Each token is classified as an airport, SID, STAR, airway, direct (DCT), waypoint, lat/lon coordinate, speed/altitude group, or unresolved. Airway tokens are expanded into waypoint sequences between the entry and exit fixes. SID/STAR tokens are expanded into their first common route, and the dotted PROCCODE.TRANSITION form (e.g. "DEEZZ6.CANDR") additionally merges the named transition\'s waypoints into the expansion.',
       inputSchema: {
         routeString: z
           .string()

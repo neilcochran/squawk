@@ -217,6 +217,18 @@ describe('computeRouteDistance', () => {
       assert.ok(close(result.totalDistanceNm, expected));
     });
 
+    it('falls back to great-circle when distanceToNextNm is zero', () => {
+      const awp = makeAirway('J60', [
+        { identifier: 'A', lat: 40.0, lon: -74.0, distanceToNextNm: 0 },
+        { identifier: 'B', lat: 41.0, lon: -74.0 },
+      ]);
+      const expected = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
+
+      const result = computeRouteDistance(route([awp]));
+      assert.ok(result.totalDistanceNm > 0, 'expected a positive distance');
+      assert.ok(close(result.totalDistanceNm, expected));
+    });
+
     it('handles airway with empty waypoints', () => {
       const awp = makeAirway('J99', []);
       const result = computeRouteDistance(route([awp]));
@@ -311,6 +323,35 @@ describe('computeRouteDistance', () => {
       // Should use the precomputed 99 NM, not great-circle
       assert.equal(result.legs[0]!.distanceNm, 99);
       assert.equal(result.totalDistanceNm, 99);
+    });
+
+    it('does not adopt a zero distance from a deduplicated airway entry fix', () => {
+      const wp = makeWaypoint('MERIT', 40.5, -74.0);
+      const awp = makeAirway('J60', [
+        { identifier: 'MERIT', lat: 40.5, lon: -74.0, distanceToNextNm: 0 },
+        { identifier: 'MARTN', lat: 41.0, lon: -74.0 },
+      ]);
+      const expected = greatCircle.distanceNm(40.5, -74.0, 41.0, -74.0);
+
+      const result = computeRouteDistance(route([wp, awp]));
+      assert.equal(result.legs.length, 1);
+      assert.ok(close(result.legs[0]!.distanceNm, expected));
+    });
+
+    it('merges an airway entry fix that differs from the preceding waypoint only by coordinate rounding', () => {
+      // The fix dataset keeps eight decimals and the airway dataset six, so
+      // the same point arrives twice with a difference at the seventh decimal.
+      const wp = makeWaypoint('CIVET', 34.03526666, -117.38993888);
+      const awp = makeAirway('J60', [
+        { identifier: 'CIVET', lat: 34.035267, lon: -117.389939, distanceToNextNm: 30.11 },
+        { identifier: 'RESOR', lat: 34.3, lon: -117.0 },
+      ]);
+
+      const result = computeRouteDistance(route([wp, awp]));
+      assert.equal(result.legs.length, 1);
+      assert.equal(result.legs[0]!.from, 'CIVET');
+      assert.equal(result.legs[0]!.to, 'RESOR');
+      assert.equal(result.legs[0]!.distanceNm, 30.11);
     });
 
     it('does not create a zero-length leg when SID last fix matches following waypoint', () => {
@@ -534,5 +575,41 @@ describe('computeRouteDistance integration', () => {
     // Cumulative distance of last leg should equal totalDistanceNm
     const lastLeg = result.legs[result.legs.length - 1]!;
     assert.ok(close(lastLeg.cumulativeDistanceNm, result.totalDistanceNm));
+  });
+
+  it('sums published airway distances for a transcontinental airway route', () => {
+    const parsed = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+    const result = computeRouteDistance(parsed, 450);
+
+    assert.equal(result.unresolvedElements.length, 0);
+    // LAX to JFK is about 2,145 nm direct; J60 adds a little on top.
+    assert.ok(result.totalDistanceNm > 2100, `expected > 2100 nm, got ${result.totalDistanceNm}`);
+    assert.ok(result.totalDistanceNm < 2400, `expected < 2400 nm, got ${result.totalDistanceNm}`);
+    assert.ok(result.legs.length > 20, 'expected J60 to expand into many legs');
+
+    for (const leg of result.legs) {
+      assert.ok(leg.distanceNm > 0, `expected a positive leg ${leg.from} -> ${leg.to}`);
+      // A published airway distance describes the leg between its two points,
+      // so it should land close to the great-circle distance between them.
+      const direct = greatCircle.distanceNm(leg.fromLat, leg.fromLon, leg.toLat, leg.toLon);
+      assert.ok(
+        Math.abs(leg.distanceNm - direct) < Math.max(1, direct * 0.02),
+        `leg ${leg.from} -> ${leg.to}: published ${leg.distanceNm} nm vs direct ${direct} nm`,
+      );
+    }
+  });
+
+  it('does not duplicate the entry fix when a waypoint joins an airway', () => {
+    const parsed = resolver.parse('KLAX DCT CIVET J60 HEC DCT KLAS');
+    const result = computeRouteDistance(parsed);
+
+    assert.equal(result.unresolvedElements.length, 0);
+    assert.deepEqual(
+      [result.legs[0]!.from, ...result.legs.map((leg) => leg.to)],
+      ['KLAX', 'CIVET', 'RESOR', 'HEC', 'KLAS'],
+    );
+    for (const leg of result.legs) {
+      assert.ok(leg.distanceNm > 0, `expected a positive leg ${leg.from} -> ${leg.to}`);
+    }
   });
 });

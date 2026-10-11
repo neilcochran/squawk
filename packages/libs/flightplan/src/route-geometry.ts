@@ -49,7 +49,7 @@ export interface GeoPoint {
   lon: number;
   /**
    * Pre-computed distance to the next point along an airway segment in
-   * nautical miles, if available from the source data.
+   * nautical miles, when the source data publishes a positive value.
    */
   precomputedDistanceToNextNm?: number;
 }
@@ -58,8 +58,15 @@ export interface GeoPoint {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-/** Epsilon for comparing coordinates to detect duplicate points. */
-const COORD_EPSILON = 1e-9;
+/**
+ * Epsilon in decimal degrees for treating two consecutive points as the same
+ * position. The data packages round coordinates to different precisions
+ * (airway waypoints to six decimals, fixes and navaids to eight), so the same
+ * fix reached through two of them can differ by up to 5e-7 degrees. 1e-5
+ * degrees is about a metre: far above that rounding noise and far below the
+ * spacing of any two distinct route points.
+ */
+const COORD_EPSILON = 1e-5;
 
 /**
  * Returns true if two points share the same coordinates (within epsilon).
@@ -70,8 +77,8 @@ function samePosition(a: GeoPoint, b: GeoPoint): boolean {
 
 /**
  * Walks the route elements and extracts an ordered array of geographic
- * points. Duplicate consecutive points (e.g. an airway entry fix that
- * matches the preceding waypoint) are suppressed.
+ * points. Duplicate consecutive points (e.g. an airway entry fix at the same
+ * position as the preceding waypoint, within about a metre) are suppressed.
  *
  * Also collects all `unresolved` elements encountered during the walk.
  *
@@ -129,9 +136,10 @@ export function extractGeoPoints(elements: RouteElement[]): {
             lat: wp.lat,
             lon: wp.lon,
           };
-          // Only carry precomputed distance for non-last waypoints (the
-          // last waypoint's distanceToNextNm points beyond this segment).
-          if (!isLast && wp.distanceToNextNm !== undefined) {
+          // Only carry a published distance for non-last waypoints (the last
+          // waypoint's distanceToNextNm points beyond this segment), and only
+          // a positive one: a zero means the source published no distance.
+          if (!isLast && wp.distanceToNextNm !== undefined && wp.distanceToNextNm > 0) {
             point.precomputedDistanceToNextNm = wp.distanceToNextNm;
           }
           emit(point);
@@ -183,7 +191,7 @@ export function extractGeoPoints(elements: RouteElement[]): {
  * import { createFlightplanResolver, extractRoutePoints } from '@squawk/flightplan';
  *
  * const resolver = createFlightplanResolver({ airports, navaids, fixes, airways });
- * const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+ * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
  * const points = extractRoutePoints(route);
  * ```
  *
@@ -207,7 +215,7 @@ export function extractRoutePoints(route: ParsedRoute): RoutePoint[] {
  * import { createFlightplanResolver, routeToLineString } from '@squawk/flightplan';
  *
  * const resolver = createFlightplanResolver({ airports, navaids, fixes, airways });
- * const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+ * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
  * const line = routeToLineString(route);
  * if (line) {
  *   map.addSource('route', { type: 'geojson', data: line });

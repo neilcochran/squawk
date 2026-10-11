@@ -19,9 +19,17 @@ needed.
    Red, Amber, Blue) airways
 3. Reads `ATS.txt` line-by-line, parsing `ATS1` and `ATS2` records the same
    way for Atlantic, Bahama, Pacific, and Puerto Rico routes
-4. Resolves each airway's `type` (from the designation prefix) and `region`
+4. Takes each point's distance to the next from the segment distance field
+   (`AWY1` column 69, `ATS1` column 79), falling back to the header distance
+   field (column 45 / 55). `distanceToNextNm` is set only where that value
+   describes a leg to the next waypoint in the output: it is left unset when
+   both fields are `000.00` (NASR's "no leg follows"), when the airway gap
+   flag marks the airway as discontinued after the point, when the next point
+   is dropped for lacking coordinates (border crossings), and on the last
+   point of an airway
+5. Resolves each airway's `type` (from the designation prefix) and `region`
    (from the airway-type character) via `@squawk/types` mapping constants
-5. Sorts the merged result by designation and writes it as gzipped JSON
+6. Sorts the merged result by designation and writes it as gzipped JSON
 
 ## Output
 

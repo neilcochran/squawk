@@ -70,14 +70,15 @@ export interface RouteDistanceResult {
  * indicate which parts of the route could not contribute to the distance
  * calculation.
  *
- * Airway segments use the FAA-published `distanceToNextNm` values when
- * available, falling back to great-circle computation otherwise.
+ * Airway segments use the FAA-published `distanceToNextNm` value where the
+ * source publishes a positive one, falling back to great-circle computation
+ * otherwise.
  *
  * ```typescript
  * import { createFlightplanResolver, computeRouteDistance } from '@squawk/flightplan';
  *
  * const resolver = createFlightplanResolver({ airports, navaids, fixes, airways });
- * const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+ * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
  * const result = computeRouteDistance(route, 450);
  * console.log(result.totalDistanceNm, result.estimatedTimeEnrouteHrs);
  * ```

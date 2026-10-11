@@ -1,11 +1,15 @@
 import { describe, it, expect, assert } from 'vitest';
 
+import type { AirwayWaypoint } from '@squawk/types';
+
 import {
   parseDms,
   parseAwy1,
   parseAwy2,
   classifyWaypointType,
   buildWaypoint,
+  publishedDistanceNm,
+  assembleWaypoints,
 } from './parse-awy.js';
 import type { Awy1Record, Awy2Record } from './parse-awy.js';
 
@@ -230,6 +234,61 @@ describe('parseAwy2', () => {
   });
 });
 
+describe('publishedDistanceNm', () => {
+  it('returns the segment distance when it is positive', () => {
+    expect(publishedDistanceNm(45.05, 0)).toBe(45.05);
+    expect(publishedDistanceNm(45.05, 71)).toBe(45.05);
+  });
+
+  it('falls back to the header distance when the segment distance is zero or undefined', () => {
+    expect(publishedDistanceNm(0, 71)).toBe(71);
+    expect(publishedDistanceNm(undefined, 71)).toBe(71);
+  });
+
+  it('returns undefined when neither field holds a positive distance', () => {
+    expect(publishedDistanceNm(0, 0)).toBe(undefined);
+    expect(publishedDistanceNm(0, undefined)).toBe(undefined);
+    expect(publishedDistanceNm(undefined, undefined)).toBe(undefined);
+  });
+});
+
+describe('assembleWaypoints', () => {
+  function point(identifier: string, distanceToNextNm?: number): AirwayWaypoint {
+    const wp: AirwayWaypoint = {
+      name: identifier,
+      identifier,
+      waypointType: 'FIX',
+      lat: 40,
+      lon: -74,
+    };
+    if (distanceToNextNm !== undefined) {
+      wp.distanceToNextNm = distanceToNextNm;
+    }
+    return wp;
+  }
+
+  it('keeps the built waypoints in sequence order and drops the rest', () => {
+    const result = assembleWaypoints([point('A', 10), undefined, point('C', 20), point('D')]);
+    expect(result.map((wp) => wp.identifier)).toEqual(['A', 'C', 'D']);
+  });
+
+  it('clears the distance on a waypoint whose successor was not built', () => {
+    const result = assembleWaypoints([point('A', 10), undefined, point('C', 20), point('D')]);
+    expect(result[0]?.distanceToNextNm).toBe(undefined);
+    expect(result[1]?.distanceToNextNm).toBe(20);
+  });
+
+  it('clears the distance on the last waypoint', () => {
+    const result = assembleWaypoints([point('A', 10), point('B', 20)]);
+    expect(result[0]?.distanceToNextNm).toBe(10);
+    expect(result[1]?.distanceToNextNm).toBe(undefined);
+  });
+
+  it('returns an empty array when nothing could be built', () => {
+    expect(assembleWaypoints([undefined, undefined])).toEqual([]);
+  });
+});
+
 describe('buildWaypoint', () => {
   function awy1(overrides: Partial<Awy1Record> = {}): Awy1Record {
     return {
@@ -310,7 +369,7 @@ describe('buildWaypoint', () => {
     expect(wp.identifier).toBe('OBAAK');
   });
 
-  it('falls back to segmentDistanceNm when distanceToNextNm is undefined', () => {
+  it('takes segmentDistanceNm when distanceToNextNm is undefined', () => {
     const wp = buildWaypoint(
       awy1({ distanceToNextNm: undefined, segmentDistanceNm: 42.5 }),
       awy2(),
@@ -318,9 +377,39 @@ describe('buildWaypoint', () => {
     expect(wp?.distanceToNextNm).toBe(42.5);
   });
 
-  it('prefers distanceToNextNm over segmentDistanceNm', () => {
+  it('prefers segmentDistanceNm over distanceToNextNm', () => {
     const wp = buildWaypoint(awy1({ distanceToNextNm: 10, segmentDistanceNm: 99 }), awy2());
+    expect(wp?.distanceToNextNm).toBe(99);
+  });
+
+  it('falls back to distanceToNextNm when segmentDistanceNm is zero', () => {
+    const wp = buildWaypoint(awy1({ distanceToNextNm: 10, segmentDistanceNm: 0 }), awy2());
     expect(wp?.distanceToNextNm).toBe(10);
+  });
+
+  it('leaves distanceToNextNm unset when both distance fields are zero', () => {
+    const wp = buildWaypoint(awy1({ distanceToNextNm: 0, segmentDistanceNm: 0 }), awy2());
+    assert(wp);
+    expect(wp.distanceToNextNm).toBe(undefined);
+  });
+
+  it('leaves distanceToNextNm unset when the airway is discontinued after this point', () => {
+    const wp = buildWaypoint(awy1({ segmentDistanceNm: 50, discontinued: true }), awy2());
+    assert(wp);
+    expect(wp.discontinued).toBe(true);
+    expect(wp.distanceToNextNm).toBe(undefined);
+  });
+
+  it('uses the segment distance from a record whose primary distance field is 000.00', () => {
+    const line = awy1Defaults([
+      { col: 5, len: 5, value: 'J60  ' },
+      { col: 45, len: 6, value: '000.00' },
+      { col: 69, len: 6, value: '045.05' },
+    ]);
+    const rec = parseAwy1(line);
+    expect(rec.distanceToNextNm).toBe(0);
+    expect(rec.segmentDistanceNm).toBe(45.05);
+    expect(buildWaypoint(rec, awy2())?.distanceToNextNm).toBe(45.05);
   });
 
   it('propagates boolean flags when set', () => {

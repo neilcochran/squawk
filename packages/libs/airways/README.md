@@ -22,10 +22,10 @@ const resolver = createAirwayResolver({ data: usBundledAirways.records });
 const v16 = resolver.byDesignation('V16');
 
 // Expand an airway between two fixes
-const segment = resolver.expand('J60', 'MERIT', 'MARTN');
+const segment = resolver.expand('J60', 'LAX', 'SAX');
 if (segment) {
   for (const wp of segment.waypoints) {
-    console.log(wp.identifier, wp.mea, 'ft MEA');
+    console.log(wp.identifier, wp.minimumEnrouteAltitudeFt, 'ft MEA');
   }
 }
 
@@ -85,7 +85,7 @@ the contiguous US and Hawaii). Case-insensitive. Returns `Airway[]`.
 Expands an airway between two fixes, returning the ordered sequence of
 waypoints from the entry fix to the exit fix (inclusive). This is the
 primary use case for flight plan route decoding - given a route string
-like `MERIT J60 MARTN`, expand J60 between MERIT and MARTN.
+like `LAX J60 SAX`, expand J60 between LAX and SAX.
 
 Airways can be traversed in either direction. When the entry fix appears
 after the exit fix in the stored waypoint order, the returned waypoints

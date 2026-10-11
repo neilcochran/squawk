@@ -33,7 +33,7 @@ const resolver = createFlightplanResolver({
   procedures: createProcedureResolver({ data: usBundledProcedures.records }),
 });
 
-const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
 for (const element of route.elements) {
   console.log(element.type, element.raw);
 }
@@ -173,13 +173,13 @@ to the first `byIdent` match.
 Computes the total great-circle route distance and optional estimated time
 enroute from a parsed route. Walks the same ordered point sequence as the
 geometry helpers below, so distance and geometry stay in agreement. Airway
-segments use FAA-published per-segment distances when available, falling back
-to great-circle computation.
+segments use the FAA-published per-segment distance where the data carries a
+positive one, falling back to great-circle computation otherwise.
 
 ```typescript
 import { computeRouteDistance } from '@squawk/flightplan';
 
-const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
 const result = computeRouteDistance(route, 450);
 console.log(result.totalDistanceNm, result.estimatedTimeEnrouteHrs);
 ```
@@ -216,7 +216,7 @@ wind correction angle is zero.
 ```typescript
 import { computeRouteTiming } from '@squawk/flightplan';
 
-const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
 const result = computeRouteTiming(route, {
   trueAirspeedKt: 450,
   windProvider: (lat, lon) => ({ directionDeg: 270, speedKt: 80 }),
@@ -269,7 +269,7 @@ two drawable points, since a `LineString` requires at least two positions.
 ```typescript
 import { routeToLineString } from '@squawk/flightplan';
 
-const route = resolver.parse('KJFK DCT MERIT J60 MARTN DCT KLAX');
+const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
 const line = routeToLineString(route);
 if (line) {
   map.addSource('route', { type: 'geojson', data: line });

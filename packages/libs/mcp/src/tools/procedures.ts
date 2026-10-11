@@ -58,7 +58,7 @@ export function registerProcedureTools(server: McpServer): void {
           .string()
           .min(1)
           .describe(
-            'CIFP procedure identifier (case-insensitive). Examples: "AALLE4", "NUBLE4", "I04L", "R13".',
+            'CIFP procedure identifier (case-insensitive). Examples: "AALLE4", "DEEZZ6", "I04L", "R13".',
           ),
       },
     },
