@@ -46,6 +46,26 @@ const BADGE_VERTICAL_SPACING_EM = 1.4;
 const ANCHOR_KEY_DECIMALS = 4;
 
 /**
+ * Latitude, in degrees, that polygon vertices are clamped to before the
+ * features reach the map source. Web Mercator ends at 85.0511 degrees
+ * and MapLibre's tiler pins anything beyond that to the edge, which
+ * puts the vertex exactly on the top edge of a tile in the top row.
+ * MapLibre reads a ring edge lying on that tile edge as wrapping the
+ * pole and appends the globe projection's pole triangles, which reach
+ * four tile heights past the world edge; the plain fill shader discards
+ * them under Mercator, but the fill-extrusion shader does not, so an
+ * airspace that runs to the pole (the Anchorage ARTCC strata and the
+ * Class A derived from them) would extrude into a spike off the top of
+ * the tilted map. Stopping a twentieth of a degree short of the edge keeps
+ * every clamped vertex a dozen tile units below the trigger at zoom 0
+ * and further at every deeper zoom, and the basemap ends well before
+ * that sliver anyway. The dataset's own geometry is left alone: match
+ * keys and search still derive from it, and only what the map draws is
+ * clamped.
+ */
+export const MAX_SOURCE_LATITUDE = 85;
+
+/**
  * One numbered badge for a feature of a multi-feature airspace grouping.
  * Consumed by the DOM badge overlay, which projects `anchor` to the
  * screen itself so the badge can sit on the feature's 3D box.
@@ -101,8 +121,9 @@ export function getAirspaceProjection(dataset: LoadedAirspaceDataset): AirspaceP
  * filters), `__atlasFeatureIndex` (used by the per-feature focus filter
  * and the badges), and primitive altitude properties (used by the
  * extrusion expressions and the disambiguation popover's altitude
- * subtitle). Returns undefined while the dataset is still loading or
- * errored.
+ * subtitle), with its polygon vertices clamped inside the Mercator world
+ * (see {@link MAX_SOURCE_LATITUDE}). Returns undefined while the dataset
+ * is still loading or errored.
  */
 export function projectAirspaceSource(state: AirspaceDatasetState): FeatureCollection | undefined {
   if (state.status !== 'loaded') {
@@ -126,14 +147,20 @@ export function airspaceBadgeGroups(
 
 /**
  * Three passes over the dataset. The first tallies which features share
- * each `(type, identifier)` match key. The second orders every group
- * into presentation order with the same function the inspector uses,
- * so badge "1" on the map is "Feature 1" in the panel, and computes a
- * badge for each feature of a multi-feature group. The third decorates
- * every feature with its synthetic properties.
+ * each `(type, identifier)` match key, reading the dataset's own
+ * geometry so an empty-identifier key agrees with the entity resolver
+ * and the search index, which derive theirs from the same geometry. The
+ * second orders every group into presentation order with the same
+ * function the inspector uses, so badge "1" on the map is "Feature 1"
+ * in the panel, and computes a badge for each feature of a
+ * multi-feature group. The third decorates every feature with its
+ * synthetic properties. Badges and the emitted features use the
+ * drawable geometry, clamped inside the Mercator world, so a badge
+ * always lands on the shape the map draws.
  */
 function buildAirspaceProjection(dataset: LoadedAirspaceDataset): AirspaceProjection {
   const features: readonly Feature[] = dataset.features;
+  const drawable: readonly Feature[] = features.map(clampFeatureLatitude);
   const keyByIndex: Array<string | undefined> = [];
   const groups = new Map<string, number[]>();
   features.forEach((feature, index) => {
@@ -158,11 +185,11 @@ function buildAirspaceProjection(dataset: LoadedAirspaceDataset): AirspaceProjec
       positionByIndex.set(index, position);
     });
     if (ordered.length > 1) {
-      badgeGroups.set(key, buildBadges(features, ordered));
+      badgeGroups.set(key, buildBadges(drawable, ordered));
     }
   }
 
-  const projected: Feature[] = features.map((feature, index) => {
+  const projected: Feature[] = drawable.map((feature, index) => {
     const props = feature.properties;
     const key = keyByIndex[index];
     const position = positionByIndex.get(index);
@@ -192,6 +219,37 @@ function buildAirspaceProjection(dataset: LoadedAirspaceDataset): AirspaceProjec
     featureCollection: { type: 'FeatureCollection', features: projected },
     badgeGroups,
   };
+}
+
+/**
+ * The feature with every vertex of its polygon pulled inside
+ * [-{@link MAX_SOURCE_LATITUDE}, {@link MAX_SOURCE_LATITUDE}]. A feature
+ * with nothing to clamp, which is every feature but the few that reach
+ * the pole, is returned as the same object so it keeps its identity
+ * through the projection. Only `Polygon` geometry is clamped; the
+ * dataset carries nothing else.
+ */
+function clampFeatureLatitude(feature: Feature): Feature {
+  if (feature.geometry.type !== 'Polygon') {
+    return feature;
+  }
+  let changed = false;
+  const coordinates = feature.geometry.coordinates.map((ring) =>
+    ring.map((position) => {
+      const lat = position[1];
+      if (lat === undefined || Math.abs(lat) <= MAX_SOURCE_LATITUDE) {
+        return position;
+      }
+      changed = true;
+      const clamped = [...position];
+      clamped[1] = Math.sign(lat) * MAX_SOURCE_LATITUDE;
+      return clamped;
+    }),
+  );
+  if (!changed) {
+    return feature;
+  }
+  return { ...feature, geometry: { ...feature.geometry, coordinates } };
 }
 
 /**

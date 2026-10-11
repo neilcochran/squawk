@@ -11,6 +11,7 @@ import {
 
 import {
   AIRSPACE_FEATURE_INDEX_PROPERTY,
+  MAX_SOURCE_LATITUDE,
   airspaceBadgeGroups,
   getAirspaceProjection,
   projectAirspaceSource,
@@ -47,6 +48,34 @@ const SQUARE_AT_TEN: Polygon = {
       [11, 11],
       [10, 11],
       [10, 10],
+    ],
+  ],
+};
+
+/** A strip from the Alaska coast over both poles, the shape of an ARTCC that runs to the pole. */
+const STRIP_POLE_TO_POLE: Polygon = {
+  type: 'Polygon',
+  coordinates: [
+    [
+      [-141, 90],
+      [-141, -90],
+      [-169, -90],
+      [-169, 90],
+      [-141, 90],
+    ],
+  ],
+};
+
+/** A cap from 80 north to the pole: its unclamped pole of inaccessibility sits at 85. */
+const NORTH_CAP: Polygon = {
+  type: 'Polygon',
+  coordinates: [
+    [
+      [-141, 90],
+      [-141, 80],
+      [-169, 80],
+      [-169, 90],
+      [-141, 90],
     ],
   ],
 };
@@ -320,5 +349,76 @@ describe('projectAirspaceSource', () => {
     expect(features[0]?.properties?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(0);
     expect(features[1]?.properties?.[AIRSPACE_FEATURE_INDEX_PROPERTY]).toBe(0);
     expect(airspaceBadgeGroups(state)?.size).toBe(0);
+  });
+});
+
+describe('polar geometry', () => {
+  it('clamps vertices beyond the Mercator edge to MAX_SOURCE_LATITUDE in the source geometry', () => {
+    const feature = buildFeature({
+      type: 'ARTCC',
+      identifier: 'ZAN',
+      geometry: STRIP_POLE_TO_POLE,
+    });
+    const result = projectAirspaceSource(loadedState([feature]));
+    expect(result?.features[0]?.geometry).toEqual({
+      type: 'Polygon',
+      coordinates: [
+        [
+          [-141, MAX_SOURCE_LATITUDE],
+          [-141, -MAX_SOURCE_LATITUDE],
+          [-169, -MAX_SOURCE_LATITUDE],
+          [-169, MAX_SOURCE_LATITUDE],
+          [-141, MAX_SOURCE_LATITUDE],
+        ],
+      ],
+    });
+    expect(STRIP_POLE_TO_POLE.coordinates[0]?.[0]?.[1]).toBe(90);
+  });
+
+  it('keeps the geometry object of a feature with nothing to clamp', () => {
+    const feature = buildFeature({
+      type: 'CLASS_B',
+      identifier: 'BOS',
+      geometry: SQUARE_AT_ORIGIN,
+    });
+    const result = projectAirspaceSource(loadedState([feature]));
+    expect(result?.features[0]?.geometry).toBe(SQUARE_AT_ORIGIN);
+  });
+
+  it('computes an empty-identifier match key from the unclamped dataset geometry', () => {
+    // The entity resolver and the search index derive the centroid from
+    // the dataset polygon, so the key must come from the same vertices:
+    // the mean latitude of NORTH_CAP is 86 as stored and 83 once clamped.
+    const feature = buildFeature({ type: 'CLASS_A', identifier: '', geometry: NORTH_CAP });
+    const result = projectAirspaceSource(loadedState([feature]));
+    expect(result?.features[0]?.properties?.[AIRSPACE_MATCH_KEY_PROPERTY]).toBe(
+      'CLASS_A/c:-152.20000,86.00000',
+    );
+  });
+
+  it('anchors the badges of a polar group inside the clamped shape', () => {
+    const features = [
+      buildFeature({
+        type: 'ARTCC',
+        identifier: 'ZAN',
+        floor: { valueFt: 0, reference: 'SFC' },
+        ceiling: { valueFt: 17999, reference: 'MSL' },
+        artccStratum: 'LOW',
+        geometry: NORTH_CAP,
+      }),
+      buildFeature({
+        type: 'ARTCC',
+        identifier: 'ZAN',
+        floor: { valueFt: 18000, reference: 'MSL' },
+        ceiling: { valueFt: 60000, reference: 'MSL' },
+        artccStratum: 'HIGH',
+        geometry: NORTH_CAP,
+      }),
+    ];
+    const badges = airspaceBadgeGroups(loadedState(features))?.get('ARTCC/ZAN');
+    expect(badges).toHaveLength(2);
+    for (const badge of badges ?? []) {
+      expect(badge.anchor[1]).toBeCloseTo((80 + MAX_SOURCE_LATITUDE) / 2, 1);
+    }
   });
 });
