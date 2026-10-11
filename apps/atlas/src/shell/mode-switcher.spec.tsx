@@ -46,6 +46,28 @@ describe('ModeSwitcher', () => {
     expect(screen.getByRole('link', { name: 'Chart' })).toBeInTheDocument();
   });
 
+  it('renders the Plan link', () => {
+    useRouterStateMock.mockReturnValue('/');
+    render(<ModeSwitcher />);
+    expect(screen.getByRole('link', { name: 'Plan' })).toBeInTheDocument();
+  });
+
+  it('does not dispatch a chart reset when the active Plan link is clicked', () => {
+    useRouterStateMock.mockReturnValue('/plan');
+    render(<ModeSwitcher />);
+    fireEvent.click(screen.getByRole('link', { name: 'Plan' }));
+    expect(dispatchMock).not.toHaveBeenCalled();
+  });
+
+  it('prevents default navigation when the active Plan link is clicked', () => {
+    useRouterStateMock.mockReturnValue('/plan');
+    render(<ModeSwitcher />);
+    const link = screen.getByRole('link', { name: 'Plan' });
+    const event = new globalThis.MouseEvent('click', { bubbles: true, cancelable: true });
+    link.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it('does not dispatch a reset when clicking the Chart link from another route', () => {
     useRouterStateMock.mockReturnValue('/');
     render(<ModeSwitcher />);

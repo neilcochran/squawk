@@ -31,7 +31,7 @@ The stack is React 19 on Vite, TanStack Router for file-based routes with zod-va
 
 - **One cached promise per dataset.** A `shared/data/<thing>-dataset.ts` module holds a module-level promise, the loader that populates it on first call, a discriminated `{ status: 'loading' | 'loaded' | 'error' }` state type, and the hook that subscribes. N components mounting the hook produce one fetch, and the hook ignores a resolution that lands after unmount. The union is discriminated so `dataset` and `error` are typed only in the arm that has them.
 - **The resolver is cached beside its dataset, keyed on the dataset.** `getAirportResolver()` and its siblings memoize through a `WeakMap` on the dataset reference, so a session pays the indexing cost once while a spec that builds a fresh fixture gets a fresh resolver.
-- **`dataset-hooks.spec.ts` is the shared home for that contract.** It mocks all five `/browser` entries with deferred promises and exercises each arm; a sixth dataset adds a case there rather than a new spec file.
+- **`dataset-hooks.spec.ts` is the shared home for that contract.** It mocks all six `/browser` entries with deferred promises and exercises each arm; a seventh dataset adds a case there rather than a new spec file.
 
 ## Color, type, and size
 

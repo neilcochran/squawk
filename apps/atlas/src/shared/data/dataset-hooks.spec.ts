@@ -5,14 +5,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // promise the test can resolve / reject on demand. Hoisted so the
 // `vi.mock` factories can reach the same controllable shells the
 // tests poke at runtime.
-const { airportDeferred, airspaceDeferred, airwayDeferred, fixDeferred, navaidDeferred } =
-  vi.hoisted(() => ({
-    airportDeferred: createDeferredShell(),
-    airspaceDeferred: createDeferredShell(),
-    airwayDeferred: createDeferredShell(),
-    fixDeferred: createDeferredShell(),
-    navaidDeferred: createDeferredShell(),
-  }));
+const {
+  airportDeferred,
+  airspaceDeferred,
+  airwayDeferred,
+  fixDeferred,
+  navaidDeferred,
+  procedureDeferred,
+} = vi.hoisted(() => ({
+  airportDeferred: createDeferredShell(),
+  airspaceDeferred: createDeferredShell(),
+  airwayDeferred: createDeferredShell(),
+  fixDeferred: createDeferredShell(),
+  navaidDeferred: createDeferredShell(),
+  procedureDeferred: createDeferredShell(),
+}));
 
 interface DeferredShell {
   promise: Promise<unknown>;
@@ -51,6 +58,9 @@ vi.mock('@squawk/fix-data/browser', () => ({
 }));
 vi.mock('@squawk/navaid-data/browser', () => ({
   loadUsBundledNavaids: () => navaidDeferred.promise,
+}));
+vi.mock('@squawk/procedure-data/browser', () => ({
+  loadUsBundledProcedures: () => procedureDeferred.promise,
 }));
 
 interface HookCase {
@@ -98,6 +108,14 @@ const CASES: readonly HookCase[] = [
     importHook: async () => {
       const m = await import('./navaid-dataset.ts');
       return { hook: m.useNavaidDataset, loader: m.loadNavaidDataset };
+    },
+  },
+  {
+    name: 'procedure',
+    deferred: procedureDeferred,
+    importHook: async () => {
+      const m = await import('./procedure-dataset.ts');
+      return { hook: m.useProcedureDataset, loader: m.loadProcedureDataset };
     },
   },
 ];
