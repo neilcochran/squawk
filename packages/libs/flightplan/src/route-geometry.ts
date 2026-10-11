@@ -52,6 +52,11 @@ export interface GeoPoint {
    * nautical miles, when the source data publishes a positive value.
    */
   precomputedDistanceToNextNm?: number;
+  /**
+   * Set when the leg from this point to the next crosses a published gap in
+   * the airway it was expanded from.
+   */
+  gapToNext?: true;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,6 +113,11 @@ export function extractGeoPoints(elements: RouteElement[]): {
       ) {
         last.precomputedDistanceToNextNm = point.precomputedDistanceToNextNm;
       }
+      // Likewise carry a gap marker, so the leg out of the merged point is
+      // still reported as crossing the gap.
+      if (point.gapToNext) {
+        last.gapToNext = true;
+      }
       return;
     }
     points.push(point);
@@ -127,7 +137,8 @@ export function extractGeoPoints(elements: RouteElement[]): {
         emit({ label: el.raw, lat: el.lat, lon: el.lon });
         break;
 
-      case 'airway':
+      case 'airway': {
+        const gapIndexes = new Set(el.gaps.map((gap) => gap.index));
         for (let i = 0; i < el.waypoints.length; i++) {
           const wp = el.waypoints[i]!;
           const isLast = i === el.waypoints.length - 1;
@@ -142,9 +153,13 @@ export function extractGeoPoints(elements: RouteElement[]): {
           if (!isLast && wp.distanceToNextNm !== undefined && wp.distanceToNextNm > 0) {
             point.precomputedDistanceToNextNm = wp.distanceToNextNm;
           }
+          if (!isLast && gapIndexes.has(i)) {
+            point.gapToNext = true;
+          }
           emit(point);
         }
         break;
+      }
 
       case 'sid':
       case 'star':

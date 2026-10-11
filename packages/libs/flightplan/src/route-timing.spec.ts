@@ -7,7 +7,7 @@ import { greatCircle } from '@squawk/geo';
 
 import type { FlightplanResolver } from './resolver.js';
 import { computeRouteTiming } from './route-timing.js';
-import { close, makeUnresolved, makeWaypoint, route } from './test-utils.js';
+import { close, makeAirway, makeUnresolved, makeWaypoint, route } from './test-utils.js';
 
 // ---------------------------------------------------------------------------
 // Unit tests (synthetic data)
@@ -51,6 +51,21 @@ describe('computeRouteTiming', () => {
       assert.equal(leg.wind, undefined);
       assert.ok(close(leg.eteHrs!, d / 120));
       assert.ok(close(result.totalEteHrs!, d / 120));
+    });
+
+    it('carries the airway gap flag onto each timing leg', () => {
+      const awp = makeAirway('J60', [
+        { identifier: 'A', lat: 40.0, lon: -74.0 },
+        { identifier: 'B', lat: 41.0, lon: -74.0, discontinued: true },
+        { identifier: 'C', lat: 42.0, lon: -74.0 },
+      ]);
+
+      const result = computeRouteTiming(route([awp]), { trueAirspeedKt: 120 });
+      assert.deepEqual(
+        result.legs.map((leg) => leg.crossesGap),
+        [false, true],
+      );
+      assert.ok(result.legs[1]!.eteHrs !== undefined && result.legs[1]!.eteHrs > 0);
     });
 
     it('treats an undefined provider result as calm', () => {

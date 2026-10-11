@@ -229,6 +229,23 @@ describe('computeRouteDistance', () => {
       assert.ok(close(result.totalDistanceNm, expected));
     });
 
+    it('flags the leg that crosses a published airway gap and still measures it', () => {
+      const awp = makeAirway('J60', [
+        { identifier: 'A', lat: 40.0, lon: -74.0, distanceToNextNm: 60 },
+        { identifier: 'B', lat: 41.0, lon: -74.0, discontinued: true },
+        { identifier: 'C', lat: 42.0, lon: -74.0 },
+      ]);
+      const expected = greatCircle.distanceNm(41.0, -74.0, 42.0, -74.0);
+
+      const result = computeRouteDistance(route([awp]));
+      assert.deepEqual(
+        result.legs.map((leg) => leg.crossesGap),
+        [false, true],
+      );
+      assert.ok(close(result.legs[1]!.distanceNm, expected));
+      assert.ok(close(result.totalDistanceNm, 60 + expected));
+    });
+
     it('handles airway with empty waypoints', () => {
       const awp = makeAirway('J99', []);
       const result = computeRouteDistance(route([awp]));
@@ -352,6 +369,18 @@ describe('computeRouteDistance', () => {
       assert.equal(result.legs[0]!.from, 'CIVET');
       assert.equal(result.legs[0]!.to, 'RESOR');
       assert.equal(result.legs[0]!.distanceNm, 30.11);
+    });
+
+    it('keeps the gap flag when the gap waypoint merges into the preceding waypoint', () => {
+      const wp = makeWaypoint('JOT', 41.5, -88.3);
+      const awp = makeAirway('J60', [
+        { identifier: 'JOT', lat: 41.5, lon: -88.3, discontinued: true },
+        { identifier: 'DJB', lat: 41.4, lon: -82.2 },
+      ]);
+
+      const result = computeRouteDistance(route([wp, awp]));
+      assert.equal(result.legs.length, 1);
+      assert.equal(result.legs[0]!.crossesGap, true);
     });
 
     it('does not create a zero-length leg when SID last fix matches following waypoint', () => {
@@ -610,6 +639,18 @@ describe('computeRouteDistance integration', () => {
     );
     for (const leg of result.legs) {
       assert.ok(leg.distanceNm > 0, `expected a positive leg ${leg.from} -> ${leg.to}`);
+      assert.equal(leg.crossesGap, false, `expected no gap on ${leg.from} -> ${leg.to}`);
     }
+  });
+
+  it('flags the J60 gap between JOT and DJB and no other leg', () => {
+    const parsed = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+    const result = computeRouteDistance(parsed);
+
+    const gapLegs = result.legs.filter((leg) => leg.crossesGap);
+    assert.deepEqual(
+      gapLegs.map((leg) => `${leg.from}-${leg.to}`),
+      ['JOT-DJB'],
+    );
   });
 });

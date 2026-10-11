@@ -5,6 +5,7 @@
 ```ts
 
 import type { Airway } from '@squawk/types';
+import type { AirwayGap } from '@squawk/types';
 import type { AirwayType } from '@squawk/types';
 import type { AirwayWaypoint } from '@squawk/types';
 import { MatchRange } from '@squawk/search';
@@ -18,6 +19,7 @@ export interface AirwayByFixResult {
 // @public
 export interface AirwayExpansionResult {
     airway: Airway;
+    gaps: AirwayGap[];
     waypoints: AirwayWaypoint[];
 }
 

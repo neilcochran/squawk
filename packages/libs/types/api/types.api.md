@@ -199,6 +199,13 @@ export const AIRWAY_REGION_MAP: Record<string, AirwayRegion>;
 export const AIRWAY_TYPES: readonly ["VICTOR", "JET", "RNAV_Q", "RNAV_T", "GREEN", "RED", "AMBER", "BLUE", "ATLANTIC", "BAHAMA", "PACIFIC", "PUERTO_RICO"];
 
 // @public
+export interface AirwayGap {
+    from: string;
+    index: number;
+    to: string;
+}
+
+// @public
 export type AirwayRegion = 'US' | 'ALASKA' | 'HAWAII';
 
 // @public

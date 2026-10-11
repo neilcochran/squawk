@@ -1,6 +1,7 @@
 import type {
   Airport,
   Airway,
+  AirwayGap,
   AirwayWaypoint,
   Fix,
   Navaid,
@@ -72,12 +73,17 @@ export interface FlightplanFixLookup {
 export interface FlightplanAirwayLookup {
   /** Looks up airways by designation (e.g. "V16", "J60"). Returns an empty array if none found. */
   byDesignation(designation: string): Airway[];
-  /** Expands an airway between entry and exit fixes, returning ordered waypoints. */
+  /**
+   * Expands an airway between entry and exit fixes, returning ordered
+   * waypoints. `gaps` lists any published discontinuity the expansion crosses;
+   * a lookup that cannot report gaps may omit it, and the route then reports
+   * none.
+   */
   expand(
     designation: string,
     entryFix: string,
     exitFix: string,
-  ): { airway: Airway; waypoints: AirwayWaypoint[] } | undefined;
+  ): { airway: Airway; waypoints: AirwayWaypoint[]; gaps?: AirwayGap[] } | undefined;
 }
 
 /**
@@ -155,6 +161,14 @@ export interface AirwayRouteElement {
   exitFix: string;
   /** Ordered waypoints from entry to exit fix (inclusive). */
   waypoints: AirwayWaypoint[];
+  /**
+   * Published discontinuities the expansion crosses, in traversal order. Empty
+   * when the airway is continuous between the entry and exit fixes. A
+   * non-empty list means the route files the airway where it is not defined,
+   * so the route is not valid as filed; the waypoints are still returned so
+   * the route can be drawn and measured.
+   */
+  gaps: AirwayGap[];
 }
 
 /**
@@ -628,6 +642,7 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
                 entryFix: lastWaypointIdent,
                 exitFix,
                 waypoints: expansion.waypoints,
+                gaps: expansion.gaps ?? [],
               });
               // The exit fix is consumed as part of the airway; update last waypoint
               lastWaypointIdent = exitFix;

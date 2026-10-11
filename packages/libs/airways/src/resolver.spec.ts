@@ -1,5 +1,7 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
 
+import type { Airway } from '@squawk/types';
+
 import { createAirwayResolver } from './resolver.js';
 import type { AirwayResolver } from './resolver.js';
 
@@ -140,6 +142,71 @@ describe('expand', () => {
       );
       assert(result, 'expected case-insensitive expand to work');
     }
+  });
+
+  describe('gaps', () => {
+    const gapped: Airway = {
+      designation: 'J999',
+      type: 'JET',
+      region: 'US',
+      waypoints: [
+        {
+          name: 'ALPHA',
+          identifier: 'ALPHA',
+          waypointType: 'FIX',
+          lat: 40,
+          lon: -74,
+          discontinued: true,
+        },
+        { name: 'BRAVO', identifier: 'BRAVO', waypointType: 'FIX', lat: 41, lon: -74 },
+        {
+          name: 'CHRLY',
+          identifier: 'CHRLY',
+          waypointType: 'FIX',
+          lat: 42,
+          lon: -74,
+          discontinued: true,
+        },
+      ],
+    };
+    const gappedResolver = createAirwayResolver({ data: [gapped] });
+
+    it('reports a published gap inside a forward expansion', () => {
+      const result = gappedResolver.expand('J999', 'ALPHA', 'CHRLY');
+      assert(result, 'expected expansion');
+      expect(result.gaps).toEqual([{ index: 0, from: 'ALPHA', to: 'BRAVO' }]);
+    });
+
+    it('reports the gap in traversal order for a reverse expansion', () => {
+      const result = gappedResolver.expand('J999', 'CHRLY', 'ALPHA');
+      assert(result, 'expected expansion');
+      expect(result.waypoints.map((wp) => wp.identifier)).toEqual(['CHRLY', 'BRAVO', 'ALPHA']);
+      expect(result.gaps).toEqual([{ index: 1, from: 'BRAVO', to: 'ALPHA' }]);
+    });
+
+    it('ignores a gap flag on the final waypoint, whose gap lies beyond the expansion', () => {
+      const result = gappedResolver.expand('J999', 'BRAVO', 'CHRLY');
+      assert(result, 'expected expansion');
+      expect(result.gaps).toEqual([]);
+    });
+
+    it('reports the J60 gap between JOT and DJB from the bundled data', () => {
+      const forward = resolver.expand('J60', 'LAX', 'SAX');
+      assert(forward, 'expected J60 to expand from LAX to SAX');
+      expect(forward.gaps.map((gap) => `${gap.from}-${gap.to}`)).toEqual(['JOT-DJB']);
+      expect(forward.waypoints[forward.gaps[0]!.index]?.identifier).toBe('JOT');
+
+      const reverse = resolver.expand('J60', 'SAX', 'LAX');
+      assert(reverse, 'expected J60 to expand from SAX to LAX');
+      expect(reverse.gaps.map((gap) => `${gap.from}-${gap.to}`)).toEqual(['DJB-JOT']);
+      expect(reverse.waypoints[reverse.gaps[0]!.index]?.identifier).toBe('DJB');
+    });
+
+    it('reports no gaps for a continuous expansion from the bundled data', () => {
+      const result = resolver.expand('J60', 'LAX', 'HEC');
+      assert(result, 'expected J60 to expand from LAX to HEC');
+      expect(result.gaps).toEqual([]);
+    });
   });
 });
 

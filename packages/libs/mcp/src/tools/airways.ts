@@ -61,7 +61,7 @@ export function registerAirwayTools(server: McpServer): void {
     {
       title: 'Expand an airway between two fixes',
       description:
-        'Expands an airway between two fixes, returning the ordered sequence of waypoints from the entry fix to the exit fix (inclusive). Airways can be traversed in either direction. Returns null if the entry/exit fixes are not found on the airway.',
+        'Expands an airway between two fixes, returning the ordered sequence of waypoints from the entry fix to the exit fix (inclusive). Airways can be traversed in either direction. The gaps array lists any published discontinuity inside the expansion (the FAA discontinues some airways partway, e.g. J60 between JOT and DJB): the waypoints on both sides are still returned, but a non-empty gaps array means the airway is not defined between them and a route filing it across the gap is not valid as filed. Returns null if the entry/exit fixes are not found on the airway.',
       inputSchema: {
         designation: z.string().min(1).describe('Airway designation (case-insensitive).'),
         entryFix: z.string().min(1).describe('Identifier of the entry fix (case-insensitive).'),

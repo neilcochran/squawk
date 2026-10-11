@@ -207,3 +207,20 @@ export interface Airway {
   /** Ordered sequence of waypoints defining the airway route. */
   waypoints: AirwayWaypoint[];
 }
+
+/**
+ * A published discontinuity between two consecutive waypoints of an airway
+ * expansion. The FAA flags the waypoint after which an airway is discontinued
+ * (`AirwayWaypoint.discontinued`), so the airway does not exist between that
+ * waypoint and the next one: a route that files the airway across the gap is
+ * not valid as filed, and a line between the two waypoints is not an airway
+ * segment.
+ */
+export interface AirwayGap {
+  /** Index into the expansion's waypoints of the waypoint before the gap; the gap lies between it and the next waypoint. */
+  index: number;
+  /** Identifier, or name when the waypoint has no identifier, of the waypoint before the gap. */
+  from: string;
+  /** Identifier, or name when the waypoint has no identifier, of the waypoint after the gap. */
+  to: string;
+}
