@@ -1,6 +1,6 @@
 {
   "name": "@squawk/flightplan",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "type": "module",
   "description": "Flight plan route string parsing and resolution using composed navigation resolvers",
   "author": "Neil Cochran",
@@ -50,8 +50,8 @@
   "devDependencies": {
     "@squawk/airport-data": "^0.8.2",
     "@squawk/airports": "^0.7.3",
-    "@squawk/airway-data": "^0.6.2",
-    "@squawk/airways": "^0.5.2",
+    "@squawk/airway-data": "^0.6.3",
+    "@squawk/airways": "^0.5.3",
     "@squawk/fix-data": "^0.7.2",
     "@squawk/fixes": "^0.5.3",
     "@squawk/navaid-data": "^0.7.2",
