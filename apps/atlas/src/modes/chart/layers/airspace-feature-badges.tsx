@@ -9,8 +9,7 @@ import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 import { useActiveHighlightRef, useHoveredFeatureIndex } from '../highlight-context.ts';
 
 import {
-  CEILING_CAP_FT,
-  extrudedAltitudeMeters,
+  extrusionCeilingMeters,
   extrusionExaggerationForZoom,
   quantizeMapZoom,
 } from './airspace-extrusion-scale.ts';
@@ -98,7 +97,7 @@ export function AirspaceFeatureBadges(): ReactElement | null {
           return;
         }
         const elevationMeters = tilted
-          ? extrudedAltitudeMeters(badge.ceiling, exaggeration, CEILING_CAP_FT)
+          ? extrusionCeilingMeters(badge.ceiling, badge.type, exaggeration)
           : 0;
         const point = projectMercatorPoint(
           frame,

@@ -3,14 +3,12 @@ import type { ReactElement, ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
-  AIRSPACE_CEILING_FT_PROPERTY,
-  AIRSPACE_CEILING_REF_PROPERTY,
   AIRSPACE_FLOOR_REF_PROPERTY,
   AIRSPACE_MATCH_KEY_PROPERTY,
 } from '../../../shared/inspector/airspace-feature.ts';
 
 import { AIRPORTS_HIGHLIGHT_LAYER_ID } from './airports-layer.tsx';
-import { CEILING_CAP_FT, FT_TO_METERS } from './airspace-extrusion-scale.ts';
+import { FT_TO_METERS, buildExtrusionHeightExpression } from './airspace-extrusion-scale.ts';
 import {
   AIRSPACE_FEATURE_FOCUS_LAYER_ID,
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
@@ -254,22 +252,29 @@ describe('AirspaceExtrusionLayer', () => {
     render(<AirspaceExtrusionLayer />);
     const height = recordedPaint(AIRSPACE_FILL_EXTRUSION_LAYER_ID, 'fill-extrusion-height');
     expect(JSON.stringify(height)).not.toContain('zoom');
-    expect(height).toEqual([
-      'match',
-      ['get', AIRSPACE_CEILING_REF_PROPERTY],
-      ['SFC', 'AGL'],
-      0,
-      [
-        '*',
-        ['min', ['coalesce', ['get', AIRSPACE_CEILING_FT_PROPERTY], 0], CEILING_CAP_FT],
-        FT_TO_METERS * 20,
-      ],
-    ]);
+    // Zoom 4 is the 20x stop of the exaggeration curve.
+    expect(height).toEqual(buildExtrusionHeightExpression(20));
     // The selection box draws with the same heights, so it can never
     // poke out of or sink into the regular box it replaces.
     expect(recordedPaint(AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID, 'fill-extrusion-height')).toEqual(
       height,
     );
+  });
+
+  it('leaves the selected airspace out of the regular boxes so its own color cannot tint the highlight', () => {
+    useSearchMock.mockReturnValue({ airspaceClasses: ['CLASS_B'], pitch: 45, zoom: 8 });
+    useAirspaceDatasetMock.mockReturnValue(LOADED_DATASET);
+    render(<AirspaceExtrusionLayer />);
+    expect(recordedFilter(AIRSPACE_FILL_EXTRUSION_LAYER_ID)).toEqual(CLASS_B_TYPE_FILTER);
+
+    layerPropsLog.length = 0;
+    useActiveHighlightRefMock.mockReturnValue(CLASS_B_SELECTION);
+    render(<AirspaceExtrusionLayer />);
+    expect(recordedFilter(AIRSPACE_FILL_EXTRUSION_LAYER_ID)).toEqual([
+      'all',
+      CLASS_B_TYPE_FILTER,
+      ['!=', ['get', AIRSPACE_MATCH_KEY_PROPERTY], 'CLASS_B/JFK'],
+    ]);
   });
 
   it('flattens the exaggeration to true scale at airport zooms', () => {
@@ -409,8 +414,10 @@ describe('AirspaceFeatureOverlayLayers', () => {
         expect(position(box)).toBeLessThan(position(highlight));
       }
     }
-    expect(position(AIRSPACE_FILL_EXTRUSION_LAYER_ID)).toBeLessThan(
-      position(AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID),
+    // The selection box is drawn first so the regular boxes in front of
+    // it blend over it instead of hiding it.
+    expect(position(AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID)).toBeLessThan(
+      position(AIRSPACE_FILL_EXTRUSION_LAYER_ID),
     );
   });
 });

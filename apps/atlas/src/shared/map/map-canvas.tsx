@@ -67,19 +67,23 @@ function protomapsSpriteUrl(theme: ResolvedTheme): string {
 /**
  * Maximum pitch (in degrees) the map will accept. Raised above
  * MapLibre's default of 60 so the chart-mode tilt stepper in
- * `src/shared/map/zoom-controls.tsx` can drive the camera close to a
- * horizontal view, which is the natural endpoint when inspecting
- * tall 3D airspace structures (Class B inverted wedding-cake, MOA
- * stacks, restricted areas). MapLibre allows up to 180 in
- * {@link MapOptions.maxPitch}, but 90 (camera parallel to ground)
- * produces visual artifacts - the basemap stretches into the
- * horizon, fill-extrusion side walls render unevenly, and the
- * camera-distance-aware exaggeration breaks down. 85 is the
- * sweet-spot near-horizontal view that keeps the projection clean.
- * Exported so the chrome can use the same value as its upper bound
- * and the two cannot drift.
+ * `src/shared/map/zoom-controls.tsx` can drive the camera low enough
+ * to read tall 3D airspace structures (Class B inverted wedding-cake,
+ * MOA stacks, restricted areas) as volumes, but held below the pitch
+ * at which the horizon enters the viewport. With MapLibre's default
+ * vertical field of view (36.87 degrees) the top of the screen crosses
+ * the horizon just above 71 degrees of pitch, and past that point two
+ * things go wrong. The basemap stretches into the sky and
+ * fill-extrusion walls render unevenly. And MapLibre's rendered-feature
+ * query breaks for point layers: the padding it uses to collect
+ * candidate features is derived from the ground position of the
+ * top-left screen corner, which has no ground position once it is
+ * above the horizon, so the factor turns negative and fixes, airports,
+ * and navaids stop answering clicks while lines and polygons still do.
+ * 70 keeps the whole viewport on the ground. Exported so the chrome can
+ * use the same value as its upper bound and the two cannot drift.
  */
-export const MAP_MAX_PITCH = 85;
+export const MAP_MAX_PITCH = 70;
 
 /**
  * Builds the MapLibre `StyleSpecification` for the basemap matching

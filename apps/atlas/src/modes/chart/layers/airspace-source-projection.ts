@@ -59,6 +59,8 @@ export interface AirspaceFeatureBadge {
   readonly anchor: readonly [number, number];
   /** The feature's ceiling, used to lift the badge onto the box's top face in the tilted view. */
   readonly ceiling: AltitudeBound | undefined;
+  /** The feature's airspace type, which sets the box top's depth lift; `undefined` when the property is missing. */
+  readonly type: string | undefined;
   /** Vertical offset in EMs that spreads badges sharing an anchor into a readable column; 0 otherwise. */
   readonly columnOffsetEm: number;
 }
@@ -220,11 +222,13 @@ function buildBadges(
     if (anchor === undefined) {
       return;
     }
+    const type = feature.properties['type'];
     placed.push({
       featureIndex: position,
       label: computeFeatureLabel(feature.properties, position),
       anchor,
       ceiling: readNestedAltitudeBound(feature.properties['ceiling']),
+      type: typeof type === 'string' ? type : undefined,
     });
   });
   const membersByAnchor = new Map<string, number[]>();

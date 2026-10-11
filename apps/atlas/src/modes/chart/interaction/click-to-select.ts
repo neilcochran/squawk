@@ -9,6 +9,7 @@ import { AIRPORTS_LAYER_ID } from '../layers/airports-layer.tsx';
 import {
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
   AIRSPACE_FILL_LAYER_ID,
+  AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID,
   AIRSPACE_LINE_LAYER_ID,
 } from '../layers/airspace-layer.tsx';
 import { AIRWAYS_LAYER_ID } from '../layers/airways-layer.tsx';
@@ -55,6 +56,7 @@ export const INSPECTABLE_LAYER_IDS = [
   AIRSPACE_FILL_LAYER_ID,
   AIRSPACE_LINE_LAYER_ID,
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
+  AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID,
 ] as const;
 
 /**
@@ -66,11 +68,14 @@ export const INSPECTABLE_LAYER_IDS = [
  * a Class B airspace polygon: the user almost certainly meant the airport,
  * even though the airspace covers the same pixel.
  *
- * Airspace fill, line, and 3D extrusion share the lowest rank so a
- * click on any of the three behaves identically - selecting the same
+ * Airspace fill, line, and both 3D extrusions share the lowest rank so
+ * a click on any of them behaves identically - selecting the same
  * underlying airspace whether the user clicked the ground footprint
  * (fill / line in plan view) or a side wall / top face of the
- * extruded box at high pitch.
+ * extruded box at high pitch. The selection-highlight extrusion is in
+ * the list because the regular extrusion leaves the selected airspace
+ * out; without it, a click on the selected box would fall through to
+ * whatever sits behind.
  *
  * Adding a new inspectable layer requires adding a slot here; otherwise
  * the new layer's features will be silently skipped (the lookup returns
@@ -85,6 +90,7 @@ const LAYER_PRIORITY: Record<string, number> = {
   [AIRSPACE_FILL_LAYER_ID]: 4,
   [AIRSPACE_LINE_LAYER_ID]: 4,
   [AIRSPACE_FILL_EXTRUSION_LAYER_ID]: 4,
+  [AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID]: 4,
 };
 
 /**

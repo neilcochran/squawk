@@ -9,9 +9,6 @@ import type { AirspaceType } from '@squawk/types';
 
 import { useAirspaceDataset } from '../../../shared/data/airspace-dataset.ts';
 import {
-  AIRSPACE_CEILING_FT_PROPERTY,
-  AIRSPACE_CEILING_REF_PROPERTY,
-  AIRSPACE_FLOOR_FT_PROPERTY,
   AIRSPACE_FLOOR_REF_PROPERTY,
   AIRSPACE_MATCH_KEY_PROPERTY,
 } from '../../../shared/inspector/airspace-feature.ts';
@@ -25,9 +22,9 @@ import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 
 import { AIRPORTS_HIGHLIGHT_LAYER_ID } from './airports-layer.tsx';
 import {
-  CEILING_CAP_FT,
   GROUND_ANCHORED_ALTITUDE_REFS,
-  buildExtrusionAltitudeExpression,
+  buildExtrusionBaseExpression,
+  buildExtrusionHeightExpression,
   extrusionExaggerationForZoom,
 } from './airspace-extrusion-scale.ts';
 import { hatchImageId, useHatchPatternImage } from './airspace-hatch-pattern.ts';
@@ -82,15 +79,20 @@ export const AIRSPACE_HIGHLIGHT_FILL_LAYER_ID = 'atlas-airspace-highlight-fill';
 
 /**
  * MapLibre layer id for the 3D selection-highlight extrusion. Renders
- * the currently-selected airspace as a high-opacity yellow box on top
- * of the regular low-opacity airspace extrusion so the selection is
- * unmistakable in 3D view (the 2D ring + cross-hatch on the ground
- * are hard to spot from a tilted camera looking through translucent
- * stacked boxes). Hidden in plan view (pitch === 0) where the 2D
- * ring on the ground is the natural selection indicator. While an
- * inspector section is hovered, that feature's box is painted in the
- * lighter focus color (see {@link buildHighlightExtrusionColor}) so
- * the per-feature focus ring has a 3D counterpart.
+ * the currently-selected airspace as a high-opacity yellow box so the
+ * selection is unmistakable in 3D view (the 2D ring + cross-hatch on
+ * the ground are hard to spot from a tilted camera looking through
+ * translucent stacked boxes). It sits BENEATH the regular extrusion in
+ * the draw stack: boxes that overlap the selection blend over it at
+ * their own low opacity, so the whole selected shape stays visible,
+ * tinted wherever another box is in front, which is what tells the
+ * user it is behind. The regular extrusion leaves the selected
+ * airspace out so the box is not tinted by its own class color.
+ * Hidden in plan view (pitch === 0) where the 2D ring on the ground
+ * is the natural selection indicator. While an inspector section is
+ * hovered, that feature's box is painted in the lighter focus color
+ * (see {@link buildHighlightExtrusionColor}) so the per-feature focus
+ * ring has a 3D counterpart.
  */
 export const AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID = 'atlas-airspace-highlight-extrusion';
 
@@ -126,19 +128,20 @@ export const AIRSPACE_FEATURE_FOCUS_LAYER_ID = 'atlas-airspace-feature-focus';
  *    ring reads as the base edge of a box that rests on the ground.
  *    In plan view the extrusions are hidden, so these still land
  *    above every ground feature.
- * 3. {@link AIRSPACE_FILL_EXTRUSION_LAYER_ID} - the regular
- *    low-opacity 3D airspace box. Must paint above the ground layers
- *    so it visually occludes them at high pitch (the user expects
- *    the airspace volume to be on top of the ground points it
- *    covers, since the box is at altitude and the points are not).
- *    JSX child order alone is not sufficient because each ground
- *    layer mounts only when its dataset finishes loading - if
- *    navaids load after airspace, the navaid layer ends up topmost
- *    at the moment of registration.
- * 4. {@link AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID} - high-opacity
- *    yellow 3D box for the currently-selected airspace, sitting on
- *    top of the regular extrusion so the selection pops out of the
- *    surrounding low-opacity field.
+ * 3. {@link AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID} - high-opacity
+ *    yellow 3D box for the currently-selected airspace. Drawn before
+ *    the regular boxes so the ones in front of it blend over it
+ *    instead of hiding it: the whole selected shape stays visible,
+ *    and the tint says which boxes are in front.
+ * 4. {@link AIRSPACE_FILL_EXTRUSION_LAYER_ID} - the regular
+ *    low-opacity 3D airspace boxes, minus the selected airspace. Must
+ *    paint above the ground layers so it visually occludes them at
+ *    high pitch (the user expects the airspace volume to be on top of
+ *    the ground points it covers, since the box is at altitude and
+ *    the points are not). JSX child order alone is not sufficient
+ *    because each ground layer mounts only when its dataset finishes
+ *    loading - if navaids load after airspace, the navaid layer ends
+ *    up topmost at the moment of registration.
  * 5. Ground point / line highlight layers (airport / navaid / fix /
  *    airway selection rings). Pinned above the 3D extrusion so the
  *    selection indicator stays visible for features whose lateral
@@ -162,10 +165,11 @@ const TOP_OF_STACK_LAYER_IDS = [
   AIRSPACE_HIGHLIGHT_FILL_LAYER_ID,
   AIRSPACE_HIGHLIGHT_LAYER_ID,
   AIRSPACE_FEATURE_FOCUS_LAYER_ID,
+  // Selection-highlight 3D extrusion, pinned beneath the regular one
+  // so overlapping boxes blend over the selection instead of hiding it.
+  AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID,
   // Regular 3D extrusion (low opacity), pinned above ground features.
   AIRSPACE_FILL_EXTRUSION_LAYER_ID,
-  // Selection-highlight 3D extrusion, pinned above the regular one.
-  AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID,
   // 2D selection-highlight overlays for ground point / line
   // features. Pinned above the 3D box so an airport / navaid / fix /
   // airway selection stays visible inside an overlapping airspace
@@ -462,8 +466,8 @@ export function AirspaceLayer(): ReactElement | null {
  * flat fill and outline in {@link AirspaceLayer} stay drawn beneath a
  * box that rests on the ground, where they read as its base edge;
  * beneath a floating box they are filtered out, so the box is the
- * whole rendering. Clicks land on the box as well as on the flat
- * footprint - the extrusion is registered in `INSPECTABLE_LAYER_IDS`
+ * whole rendering. Clicks land on the boxes as well as on the flat
+ * footprint - both extrusions are registered in `INSPECTABLE_LAYER_IDS`
  * alongside the fill and line layers.
  *
  * The box heights follow the live camera zoom through
@@ -497,43 +501,35 @@ export function AirspaceExtrusionLayer(): ReactElement | null {
     [airspaceClasses],
   );
 
-  const filter = useMemo<ExpressionSpecification>(
-    () => ['in', ['get', 'type'], ['literal', [...enabledTypes]]],
-    [enabledTypes],
-  );
+  // Regular boxes: every enabled type except the selected airspace,
+  // which the highlight extrusion draws instead. Leaving it in here
+  // would blend its class color over the yellow highlight box.
+  const filter = useMemo<ExpressionSpecification>(() => {
+    const typeFilter: ExpressionSpecification = [
+      'in',
+      ['get', 'type'],
+      ['literal', [...enabledTypes]],
+    ];
+    if (activeRef?.type === 'airspace' && activeRef.id.length > 0) {
+      return ['all', typeFilter, ['!=', ['get', AIRSPACE_MATCH_KEY_PROPERTY], activeRef.id]];
+    }
+    return typeFilter;
+  }, [enabledTypes, activeRef]);
 
   const exaggeration = extrusionExaggerationForZoom(zoom);
 
-  // `fill-extrusion-base`: no ceiling cap is applied to the floor, as
-  // real floor values are bounded (Class B / MOA inner rings climb to
-  // ~10 k ft, restricted areas top out near 18 k ft) and the `99999`
-  // sentinel only ever appears on ceilings.
+  // Base and height expressions at the live exaggeration. The builders
+  // own the ceiling cap, the ground-anchored collapse, and the per-type
+  // depth lift that keeps coincident tops from blending into each
+  // other; a feature whose ceiling is itself SFC / AGL collapses to a
+  // zero-thickness extrusion, and its ground-anchored floor keeps its
+  // 2D fill / outline drawn at any pitch so it stays selectable.
   const baseExpression = useMemo<ExpressionSpecification>(
-    () =>
-      buildExtrusionAltitudeExpression(
-        AIRSPACE_FLOOR_REF_PROPERTY,
-        AIRSPACE_FLOOR_FT_PROPERTY,
-        undefined,
-        exaggeration,
-      ),
+    () => buildExtrusionBaseExpression(exaggeration),
     [exaggeration],
   );
-
-  // `fill-extrusion-height`: same shape as the base but reads the
-  // ceiling primitives and applies the cap to bound the `99999`
-  // sentinel before the exaggeration multiplies it into orbit. A
-  // feature whose ceiling is itself SFC / AGL collapses to a
-  // zero-thickness extrusion; its floor is ground-anchored too, so its
-  // 2D fill / outline stay drawn at any pitch and the airspace remains
-  // visible and selectable.
   const heightExpression = useMemo<ExpressionSpecification>(
-    () =>
-      buildExtrusionAltitudeExpression(
-        AIRSPACE_CEILING_REF_PROPERTY,
-        AIRSPACE_CEILING_FT_PROPERTY,
-        CEILING_CAP_FT,
-        exaggeration,
-      ),
+    () => buildExtrusionHeightExpression(exaggeration),
     [exaggeration],
   );
 
@@ -563,7 +559,9 @@ export function AirspaceExtrusionLayer(): ReactElement | null {
   // selection in 3D view is signalled only by the 2D ring + cross-
   // hatch on the ground, which is hard to spot from a tilted camera
   // looking through the regular 0.5-opacity extrusion of every
-  // overlapping class. While an inspector section is hovered, that
+  // overlapping class. It is pinned beneath the regular boxes (see
+  // TOP_OF_STACK_LAYER_IDS) so the ones in front tint it rather than
+  // hide it. While an inspector section is hovered, that
   // feature's box takes the lighter focus color so the per-feature
   // focus has a 3D counterpart - the 2D focus ring draws on the
   // ground and is filtered out beneath a floating feature.
@@ -605,8 +603,8 @@ export function AirspaceExtrusionLayer(): ReactElement | null {
 
   return (
     <>
-      <Layer {...fillExtrusionLayerProps} />
       <Layer {...highlightExtrusionLayerProps} />
+      <Layer {...fillExtrusionLayerProps} />
     </>
   );
 }
