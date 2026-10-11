@@ -102,6 +102,25 @@ export interface ChartAirspaceBadgeColors {
 }
 
 /**
+ * Planned-route colors for plan mode: the route line, waypoint dots, and
+ * waypoint identifier labels. Plan mode draws only the route overlay (no
+ * underlying chart layers), so these are tuned for legibility on the basemap
+ * on their own rather than against the other chart symbology.
+ */
+export interface ChartRouteColors {
+  /** Planned route line stroke. */
+  line: string;
+  /** Waypoint dot fill. */
+  waypointFill: string;
+  /** Waypoint dot stroke. */
+  waypointStroke: string;
+  /** Waypoint identifier label text. */
+  labelText: string;
+  /** Halo drawn around waypoint label text for legibility. */
+  labelHalo: string;
+}
+
+/**
  * Full chart-color palette returned by {@link useChartColors}. Each
  * field carries the same semantic meaning across the light and dark
  * variants; only the underlying hex values change.
@@ -123,6 +142,8 @@ export interface ChartColorPalette {
   airspace: ChartAirspaceColors;
   /** Airspace per-feature badge colors. */
   airspaceBadge: ChartAirspaceBadgeColors;
+  /** Planned-route colors for plan mode (line, waypoint dots, labels). */
+  route: ChartRouteColors;
 }
 
 /**
@@ -167,6 +188,13 @@ const LIGHT_PALETTE: ChartColorPalette = {
   airspaceBadge: {
     text: '#fef08a',
     halo: '#0f172a',
+  },
+  route: {
+    line: '#c026d3',
+    waypointFill: '#a21caf',
+    waypointStroke: '#ffffff',
+    labelText: '#701a75',
+    labelHalo: '#ffffff',
   },
 };
 
@@ -213,6 +241,13 @@ const DARK_PALETTE: ChartColorPalette = {
   airspaceBadge: {
     text: '#fef08a',
     halo: '#0f172a',
+  },
+  route: {
+    line: '#e879f9',
+    waypointFill: '#f0abfc',
+    waypointStroke: '#ffffff',
+    labelText: '#f5d0fe',
+    labelHalo: '#0f172a',
   },
 };
 
