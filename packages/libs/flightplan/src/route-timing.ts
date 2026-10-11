@@ -80,6 +80,8 @@ export interface RouteTimingLeg {
   distanceNm: number;
   /** Cumulative distance from the route start through the end of this leg in nautical miles. */
   cumulativeDistanceNm: number;
+  /** Whether this leg spans a published gap in the airway it was expanded from, as on `RouteLeg`. */
+  crossesGap: boolean;
   /** Initial great-circle true course for the leg in degrees (0-360). */
   trueCourseDeg: number;
   /** True heading to fly to hold the course given the wind, in degrees (0-360). */
@@ -243,6 +245,7 @@ export function computeRouteTiming(
       toLon: leg.toLon,
       distanceNm: leg.distanceNm,
       cumulativeDistanceNm: leg.cumulativeDistanceNm,
+      crossesGap: leg.crossesGap,
       trueCourseDeg,
       trueHeadingDeg: triangle.trueHeadingDeg,
       windCorrectionAngleDeg: triangle.windCorrectionAngleDeg,

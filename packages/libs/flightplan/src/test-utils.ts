@@ -1,4 +1,4 @@
-import type { Airport, AirwayWaypoint, ProcedureLeg } from '@squawk/types';
+import type { Airport, AirwayGap, AirwayWaypoint, ProcedureLeg } from '@squawk/types';
 
 import type {
   AirportRouteElement,
@@ -100,8 +100,9 @@ export function makeUnresolved(raw: string): UnresolvedRouteElement {
  *
  * @param raw - Airway designation / raw token.
  * @param waypoints - Ordered waypoints, each with optional name/identifier,
- *   coordinates, and an optional precomputed distance to the next waypoint.
- * @returns An airway route element.
+ *   coordinates, an optional precomputed distance to the next waypoint, and an
+ *   optional gap flag marking the airway as discontinued after the waypoint.
+ * @returns An airway route element whose `gaps` follow the gap flags.
  */
 export function makeAirway(
   raw: string,
@@ -111,30 +112,43 @@ export function makeAirway(
     lat: number;
     lon: number;
     distanceToNextNm?: number;
+    discontinued?: boolean;
   }[],
 ): AirwayRouteElement {
+  const built = waypoints.map((wp) => {
+    const base: AirwayWaypoint = {
+      name: wp.name ?? wp.identifier ?? '',
+      waypointType: 'FIX',
+      lat: wp.lat,
+      lon: wp.lon,
+    };
+    if (wp.identifier !== undefined) {
+      base.identifier = wp.identifier;
+    }
+    if (wp.distanceToNextNm !== undefined) {
+      base.distanceToNextNm = wp.distanceToNextNm;
+    }
+    if (wp.discontinued) {
+      base.discontinued = true;
+    }
+    return base;
+  });
+  const gaps: AirwayGap[] = [];
+  for (let i = 0; i < built.length - 1; i++) {
+    const from = built[i]!;
+    const to = built[i + 1]!;
+    if (from.discontinued) {
+      gaps.push({ index: i, from: from.identifier ?? from.name, to: to.identifier ?? to.name });
+    }
+  }
   return {
     type: 'airway',
     raw,
     airway: { designation: raw, type: 'JET', region: 'US', waypoints: [] } as never,
-    entryFix: waypoints[0]?.identifier ?? waypoints[0]?.name ?? '',
-    exitFix:
-      waypoints[waypoints.length - 1]?.identifier ?? waypoints[waypoints.length - 1]?.name ?? '',
-    waypoints: waypoints.map((wp) => {
-      const base: AirwayWaypoint = {
-        name: wp.name ?? wp.identifier ?? '',
-        waypointType: 'FIX',
-        lat: wp.lat,
-        lon: wp.lon,
-      };
-      if (wp.identifier !== undefined) {
-        base.identifier = wp.identifier;
-      }
-      if (wp.distanceToNextNm !== undefined) {
-        base.distanceToNextNm = wp.distanceToNextNm;
-      }
-      return base;
-    }),
+    entryFix: built[0]?.identifier ?? built[0]?.name ?? '',
+    exitFix: built[built.length - 1]?.identifier ?? built[built.length - 1]?.name ?? '',
+    waypoints: built,
+    gaps,
   };
 }
 

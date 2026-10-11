@@ -33,6 +33,13 @@ export interface RouteLeg {
   distanceNm: number;
   /** Cumulative distance from the route start through the end of this leg in nautical miles. */
   cumulativeDistanceNm: number;
+  /**
+   * Whether this leg spans a published gap in the airway it was expanded
+   * from. The airway is not defined between the two points, so the leg is a
+   * straight line that counts toward the total but is not a flyable airway
+   * segment, and the route is not valid as filed.
+   */
+  crossesGap: boolean;
 }
 
 /**
@@ -72,7 +79,9 @@ export interface RouteDistanceResult {
  *
  * Airway segments use the FAA-published `distanceToNextNm` value where the
  * source publishes a positive one, falling back to great-circle computation
- * otherwise.
+ * otherwise. A leg that spans a published gap in its airway is still measured
+ * as a straight line and counted, but is flagged with `crossesGap` so the
+ * caller can see that the route is not valid as filed.
  *
  * ```typescript
  * import { createFlightplanResolver, computeRouteDistance } from '@squawk/flightplan';
@@ -117,6 +126,7 @@ export function computeRouteDistance(
       toLon: to.lon,
       distanceNm: legDistanceNm,
       cumulativeDistanceNm: totalDistanceNm,
+      crossesGap: from.gapToNext === true,
     });
   }
 

@@ -1269,6 +1269,28 @@ describe('airway tools', () => {
     }
   });
 
+  it('expand_airway_segment reports the published gap inside the expansion', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'expand_airway_segment',
+        arguments: { designation: 'J60', entryFix: 'LAX', exitFix: 'SAX' },
+      });
+      const parsed = z
+        .object({
+          expansion: z
+            .object({
+              gaps: z.array(z.object({ index: z.number(), from: z.string(), to: z.string() })),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      expect(parsed.expansion.gaps.map((gap) => `${gap.from}-${gap.to}`)).toEqual(['JOT-DJB']);
+    } finally {
+      await close();
+    }
+  });
+
   it('search_airways works without optional arguments', async () => {
     const { client, close } = await connectTestClient();
     try {

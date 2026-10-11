@@ -482,6 +482,30 @@ describe('coordinate routes', () => {
 });
 
 describe('airway edge cases', () => {
+  it('carries the published gaps of the expansion on the airway element', () => {
+    const result = resolver.parse('LAX J60 SAX');
+    const airway = result.elements.find((el) => el.type === 'airway');
+    if (airway === undefined || airway.type !== 'airway') {
+      throw new Error('expected an airway element');
+    }
+    expect(airway.gaps).toEqual([
+      {
+        index: airway.waypoints.findIndex((wp) => wp.identifier === 'JOT'),
+        from: 'JOT',
+        to: 'DJB',
+      },
+    ]);
+  });
+
+  it('reports no gaps on a continuous airway expansion', () => {
+    const result = resolver.parse('LAX J60 HEC');
+    const airway = result.elements.find((el) => el.type === 'airway');
+    if (airway === undefined || airway.type !== 'airway') {
+      throw new Error('expected an airway element');
+    }
+    expect(airway.gaps).toEqual([]);
+  });
+
   it('marks a recognized airway as unresolved when expansion fails', () => {
     // MERIT is a valid fix and J60 is a valid airway, but MERIT is not on J60.
     // J60 should become unresolved and ZZZZZ should be parsed independently.

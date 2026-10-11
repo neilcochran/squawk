@@ -1,6 +1,6 @@
 import { fuzzySearch } from '@squawk/search';
 import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
-import type { Airway, AirwayType, AirwayWaypoint } from '@squawk/types';
+import type { Airway, AirwayGap, AirwayType, AirwayWaypoint } from '@squawk/types';
 
 /**
  * Options for creating an airway resolver.
@@ -18,6 +18,13 @@ export interface AirwayExpansionResult {
   airway: Airway;
   /** Ordered sequence of waypoints from the entry fix to the exit fix (inclusive). */
   waypoints: AirwayWaypoint[];
+  /**
+   * Published discontinuities inside the expansion, in traversal order. Empty
+   * when the airway is continuous between the entry and exit fixes. A
+   * non-empty list means the airway is not defined between the named
+   * waypoints, so a route filing it across the gap is not valid as filed.
+   */
+  gaps: AirwayGap[];
 }
 
 /**
@@ -83,6 +90,11 @@ export interface AirwayResolver {
    * appears after the exit fix in the stored waypoint order, the returned
    * waypoints are reversed so they always run entry-to-exit.
    *
+   * The result also lists any published gap the expansion crosses, taken from
+   * the `discontinued` flag the FAA sets on the waypoint after which an airway
+   * is discontinued. The expansion still returns every waypoint between the
+   * two fixes, so callers decide how to treat a gap.
+   *
    * Matches waypoint identifiers case-insensitively. Returns undefined if
    * either fix is not found on the airway.
    */
@@ -106,6 +118,30 @@ export interface AirwayResolver {
  * Default maximum number of results for text search queries.
  */
 const DEFAULT_SEARCH_LIMIT = 20;
+
+/**
+ * Lists the published gaps inside an expansion. The FAA's gap flag sits on the
+ * waypoint after which the airway is discontinued in stored order, so in a
+ * forward expansion the flagged waypoint precedes the gap and in a reversed
+ * one it follows it. A flag on the final waypoint describes a gap beyond the
+ * expansion and is ignored.
+ *
+ * @param waypoints - The expansion's waypoints in traversal order.
+ * @param reversed - Whether the expansion runs against the stored waypoint order.
+ * @returns The gaps between consecutive waypoints, in traversal order.
+ */
+function collectGaps(waypoints: AirwayWaypoint[], reversed: boolean): AirwayGap[] {
+  const gaps: AirwayGap[] = [];
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const from = waypoints[i]!;
+    const to = waypoints[i + 1]!;
+    const flagged = reversed ? to : from;
+    if (flagged.discontinued) {
+      gaps.push({ index: i, from: from.identifier ?? from.name, to: to.identifier ?? to.name });
+    }
+  }
+  return gaps;
+}
 
 /**
  * Creates a stateless airway resolver. The resolver accepts an array of
@@ -193,16 +229,12 @@ export function createAirwayResolver(options: AirwayResolverOptions): AirwayReso
 
         if (entryIndex !== -1 && exitIndex !== -1 && entryIndex !== exitIndex) {
           if (entryIndex < exitIndex) {
-            return {
-              airway,
-              waypoints: airway.waypoints.slice(entryIndex, exitIndex + 1),
-            };
+            const waypoints = airway.waypoints.slice(entryIndex, exitIndex + 1);
+            return { airway, waypoints, gaps: collectGaps(waypoints, false) };
           }
           // Reverse traversal: entry fix comes after exit fix in stored order
-          return {
-            airway,
-            waypoints: airway.waypoints.slice(exitIndex, entryIndex + 1).reverse(),
-          };
+          const waypoints = airway.waypoints.slice(exitIndex, entryIndex + 1).reverse();
+          return { airway, waypoints, gaps: collectGaps(waypoints, true) };
         }
       }
 
