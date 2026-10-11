@@ -1,5 +1,18 @@
 # @squawk/airways
 
+## 0.6.0
+
+### Minor Changes
+
+- ace3c0e: ### Added
+
+  - `expand()` results carry `gaps`, the published discontinuities inside the expansion in traversal order. The FAA discontinues some airways partway (J60 between JOT and DJB, for example) and flags the waypoint after which the airway stops, but expansions crossed those gaps silently. The waypoints on both sides are still returned; an empty `gaps` means the segment is continuous, and a non-empty one means the airway is not defined between the named waypoints.
+
+### Patch Changes
+
+- Updated dependencies [ace3c0e]
+  - @squawk/types@0.11.0
+
 ## 0.5.3
 
 ### Patch Changes

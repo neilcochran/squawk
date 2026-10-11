@@ -1,5 +1,20 @@
 # @squawk/adsbscope
 
+## 0.4.3
+
+### Patch Changes
+
+- Updated dependencies [ace3c0e]
+  - @squawk/types@0.11.0
+  - @squawk/adsb-feed@0.9.2
+  - @squawk/airport-data@0.8.3
+  - @squawk/airspace@0.9.5
+  - @squawk/fix-data@0.7.3
+  - @squawk/geo@0.5.1
+  - @squawk/icao-registry@0.5.10
+  - @squawk/icao-registry-data@0.8.16
+  - @squawk/navaid-data@0.7.3
+
 ## 0.4.2
 
 ### Patch Changes

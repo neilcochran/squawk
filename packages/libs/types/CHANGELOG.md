@@ -1,5 +1,13 @@
 # @squawk/types
 
+## 0.11.0
+
+### Minor Changes
+
+- ace3c0e: ### Added
+
+  - `AirwayGap`, describing a published discontinuity between two consecutive waypoints of an airway expansion: the index of the waypoint before the gap and the identifiers on either side.
+
 ## 0.10.1
 
 ### Patch Changes
