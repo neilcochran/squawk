@@ -155,6 +155,8 @@ export function formatAirwayType(type: Airway['type']): string {
       return 'Amber';
     case 'BLUE':
       return 'Blue';
+    case 'SPECIAL':
+      return 'Special (non-regulatory)';
   }
 }
 

@@ -7,6 +7,7 @@
 import type { Airport } from '@squawk/types';
 import type { Airway } from '@squawk/types';
 import type { AirwayGap } from '@squawk/types';
+import type { AirwaySegmentReference } from '@squawk/types';
 import type { AirwayWaypoint } from '@squawk/types';
 import type { Fix } from '@squawk/types';
 import type { LineString } from 'geojson';
@@ -30,6 +31,7 @@ export interface AirwayRouteElement {
     gaps: AirwayGap[];
     raw: string;
     type: 'airway';
+    unusable: AirwaySegmentReference[];
     waypoints: AirwayWaypoint[];
 }
 
@@ -75,6 +77,7 @@ export interface FlightplanAirwayLookup {
         airway: Airway;
         waypoints: AirwayWaypoint[];
         gaps?: AirwayGap[];
+        unusable?: AirwaySegmentReference[];
     } | undefined;
 }
 
@@ -141,6 +144,7 @@ export interface RouteLeg {
     to: string;
     toLat: number;
     toLon: number;
+    unusable: boolean;
 }
 
 // @public
@@ -167,6 +171,7 @@ export interface RouteTimingLeg {
     toLon: number;
     trueCourseDeg: number;
     trueHeadingDeg: number;
+    unusable: boolean;
     wind: WindVector | undefined;
     windCorrectionAngleDeg: number;
 }

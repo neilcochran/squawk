@@ -82,6 +82,8 @@ export interface RouteTimingLeg {
   cumulativeDistanceNm: number;
   /** Whether this leg spans a published gap in the airway it was expanded from, as on `RouteLeg`. */
   crossesGap: boolean;
+  /** Whether this leg is an airway segment the FAA marks unusable, as on `RouteLeg`. */
+  unusable: boolean;
   /** Initial great-circle true course for the leg in degrees (0-360). */
   trueCourseDeg: number;
   /** True heading to fly to hold the course given the wind, in degrees (0-360). */
@@ -246,6 +248,7 @@ export function computeRouteTiming(
       distanceNm: leg.distanceNm,
       cumulativeDistanceNm: leg.cumulativeDistanceNm,
       crossesGap: leg.crossesGap,
+      unusable: leg.unusable,
       trueCourseDeg,
       trueHeadingDeg: triangle.trueHeadingDeg,
       windCorrectionAngleDeg: triangle.windCorrectionAngleDeg,

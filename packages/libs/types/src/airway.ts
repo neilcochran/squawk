@@ -13,6 +13,10 @@
  * - `BAHAMA` - Bahama route
  * - `PACIFIC` - Pacific oceanic route
  * - `PUERTO_RICO` - Puerto Rico route
+ * - `SPECIAL` - Special route: one of the FAA's non-regulatory `ZK` routes,
+ *   low-level RNAV routes used mainly by helicopter air ambulance operators.
+ *   They are not on public charts and may be filed only with FAA Flight
+ *   Standards approval.
  */
 export type AirwayType =
   | 'VICTOR'
@@ -26,7 +30,8 @@ export type AirwayType =
   | 'ATLANTIC'
   | 'BAHAMA'
   | 'PACIFIC'
-  | 'PUERTO_RICO';
+  | 'PUERTO_RICO'
+  | 'SPECIAL';
 
 /**
  * The full set of {@link AirwayType} values, in declaration order.
@@ -49,6 +54,7 @@ export const AIRWAY_TYPES = [
   'BAHAMA',
   'PACIFIC',
   'PUERTO_RICO',
+  'SPECIAL',
 ] as const satisfies readonly AirwayType[];
 
 const AIRWAY_TYPE_SET: ReadonlySet<string> = new Set(AIRWAY_TYPES);
@@ -83,12 +89,16 @@ export const AWY_TYPE_MAP: Record<string, AirwayType> = {
 
 /**
  * Maps the 2-character ATS.txt airway designation prefix to its AirwayType.
+ * The prefix is the file's route category; a bundled ATS designation is the
+ * prefix followed by the route identifier (`ATA315` for Atlantic route A315,
+ * `SPZK214` for special route ZK214).
  */
 export const ATS_TYPE_MAP: Record<string, AirwayType> = {
   AT: 'ATLANTIC',
   BF: 'BAHAMA',
   PA: 'PACIFIC',
   PR: 'PUERTO_RICO',
+  SP: 'SPECIAL',
 };
 
 /**
@@ -109,12 +119,49 @@ export const AIRWAY_REGION_MAP: Record<string, AirwayRegion> = {
 };
 
 /**
+ * Direction of travel an airway altitude applies to, in the FAA's `BND`
+ * (bound) notation: `E BND` is an altitude for eastbound traffic. An altitude
+ * without a direction applies in both directions.
+ */
+export type AirwayDirection =
+  'N BND' | 'NE BND' | 'E BND' | 'SE BND' | 'S BND' | 'SW BND' | 'W BND' | 'NW BND';
+
+/**
+ * The full set of {@link AirwayDirection} values, clockwise from north.
+ */
+export const AIRWAY_DIRECTIONS = [
+  'N BND',
+  'NE BND',
+  'E BND',
+  'SE BND',
+  'S BND',
+  'SW BND',
+  'W BND',
+  'NW BND',
+] as const satisfies readonly AirwayDirection[];
+
+const AIRWAY_DIRECTION_SET: ReadonlySet<string> = new Set(AIRWAY_DIRECTIONS);
+
+/**
+ * Type guard that narrows a string to {@link AirwayDirection} when it matches
+ * a member of {@link AIRWAY_DIRECTIONS}.
+ *
+ * @param value - The string to test.
+ * @returns `true` if `value` is a valid `AirwayDirection`.
+ */
+export function isAirwayDirection(value: string): value is AirwayDirection {
+  return AIRWAY_DIRECTION_SET.has(value);
+}
+
+/**
  * Type of navigational reference at an airway waypoint.
  *
  * - `NAVAID` - A radio navigation facility (VOR, VORTAC, NDB, etc.)
  * - `FIX` - A named intersection or reporting point
  * - `WAYPOINT` - A named waypoint (typically RNAV)
- * - `BORDER` - A US border crossing point
+ * - `BORDER` - A US border crossing point. Reserved: NASR publishes border
+ *   crossings without coordinates, and the bundled data omits every point it
+ *   cannot place, so no bundled waypoint carries this value.
  * - `OTHER` - Other point type (unnamed, turning point, etc.)
  */
 export type AirwayWaypointType = 'NAVAID' | 'FIX' | 'WAYPOINT' | 'BORDER' | 'OTHER';
@@ -122,6 +169,10 @@ export type AirwayWaypointType = 'NAVAID' | 'FIX' | 'WAYPOINT' | 'BORDER' | 'OTH
 /**
  * A single waypoint along an airway route. Waypoints are ordered
  * west-to-east / south-to-north per FAA convention.
+ *
+ * Segment fields (MEA, MOCA, MAA, distance, course, gap and unusable flags)
+ * describe the segment from this waypoint to the next one in the sequence.
+ * Point fields (MRA, MCA, magnetic variation) describe the waypoint itself.
  */
 export interface AirwayWaypoint {
   /** Waypoint name (navaid name, fix identifier, or descriptive name). */
@@ -132,9 +183,16 @@ export interface AirwayWaypoint {
   waypointType: AirwayWaypointType;
   /** Navaid facility type when waypointType is NAVAID (e.g. "VORTAC", "VOR/DME"). */
   navaidFacilityType?: string;
-  /** Two-letter state code (e.g. "NY", "CA"). */
+  /**
+   * Two-letter state or country code of the point (e.g. "NY", "CA", "MX"), or
+   * one of NASR's pseudo-codes: `OA`, `OP` and `OG` for oceanic points in the
+   * Atlantic, the Pacific and the Gulf of Mexico, and `59` for Canada.
+   */
   state?: string;
-  /** ICAO region code for fixes (e.g. "K6", "K7"). */
+  /**
+   * ICAO region code for fixes (e.g. "K6", "K7"). The single letters `K` and
+   * `P` are the FAA's convention for offshore fixes.
+   */
   icaoRegionCode?: string;
   /** Latitude in decimal degrees, positive north. */
   lat: number;
@@ -144,34 +202,51 @@ export interface AirwayWaypoint {
   artccId?: string;
   /** Minimum reception altitude in feet at this point, if published. */
   minimumReceptionAltitudeFt?: number;
+  /** Magnetic variation at a navaid waypoint in whole degrees, with `magneticVariationDirection`. */
+  magneticVariationDeg?: number;
+  /** Direction of the magnetic variation, `E` or `W`. */
+  magneticVariationDirection?: 'E' | 'W';
   /** Segment MEA (Minimum Enroute Altitude) in feet for the segment starting at this waypoint. */
   minimumEnrouteAltitudeFt?: number;
-  /** Direction qualifier for the MEA (e.g. "E BND", "W BND"). */
-  minimumEnrouteAltitudeDirection?: string;
+  /** Direction the MEA applies to; absent when it applies in both directions. */
+  minimumEnrouteAltitudeDirection?: AirwayDirection;
   /** MEA in the opposite direction in feet, if different from the primary MEA. */
   minimumEnrouteAltitudeOppositeFt?: number;
-  /** Direction qualifier for the opposite MEA. */
-  minimumEnrouteAltitudeOppositeDirection?: string;
+  /** Direction the opposite MEA applies to. */
+  minimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
   /** Maximum authorized altitude (MAA) in feet for this segment. */
   maximumAuthorizedAltitudeFt?: number;
   /** Minimum obstruction clearance altitude (MOCA) in feet for this segment. */
   minimumObstructionClearanceAltitudeFt?: number;
   /** GNSS MEA in feet for this segment, if published. */
   gnssMinimumEnrouteAltitudeFt?: number;
-  /** Direction qualifier for the GNSS MEA. */
-  gnssMinimumEnrouteAltitudeDirection?: string;
+  /** Direction the GNSS MEA applies to; absent when it applies in both directions. */
+  gnssMinimumEnrouteAltitudeDirection?: AirwayDirection;
   /** GNSS MEA in the opposite direction in feet. */
   gnssMinimumEnrouteAltitudeOppositeFt?: number;
-  /** Direction qualifier for the opposite GNSS MEA. */
-  gnssMinimumEnrouteAltitudeOppositeDirection?: string;
-  /** Minimum crossing altitude (MCA) in feet at this point. */
+  /** Direction the opposite GNSS MEA applies to. */
+  gnssMinimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
+  /** DME/DME/IRU MEA in feet for this segment, if published (mostly on Q routes). */
+  dmeDmeIruMinimumEnrouteAltitudeFt?: number;
+  /** Direction the DME/DME/IRU MEA applies to; absent when it applies in both directions. */
+  dmeDmeIruMinimumEnrouteAltitudeDirection?: AirwayDirection;
+  /** DME/DME/IRU MEA in the opposite direction in feet. */
+  dmeDmeIruMinimumEnrouteAltitudeOppositeFt?: number;
+  /** Direction the opposite DME/DME/IRU MEA applies to. */
+  dmeDmeIruMinimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
+  /**
+   * Minimum crossing altitude (MCA) in feet at this waypoint for traffic in
+   * `minimumCrossingAltitudeDirection`. NASR publishes an MCA on the first
+   * segment record of the Part 95 segment it belongs to and names the point
+   * it applies at; the bundled data attaches it to that named waypoint.
+   */
   minimumCrossingAltitudeFt?: number;
-  /** Direction of the minimum crossing altitude. */
-  minimumCrossingAltitudeDirection?: string;
-  /** Minimum crossing altitude in the opposite direction. */
+  /** Direction of travel the MCA applies to. */
+  minimumCrossingAltitudeDirection?: AirwayDirection;
+  /** Minimum crossing altitude in feet at this waypoint for traffic in the opposite direction. */
   minimumCrossingAltitudeOppositeFt?: number;
-  /** Direction for the opposite minimum crossing altitude. */
-  minimumCrossingAltitudeOppositeDirection?: string;
+  /** Direction of travel the opposite MCA applies to. */
+  minimumCrossingAltitudeOppositeDirection?: AirwayDirection;
   /** Distance in nautical miles from this waypoint to the next waypoint along the airway. */
   distanceToNextNm?: number;
   /** Magnetic course in degrees from this waypoint to the next. */
@@ -180,6 +255,8 @@ export interface AirwayWaypoint {
   magneticCourseOppositeDeg?: number;
   /** Distance in nautical miles from this waypoint to the changeover point. */
   changeoverDistanceNm?: number;
+  /** Required navigation performance in nautical miles for this segment, where the FAA publishes one. */
+  rnpNm?: number;
   /** Whether there is a gap in navigation signal coverage on this segment. */
   signalGap?: boolean;
   /** Whether altitude data applies only to US airspace on this segment. */
@@ -188,6 +265,15 @@ export interface AirwayWaypoint {
   dogleg?: boolean;
   /** Whether the airway is discontinued at this point (gap flag). */
   discontinued?: boolean;
+  /**
+   * Whether the segment from this waypoint to the next is unusable: the FAA
+   * marks it in the MEA GAP column or with an `UNUSABLE` point remark. The
+   * segment is still published with its distance, and without an MEA, but it
+   * may not be flown.
+   */
+  unusable?: boolean;
+  /** FAA remarks about this point, one per published line (e.g. `WINK R-311 UNUSABLE, USE CHISUM R-129`). */
+  remarks?: string[];
 }
 
 /**
@@ -206,6 +292,21 @@ export interface Airway {
   region: AirwayRegion;
   /** Ordered sequence of waypoints defining the airway route. */
   waypoints: AirwayWaypoint[];
+  /** FAA remarks about the whole route, one per published line (e.g. `HF COMM REQUIRED`). */
+  remarks?: string[];
+}
+
+/**
+ * A reference to the segment between two consecutive waypoints of an airway
+ * expansion: the position of the first waypoint and the identifiers of both.
+ */
+export interface AirwaySegmentReference {
+  /** Index into the expansion's waypoints of the waypoint that starts the segment; the segment runs from it to the next waypoint. */
+  index: number;
+  /** Identifier, or name when the waypoint has no identifier, of the waypoint that starts the segment. */
+  from: string;
+  /** Identifier, or name when the waypoint has no identifier, of the waypoint that ends the segment. */
+  to: string;
 }
 
 /**
@@ -216,11 +317,4 @@ export interface Airway {
  * not valid as filed, and a line between the two waypoints is not an airway
  * segment.
  */
-export interface AirwayGap {
-  /** Index into the expansion's waypoints of the waypoint before the gap; the gap lies between it and the next waypoint. */
-  index: number;
-  /** Identifier, or name when the waypoint has no identifier, of the waypoint before the gap. */
-  from: string;
-  /** Identifier, or name when the waypoint has no identifier, of the waypoint after the gap. */
-  to: string;
-}
+export type AirwayGap = AirwaySegmentReference;

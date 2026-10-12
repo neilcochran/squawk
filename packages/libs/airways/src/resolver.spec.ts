@@ -210,6 +210,81 @@ describe('expand', () => {
   });
 });
 
+describe('expand unusable segments', () => {
+  const flagged: Airway = {
+    designation: 'V999',
+    type: 'VICTOR',
+    region: 'US',
+    waypoints: [
+      { name: 'ALPHA', identifier: 'ALPHA', waypointType: 'FIX', lat: 40, lon: -74 },
+      {
+        name: 'BRAVO',
+        identifier: 'BRAVO',
+        waypointType: 'FIX',
+        lat: 41,
+        lon: -74,
+        unusable: true,
+        remarks: ['UNUSABLE'],
+      },
+      { name: 'CHRLY', identifier: 'CHRLY', waypointType: 'FIX', lat: 42, lon: -74 },
+      {
+        name: 'DELTA',
+        identifier: 'DELTA',
+        waypointType: 'FIX',
+        lat: 43,
+        lon: -74,
+        unusable: true,
+      },
+    ],
+  };
+  const flaggedResolver = createAirwayResolver({ data: [flagged] });
+
+  it('reports the unusable segment inside a forward expansion and no gap', () => {
+    const result = flaggedResolver.expand('V999', 'ALPHA', 'CHRLY');
+    assert(result);
+    expect(result.unusable).toEqual([{ index: 1, from: 'BRAVO', to: 'CHRLY' }]);
+    expect(result.gaps).toEqual([]);
+  });
+
+  it('reports the unusable segment in traversal order for a reverse expansion', () => {
+    const result = flaggedResolver.expand('V999', 'CHRLY', 'ALPHA');
+    assert(result);
+    expect(result.unusable).toEqual([{ index: 0, from: 'CHRLY', to: 'BRAVO' }]);
+  });
+
+  it('ignores an unusable flag on the final waypoint, whose segment lies beyond the expansion', () => {
+    const result = flaggedResolver.expand('V999', 'CHRLY', 'DELTA');
+    assert(result);
+    expect(result.unusable).toEqual([]);
+  });
+
+  it('reports the J34 unusable segment between DRYER and GAABE from the bundled data', () => {
+    const forward = resolver.expand('J34', 'DJB', 'GAABE');
+    assert(forward);
+    expect(forward.unusable.map((segment) => `${segment.from}-${segment.to}`)).toEqual([
+      'DJB-GAABE',
+    ]);
+    expect(forward.gaps).toEqual([]);
+    const reverse = resolver.expand('J34', 'GAABE', 'DJB');
+    assert(reverse);
+    expect(reverse.unusable.map((segment) => `${segment.from}-${segment.to}`)).toEqual([
+      'GAABE-DJB',
+    ]);
+  });
+
+  it('reports a segment the FAA marks unusable only by remark from the bundled data', () => {
+    const result = resolver.expand('V70', 'LUMPP', 'AMAPO');
+    assert(result);
+    expect(result.unusable).toEqual([{ index: 0, from: 'LUMPP', to: 'AMAPO' }]);
+  });
+
+  it('reports no unusable segments for an ordinary expansion from the bundled data', () => {
+    const result = resolver.expand('J60', 'LAX', 'HEC');
+    assert(result);
+    expect(result.unusable).toEqual([]);
+  });
+});
+
 describe('byFix', () => {
   it('returns airways that pass through a known fix/navaid', () => {
     const v16s = resolver.byDesignation('V16');

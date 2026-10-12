@@ -1,6 +1,12 @@
 import { fuzzySearch } from '@squawk/search';
 import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
-import type { Airway, AirwayGap, AirwayType, AirwayWaypoint } from '@squawk/types';
+import type {
+  Airway,
+  AirwayGap,
+  AirwaySegmentReference,
+  AirwayType,
+  AirwayWaypoint,
+} from '@squawk/types';
 
 /**
  * Options for creating an airway resolver.
@@ -25,6 +31,13 @@ export interface AirwayExpansionResult {
    * waypoints, so a route filing it across the gap is not valid as filed.
    */
   gaps: AirwayGap[];
+  /**
+   * Segments inside the expansion the FAA marks unusable, in traversal order.
+   * Empty when every segment may be flown. An unusable segment is still
+   * published with its waypoints and distance, but it has no MEA and may not
+   * be flown, so a route filing the airway across it is not valid as filed.
+   */
+  unusable: AirwaySegmentReference[];
 }
 
 /**
@@ -92,8 +105,10 @@ export interface AirwayResolver {
    *
    * The result also lists any published gap the expansion crosses, taken from
    * the `discontinued` flag the FAA sets on the waypoint after which an airway
-   * is discontinued. The expansion still returns every waypoint between the
-   * two fixes, so callers decide how to treat a gap.
+   * is discontinued, and any unusable segment, taken from the `unusable` flag
+   * on the waypoint that starts it. The expansion still returns every waypoint
+   * between the two fixes, so callers decide how to treat a gap or an
+   * unusable segment.
    *
    * Matches waypoint identifiers case-insensitively. Returns undefined if
    * either fix is not found on the airway.
@@ -120,27 +135,56 @@ export interface AirwayResolver {
 const DEFAULT_SEARCH_LIMIT = 20;
 
 /**
- * Lists the published gaps inside an expansion. The FAA's gap flag sits on the
- * waypoint after which the airway is discontinued in stored order, so in a
- * forward expansion the flagged waypoint precedes the gap and in a reversed
- * one it follows it. A flag on the final waypoint describes a gap beyond the
- * expansion and is ignored.
+ * Lists the segments of an expansion whose stored-order starting waypoint
+ * carries a flag. The FAA's segment flags (the gap flag and the unusable
+ * flag) sit on the waypoint that starts the segment in stored order, so in a
+ * forward expansion the flagged waypoint precedes the segment and in a
+ * reversed one it follows it. A flag on the final waypoint describes a
+ * segment beyond the expansion and is ignored.
  *
  * @param waypoints - The expansion's waypoints in traversal order.
  * @param reversed - Whether the expansion runs against the stored waypoint order.
- * @returns The gaps between consecutive waypoints, in traversal order.
+ * @param flagged - Whether a waypoint carries the flag being collected.
+ * @returns The flagged segments between consecutive waypoints, in traversal order.
  */
-function collectGaps(waypoints: AirwayWaypoint[], reversed: boolean): AirwayGap[] {
-  const gaps: AirwayGap[] = [];
+function collectFlaggedSegments(
+  waypoints: AirwayWaypoint[],
+  reversed: boolean,
+  flagged: (waypoint: AirwayWaypoint) => boolean,
+): AirwaySegmentReference[] {
+  const segments: AirwaySegmentReference[] = [];
   for (let i = 0; i < waypoints.length - 1; i++) {
-    const from = waypoints[i]!;
-    const to = waypoints[i + 1]!;
-    const flagged = reversed ? to : from;
-    if (flagged.discontinued) {
-      gaps.push({ index: i, from: from.identifier ?? from.name, to: to.identifier ?? to.name });
+    const from = waypoints[i];
+    const to = waypoints[i + 1];
+    if (from === undefined || to === undefined) {
+      continue;
+    }
+    if (flagged(reversed ? to : from)) {
+      segments.push({ index: i, from: from.identifier ?? from.name, to: to.identifier ?? to.name });
     }
   }
-  return gaps;
+  return segments;
+}
+
+/**
+ * Builds the expansion result for a slice of waypoints in traversal order.
+ *
+ * @param airway - The airway that was expanded.
+ * @param waypoints - The slice in traversal order.
+ * @param reversed - Whether the slice runs against the stored waypoint order.
+ * @returns The expansion with its gaps and unusable segments.
+ */
+function expansionResult(
+  airway: Airway,
+  waypoints: AirwayWaypoint[],
+  reversed: boolean,
+): AirwayExpansionResult {
+  return {
+    airway,
+    waypoints,
+    gaps: collectFlaggedSegments(waypoints, reversed, (wp) => wp.discontinued === true),
+    unusable: collectFlaggedSegments(waypoints, reversed, (wp) => wp.unusable === true),
+  };
 }
 
 /**
@@ -229,12 +273,18 @@ export function createAirwayResolver(options: AirwayResolverOptions): AirwayReso
 
         if (entryIndex !== -1 && exitIndex !== -1 && entryIndex !== exitIndex) {
           if (entryIndex < exitIndex) {
-            const waypoints = airway.waypoints.slice(entryIndex, exitIndex + 1);
-            return { airway, waypoints, gaps: collectGaps(waypoints, false) };
+            return expansionResult(
+              airway,
+              airway.waypoints.slice(entryIndex, exitIndex + 1),
+              false,
+            );
           }
           // Reverse traversal: entry fix comes after exit fix in stored order
-          const waypoints = airway.waypoints.slice(exitIndex, entryIndex + 1).reverse();
-          return { airway, waypoints, gaps: collectGaps(waypoints, true) };
+          return expansionResult(
+            airway,
+            airway.waypoints.slice(exitIndex, entryIndex + 1).reverse(),
+            true,
+          );
         }
       }
 

@@ -2,39 +2,19 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { parseNasrArgs } from '@squawk/build-shared';
-import type { Airway, AirwayType, AirwayRegion, AirwayWaypoint } from '@squawk/types';
-import { AWY_TYPE_MAP, ATS_TYPE_MAP, AIRWAY_REGION_MAP } from '@squawk/types';
+import type { Airway, AirwayType } from '@squawk/types';
+import { AWY_TYPE_MAP, ATS_TYPE_MAP } from '@squawk/types';
 
-import { parseAts1, parseAts2, buildAtsWaypoint } from './parse-ats.js';
-import { parseAwy1, parseAwy2, buildWaypoint, assembleWaypoints } from './parse-awy.js';
+import type { AirwaySourceRecords } from './assemble-airways.js';
+import { assembleAirway } from './assemble-airways.js';
+import type { AirwayPointRecord, AirwaySegmentRecord } from './build-waypoint.js';
+import { parseAts1, parseAts2, parseAts4, parseAtsRemark } from './parse-ats.js';
+import { parseAwy1, parseAwy2, parseAwy4, parseAwyRemark } from './parse-awy.js';
 import { writeOutput } from './write-output.js';
 
 /** Fixed-width data files within the NASR subscription directory. */
 const AWY_FILE = 'AWY.txt';
 const ATS_FILE = 'ATS.txt';
-
-/**
- * Determines the AirwayType from an AWY.txt designation string.
- * The first character indicates the type (V, J, Q, T, G, R, A, B).
- */
-function getAwyType(designation: string): AirwayType | undefined {
-  const firstChar = designation.charAt(0);
-  return AWY_TYPE_MAP[firstChar];
-}
-
-/**
- * Determines the AirwayType from an ATS.txt designation prefix.
- */
-function getAtsType(designationPrefix: string): AirwayType | undefined {
-  return ATS_TYPE_MAP[designationPrefix];
-}
-
-/**
- * Determines the AirwayRegion from the airway type character.
- */
-function getRegion(airwayTypeChar: string): AirwayRegion {
-  return AIRWAY_REGION_MAP[airwayTypeChar] ?? 'US';
-}
 
 /**
  * Builds the unique airway key from designation and type character.
@@ -44,146 +24,175 @@ function airwayKey(designation: string, airwayTypeChar: string): string {
 }
 
 /**
- * Parses AWY.txt and returns an array of Airway records.
+ * Returns the source record set for an airway, creating it on first use.
  */
-function parseAwyFile(filePath: string): Airway[] {
-  const content = readFileSync(filePath, 'utf-8');
-  const lines = content.split(/\r?\n/).filter((l) => l.length > 0);
-
-  const awy1Map = new Map<string, Map<number, ReturnType<typeof parseAwy1>>>();
-  const awy2Map = new Map<string, Map<number, ReturnType<typeof parseAwy2>>>();
-
-  for (const line of lines) {
-    const recordType = line.substring(0, 4);
-
-    if (recordType === 'AWY1') {
-      const rec = parseAwy1(line);
-      const key = airwayKey(rec.designation, rec.airwayTypeChar);
-      if (!awy1Map.has(key)) {
-        awy1Map.set(key, new Map());
-      }
-      awy1Map.get(key)!.set(rec.sequenceNumber, rec);
-    } else if (recordType === 'AWY2') {
-      const rec = parseAwy2(line);
-      const key = airwayKey(rec.designation, rec.airwayTypeChar);
-      if (!awy2Map.has(key)) {
-        awy2Map.set(key, new Map());
-      }
-      awy2Map.get(key)!.set(rec.sequenceNumber, rec);
-    }
+function sourceFor(
+  sources: Map<string, AirwaySourceRecords>,
+  designation: string,
+  airwayTypeChar: string,
+): AirwaySourceRecords {
+  const key = airwayKey(designation, airwayTypeChar);
+  let source = sources.get(key);
+  if (source === undefined) {
+    source = {
+      designation,
+      airwayTypeChar,
+      segments: new Map<number, AirwaySegmentRecord>(),
+      points: new Map<number, AirwayPointRecord>(),
+      pointRemarks: new Map<number, string[]>(),
+      remarks: [],
+    };
+    sources.set(key, source);
   }
-
-  const airways: Airway[] = [];
-
-  for (const [key, awy1Points] of awy1Map) {
-    const awy2Points = awy2Map.get(key);
-    if (!awy2Points) {
-      continue;
-    }
-
-    const seqNumbers = Array.from(awy1Points.keys()).sort((a, b) => a - b);
-    const firstRec = awy1Points.get(seqNumbers[0]!);
-    if (!firstRec) {
-      continue;
-    }
-
-    const airwayType = getAwyType(firstRec.designation);
-    if (!airwayType) {
-      continue;
-    }
-
-    const sequence: (AirwayWaypoint | undefined)[] = [];
-    for (const seq of seqNumbers) {
-      const awy1 = awy1Points.get(seq)!;
-      const awy2 = awy2Points.get(seq);
-      sequence.push(awy2 ? buildWaypoint(awy1, awy2) : undefined);
-    }
-    const waypoints = assembleWaypoints(sequence);
-
-    if (waypoints.length === 0) {
-      continue;
-    }
-
-    airways.push({
-      designation: firstRec.designation,
-      type: airwayType,
-      region: getRegion(firstRec.airwayTypeChar),
-      waypoints,
-    });
-  }
-
-  return airways;
+  return source;
 }
 
 /**
- * Parses ATS.txt and returns an array of Airway records.
+ * Adds one remark line to a point's remark list.
  */
-function parseAtsFile(filePath: string): Airway[] {
-  const content = readFileSync(filePath, 'utf-8');
-  const lines = content.split(/\r?\n/).filter((l) => l.length > 0);
+function addPointRemark(source: AirwaySourceRecords, sequenceNumber: number, text: string): void {
+  const lines = source.pointRemarks.get(sequenceNumber) ?? [];
+  lines.push(text);
+  source.pointRemarks.set(sequenceNumber, lines);
+}
 
-  const ats1Map = new Map<string, Map<number, ReturnType<typeof parseAts1>>>();
-  const ats2Map = new Map<string, Map<number, ReturnType<typeof parseAts2>>>();
+/**
+ * Reads the non-empty lines of a fixed-width NASR file.
+ */
+function readLines(filePath: string): string[] {
+  return readFileSync(filePath, 'utf-8')
+    .split(/\r?\n/)
+    .filter((l) => l.length > 0);
+}
 
-  for (const line of lines) {
+/**
+ * Groups the records of AWY.txt by airway. Changeover records (AWY3, AWY5)
+ * are not modelled.
+ */
+function readAwyFile(filePath: string): Map<string, AirwaySourceRecords> {
+  const sources = new Map<string, AirwaySourceRecords>();
+  for (const line of readLines(filePath)) {
     const recordType = line.substring(0, 4);
+    if (recordType === 'AWY1') {
+      const rec = parseAwy1(line);
+      sourceFor(sources, rec.designation, rec.airwayTypeChar).segments.set(rec.sequenceNumber, rec);
+    } else if (recordType === 'AWY2') {
+      const rec = parseAwy2(line);
+      sourceFor(sources, rec.designation, rec.airwayTypeChar).points.set(rec.sequenceNumber, rec);
+    } else if (recordType === 'AWY4') {
+      const rec = parseAwy4(line);
+      addPointRemark(
+        sourceFor(sources, rec.designation, rec.airwayTypeChar),
+        rec.sequenceNumber,
+        rec.text,
+      );
+    } else if (recordType === 'RMK ') {
+      const rec = parseAwyRemark(line);
+      sourceFor(sources, rec.designation, rec.airwayTypeChar).remarks.push(rec.text);
+    }
+  }
+  return sources;
+}
 
+/**
+ * Groups the records of ATS.txt by airway. Changeover records (ATS3, ATS5)
+ * are not modelled.
+ */
+function readAtsFile(filePath: string): Map<string, AirwaySourceRecords> {
+  const sources = new Map<string, AirwaySourceRecords>();
+  for (const line of readLines(filePath)) {
+    const recordType = line.substring(0, 4);
     if (recordType === 'ATS1') {
       const rec = parseAts1(line);
-      const key = airwayKey(rec.fullDesignation, rec.airwayTypeChar);
-      if (!ats1Map.has(key)) {
-        ats1Map.set(key, new Map());
-      }
-      ats1Map.get(key)!.set(rec.sequenceNumber, rec);
+      sourceFor(sources, rec.fullDesignation, rec.airwayTypeChar).segments.set(
+        rec.sequenceNumber,
+        rec,
+      );
     } else if (recordType === 'ATS2') {
       const rec = parseAts2(line);
-      const key = airwayKey(rec.fullDesignation, rec.airwayTypeChar);
-      if (!ats2Map.has(key)) {
-        ats2Map.set(key, new Map());
-      }
-      ats2Map.get(key)!.set(rec.sequenceNumber, rec);
+      sourceFor(sources, rec.fullDesignation, rec.airwayTypeChar).points.set(
+        rec.sequenceNumber,
+        rec,
+      );
+    } else if (recordType === 'ATS4') {
+      const rec = parseAts4(line);
+      addPointRemark(
+        sourceFor(sources, rec.fullDesignation, rec.airwayTypeChar),
+        rec.sequenceNumber,
+        rec.text,
+      );
+    } else if (recordType === 'RMK ') {
+      const rec = parseAtsRemark(line);
+      sourceFor(sources, rec.fullDesignation, rec.airwayTypeChar).remarks.push(rec.text);
     }
   }
+  return sources;
+}
 
+/**
+ * Determines the AirwayType from an AWY.txt designation string.
+ * The first character indicates the type (V, J, Q, T, G, R, A, B).
+ */
+function awyType(designation: string): AirwayType | undefined {
+  return AWY_TYPE_MAP[designation.charAt(0)];
+}
+
+/**
+ * Determines the AirwayType from an ATS.txt designation, whose first two
+ * characters are the route category prefix.
+ */
+function atsType(designation: string): AirwayType | undefined {
+  return ATS_TYPE_MAP[designation.substring(0, 2)];
+}
+
+/**
+ * Assembles every airway of one file and logs what was dropped or could not
+ * be placed.
+ */
+function buildAirways(
+  file: string,
+  sources: Map<string, AirwaySourceRecords>,
+  typeOf: (designation: string) => AirwayType | undefined,
+): Airway[] {
   const airways: Airway[] = [];
+  const untyped: string[] = [];
+  const unplacedCrossingAltitudes: string[] = [];
+  let attachedCrossingAltitudes = 0;
+  let unusableSegments = 0;
 
-  for (const [key, ats1Points] of ats1Map) {
-    const ats2Points = ats2Map.get(key);
-    if (!ats2Points) {
+  for (const source of sources.values()) {
+    if (source.segments.size === 0) {
       continue;
     }
-
-    const seqNumbers = Array.from(ats1Points.keys()).sort((a, b) => a - b);
-    const firstRec = ats1Points.get(seqNumbers[0]!);
-    if (!firstRec) {
+    const type = typeOf(source.designation);
+    if (type === undefined) {
+      untyped.push(source.designation);
       continue;
     }
-
-    const airwayType = getAtsType(firstRec.designationPrefix);
-    if (!airwayType) {
-      continue;
+    const result = assembleAirway(type, source);
+    attachedCrossingAltitudes += result.crossingAltitudes.attached;
+    unplacedCrossingAltitudes.push(...result.crossingAltitudes.unplaced);
+    unusableSegments += result.unusableSegments;
+    if (result.airway !== undefined) {
+      airways.push(result.airway);
     }
-
-    const sequence: (AirwayWaypoint | undefined)[] = [];
-    for (const seq of seqNumbers) {
-      const ats1 = ats1Points.get(seq)!;
-      const ats2 = ats2Points.get(seq);
-      sequence.push(ats2 ? buildAtsWaypoint(ats1, ats2) : undefined);
-    }
-    const waypoints = assembleWaypoints(sequence);
-
-    if (waypoints.length === 0) {
-      continue;
-    }
-
-    airways.push({
-      designation: firstRec.fullDesignation,
-      type: airwayType,
-      region: getRegion(firstRec.airwayTypeChar),
-      waypoints,
-    });
   }
 
+  const waypointCount = airways.reduce((sum, a) => sum + a.waypoints.length, 0);
+  console.log(
+    `[index] Parsed ${airways.length} airways (${waypointCount} waypoints) from ${file}.`,
+  );
+  console.log(
+    `[index] ${file}: ${attachedCrossingAltitudes} crossing altitudes attached to their named point, ${unusableSegments} unusable segments.`,
+  );
+  for (const message of unplacedCrossingAltitudes) {
+    console.warn(`[index] ${file}: crossing altitude left off: ${message}`);
+  }
+  if (untyped.length > 0) {
+    console.warn(
+      `[index] ${file}: dropped ${untyped.length} routes with no airway type: ${untyped.join(', ')}`,
+    );
+  }
   return airways;
 }
 
@@ -207,22 +216,18 @@ async function main(): Promise<void> {
   const { subscriptionDir, nasrCycleDate, outputPath, cleanup } = parsed;
 
   try {
-    // Parse AWY.txt (Victor, Jet, RNAV Q/T, Green, Red, Amber, Blue routes).
-    const awyPath = join(subscriptionDir, AWY_FILE);
     console.log(`[index] Parsing ${AWY_FILE}...`);
-    const awyAirways = parseAwyFile(awyPath);
-    const awyWpCount = awyAirways.reduce((sum, a) => sum + a.waypoints.length, 0);
-    console.log(
-      `[index] Parsed ${awyAirways.length} airways (${awyWpCount} waypoints) from ${AWY_FILE}.`,
+    const awyAirways = buildAirways(
+      AWY_FILE,
+      readAwyFile(join(subscriptionDir, AWY_FILE)),
+      awyType,
     );
 
-    // Parse ATS.txt (Atlantic, Bahama, Pacific, Puerto Rico routes).
-    const atsPath = join(subscriptionDir, ATS_FILE);
     console.log(`[index] Parsing ${ATS_FILE}...`);
-    const atsAirways = parseAtsFile(atsPath);
-    const atsWpCount = atsAirways.reduce((sum, a) => sum + a.waypoints.length, 0);
-    console.log(
-      `[index] Parsed ${atsAirways.length} airways (${atsWpCount} waypoints) from ${ATS_FILE}.`,
+    const atsAirways = buildAirways(
+      ATS_FILE,
+      readAtsFile(join(subscriptionDir, ATS_FILE)),
+      atsType,
     );
 
     const allAirways = [...awyAirways, ...atsAirways];

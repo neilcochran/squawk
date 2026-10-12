@@ -246,6 +246,26 @@ describe('computeRouteDistance', () => {
       assert.ok(close(result.totalDistanceNm, 60 + expected));
     });
 
+    it('flags the leg on an unusable airway segment and still measures it', () => {
+      const awp = makeAirway('J34', [
+        { identifier: 'DJB', lat: 41.4, lon: -82.2, distanceToNextNm: 19, unusable: true },
+        { identifier: 'GAABE', lat: 41.6, lon: -81.8, distanceToNextNm: 25 },
+        { identifier: 'MAINE', lat: 41.9, lon: -81.3 },
+      ]);
+
+      const result = computeRouteDistance(route([awp]));
+      assert.deepEqual(
+        result.legs.map((leg) => leg.unusable),
+        [true, false],
+      );
+      assert.deepEqual(
+        result.legs.map((leg) => leg.crossesGap),
+        [false, false],
+      );
+      assert.equal(result.legs[0]!.distanceNm, 19);
+      assert.equal(result.totalDistanceNm, 44);
+    });
+
     it('handles airway with empty waypoints', () => {
       const awp = makeAirway('J99', []);
       const result = computeRouteDistance(route([awp]));
@@ -381,6 +401,19 @@ describe('computeRouteDistance', () => {
       const result = computeRouteDistance(route([wp, awp]));
       assert.equal(result.legs.length, 1);
       assert.equal(result.legs[0]!.crossesGap, true);
+    });
+
+    it('keeps the unusable flag when the flagged waypoint merges into the preceding waypoint', () => {
+      const wp = makeWaypoint('DJB', 41.4, -82.2);
+      const awp = makeAirway('J34', [
+        { identifier: 'DJB', lat: 41.4, lon: -82.2, unusable: true },
+        { identifier: 'GAABE', lat: 41.6, lon: -81.8 },
+      ]);
+
+      const result = computeRouteDistance(route([wp, awp]));
+      assert.equal(result.legs.length, 1);
+      assert.equal(result.legs[0]!.unusable, true);
+      assert.equal(result.legs[0]!.crossesGap, false);
     });
 
     it('does not create a zero-length leg when SID last fix matches following waypoint', () => {

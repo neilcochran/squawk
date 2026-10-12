@@ -40,6 +40,12 @@ export interface RouteLeg {
    * segment, and the route is not valid as filed.
    */
   crossesGap: boolean;
+  /**
+   * Whether this leg is an airway segment the FAA marks unusable. The leg is
+   * measured like any other and counts toward the total, but the segment may
+   * not be flown, so the route is not valid as filed.
+   */
+  unusable: boolean;
 }
 
 /**
@@ -80,8 +86,9 @@ export interface RouteDistanceResult {
  * Airway segments use the FAA-published `distanceToNextNm` value where the
  * source publishes a positive one, falling back to great-circle computation
  * otherwise. A leg that spans a published gap in its airway is still measured
- * as a straight line and counted, but is flagged with `crossesGap` so the
- * caller can see that the route is not valid as filed.
+ * as a straight line and counted, but is flagged with `crossesGap`, and a leg
+ * on an airway segment the FAA marks unusable is flagged with `unusable`, so
+ * the caller can see that the route is not valid as filed.
  *
  * ```typescript
  * import { createFlightplanResolver, computeRouteDistance } from '@squawk/flightplan';
@@ -127,6 +134,7 @@ export function computeRouteDistance(
       distanceNm: legDistanceNm,
       cumulativeDistanceNm: totalDistanceNm,
       crossesGap: from.gapToNext === true,
+      unusable: from.unusableToNext === true,
     });
   }
 

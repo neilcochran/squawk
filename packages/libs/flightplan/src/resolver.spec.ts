@@ -537,6 +537,17 @@ describe('airway edge cases', () => {
       throw new Error('expected an airway element');
     }
     expect(airway.gaps).toEqual([]);
+    expect(airway.unusable).toEqual([]);
+  });
+
+  it('carries the unusable segments of the expansion on the airway element', () => {
+    const result = resolver.parse('DJB J34 GAABE');
+    const airway = result.elements.find((el) => el.type === 'airway');
+    if (airway === undefined || airway.type !== 'airway') {
+      throw new Error('expected an airway element');
+    }
+    expect(airway.unusable).toEqual([{ index: 0, from: 'DJB', to: 'GAABE' }]);
+    expect(airway.gaps).toEqual([]);
   });
 
   it('marks a recognized airway as unresolved when expansion fails', () => {

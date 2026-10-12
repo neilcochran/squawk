@@ -32,7 +32,7 @@ describe('computeLayerVisibility', () => {
     const visibility = computeLayerVisibility(
       selection({ layers: ['airways'], airwayCategories: ['LOW'] }),
     );
-    expect([...visibility.airwayTypes].sort()).toEqual(['RNAV_T', 'VICTOR']);
+    expect([...visibility.airwayTypes].sort()).toEqual(['RNAV_T', 'SPECIAL', 'VICTOR']);
   });
 
   it('expands enabled airspace classes into their underlying types', () => {
@@ -106,7 +106,7 @@ describe('computeSearchScope', () => {
       includeHidden: false,
     });
     expect(scope.airways.enabled).toBe(true);
-    expect([...scope.airways.types].sort()).toEqual<AirwayType[]>(['RNAV_T', 'VICTOR']);
+    expect([...scope.airways.types].sort()).toEqual<AirwayType[]>(['RNAV_T', 'SPECIAL', 'VICTOR']);
   });
 
   it('passes the full airway filter scope through when include-hidden is on', () => {
@@ -119,6 +119,7 @@ describe('computeSearchScope', () => {
       'JET',
       'RNAV_Q',
       'RNAV_T',
+      'SPECIAL',
       'VICTOR',
     ]);
   });
