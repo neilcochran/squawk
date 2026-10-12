@@ -170,6 +170,14 @@ this dataset.
   course as magnetic.
 - One leg has no coordinates: the initial fix of the `KDAF R36` approach
   references NDB `CMY`, which the current CIFP cycle does not publish.
-- Six legs carry an FAA placeholder `rhoNm` of 999.9, and nine `+` altitude
-  constraints carry a second altitude that the descriptor does not use. Both
-  come from the source data unchanged.
+- Six Alaska legs name North Dakota VORs as their recommended navaid: the SPY
+  transition and the missed approach of the St. George ILS and LOC RWY 11
+  (`PAPB I11` and `L11`) reference Minot (`MIB`), and the two runway
+  transitions of the Tununak `EZEPU1` departure reference Williston (`ISN`),
+  each about 2,300 nm away. The distance overflows the ARINC rho field, which
+  tops out at 999.9, so `rhoNm` is left unset on those legs rather than
+  publishing a value that is not a distance; `thetaDeg` and
+  `recommendedNavaid` are published as coded. The coding is identical in the
+  preceding CIFP cycle.
+- Nine `+` altitude constraints carry a second altitude that the descriptor
+  does not use. It comes from the source data unchanged.

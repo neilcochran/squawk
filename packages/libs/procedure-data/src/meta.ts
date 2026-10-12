@@ -11,7 +11,7 @@ import type { ProcedureDatasetProperties } from './node.js';
 
 /** Build metadata for the bundled procedure snapshot. */
 export const usBundledProceduresProperties: ProcedureDatasetProperties = {
-  generatedAt: '2026-10-12T03:46:40.196Z',
+  generatedAt: '2026-10-12T04:13:15.656Z',
   cifpCycleDate: '2026-10-29',
   recordCount: 14302,
   sidCount: 2186,

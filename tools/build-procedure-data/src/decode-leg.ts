@@ -275,7 +275,7 @@ export function decodePrimaryLegRecord(raw: string): DecodedLegRecord | undefine
     leg.thetaDeg = thetaDeg;
   }
 
-  const rhoNm = parseTenths(raw.substring(66, 70));
+  const rhoNm = parseRho(raw.substring(66, 70));
   if (rhoNm !== undefined) {
     leg.rhoNm = rhoNm;
   }
@@ -518,6 +518,27 @@ function parseTenths(raw: string): number | undefined {
     return undefined;
   }
   return value / 10;
+}
+
+/**
+ * Largest value the 4-character Rho field (ARINC 424 field 5.42) can
+ * hold: 999.9 nautical miles. The FAA publishes it where the distance to
+ * the recommended navaid overflows the field, which only happens when the
+ * navaid reference is wrong (a few Alaska legs name North Dakota VORs),
+ * so the value is a field overflow rather than a distance.
+ */
+const RHO_SATURATED = '9999';
+
+/**
+ * Parses the Rho field (distance from the recommended navaid to the fix,
+ * in tenths of a nautical mile). A saturated field is not a distance and
+ * yields `undefined`; theta and the navaid reference are left as published.
+ */
+function parseRho(raw: string): number | undefined {
+  if (raw.trim() === RHO_SATURATED) {
+    return undefined;
+  }
+  return parseTenths(raw);
 }
 
 /**

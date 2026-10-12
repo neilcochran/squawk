@@ -702,6 +702,34 @@ describe('usBundledProcedures', () => {
     assert(count > 1000, `expected many mandatory turn directions, got ${count}`);
   });
 
+  it('publishes rho only where it is a distance', () => {
+    let checked = 0;
+    for (const p of usBundledProcedures.records) {
+      for (const leg of legSequences(p).flat()) {
+        if (leg.rhoNm === undefined) {
+          continue;
+        }
+        checked += 1;
+        assert(
+          leg.rhoNm < 999.9,
+          `saturated rho published on ${p.airports[0]} ${p.identifier}: ${leg.rhoNm}`,
+        );
+      }
+    }
+    assert(checked > 20_000, `expected many rho values, got ${checked}`);
+    // The St. George ILS RWY 11 missed approach names the Minot, ND VOR, about
+    // 2,300 nm away. Theta and the navaid stay as published; the overflowed rho
+    // does not.
+    const stGeorge = usBundledProcedures.records.find(
+      (r) => r.airports.includes('PAPB') && r.identifier === 'I11',
+    );
+    assert(stGeorge?.missedApproach !== undefined, 'expected PAPB I11 with a missed approach');
+    const minotLeg = stGeorge.missedApproach.legs.find((l) => l.recommendedNavaid === 'MIB');
+    assert(minotLeg !== undefined, 'expected the MIB-referenced missed approach leg');
+    expect(minotLeg.rhoNm).toBe(undefined);
+    expect(minotLeg.thetaDeg).toBe(300.9);
+  });
+
   it('gives every SID and STAR a common route or a transition', () => {
     const empty = usBundledProcedures.records.filter(
       (r) => r.type !== 'IAP' && r.commonRoutes.length === 0 && r.transitions.length === 0,

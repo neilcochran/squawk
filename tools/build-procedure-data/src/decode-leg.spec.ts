@@ -348,6 +348,17 @@ describe('decodePrimaryLegRecord', () => {
     expect(decoded?.leg.rhoNm).toBe(12.5);
   });
 
+  it('leaves rho unset when the field is saturated at its 999.9 maximum', () => {
+    // The St. George ILS RWY 11 names the Minot VOR, 2,300 nm away; the FAA's
+    // distance overflows the field, so 9999 is not a distance.
+    const raw = buildLegRecord({ 50: 'MIB ', 54: 'K3', 62: '3009', 66: '9999' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.rhoNm).toBe(undefined);
+    expect(decoded?.leg.thetaDeg).toBe(300.9);
+    expect(decoded?.leg.recommendedNavaid).toBe('MIB');
+    expect(decodePrimaryLegRecord(buildLegRecord({ 66: '9998' }))?.leg.rhoNm).toBe(999.8);
+  });
+
   it('populates centerFix only for RF (constant radius arc) legs', () => {
     const cfLeg = decodePrimaryLegRecord(buildLegRecord({ 47: 'CF', 106: 'JFK  ', 112: 'K6' }));
     expect(cfLeg?.leg.centerFix).toBe(undefined);

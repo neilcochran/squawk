@@ -280,7 +280,7 @@ export interface ProcedureLeg {
   recommendedNavaidIcaoRegionCode?: string;
   /** Theta (bearing from the recommended navaid to the fix) in degrees. */
   thetaDeg?: number;
-  /** Rho (distance from the recommended navaid to the fix) in nautical miles. */
+  /** Rho (distance from the recommended navaid to the fix) in nautical miles. Absent when the source field is saturated at its 999.9 maximum, which marks a distance the field cannot hold rather than a real value. */
   rhoNm?: number;
   /** Required Navigation Performance value in nautical miles. */
   rnpNm?: number;
