@@ -140,11 +140,11 @@ export interface AltitudeConstraint {
 }
 
 /**
- * Speed constraint descriptor.
+ * Speed constraint descriptor (ARINC 424 field 5.261).
  *
- * - `@` - Cross exactly at the speed.
- * - `+` - Cross at or above the speed.
- * - `-` - Cross at or below the speed (the most common published restriction).
+ * - `@` - Mandatory speed: cross the fix at the speed. ARINC 424 codes this as either `@` or a blank descriptor; the blank form is normalized to `@`. This is how most STAR speed restrictions are published.
+ * - `+` - Minimum speed: cross at or above the speed.
+ * - `-` - Maximum speed: cross at or below the speed.
  */
 export type SpeedConstraintDescriptor = '@' | '+' | '-';
 
@@ -159,10 +159,75 @@ export interface SpeedConstraint {
 }
 
 /**
- * Turn direction for a procedure leg. Populated only when the turn is
- * explicitly commanded by the procedure.
+ * Turn direction for a procedure leg (ARINC 424 field 5.20). Populated
+ * only when the turn is explicitly commanded by the procedure.
+ *
+ * - `L` - Left turn.
+ * - `R` - Right turn.
+ * - `E` - Either direction.
  */
-export type TurnDirection = 'L' | 'R';
+export type TurnDirection = 'L' | 'R' | 'E';
+
+/**
+ * ARINC 424 GNSS/FMS indication (field 5.222): whether a procedure may be
+ * flown with GNSS or FMS equipment and, for RNAV procedures, whether SBAS
+ * (WAAS) based vertical guidance is authorized.
+ *
+ * - `0` - Procedure not authorized for a GNSS or FMS overlay.
+ * - `1` - Procedure authorized for a GNSS overlay; the primary navaids are operating and monitored.
+ * - `2` - Procedure authorized for a GNSS overlay; the primary navaids are installed but not monitored.
+ * - `3` - Procedure authorized for a GNSS overlay; the procedure title includes GPS or GNSS.
+ * - `4` - Procedure authorized for an FMS overlay.
+ * - `5` - Procedure authorized for both an FMS and a GNSS overlay.
+ * - `A` - RNAV (GPS), RNAV (RNP) or RNAV (GNSS) procedure; SBAS use and SBAS-based vertical navigation authorized.
+ * - `B` - RNAV (GPS), RNAV (RNP) or RNAV (GNSS) procedure; SBAS-based vertical navigation not authorized.
+ * - `C` - RNAV (GPS), RNAV (RNP) or RNAV (GNSS) procedure; SBAS-based vertical navigation use not published.
+ * - `G` - PBN RNP approach provided as a GPS approach (ARINC 424-20 and later).
+ * - `L` - Localizer-only portion of an ILS approach (ARINC 424-20 and later).
+ * - `P` - Stand-alone GPS (GNSS) procedure.
+ * - `U` - Overlay authorization not published.
+ */
+export type GnssFmsIndication =
+  '0' | '1' | '2' | '3' | '4' | '5' | 'A' | 'B' | 'C' | 'G' | 'L' | 'P' | 'U';
+
+/**
+ * ARINC 424 route type qualifier 1 for approach procedures (field 5.7,
+ * column 119): the navigation sensor the route requires. FAA CIFP codes
+ * it to the ARINC 424-19 table.
+ *
+ * - `A` - Advanced RNP (RNAV (RNP) procedure not requiring authorization).
+ * - `B` - RNAV visual procedure.
+ * - `D` - DME required for the procedure.
+ * - `F` - RNP AR (authorization required); the FAA's RNAV (RNP) approaches.
+ * - `J` - GNSS required; DME/DME to the RNP value not authorized.
+ * - `L` - GBAS procedure.
+ * - `N` - DME not required for the procedure.
+ * - `P` - GNSS required.
+ * - `R` - GNSS or DME/DME to the RNP value required.
+ * - `T` - DME/DME required for the procedure.
+ * - `U` - RNAV, sensor not specified.
+ * - `V` - VOR/DME RNAV.
+ * - `W` - RNAV procedure that requires a FAS data block.
+ */
+export type ApproachRouteQualifier1 =
+  'A' | 'B' | 'D' | 'F' | 'J' | 'L' | 'N' | 'P' | 'R' | 'T' | 'U' | 'V' | 'W';
+
+/**
+ * ARINC 424 route type qualifier 2 for approach procedures (field 5.7,
+ * column 120): the minimums the route provides, or the missed approach
+ * it belongs to.
+ *
+ * - `S` - Procedure with straight-in minimums.
+ * - `C` - Procedure with circle-to-land minimums.
+ * - `H` - Helicopter procedure with straight-in minimums.
+ * - `I` - Helicopter procedure with circle-to-land minimums.
+ * - `L` - Helicopter procedure with helicopter landing minimums.
+ * - `V` - Procedure with VMC minimums.
+ * - `A` - Primary missed approach.
+ * - `B` - Secondary missed approach.
+ * - `E` - Engine-out missed approach.
+ */
+export type ApproachRouteQualifier2 = 'A' | 'B' | 'C' | 'E' | 'H' | 'I' | 'L' | 'S' | 'V';
 
 /**
  * Category of the fix (or terminator) associated with a procedure leg.
@@ -221,6 +286,10 @@ export interface ProcedureLeg {
   rnpNm?: number;
   /** Commanded turn direction. */
   turnDirection?: TurnDirection;
+  /** `true` when the procedure flags the commanded turn direction as mandatory (ARINC 424 field 5.22, Turn Direction Valid): the aircraft must turn in `turnDirection` before joining the leg's path rather than taking the shorter way round. */
+  turnDirectionValid?: boolean;
+  /** Vertical navigation path angle in degrees for the leg (ARINC 424 field 5.70), negative for a descent: `-3` is a 3.00 deg final approach path. The FAA publishes `0` where no vertical path is prescribed (circling and dive-and-drive approaches, or straight-in approaches with obstacles in the visual area). Present on final approach legs. */
+  verticalAngleDeg?: number;
   /** Arc radius in nautical miles for `RF` (constant radius arc) legs. */
   arcRadiusNm?: number;
   /** Identifier of the center fix for `RF` legs. */
@@ -239,6 +308,12 @@ export interface ProcedureLeg {
   isMissedApproachPoint?: boolean;
   /** `true` when the fix must be overflown before any turn begins. */
   isFlyover?: boolean;
+  /** GNSS/FMS indication published on approach legs: `0` on conventional approaches not authorized for an overlay, `3` on GPS overlays, `A` and `B` on RNAV approaches with and without SBAS vertical guidance, `P` on stand-alone GPS approaches. */
+  gnssFmsIndication?: GnssFmsIndication;
+  /** Route type qualifier 1 (the required navigation sensor) published on approach legs: `J` and `P` on RNAV (GPS) approaches, `F` on RNAV (RNP) approaches, `D` and `N` on conventional approaches with and without a DME requirement. */
+  routeTypeQualifier1?: ApproachRouteQualifier1;
+  /** Route type qualifier 2 (the minimums) published on approach legs: `S` straight-in, `C` circling, `H` helicopter. */
+  routeTypeQualifier2?: ApproachRouteQualifier2;
 }
 
 /**
@@ -266,7 +341,7 @@ export interface ProcedureCommonRoute {
   legs: ProcedureLeg[];
   /** FAA identifiers of adapted airports served by this route. */
   airports: string[];
-  /** Runway identifier when CIFP tags the route to a specific runway. */
+  /** Runway designator (e.g. `04L`) when CIFP publishes the route for one runway; a trailing `B` (e.g. `28B`) means both parallel runways. Absent when the route applies to every runway. */
   runway?: string;
 }
 
@@ -287,7 +362,7 @@ export interface MissedApproachSequence {
  * `type` is `IAP`.
  */
 export interface Procedure {
-  /** Human-readable procedure name. For SIDs and STARs this equals the CIFP identifier (e.g. `AALLE4`) since CIFP does not carry the spelled-out name. For IAPs this is a composed label derived from the approach type and runway (e.g. `ILS RWY 04L`, `VOR-A`). */
+  /** Human-readable procedure name. For SIDs and STARs this equals the CIFP identifier (e.g. `AALLE4`) since CIFP does not carry the spelled-out name. For IAPs this is a composed label derived from the approach type, the multiple-approach indicator when the airport publishes several approaches of the same type to the runway, and the runway, course, or circling letter (e.g. `ILS RWY 04L`, `RNAV Y RWY 21`, `RNAV 027`, `VOR-A`); helicopter approaches are prefixed `COPTER` (e.g. `COPTER RNAV 250`). */
   name: string;
   /** CIFP procedure identifier (e.g. "AALLE4" for a STAR, "I04L" for an IAP). */
   identifier: string;
@@ -299,9 +374,11 @@ export interface Procedure {
   commonRoutes: ProcedureCommonRoute[];
   /** Named transitions feeding into (STAR/IAP) or out of (SID) the common route. */
   transitions: ProcedureTransition[];
+  /** Transition altitude in feet MSL published for the procedure (ARINC 424 field 5.53): the altitude at which the altimeter setting changes between local pressure and standard pressure. 18,000 ft on US procedures. */
+  transitionAltitudeFt?: number;
   /** Approach classification. Populated only when `type` is `IAP`. */
   approachType?: ApproachType;
-  /** Primary runway served by the approach, derived from the approach identifier when it encodes one. Populated only when `type` is `IAP`. */
+  /** Primary runway served by the approach, derived from the approach identifier when it encodes one. Absent for circling approaches and for approaches named by final approach course. Populated only when `type` is `IAP`. */
   runway?: string;
   /** Missed approach sequence flown when a landing is not executed. Populated only when `type` is `IAP`. */
   missedApproach?: MissedApproachSequence;

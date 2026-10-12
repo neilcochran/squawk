@@ -132,7 +132,7 @@ export function registerProcedureTools(server: McpServer): void {
     {
       title: 'Find procedures serving a runway at an airport',
       description:
-        'Finds procedures at an airport that serve a specific runway. Matches IAPs whose runway field equals the runway, and SIDs/STARs with a runway transition named "RW<runway>" (for example "RW04L"). Returns an empty array when no match is found.',
+        'Finds procedures at an airport that serve a specific runway. Matches IAPs whose runway field equals the runway, and SIDs/STARs whose common route is published for the runway or that publish a runway transition serving it: "RW<runway>" (for example "RW04L"), a both-parallels transition ("RW04B" serves 04L, 04R and 04C), or "ALL". Returns an empty array when no match is found.',
       inputSchema: {
         airportId: z.string().min(1).describe('Airport identifier (case-insensitive).'),
         runway: z

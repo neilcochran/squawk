@@ -37,7 +37,7 @@ runways, and every published SID / STAR / IAP leg record.
 
 The build does two passes over the file:
 
-1. **Fix index build.** Scans every enroute waypoint (`EA`), airport terminal waypoint (`PC`), VHF navaid (`D`), NDB navaid (`DB`), airport reference (`PA`), runway (`PG`), localizer (`PI`), and NDB-at-airport (`PN`) record, extracting `(identifier, ICAO region code, section code)` keys mapped to decimal-degree coordinates and a category.
+1. **Fix index build.** Scans every enroute waypoint (`EA`), airport terminal waypoint (`PC`), VHF navaid (`D`), NDB navaid (`DB`), airport reference (`PA`), runway (`PG`), localizer (`PI`), and NDB-at-airport (`PN`) record, extracting `(identifier, ICAO region code, section code)` keys mapped to decimal-degree coordinates and a category. Runway, localizer and NDB-at-airport records are keyed by their airport as well, because the same runway identifier exists at most airports in a region; a runway leg resolves only against the procedure's own airport.
 2. **Procedure decode.** Iterates `PD` (SID), `PE` (STAR), and `PF` (IAP) primary records, decoding each leg from its ARINC 424 fields (path terminator, altitude / speed constraints, course, distance, recommended navaid, RNP, turn direction, fly-over / FAF / MAP flags), resolving leg coordinates from the fix index, and grouping legs into `(airport, procedure identifier, type)` buckets that are split further into common routes, named transitions, and (for IAPs) the missed-approach sequence.
 
 ## Output

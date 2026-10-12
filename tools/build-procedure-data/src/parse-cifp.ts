@@ -6,7 +6,13 @@ import type {
   ProcedureTransition,
 } from '@squawk/types';
 
-import { approachTypeFromRouteType, runwayFromApproachIdentifier } from './classify-approach.js';
+import {
+  approachTypeFromRouteType,
+  circlingLetterFromApproachIdentifier,
+  courseFromApproachIdentifier,
+  multipleIndicatorFromApproachIdentifier,
+  runwayFromApproachIdentifier,
+} from './classify-approach.js';
 import { parseArincLatitude, parseArincLongitude } from './coord.js';
 import { decodePrimaryLegRecord, type DecodedLegRecord } from './decode-leg.js';
 
@@ -40,10 +46,35 @@ function fixKey(ident: string, region: string, section: string): string {
 }
 
 /**
+ * Builds the airport-scoped lookup key used for runway (`PG`),
+ * localizer (`PI`) and terminal NDB (`PN`) records. A runway identifier
+ * such as `RW26` exists at most airports in a region and localizer
+ * identifiers repeat too, so these records are keyed by the airport
+ * that publishes them (columns 7-10) as well as by identifier, region
+ * and section code.
+ */
+function airportFixKey(airport: string, ident: string, region: string, section: string): string {
+  return `${airport}::${ident}::${region}::${section}`;
+}
+
+/**
+ * Fix section codes whose records are keyed by airport in the fix
+ * index. Runway legs resolve only against the procedure's own airport.
+ * Localizer and terminal NDB legs try the procedure's airport first and
+ * fall back to the region-wide key, because CIFP publishes NDBs under
+ * section `DB` (dual-indexed under `PN` without an airport) and a
+ * procedure may reference a neighbouring airport's localizer.
+ */
+const AIRPORT_SCOPED_SECTIONS: ReadonlySet<string> = new Set(['PG', 'PI', 'PN']);
+
+/**
  * Scans all CIFP records in the file and builds a lookup index mapping
  * each fix, navaid, airport, and runway reference to its decimal-degree
- * coordinates. Records that cannot be parsed (missing coordinates,
- * malformed section codes) are skipped silently.
+ * coordinates. Runway, localizer and terminal NDB records are keyed by
+ * their airport (see {@link airportFixKey}); every other record is
+ * keyed by identifier, region and section. Records that cannot be
+ * parsed (missing coordinates, malformed section codes) are skipped
+ * silently.
  *
  * @param lines - All records in `FAACIFP18`, one record per line.
  */
@@ -114,19 +145,19 @@ export function buildFixIndex(lines: string[]): Map<string, FixIndexEntry> {
     }
 
     const subsection = raw.charAt(12);
+    const airport = raw.substring(6, 10).trim();
     const region = raw.substring(10, 12).trim();
 
     if (subsection === 'A') {
       if (raw.charAt(21) !== '0' && raw.charAt(21) !== '1') {
         continue;
       }
-      const ident = raw.substring(6, 10).trim();
       const lat = parseArincLatitude(raw.substring(32, 41));
       const lon = parseArincLongitude(raw.substring(41, 51));
-      if (ident.length === 0 || region.length === 0 || lat === undefined || lon === undefined) {
+      if (airport.length === 0 || region.length === 0 || lat === undefined || lon === undefined) {
         continue;
       }
-      index.set(fixKey(ident, region, 'PA'), { lat, lon, category: 'AIRPORT' });
+      index.set(fixKey(airport, region, 'PA'), { lat, lon, category: 'AIRPORT' });
       continue;
     }
 
@@ -140,14 +171,23 @@ export function buildFixIndex(lines: string[]): Map<string, FixIndexEntry> {
       if (ident.length === 0 || lat === undefined || lon === undefined) {
         continue;
       }
-      const section = subsection === 'C' ? 'PC' : 'PG';
-      const category: ProcedureLegFixCategory = subsection === 'C' ? 'FIX' : 'RUNWAY';
       const waypointRegion = raw.substring(19, 21).trim();
       const effectiveRegion = waypointRegion.length > 0 ? waypointRegion : region;
       if (effectiveRegion.length === 0) {
         continue;
       }
-      index.set(fixKey(ident, effectiveRegion, section), { lat, lon, category });
+      if (subsection === 'C') {
+        index.set(fixKey(ident, effectiveRegion, 'PC'), { lat, lon, category: 'FIX' });
+        continue;
+      }
+      if (airport.length === 0) {
+        continue;
+      }
+      index.set(airportFixKey(airport, ident, effectiveRegion, 'PG'), {
+        lat,
+        lon,
+        category: 'RUNWAY',
+      });
       continue;
     }
 
@@ -167,7 +207,11 @@ export function buildFixIndex(lines: string[]): Map<string, FixIndexEntry> {
       if (effectiveRegion.length === 0) {
         continue;
       }
-      index.set(fixKey(ident, effectiveRegion, section), { lat, lon, category: 'NAVAID' });
+      const entry: FixIndexEntry = { lat, lon, category: 'NAVAID' };
+      index.set(fixKey(ident, effectiveRegion, section), entry);
+      if (airport.length > 0) {
+        index.set(airportFixKey(airport, ident, effectiveRegion, section), entry);
+      }
       continue;
     }
   }
@@ -205,13 +249,31 @@ export function parseCifp(cifpText: string): Procedure[] {
  * fix in the pre-built fix index. The lookup uses the raw CIFP section
  * code preserved on the decoded record (e.g. `PC`, `EA`, `D `) to
  * disambiguate between fixes that share an identifier across sections.
+ * Runway, localizer and terminal NDB references are looked up under the
+ * procedure's own airport first (see {@link AIRPORT_SCOPED_SECTIONS});
+ * a runway that the airport does not publish stays unresolved rather
+ * than borrowing another airport's threshold.
  */
 function resolveLegCoordinates(record: DecodedLegRecord, fixIndex: FixIndex): void {
   const { leg } = record;
   if (leg.fixIdentifier === undefined || leg.icaoRegionCode === undefined) {
     return;
   }
-  const entry = fixIndex.get(fixKey(leg.fixIdentifier, leg.icaoRegionCode, record.fixSectionCode));
+  const section = record.fixSectionCode;
+  if (AIRPORT_SCOPED_SECTIONS.has(section)) {
+    const scoped = fixIndex.get(
+      airportFixKey(record.airport, leg.fixIdentifier, leg.icaoRegionCode, section),
+    );
+    if (scoped !== undefined) {
+      leg.lat = scoped.lat;
+      leg.lon = scoped.lon;
+      return;
+    }
+    if (section === 'PG') {
+      return;
+    }
+  }
+  const entry = fixIndex.get(fixKey(leg.fixIdentifier, leg.icaoRegionCode, section));
   if (entry === undefined) {
     return;
   }
@@ -280,10 +342,15 @@ function groupIntoProcedures(records: DecodedLegRecord[]): Procedure[] {
       const splitIndex =
         first.procedureType === 'IAP' ? findEmbeddedMissedApproachStart(bucket) : -1;
       const commonLegs = splitIndex >= 0 ? bucket.slice(0, splitIndex) : bucket;
-      commonRoutes.push({
+      const route: ProcedureCommonRoute = {
         legs: commonLegs.map((b) => b.leg),
         airports: [first.airport],
-      });
+      };
+      const runway = runwayFromTransitionIdentifier(bucket[0]?.transitionIdentifier ?? '');
+      if (runway !== undefined) {
+        route.runway = runway;
+      }
+      commonRoutes.push(route);
       if (splitIndex >= 0) {
         for (let i = splitIndex; i < bucket.length; i++) {
           const entry = bucket[i];
@@ -318,6 +385,13 @@ function groupIntoProcedures(records: DecodedLegRecord[]): Procedure[] {
       commonRoutes,
       transitions,
     };
+
+    const transitionAltitudeFt = group.find(
+      (rec) => rec.transitionAltitudeFt !== undefined,
+    )?.transitionAltitudeFt;
+    if (transitionAltitudeFt !== undefined) {
+      procedure.transitionAltitudeFt = transitionAltitudeFt;
+    }
 
     if (first.procedureType === 'IAP') {
       const finalRouteType = firstKey(commonRouteBuckets);
@@ -372,6 +446,26 @@ function groupIntoProcedures(records: DecodedLegRecord[]): Procedure[] {
  */
 const SID_COMMON_ROUTE_TYPES: ReadonlySet<string> = new Set(['2', '5', 'M', 'N']);
 const STAR_COMMON_ROUTE_TYPES: ReadonlySet<string> = new Set(['2', '5', '8', 'M', 'N']);
+
+/**
+ * Pattern matching the transition identifier CIFP places on a SID or
+ * STAR common route that applies to one runway: `RW` followed by the
+ * runway designator, where a trailing `B` means both parallel runways
+ * (`RW28B`). Common routes that apply to every runway carry `ALL` or a
+ * blank identifier instead.
+ */
+const RUNWAY_TRANSITION_PATTERN = /^RW(\d{2}[LRCB]?)$/;
+
+/**
+ * Extracts the runway designator from a `RW`-prefixed transition
+ * identifier (`RW04L` -> `04L`, `RW28B` -> `28B`). Returns `undefined`
+ * for every other identifier, including `ALL`.
+ *
+ * @param transitionIdentifier - Transition identifier from a common-route record.
+ */
+export function runwayFromTransitionIdentifier(transitionIdentifier: string): string | undefined {
+  return RUNWAY_TRANSITION_PATTERN.exec(transitionIdentifier.trim().toUpperCase())?.[1];
+}
 
 /**
  * Returns `true` when the given CIFP route-type letter classifies the
@@ -444,7 +538,11 @@ function firstKey<K>(map: Map<K, unknown>): K | undefined {
  * Composes a human-readable name for a procedure.
  *
  * - SIDs and STARs use the CIFP identifier as the name (e.g. `AALLE4`).
- * - IAPs use the approach classification plus runway (or circling suffix) derived from the common-route records.
+ * - Runway-specific IAPs use the approach classification derived from the common-route records, the multiple-approach indicator when the identifier carries one, and the runway (`ILS RWY 04L`, `RNAV Y RWY 21`).
+ * - Course-named IAPs use the classification and the final approach course (`RNAV 027`).
+ * - Circling IAPs use the classification and the circling letter (`VOR-A`).
+ * - Helicopter approaches (route type qualifier 2 `H` on the final approach records) are prefixed `COPTER`, as on FAA charts (`COPTER RNAV 250`).
+ * - Anything else falls back to the CIFP identifier.
  */
 export function composeName(
   first: DecodedLegRecord,
@@ -453,15 +551,28 @@ export function composeName(
   if (first.procedureType !== 'IAP') {
     return first.procedureIdentifier;
   }
+  const identifier = first.procedureIdentifier;
   const finalRouteType = firstKey(commonRouteBuckets);
+  const finalRecords = finalRouteType === undefined ? [] : commonRouteBuckets.get(finalRouteType);
   const approachType =
     finalRouteType === undefined ? undefined : approachTypeFromRouteType(finalRouteType);
-  const runway = runwayFromApproachIdentifier(first.procedureIdentifier);
-  const label = approachType === undefined ? first.procedureIdentifier.charAt(0) : approachType;
+  const typeLabel = approachType === undefined ? identifier.charAt(0) : approachType;
+  const isCopter = finalRecords?.some((rec) => rec.leg.routeTypeQualifier2 === 'H') ?? false;
+  const label = isCopter ? `COPTER ${typeLabel}` : typeLabel;
+  const runway = runwayFromApproachIdentifier(identifier);
   if (runway !== undefined) {
-    return `${label} RWY ${runway}`;
+    const indicator = multipleIndicatorFromApproachIdentifier(identifier);
+    return indicator === undefined
+      ? `${label} RWY ${runway}`
+      : `${label} ${indicator} RWY ${runway}`;
   }
-  const circlingSuffix = first.procedureIdentifier.substring(1).replace(/^[A-Z]*-?/, '-');
-  const cleaned = circlingSuffix.trim().replace(/^-+/, '-');
-  return cleaned.length > 1 ? `${label}${cleaned}` : first.procedureIdentifier;
+  const course = courseFromApproachIdentifier(identifier);
+  if (course !== undefined) {
+    return `${label} ${course}`;
+  }
+  const circlingLetter = circlingLetterFromApproachIdentifier(identifier);
+  if (circlingLetter !== undefined) {
+    return `${label}-${circlingLetter}`;
+  }
+  return identifier;
 }

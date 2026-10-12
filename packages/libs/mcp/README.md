@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.14.4"]
+      "args": ["-y", "@squawk/mcp@0.14.5"]
     }
   }
 }
@@ -172,7 +172,7 @@ Pinning works the same way:
         "-p",
         "@squawk/icao-registry-data@0.8.12",
         "-p",
-        "@squawk/mcp@0.14.4",
+        "@squawk/mcp@0.14.5",
         "squawk-mcp"
       ]
     }
@@ -314,16 +314,16 @@ directly.
 
 Covers SIDs, STARs, and Instrument Approach Procedures (IAPs) from FAA CIFP.
 
-| Tool                                      | Purpose                                                                                     |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `find_procedures_by_identifier`           | Every procedure publishing a CIFP identifier (same name often appears at multiple airports) |
-| `get_procedure_by_airport_and_identifier` | Resolve a specific procedure at a specific airport                                          |
-| `find_procedures_by_airport`              | Procedures associated with an airport                                                       |
-| `find_procedures_by_airport_and_runway`   | Procedures at an airport serving a specific runway (IAP runway match or RW\* transition)    |
-| `find_approaches_by_type`                 | Every IAP of a given approach classification (ILS, RNAV, VOR, etc.)                         |
-| `expand_procedure`                        | Expand a procedure into its leg sequence (with optional transition merge)                   |
-| `get_procedure_geometry`                  | Ordered drawable fix points and a GeoJSON LineString for a procedure                        |
-| `search_procedures`                       | Fuzzy search by name or identifier, optionally filtered by procedure or approach type       |
+| Tool                                      | Purpose                                                                                                                           |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `find_procedures_by_identifier`           | Every procedure publishing a CIFP identifier (same name often appears at multiple airports)                                       |
+| `get_procedure_by_airport_and_identifier` | Resolve a specific procedure at a specific airport                                                                                |
+| `find_procedures_by_airport`              | Procedures associated with an airport                                                                                             |
+| `find_procedures_by_airport_and_runway`   | Procedures at an airport serving a specific runway (IAP runway, runway-specific common route, or RW\*, RW\*B and ALL transitions) |
+| `find_approaches_by_type`                 | Every IAP of a given approach classification (ILS, RNAV, VOR, etc.)                                                               |
+| `expand_procedure`                        | Expand a procedure into its leg sequence (with optional transition merge)                                                         |
+| `get_procedure_geometry`                  | Ordered drawable fix points and a GeoJSON LineString for a procedure                                                              |
+| `search_procedures`                       | Fuzzy search by name or identifier, optionally filtered by procedure or approach type                                             |
 
 ### ICAO aircraft registry (`@squawk/icao-registry` + `@squawk/icao-registry-data`)
 

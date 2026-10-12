@@ -102,7 +102,165 @@ function buildEaRecord(params: {
   });
 }
 
+/**
+ * Builds a runway (PG) record. Runways leave the waypoint-region slot
+ * blank, so the index keys them by the airport's region.
+ *
+ * @param params - Runway parameters.
+ * @param params.airport - Airport identifier (4 chars, space padded).
+ * @param params.airportRegion - Airport ICAO region.
+ * @param params.runwayIdent - Runway identifier (5 chars, e.g. `RW26 `).
+ * @param params.lat - 9-character ARINC latitude.
+ * @param params.lon - 10-character ARINC longitude.
+ * @returns The 132-character PG record.
+ */
+function buildPgRecord(params: {
+  airport: string;
+  airportRegion: string;
+  runwayIdent: string;
+  lat: string;
+  lon: string;
+}): string {
+  return buildRecord({
+    0: 'S',
+    1: 'USA',
+    4: 'P',
+    6: params.airport,
+    10: params.airportRegion,
+    12: 'G',
+    13: params.runwayIdent,
+    21: '0',
+    32: params.lat,
+    41: params.lon,
+  });
+}
+
 describe('parseCifp', () => {
+  it('resolves runway legs against the procedure airport when other airports publish the same runway identifier', () => {
+    const hardinRunway = buildPgRecord({
+      airport: '00U ',
+      airportRegion: 'K1',
+      runwayIdent: 'RW26 ',
+      lat: 'N45443986',
+      lon: 'W107390598',
+    });
+    const cheyenneRunway = buildPgRecord({
+      airport: 'KCYS',
+      airportRegion: 'K1',
+      runwayIdent: 'RW26 ',
+      lat: 'N41092396',
+      lon: 'W104480540',
+    });
+    function runwayLeg(airport: string, identifier: string): string {
+      return buildLegRecord({
+        airport,
+        airportRegion: 'K1',
+        subsection: 'F',
+        identifier,
+        routeType: 'R',
+        transition: '     ',
+        sequence: '010',
+        fixIdent: 'RW26 ',
+        fixRegion: 'K1',
+        fixSection: 'PG',
+        descriptionCode: 'G  M',
+        pathTerminator: 'TF',
+      });
+    }
+    // Cheyenne's runway record is read last; without airport scoping it would win the key.
+    const cifpText = [
+      hardinRunway,
+      cheyenneRunway,
+      runwayLeg('00U ', 'R26   '),
+      runwayLeg('KCYS', 'R26   '),
+      runwayLeg('KBIL', 'R26   '),
+    ].join('\n');
+    const procs = parseCifp(cifpText);
+    expect(procs.length).toBe(3);
+    const legOf = (airport: string) =>
+      procs.find((p) => p.airports[0] === airport)?.commonRoutes[0]?.legs[0];
+    expect(legOf('00U')?.category).toBe('RUNWAY');
+    expect(legOf('00U')?.lat).toBeCloseTo(45.744406, 5);
+    expect(legOf('KCYS')?.lat).toBeCloseTo(41.156656, 5);
+    // An airport that publishes no RW26 must not borrow another airport's threshold.
+    expect(legOf('KBIL')?.lat).toBe(undefined);
+    expect(legOf('KBIL')?.lon).toBe(undefined);
+  });
+
+  it('records the runway on a common route that CIFP publishes for one runway', () => {
+    function commonLeg(transition: string, identifier: string): string {
+      return buildLegRecord({
+        airport: 'KJFK',
+        airportRegion: 'K6',
+        subsection: 'E',
+        identifier,
+        routeType: '5',
+        transition,
+        sequence: '010',
+        fixIdent: '     ',
+        fixRegion: '  ',
+        fixSection: '  ',
+        descriptionCode: '    ',
+        pathTerminator: 'VM',
+      });
+    }
+    const procs = parseCifp(
+      [
+        commonLeg('RW04L', 'ONE1  '),
+        commonLeg('ALL  ', 'TWO2  '),
+        commonLeg('     ', 'THR3  '),
+      ].join('\n'),
+    );
+    const routeOf = (identifier: string) =>
+      procs.find((p) => p.identifier === identifier)?.commonRoutes[0];
+    expect(routeOf('ONE1')?.runway).toBe('04L');
+    expect(routeOf('TWO2')?.runway).toBe(undefined);
+    expect(routeOf('THR3')?.runway).toBe(undefined);
+  });
+
+  it('lifts the transition altitude from any record of the procedure', () => {
+    const base = buildLegRecord({
+      airport: 'KJFK',
+      airportRegion: 'K6',
+      subsection: 'D',
+      identifier: 'TALT1 ',
+      routeType: '5',
+      transition: '     ',
+      sequence: '010',
+      fixIdent: '     ',
+      fixRegion: '  ',
+      fixSection: '  ',
+      descriptionCode: '    ',
+      pathTerminator: 'VA',
+    });
+    const second = base.substring(0, 26) + '020' + base.substring(29);
+    const withAltitude = second.substring(0, 94) + '18000' + second.substring(99);
+    const procs = parseCifp([base, withAltitude].join('\n'));
+    expect(procs[0]?.transitionAltitudeFt).toBe(18000);
+    const without = parseCifp(base);
+    expect(without[0]?.transitionAltitudeFt).toBe(undefined);
+  });
+
+  it('keeps the multiple-approach indicator in the IAP name', () => {
+    const leg = buildLegRecord({
+      airport: 'KJFK',
+      airportRegion: 'K6',
+      subsection: 'F',
+      identifier: 'I04LZ ',
+      routeType: 'I',
+      transition: '     ',
+      sequence: '010',
+      fixIdent: '     ',
+      fixRegion: '  ',
+      fixSection: '  ',
+      descriptionCode: '    ',
+      pathTerminator: 'VA',
+    });
+    const procs = parseCifp(leg);
+    expect(procs[0]?.name).toBe('ILS Z RWY 04L');
+    expect(procs[0]?.runway).toBe('04L');
+  });
+
   it('groups SID legs into a procedure with common route and transitions', () => {
     const fixA = buildEaRecord({
       fixIdent: 'AAAAA',

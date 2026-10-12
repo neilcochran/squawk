@@ -270,6 +270,12 @@ export type AltitudeConstraintDescriptor = '@' | '+' | '-' | 'B' | 'C' | 'G' | '
 export type AltitudeReference = 'MSL' | 'AGL' | 'SFC';
 
 // @public
+export type ApproachRouteQualifier1 = 'A' | 'B' | 'D' | 'F' | 'J' | 'L' | 'N' | 'P' | 'R' | 'T' | 'U' | 'V' | 'W';
+
+// @public
+export type ApproachRouteQualifier2 = 'A' | 'B' | 'C' | 'E' | 'H' | 'I' | 'L' | 'S' | 'V';
+
+// @public
 export type ApproachType = 'ILS' | 'LOC' | 'LOC_BC' | 'RNAV' | 'RNAV_RNP' | 'VOR' | 'VOR_DME' | 'NDB' | 'NDB_DME' | 'TACAN' | 'GLS' | 'IGS' | 'LDA' | 'SDF' | 'GPS' | 'FMS' | 'MLS';
 
 // @public
@@ -355,6 +361,9 @@ export interface FixNavaidAssociation {
 
 // @public
 export type FixUseCode = 'WP' | 'RP' | 'MW' | 'MR' | 'CN' | 'VFR' | 'NRS' | 'RADAR';
+
+// @public
+export type GnssFmsIndication = '0' | '1' | '2' | '3' | '4' | '5' | 'A' | 'B' | 'C' | 'G' | 'L' | 'P' | 'U';
 
 // @public
 export const ILS_CATEGORY_MAP: Record<string, IlsCategory>;
@@ -471,6 +480,7 @@ export interface Procedure {
     missedApproach?: MissedApproachSequence;
     name: string;
     runway?: string;
+    transitionAltitudeFt?: number;
     transitions: ProcedureTransition[];
     type: ProcedureType;
 }
@@ -493,6 +503,7 @@ export interface ProcedureLeg {
     courseIsTrue?: boolean;
     distanceNm?: number;
     fixIdentifier?: string;
+    gnssFmsIndication?: GnssFmsIndication;
     holdTimeMin?: number;
     icaoRegionCode?: string;
     isFinalApproachCourseFix?: boolean;
@@ -508,9 +519,13 @@ export interface ProcedureLeg {
     recommendedNavaidIcaoRegionCode?: string;
     rhoNm?: number;
     rnpNm?: number;
+    routeTypeQualifier1?: ApproachRouteQualifier1;
+    routeTypeQualifier2?: ApproachRouteQualifier2;
     speedConstraint?: SpeedConstraint;
     thetaDeg?: number;
     turnDirection?: TurnDirection;
+    turnDirectionValid?: boolean;
+    verticalAngleDeg?: number;
 }
 
 // @public
@@ -620,7 +635,7 @@ export interface TargetStateAndStatus {
 }
 
 // @public
-export type TurnDirection = 'L' | 'R';
+export type TurnDirection = 'L' | 'R' | 'E';
 
 // @public
 export type VgsiType = 'VASI-2L' | 'VASI-4L' | 'VASI-2R' | 'VASI-6L' | 'VASI-12' | 'VASI-16' | 'PAPI-2L' | 'PAPI-4L' | 'PAPI-2R' | 'PAPI-4R' | 'PVASI' | 'SAVASI' | 'TRICOLOR' | 'PANELS';
