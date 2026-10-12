@@ -42,11 +42,19 @@ node validate.mjs <path-to-airspace.geojson.gz>
 ## How it works
 
 1. Parses Class B/C/D/E airspace polygons from the NASR ESRI Shapefile
-   (`Class_Airspace.shp`), simplifying geometry with Douglas-Peucker (~97%
-   vertex reduction)
+   (`Class_Airspace.shp`), one feature per part of a multipart record,
+   simplifying geometry with Douglas-Peucker (~97% vertex reduction). The
+   dbf's literal `<Null>` strings are read as absent values
 2. Parses Special Use Airspace (MOAs, restricted, prohibited, warning, alert,
-   NSA) from AIXM 5.0 XML files in the nested `SaaSubscriberFile.zip`,
-   discretizing circular arcs to polygon points
+   NSA) from AIXM 5.0 XML files in the nested `SaaSubscriberFile.zip`, one
+   feature per `BASE` or `UNION` geometry component, with the `SUBTR`
+   exclusion volumes attached to each as `exclusions` and every limit's
+   INCLUSIVE/EXCLUSIVE marking carried as `inclusive`. Arcs are discretized
+   along the great circle in
+   the direction the FAA's interface description gives (start angle below
+   the end angle counterclockwise, above it clockwise), radii in feet or
+   statute miles are converted, and an arc end within a nautical mile of the
+   adjoining published point is joined to it
 3. Parses ARTCC center boundaries from `ARB_BASE.csv` and `ARB_SEG.csv`,
    emitting one feature per `(center, stratum)` shape (LOW, HIGH, UTA, plus
    oceanic CTA/FIR for US-controlled centers)
@@ -57,13 +65,16 @@ node validate.mjs <path-to-airspace.geojson.gz>
    and get none, matching 14 CFR 71.33
 5. Caps Class E ceilings beneath Class A. NASR leaves the upper limit of
    nearly every Class E area undefined, so each Class E feature with an
-   undefined ceiling that overlaps a Class A polygon gets 17,999 ft MSL, the
-   last foot below Class A. Class E outside Class A (Hawaii) keeps the
+   undefined ceiling that overlaps a Class A polygon gets an exclusive
+   18,000 ft MSL ceiling, the altitude at which Class A begins. Class E
+   outside Class A (Hawaii) keeps the
    undefined sentinel, published ceilings are kept, and Special Use Airspace
    is untouched
 6. Enriches Class B/C/D/E features with state codes from `APT_BASE.csv`
 7. Merges all features, rounds coordinates to 5 decimal places (~1.1m precision),
-   and writes a single GeoJSON FeatureCollection (~6,950 features)
+   removes consecutive duplicate vertices, orients rings per RFC 7946
+   (exterior counterclockwise, holes clockwise), and writes a single GeoJSON
+   FeatureCollection (~7,000 features)
 
 ## Input files
 

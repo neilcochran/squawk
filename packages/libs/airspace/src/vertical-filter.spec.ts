@@ -77,6 +77,35 @@ describe('altitudeMatches', () => {
     });
   });
 
+  describe('exclusive bounds', () => {
+    const exclusiveFl180 = { valueFt: 18000, reference: 'MSL', inclusive: false } as const;
+    const exclusiveFloor = { valueFt: 5500, reference: 'MSL', inclusive: false } as const;
+
+    it('excludes an altitude equal to an exclusive ceiling', () => {
+      // A MOA designated "to but not including FL 180" ends at 17,999 ft.
+      expect(altitudeMatches(17999, msl(10000), exclusiveFl180)).toBe(true);
+      expect(altitudeMatches(18000, msl(10000), exclusiveFl180)).toBe(false);
+    });
+
+    it('excludes an altitude equal to an exclusive floor', () => {
+      expect(altitudeMatches(5500, exclusiveFloor, msl(10000))).toBe(false);
+      expect(altitudeMatches(5501, exclusiveFloor, msl(10000))).toBe(true);
+    });
+
+    it('treats a bound without the flag, or with inclusive true, as inclusive', () => {
+      expect(altitudeMatches(18000, msl(10000), msl(18000))).toBe(true);
+      expect(
+        altitudeMatches(18000, msl(10000), { valueFt: 18000, reference: 'MSL', inclusive: true }),
+      ).toBe(true);
+    });
+
+    it('still skips an exclusive AGL bound it cannot resolve', () => {
+      expect(
+        altitudeMatches(500, { valueFt: 500, reference: 'AGL', inclusive: false }, msl(10000)),
+      ).toBe(true);
+    });
+  });
+
   describe('negative altitude', () => {
     it('excludes negative altitude when floor is SFC (resolved to 0)', () => {
       // SFC resolves to 0 ft MSL, so -100 is below the floor

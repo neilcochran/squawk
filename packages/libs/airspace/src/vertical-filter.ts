@@ -13,6 +13,10 @@ import type { AltitudeBound } from '@squawk/types';
  *   included rather than silently excluded when the bound cannot be resolved.
  *   Consumers can inspect the returned AltitudeBound references and apply
  *   their own terrain lookup if needed.
+ *
+ * A bound marked `inclusive: false` excludes its own value: an altitude equal
+ * to such a ceiling ("to but not including FL 180") or such a floor is
+ * outside the bounds. Bounds without the flag include their value.
  */
 export function altitudeMatches(
   /** Queried altitude in feet MSL. */
@@ -26,11 +30,15 @@ export function altitudeMatches(
   const ceilingFt = resolveAltitude(ceiling);
 
   // If either bound is AGL (resolved as null), skip that side of the check.
-  if (floorFt !== null && altitudeFt < floorFt) {
-    return false;
+  if (floorFt !== null) {
+    if (altitudeFt < floorFt || (floor.inclusive === false && altitudeFt === floorFt)) {
+      return false;
+    }
   }
-  if (ceilingFt !== null && altitudeFt > ceilingFt) {
-    return false;
+  if (ceilingFt !== null) {
+    if (altitudeFt > ceilingFt || (ceiling.inclusive === false && altitudeFt === ceilingFt)) {
+      return false;
+    }
   }
 
   return true;

@@ -6,14 +6,18 @@ import type { AirspaceFeature, AltitudeBound } from '@squawk/types';
 import { UNDEFINED_CEILING_FT } from './normalize-altitude.js';
 
 /**
- * Ceiling attached to a Class E area that lies beneath Class A: 17,999 ft
- * MSL, the last foot below the Class A floor. 14 CFR 71.71 ends the
- * designated Class E areas at the overlying controlled airspace rather than
- * at a number, which is why NASR leaves their upper limit undefined; under
- * Class A that airspace begins at 18,000 ft MSL, and stopping one foot short
- * keeps a query at exactly 18,000 ft from matching both.
+ * Ceiling attached to a Class E area that lies beneath Class A: 18,000 ft
+ * MSL, exclusive. 14 CFR 71.71 ends the designated Class E areas at the
+ * overlying controlled airspace rather than at a number, which is why NASR
+ * leaves their upper limit undefined; under Class A that airspace begins at
+ * 18,000 ft MSL, so the Class E area runs up to but not including it, and
+ * the exclusive bound keeps a query at exactly 18,000 ft from matching both.
  */
-export const CLASS_E_CEILING_UNDER_CLASS_A: AltitudeBound = { valueFt: 17999, reference: 'MSL' };
+export const CLASS_E_CEILING_UNDER_CLASS_A: AltitudeBound = {
+  valueFt: 18000,
+  reference: 'MSL',
+  inclusive: false,
+};
 
 /**
  * Whether a feature is one of the designated Class E areas (E2 through E7).

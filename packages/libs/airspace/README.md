@@ -132,16 +132,37 @@ for (const f of features) {
 }
 ```
 
+## Exclusive bounds
+
+An `AltitudeBound` whose `inclusive` is `false` excludes its own value. The FAA
+publishes the distinction for Special Use Airspace: a MOA designated "to but not
+including FL 180" carries a ceiling of 18,000 ft MSL with `inclusive: false`, and an
+area "excluding the airspace below 5,500 ft" over part of its extent has an exclusive
+floor there. `query()` honours the flag, so a query at exactly 18,000 ft does not
+return that MOA, while a bound without the flag includes its value as before.
+
 ## Class E ceilings
 
 NASR leaves the upper limit of nearly every Class E area undefined, because 14 CFR
 71.71 ends those areas at the overlying controlled airspace rather than at a number.
 The bundled data resolves that for `query()`: a Class E area that lies beneath Class
-A carries a ceiling of 17,999 ft MSL, so a query at 18,000 ft or above returns Class
-A rather than the Class E area under it. Class E areas outside Class A (Hawaii, and
-beyond the lateral extent of Class A) keep the `99,999` sentinel described under
-[ARTCC altitude bounds](#artcc-altitude-bounds) and match at any altitude above
-their floor.
+A carries an exclusive ceiling of 18,000 ft MSL, so a query at 18,000 ft or above
+returns Class A rather than the Class E area under it. Class E areas outside Class A
+(Hawaii, and beyond the lateral extent of Class A) keep the `99,999` sentinel
+described under [ARTCC altitude bounds](#artcc-altitude-bounds) and match at any
+altitude above their floor.
+
+## Exclusions
+
+Some Special Use Airspace is published with volumes carved out of it: A-211 Dothan
+excludes the Class D areas of three airports below their ceilings, R-5601F Fort Sill
+excludes the airspace below 5,500 ft MSL over part of its area. Each affected feature
+carries them as `exclusions`, a list of `{ floor, ceiling, boundary }` volumes. Most
+cover only part of the feature's height, so they are not holes in the feature's
+polygon. `query()` drops a feature when the position lies inside one of its
+exclusions and the altitude falls within that exclusion's bounds; the other lookups
+(`byAirport`, `byIdentifier`, `search`, `withinBbox`) return the feature with its
+exclusions attached for the caller to interpret.
 
 ## API
 

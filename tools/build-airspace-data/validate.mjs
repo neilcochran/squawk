@@ -280,10 +280,10 @@ check(
     ),
 );
 
-// Class E ceilings beneath Class A are resolved to 17,999 ft MSL by the build;
-// elsewhere the undefined sentinel (99,999) stays. Re-derive the overlap here
-// with the same vertex test the build uses so the output can be checked
-// independently of the build step.
+// Class E ceilings beneath Class A are resolved to an exclusive 18,000 ft MSL
+// by the build; elsewhere the undefined sentinel (99,999) stays. Re-derive the
+// overlap here with the same vertex test the build uses so the output can be
+// checked independently of the build step.
 const classAPolygons = classA.map((f) => f.geometry);
 const classABoxes = classAPolygons.map((p) => polygonGeoJson.polygonBoundingBox(p));
 
@@ -303,15 +303,16 @@ function overlapsClassA(polygon) {
 }
 
 const classE = features.filter((f) => f.properties?.type?.startsWith('CLASS_E'));
-const cappedE = classE.filter((f) => f.properties?.ceiling?.valueFt === 17999);
+const isCappedCeiling = (ceiling) => ceiling?.valueFt === 18000 && ceiling?.inclusive === false;
+const cappedE = classE.filter((f) => isCappedCeiling(f.properties?.ceiling));
 const undefinedE = classE.filter((f) => f.properties?.ceiling?.valueFt === 99999);
 const betweenE = classE.filter((f) => {
-  const v = f.properties?.ceiling?.valueFt;
-  return v >= 18000 && v < 99999;
+  const ceiling = f.properties?.ceiling;
+  return ceiling?.valueFt >= 18000 && ceiling?.valueFt < 99999 && !isCappedCeiling(ceiling);
 });
 
 check(
-  `Class E ceilings are published, 17,999 ft MSL, or undefined (${cappedE.length} capped, ${undefinedE.length} undefined)`,
+  `Class E ceilings are published, an exclusive 18,000 ft MSL, or undefined (${cappedE.length} capped, ${undefinedE.length} undefined)`,
   betweenE.length === 0,
   betweenE.length > 0 ? `${betweenE.length} between 18,000 and 99,998` : undefined,
 );

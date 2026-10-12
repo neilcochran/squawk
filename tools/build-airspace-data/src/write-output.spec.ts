@@ -94,6 +94,42 @@ describe('writeOutput', () => {
     expect(firstCoord[1]).toBe(40.12346);
   });
 
+  it('orients exterior rings counterclockwise and removes duplicate vertices', async () => {
+    const outPath = join(sandbox, 'data', 'airspace.geojson.gz');
+    // West, north, east, south: a clockwise ring with a doubled vertex.
+    const clockwiseWithDuplicate: AirspaceFeature = {
+      ...sampleFeature,
+      boundary: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-73.1, 40.1],
+            [-73.2, 40.1],
+            [-73.2, 40.1],
+            [-73.2, 40.2],
+            [-73.1, 40.2],
+            [-73.1, 40.1],
+          ],
+        ],
+      },
+    };
+    await writeOutput([clockwiseWithDuplicate], outPath, '2026-04-16');
+
+    const data = readOutput(outPath);
+    const geom = data.features[0]?.geometry;
+    if (geom?.type !== 'Polygon') {
+      throw new Error('expected a Polygon geometry');
+    }
+    // North, west, south, east: the same ring counterclockwise, deduplicated.
+    expect(geom.coordinates[0]).toEqual([
+      [-73.1, 40.1],
+      [-73.1, 40.2],
+      [-73.2, 40.2],
+      [-73.2, 40.1],
+      [-73.1, 40.1],
+    ]);
+  });
+
   it('records meta.generatedAt in ISO 8601 format', async () => {
     const outPath = join(sandbox, 'data', 'airspace.geojson.gz');
     await writeOutput([sampleFeature], outPath, '2026-04-16');
