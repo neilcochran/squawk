@@ -1,6 +1,6 @@
 {
   "name": "@squawk/mcp",
-  "version": "0.14.4",
+  "version": "0.14.5",
   "type": "module",
   "description": "Model Context Protocol server exposing squawk's aviation libraries as tools for LLM clients",
   "author": "Neil Cochran",
@@ -41,29 +41,29 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
-    "@squawk/airport-data": "^0.8.3",
-    "@squawk/airports": "^0.7.4",
-    "@squawk/airspace": "^0.9.5",
+    "@squawk/airport-data": "^0.8.4",
+    "@squawk/airports": "^0.7.5",
+    "@squawk/airspace": "^0.9.6",
     "@squawk/airspace-data": "^0.8.0",
-    "@squawk/airway-data": "^0.6.4",
-    "@squawk/airways": "^0.6.0",
-    "@squawk/fix-data": "^0.7.3",
-    "@squawk/fixes": "^0.5.4",
+    "@squawk/airway-data": "^0.6.5",
+    "@squawk/airways": "^0.6.1",
+    "@squawk/fix-data": "^0.7.4",
+    "@squawk/fixes": "^0.5.5",
     "@squawk/flight-math": "^0.5.3",
-    "@squawk/flightplan": "^0.7.0",
-    "@squawk/geo": "^0.5.1",
-    "@squawk/icao-registry": "^0.5.10",
-    "@squawk/navaid-data": "^0.7.3",
-    "@squawk/navaids": "^0.6.4",
-    "@squawk/notams": "^0.3.14",
-    "@squawk/procedure-data": "^0.8.3",
-    "@squawk/procedures": "^0.7.3",
-    "@squawk/types": "^0.11.0",
-    "@squawk/weather": "^0.6.3",
+    "@squawk/flightplan": "^0.8.0",
+    "@squawk/geo": "^0.5.2",
+    "@squawk/icao-registry": "^0.5.11",
+    "@squawk/navaid-data": "^0.7.4",
+    "@squawk/navaids": "^0.6.5",
+    "@squawk/notams": "^0.3.15",
+    "@squawk/procedure-data": "^0.9.0",
+    "@squawk/procedures": "^0.8.0",
+    "@squawk/types": "^0.12.0",
+    "@squawk/weather": "^0.6.4",
     "zod": "^4.6.5"
   },
   "peerDependencies": {
-    "@squawk/icao-registry-data": "^0.8.16"
+    "@squawk/icao-registry-data": "^0.8.17"
   },
   "peerDependenciesMeta": {
     "@squawk/icao-registry-data": {
@@ -71,7 +71,7 @@
     }
   },
   "devDependencies": {
-    "@squawk/icao-registry-data": "^0.8.16",
+    "@squawk/icao-registry-data": "^0.8.17",
     "@types/node": "^26.6.4"
   },
   "keywords": [

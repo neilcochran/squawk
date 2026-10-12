@@ -1,5 +1,36 @@
 # @squawk/mcp
 
+## 0.14.5
+
+### Patch Changes
+
+- 07d3473: ### Changed
+
+  - `find_procedures_by_airport_and_runway` matches both-parallels (`RW04B`) and `ALL` runway transitions and runway-specific common routes. The flight plan tools merge a SID or STAR's transition from the adjacent fix and report a procedure that cannot be expanded as unresolved. The tool descriptions explain the behaviour.
+
+- Updated dependencies [07d3473]
+- Updated dependencies [07d3473]
+- Updated dependencies [07d3473]
+- Updated dependencies [07d3473]
+  - @squawk/flightplan@0.8.0
+  - @squawk/procedure-data@0.9.0
+  - @squawk/procedures@0.8.0
+  - @squawk/types@0.12.0
+  - @squawk/airport-data@0.8.4
+  - @squawk/airports@0.7.5
+  - @squawk/airspace@0.9.6
+  - @squawk/airway-data@0.6.5
+  - @squawk/airways@0.6.1
+  - @squawk/fix-data@0.7.4
+  - @squawk/fixes@0.5.5
+  - @squawk/geo@0.5.2
+  - @squawk/icao-registry@0.5.11
+  - @squawk/icao-registry-data@0.8.17
+  - @squawk/navaid-data@0.7.4
+  - @squawk/navaids@0.6.5
+  - @squawk/notams@0.3.15
+  - @squawk/weather@0.6.4
+
 ## 0.14.4
 
 ### Patch Changes
