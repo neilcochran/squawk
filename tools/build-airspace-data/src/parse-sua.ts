@@ -3,27 +3,62 @@ import { XMLParser } from 'fast-xml-parser';
 import type { Polygon } from 'geojson';
 
 import { closeRing } from '@squawk/build-shared';
-import type { AirspaceFeature, AirspaceType } from '@squawk/types';
+import { greatCircle } from '@squawk/geo';
+import type { AirspaceFeature, AirspaceType, AirspaceVolume, AltitudeBound } from '@squawk/types';
 
 import { discretizeArc } from './discretize-arc.js';
 import { normalizeSaaAltitude } from './normalize-altitude.js';
 
+/**
+ * Largest distance between the end of one ring member and the start of the
+ * next at which the two are treated as the same point. The FAA publishes the
+ * coordinates of a legal description to the second of arc and derives arc
+ * endpoints separately, so an arc's computed end commonly misses the
+ * adjoining published point by a few tenths of a nautical mile (0.65 nm on
+ * W-193); left alone, that overlap makes the first arc chord cross the
+ * adjoining segment.
+ */
+const JOIN_TOLERANCE_NM = 1;
+
+/**
+ * The points of one curve member of a GML ring, tagged with the member kind
+ * so joins can prefer published line coordinates over computed arc points.
+ */
+interface RingMember {
+  /** `line` for LineStringSegment coordinates, `arc` for discretized arcs and circles. */
+  kind: 'line' | 'arc';
+  /** Member coordinates as [lon, lat] pairs. */
+  points: [number, number][];
+}
+
 /** Feet per nautical mile, used to convert radius values when uom is "FT". */
 const FT_PER_NM = 6076.12;
 
+/** Nautical miles per statute mile, used to convert radius values when uom is "MI". */
+const NM_PER_STATUTE_MILE = 1609.344 / 1852;
+
 /**
  * Reads a GML radius element and returns the value in nautical miles.
- * The radius uom is almost always "NM" but a small number of features
- * use "FT" (feet). Returns NaN if the value cannot be parsed.
+ * The radius uom is almost always "NM"; a few features use "FT" (feet) and
+ * a few legal descriptions written in statute miles use "MI". Any other
+ * unit is reported and read as nautical miles. Returns NaN if the value
+ * cannot be parsed.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function readRadiusNm(radiusElement: any): number {
+function readRadiusNm(radiusElement: any, entryName: string): number {
   const raw: number = radiusElement?.['#text'] ?? radiusElement;
   const uom: string = radiusElement?.['@_uom'] ?? 'NM';
-  if (uom === 'FT') {
-    return raw / FT_PER_NM;
+  switch (uom) {
+    case 'NM':
+      return raw;
+    case 'FT':
+      return raw / FT_PER_NM;
+    case 'MI':
+      return raw * NM_PER_STATUTE_MILE;
+    default:
+      console.warn(`[parse-sua] Unknown radius unit "${uom}" in "${entryName}" - reading as NM.`);
+      return raw;
   }
-  return raw;
 }
 
 /**
@@ -105,10 +140,32 @@ const SUA_TYPE_MAP: Record<string, AirspaceType> = {
 const INNER_ZIP_NAME = 'Saa_Sub_File.zip';
 
 /**
- * Reads the SAA AIXM subscriber ZIP and returns one AirspaceFeature per SUA
- * airspace. NSA entries and any features that fail to parse are skipped with a
- * warning. The outer SaaSubscriberFile.zip contains an inner Saa_Sub_File.zip
- * which in turn holds one XML file per SUA.
+ * XML parser configured for the SAA AIXM documents: attributes are kept
+ * with an `@_` prefix and the elements that can repeat are always arrays.
+ */
+const SAA_PARSER = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: '@_',
+  parseAttributeValue: true,
+  parseTagValue: true,
+  isArray: (name) =>
+    [
+      'hasMember',
+      'curveMember',
+      'geometryComponent',
+      'annotation',
+      'extension',
+      'pos',
+      'sheet',
+    ].includes(name),
+});
+
+/**
+ * Reads the SAA AIXM subscriber ZIP and returns the AirspaceFeatures of every
+ * SUA airspace: one feature per BASE or UNION geometry component (see
+ * {@link parseSuaXml}). Files that fail to parse are skipped with a warning.
+ * The outer SaaSubscriberFile.zip contains an inner Saa_Sub_File.zip which
+ * in turn holds one XML file per SUA.
  */
 export function parseSua(
   /** Absolute path to the SaaSubscriberFile.zip from the NASR subscription. */
@@ -123,32 +180,12 @@ export function parseSua(
   const innerZip = new AdmZip(innerZipBuffer);
   const xmlEntries = innerZip.getEntries().filter((e) => e.entryName.endsWith('.xml'));
 
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    parseAttributeValue: true,
-    parseTagValue: true,
-    isArray: (name) =>
-      [
-        'hasMember',
-        'curveMember',
-        'geometryComponent',
-        'annotation',
-        'extension',
-        'pos',
-        'sheet',
-      ].includes(name),
-  });
-
   const features: AirspaceFeature[] = [];
 
   for (const entry of xmlEntries) {
     const xmlText = entry.getData().toString('utf-8');
     try {
-      const feature = parseSuaXml(xmlText, parser, entry.entryName);
-      if (feature) {
-        features.push(feature);
-      }
+      features.push(...parseSuaXml(xmlText, entry.entryName));
     } catch (err) {
       console.warn(
         `[parse-sua] Failed to parse "${entry.entryName}": ${err instanceof Error ? err.message : String(err)}`,
@@ -160,17 +197,25 @@ export function parseSua(
 }
 
 /**
- * Parses a single SAA AIXM XML document into an AirspaceFeature.
- * Returns null when the SUA type is excluded from scope (e.g. NSA) or when
- * required fields cannot be extracted.
+ * Parses a single SAA AIXM XML document into AirspaceFeatures.
+ *
+ * An airspace is published as one or more geometry components, each with
+ * its own lateral boundary and altitude block. The `BASE` component is the
+ * primary volume; `UNION` components add further volumes (A-682 Travis AFB
+ * adds a lower shelf, the Birmingham 2 MOA three more areas), and each
+ * becomes a feature of its own with the airspace's identifier and name, the
+ * way Class B rings are published. `SUBTR` components describe volumes
+ * excluded from the airspace in three dimensions (the Class D areas carved
+ * out of A-211 Dothan, the airspace below 5,500 ft over part of R-5601F);
+ * they become the `exclusions` of every feature of the airspace. Each limit
+ * carries the FAA's INCLUSIVE/EXCLUSIVE marking as `inclusive`.
+ *
+ * Returns an empty array when the SUA type is unknown or no component can
+ * be read.
  */
-function parseSuaXml(
-  xmlText: string,
-  parser: XMLParser,
-  entryName: string,
-): AirspaceFeature | null {
+export function parseSuaXml(xmlText: string, entryName: string): AirspaceFeature[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const doc = parser.parse(xmlText) as any;
+  const doc = SAA_PARSER.parse(xmlText) as any;
   const members: unknown[] = doc?.SaaMessage?.hasMember ?? [];
 
   // The Airspace member holds the geometry and metadata.
@@ -178,33 +223,33 @@ function parseSuaXml(
   const airspaceMember = members.find((m: any) => m?.Airspace !== undefined) as any;
   if (!airspaceMember) {
     console.warn(`[parse-sua] No Airspace member found in "${entryName}" - skipping.`);
-    return null;
+    return [];
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const timeSlice: any = airspaceMember.Airspace?.timeSlice?.AirspaceTimeSlice;
   if (!timeSlice) {
-    return null;
+    return [];
   }
 
   // Determine SUA type from the SUA-namespace extension.
   const suaType = extractSuaType(timeSlice.extension);
   if (!suaType) {
-    return null;
+    return [];
   }
 
   const airspaceType = SUA_TYPE_MAP[suaType];
   if (!airspaceType) {
-    // Known excluded types (e.g. NSA) are silently skipped.
-    return null;
+    console.warn(`[parse-sua] Unknown SUA type "${suaType}" in "${entryName}" - skipping.`);
+    return [];
   }
 
   const name: string = timeSlice.name ?? '';
   const identifier: string = timeSlice.designator ?? '';
+  const state = extractState(timeSlice.extension);
+  const controllingFacility = extractControllingFacility(members);
+  const scheduleDescription = extractScheduleDescription(timeSlice.annotation);
 
-  // Altitude and geometry live inside the AirspaceGeometryComponent. Some airspace
-  // records have multiple geometry components (e.g. BASE + SUBTR for exclusion zones).
-  // Always use the BASE component, which carries the primary boundary and altitude.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const geometryComponents: any[] = Array.isArray(timeSlice.geometryComponent)
     ? timeSlice.geometryComponent
@@ -212,13 +257,72 @@ function parseSuaXml(
       ? [timeSlice.geometryComponent]
       : [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const baseComponent: any =
-    geometryComponents.find((gc) => gc?.AirspaceGeometryComponent?.operation === 'BASE') ??
-    geometryComponents[0];
+  const components: any[] = geometryComponents
+    .map((gc) => gc?.AirspaceGeometryComponent)
+    .filter((component) => component !== undefined && component !== null)
+    .sort((a, b) => Number(a.operationSequence ?? 0) - Number(b.operationSequence ?? 0));
+
+  const features: AirspaceFeature[] = [];
+  const exclusions: AirspaceVolume[] = [];
+  for (const component of components) {
+    const operation: string = component.operation ?? 'BASE';
+    if (operation !== 'BASE' && operation !== 'UNION' && operation !== 'SUBTR') {
+      console.warn(
+        `[parse-sua] Unknown geometry operation "${operation}" in "${entryName}" - skipping component.`,
+      );
+      continue;
+    }
+    const label =
+      operation === 'BASE'
+        ? entryName
+        : `${entryName} (${operation} ${component.operationSequence ?? ''})`;
+
+    const volume = readVolume(component, label);
+    if (volume === null) {
+      continue;
+    }
+    if (operation === 'SUBTR') {
+      exclusions.push(volume);
+      continue;
+    }
+
+    features.push({
+      type: airspaceType,
+      name,
+      identifier,
+      floor: volume.floor,
+      ceiling: volume.ceiling,
+      boundary: volume.boundary,
+      state,
+      controllingFacility,
+      scheduleDescription,
+      artccStratum: null,
+    });
+  }
+
+  if (features.length === 0) {
+    console.warn(`[parse-sua] No usable geometry component in "${entryName}" - skipping.`);
+    return [];
+  }
+  if (exclusions.length > 0) {
+    for (const feature of features) {
+      feature.exclusions = exclusions;
+    }
+  }
+  return features;
+}
+
+/**
+ * Reads a geometry component's AirspaceVolume: its floor and ceiling, each
+ * carrying the FAA's inclusive/exclusive marking, and its lateral boundary.
+ * Returns null and logs a warning when any part cannot be read.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function readVolume(component: any, label: string): AirspaceVolume | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const volume: any = baseComponent?.AirspaceGeometryComponent?.theAirspaceVolume?.AirspaceVolume;
+  const volume: any = component.theAirspaceVolume?.AirspaceVolume;
   if (!volume) {
-    console.warn(`[parse-sua] No AirspaceVolume in "${entryName}" - skipping.`);
+    console.warn(`[parse-sua] No AirspaceVolume in "${label}" - skipping component.`);
     return null;
   }
 
@@ -232,33 +336,41 @@ function parseSuaXml(
     volume.upperLimit?.['@_uom'] ?? '',
     volume.upperLimitReference ?? '',
   );
-
   if (!floor || !ceiling) {
-    console.warn(`[parse-sua] Could not parse altitude bounds in "${entryName}" - skipping.`);
+    console.warn(`[parse-sua] Could not parse altitude bounds in "${label}" - skipping component.`);
     return null;
   }
+  applyLimitInclusivity(floor, volume, 'lowerLimit');
+  applyLimitInclusivity(ceiling, volume, 'upperLimit');
 
-  const boundary = extractBoundary(volume.horizontalProjection?.Surface, entryName);
+  const boundary = extractBoundary(volume.horizontalProjection?.Surface, label);
   if (!boundary) {
     return null;
   }
 
-  const state = extractState(timeSlice.extension);
-  const controllingFacility = extractControllingFacility(members);
-  const scheduleDescription = extractScheduleDescription(timeSlice.annotation);
+  return { floor, ceiling, boundary };
+}
 
-  return {
-    type: airspaceType,
-    name,
-    identifier,
-    floor,
-    ceiling,
-    boundary,
-    state,
-    controllingFacility,
-    scheduleDescription,
-    artccStratum: null,
-  };
+/**
+ * Marks a bound exclusive when the volume's annotations say so. The FAA
+ * annotates each limit with a Note whose `propertyName` names the limit and
+ * whose text is `INCLUSIVE` or `EXCLUSIVE`; "to but not including FL 180" is
+ * published as an upper limit of FL180 annotated EXCLUSIVE. A limit without
+ * an annotation is inclusive and the bound is left as it is.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyLimitInclusivity(bound: AltitudeBound, volume: any, limit: string): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const annotations: any[] = Array.isArray(volume.annotation) ? volume.annotation : [];
+  for (const annotation of annotations) {
+    if (annotation?.Note?.propertyName !== limit) {
+      continue;
+    }
+    if (annotation?.Note?.translatedNote?.LinguisticNote?.note === 'EXCLUSIVE') {
+      bound.inclusive = false;
+    }
+    return;
+  }
 }
 
 /**
@@ -350,8 +462,9 @@ function extractScheduleDescription(annotations: any[] | undefined): string | nu
 /**
  * Converts a GML Surface element (from the SAA AIXM horizontalProjection) into
  * a GeoJSON Polygon. Handles both LineStringSegment (direct coordinate lists)
- * and ArcByCenterPoint (circular arcs) curve members within the exterior Ring.
- * Returns null and logs a warning if the geometry cannot be constructed.
+ * and ArcByCenterPoint (circular arcs) curve members within the exterior Ring,
+ * joining consecutive members (see {@link joinRingMembers}). Returns null and
+ * logs a warning if the geometry cannot be constructed.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractBoundary(surface: any, entryName: string): Polygon | null {
@@ -361,12 +474,11 @@ function extractBoundary(surface: any, entryName: string): Polygon | null {
     return null;
   }
 
-  let coordinates: [number, number][] = [];
+  const members: RingMember[] = [];
 
   if (exterior.LinearRing) {
     // Simple polygon: pos elements are direct children of LinearRing.
-    const points = extractLineStringPoints(exterior.LinearRing, entryName);
-    coordinates.push(...points);
+    members.push({ kind: 'line', points: extractLineStringPoints(exterior.LinearRing, entryName) });
   } else if (exterior.Ring) {
     const curveMembers: unknown[] = Array.isArray(exterior.Ring.curveMember)
       ? exterior.Ring.curveMember
@@ -380,20 +492,28 @@ function extractBoundary(surface: any, entryName: string): Polygon | null {
       }
 
       if (segments.LineStringSegment) {
-        const points = extractLineStringPoints(segments.LineStringSegment, entryName);
-        coordinates.push(...points);
+        members.push({
+          kind: 'line',
+          points: extractLineStringPoints(segments.LineStringSegment, entryName),
+        });
       } else if (segments.ArcByCenterPoint) {
-        const points = extractArcPoints(segments.ArcByCenterPoint, entryName);
-        coordinates.push(...points);
+        members.push({
+          kind: 'arc',
+          points: extractArcPoints(segments.ArcByCenterPoint, entryName),
+        });
       } else if (segments.CircleByCenterPoint) {
-        const points = extractCirclePoints(segments.CircleByCenterPoint, entryName);
-        coordinates.push(...points);
+        members.push({
+          kind: 'arc',
+          points: extractCirclePoints(segments.CircleByCenterPoint, entryName),
+        });
       }
     }
   } else {
     console.warn(`[parse-sua] No exterior Ring in "${entryName}" - skipping.`);
     return null;
   }
+
+  const coordinates = joinRingMembers(members.filter((m) => m.points.length > 0));
 
   if (coordinates.length < 4) {
     console.warn(
@@ -402,9 +522,66 @@ function extractBoundary(surface: any, entryName: string): Polygon | null {
     return null;
   }
 
-  coordinates = closeRing(coordinates);
+  return { type: 'Polygon', coordinates: [closeRing(coordinates)] };
+}
 
-  return { type: 'Polygon', coordinates: [coordinates] };
+/**
+ * Concatenates the members of a ring into one open coordinate list. Where a
+ * member ends within {@link JOIN_TOLERANCE_NM} of the next member's start,
+ * the two points are the same corner published twice, and the one computed
+ * from an arc is dropped in favour of the published line coordinate (the
+ * next member's point when both are the same kind). The same rule closes
+ * the ring between the last and first members.
+ */
+function joinRingMembers(members: RingMember[]): [number, number][] {
+  const coordinates: [number, number][] = [];
+  let previousKind: RingMember['kind'] | undefined;
+
+  for (const member of members) {
+    const points = [...member.points];
+    const last = coordinates[coordinates.length - 1];
+    const first = points[0];
+    if (last !== undefined && first !== undefined && previousKind !== undefined) {
+      if (isSameCorner(last, first)) {
+        if (previousKind === 'arc' && member.kind === 'line') {
+          coordinates.pop();
+        } else {
+          points.shift();
+        }
+      }
+    }
+    coordinates.push(...points);
+    previousKind = member.kind;
+  }
+
+  const ringStart = coordinates[0];
+  const ringEnd = coordinates[coordinates.length - 1];
+  if (
+    members.length > 1 &&
+    ringStart !== undefined &&
+    ringEnd !== undefined &&
+    coordinates.length > 1 &&
+    isSameCorner(ringEnd, ringStart) &&
+    (ringEnd[0] !== ringStart[0] || ringEnd[1] !== ringStart[1])
+  ) {
+    const lastMember = members[members.length - 1];
+    const firstMember = members[0];
+    if (lastMember?.kind === 'line' && firstMember?.kind === 'arc') {
+      coordinates.shift();
+    } else {
+      coordinates.pop();
+    }
+  }
+
+  return coordinates;
+}
+
+/**
+ * Returns `true` when two ring points are within {@link JOIN_TOLERANCE_NM}
+ * of each other.
+ */
+function isSameCorner(a: [number, number], b: [number, number]): boolean {
+  return greatCircle.distanceNm(a[1], a[0], b[1], b[0]) <= JOIN_TOLERANCE_NM;
 }
 
 /**
@@ -439,7 +616,9 @@ function extractLineStringPoints(segment: any, entryName: string): [number, numb
 /**
  * Converts a GML ArcByCenterPoint element into discretized [lon, lat] pairs.
  * The center pos is in "lon lat" format (CRS84 lon/lat order). The radius is
- * in nautical miles. Angles are in degrees from east, counterclockwise.
+ * converted to nautical miles. Angles are in degrees from east,
+ * counterclockwise, and their order gives the direction of travel (see
+ * {@link discretizeArc}).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractArcPoints(arc: any, entryName: string): [number, number][] {
@@ -461,7 +640,7 @@ function extractArcPoints(arc: any, entryName: string): [number, number][] {
 
   const centerLon = parseFloat(parts[0] ?? '');
   const centerLat = parseFloat(parts[1] ?? '');
-  const radiusNm = readRadiusNm(arc.radius);
+  const radiusNm = readRadiusNm(arc.radius, entryName);
   const startAngle: number = arc.startAngle?.['#text'] ?? arc.startAngle;
   const endAngle: number = arc.endAngle?.['#text'] ?? arc.endAngle;
 
@@ -506,7 +685,7 @@ function extractCirclePoints(circle: any, entryName: string): [number, number][]
 
   const centerLon = parseFloat(parts[0] ?? '');
   const centerLat = parseFloat(parts[1] ?? '');
-  const radiusNm = readRadiusNm(circle.radius);
+  const radiusNm = readRadiusNm(circle.radius, entryName);
 
   if (!isFinite(centerLon) || !isFinite(centerLat) || !isFinite(radiusNm)) {
     console.warn(`[parse-sua] Incomplete circle parameters in "${entryName}" - skipping circle.`);

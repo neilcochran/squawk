@@ -173,6 +173,7 @@ export interface AirspaceFeature {
     boundary: Polygon;
     ceiling: AltitudeBound;
     controllingFacility: string | null;
+    exclusions?: AirspaceVolume[];
     floor: AltitudeBound;
     identifier: string;
     name: string;
@@ -183,6 +184,13 @@ export interface AirspaceFeature {
 
 // @public
 export type AirspaceType = 'CLASS_A' | 'CLASS_B' | 'CLASS_C' | 'CLASS_D' | 'CLASS_E2' | 'CLASS_E3' | 'CLASS_E4' | 'CLASS_E5' | 'CLASS_E6' | 'CLASS_E7' | 'MOA' | 'RESTRICTED' | 'PROHIBITED' | 'WARNING' | 'ALERT' | 'NSA' | 'ARTCC';
+
+// @public
+export interface AirspaceVolume {
+    boundary: Polygon;
+    ceiling: AltitudeBound;
+    floor: AltitudeBound;
+}
 
 // @public
 export interface Airway {
@@ -252,6 +260,7 @@ export type AirwayWaypointType = 'NAVAID' | 'FIX' | 'WAYPOINT' | 'BORDER' | 'OTH
 
 // @public
 export interface AltitudeBound {
+    inclusive?: boolean;
     reference: AltitudeReference;
     valueFt: number;
 }

@@ -71,9 +71,34 @@ interface ClassAirspaceRecord {
 }
 
 /**
+ * Literal text the shapefile's attribute table carries where a value is
+ * null, alongside genuine empty fields.
+ */
+const DBF_NULL_LITERAL = '<Null>';
+
+/**
+ * Normalizes a string attribute from the shapefile's dbf table: `null`,
+ * blank and the literal `<Null>` placeholder all become `null`, anything
+ * else is returned trimmed.
+ */
+export function dbfString(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed === DBF_NULL_LITERAL) {
+    return null;
+  }
+  return trimmed;
+}
+
+/**
  * Reads the Class_Airspace shapefile and returns one AirspaceFeature for each
- * Class B, C, D, or E polygon. Features whose LOCAL_TYPE is not in the
- * included set are silently skipped.
+ * Class B, C, D, or E polygon. A record published as a MultiPolygon (the
+ * Florida Class E5 area, whose Key West and Dry Tortugas part is detached
+ * from the peninsula) yields one feature per part, all carrying the record's
+ * attributes. Features whose LOCAL_TYPE is not in the included set are
+ * silently skipped.
  *
  * The state field cannot be populated from the shapefile alone; pass the
  * airportStates lookup built by loadAirportStates to enrich it via the
@@ -102,56 +127,45 @@ export async function parseClassAirspace(
       continue;
     }
 
-    const rawBoundary = extractPolygon(geometry, attrs.NAME ?? localType);
-    if (!rawBoundary) {
-      continue;
-    }
-
+    const name = dbfString(attrs.NAME) ?? '';
+    const ident = dbfString(attrs.IDENT);
     const tolerance = localType.startsWith('CLASS_E')
       ? CLASS_E_SIMPLIFICATION_TOLERANCE
       : SIMPLIFICATION_TOLERANCE;
-    const boundary = simplifyPolygon(rawBoundary, tolerance);
 
-    const ident = attrs.IDENT ?? null;
-
-    features.push({
-      type: localType as AirspaceType,
-      name: attrs.NAME ?? '',
-      identifier: ident ?? '',
-      floor: normalizeShapefileAltitude(attrs.LOWER_VAL, attrs.LOWER_UOM, attrs.LOWER_CODE),
-      ceiling: normalizeShapefileAltitude(attrs.UPPER_VAL, attrs.UPPER_UOM, attrs.UPPER_CODE),
-      boundary,
-      state: ident ? (airportStates.get(ident) ?? null) : null,
-      controllingFacility: attrs.COMM_NAME ?? null,
-      scheduleDescription: attrs.WKHR_RMK ?? null,
-      artccStratum: null,
-    });
+    for (const rawBoundary of extractPolygons(geometry, name.length > 0 ? name : localType)) {
+      features.push({
+        type: localType as AirspaceType,
+        name,
+        identifier: ident ?? '',
+        floor: normalizeShapefileAltitude(attrs.LOWER_VAL, attrs.LOWER_UOM, attrs.LOWER_CODE),
+        ceiling: normalizeShapefileAltitude(attrs.UPPER_VAL, attrs.UPPER_UOM, attrs.UPPER_CODE),
+        boundary: simplifyPolygon(rawBoundary, tolerance),
+        state: ident ? (airportStates.get(ident) ?? null) : null,
+        controllingFacility: dbfString(attrs.COMM_NAME),
+        scheduleDescription: dbfString(attrs.WKHR_RMK),
+        artccStratum: null,
+      });
+    }
   }
 
   return features;
 }
 
 /**
- * Extracts a single Polygon from a shapefile geometry. For MultiPolygon
- * geometries only the largest ring by coordinate count is used, which is
- * correct for all known Class B/C/D/E records. Logs a warning and returns null
- * for any geometry type that cannot be handled.
+ * Extracts the Polygons from a shapefile geometry: the geometry itself for a
+ * Polygon, one Polygon per part for a MultiPolygon. Logs a warning and
+ * returns an empty array for any geometry type that cannot be handled.
  */
-function extractPolygon(geometry: Polygon | MultiPolygon, label: string): Polygon | null {
+export function extractPolygons(geometry: Polygon | MultiPolygon, label: string): Polygon[] {
   if (geometry.type === 'Polygon') {
-    return geometry;
+    return [geometry];
   }
 
   if (geometry.type === 'MultiPolygon') {
-    // Pick the polygon with the most exterior ring coordinates as a proxy for
-    // the largest/most significant polygon.
-    const largest = geometry.coordinates.reduce((best, current) =>
-      (current[0]?.length ?? 0) > (best[0]?.length ?? 0) ? current : best,
-    );
-    console.warn(`[parse-class-airspace] MultiPolygon for "${label}" - using largest ring only.`);
-    return { type: 'Polygon', coordinates: largest };
+    return geometry.coordinates.map((coordinates) => ({ type: 'Polygon', coordinates }));
   }
 
   console.warn(`[parse-class-airspace] Unexpected geometry type for "${label}" - skipping.`);
-  return null;
+  return [];
 }

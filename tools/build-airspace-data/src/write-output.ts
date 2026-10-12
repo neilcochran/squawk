@@ -7,6 +7,8 @@ import type { FeatureCollection, Feature, Polygon } from 'geojson';
 import { updateReadmeDate, writeDatasetMeta } from '@squawk/build-shared';
 import type { AirspaceFeature } from '@squawk/types';
 
+import { normalizeWinding, removeDuplicateVertices } from './normalize-polygon.js';
+
 /**
  * Number of decimal places to retain for all coordinate values in the output.
  * 5 decimal places gives roughly 1.1 meter precision, far exceeding the ~30m
@@ -45,7 +47,9 @@ interface AirspaceFeatureCollection extends FeatureCollection {
  * it does not already exist.
  *
  * Each AirspaceFeature is mapped to a GeoJSON Feature where the boundary polygon
- * becomes the geometry and all other fields become the feature properties.
+ * becomes the geometry and all other fields become the feature properties. The
+ * geometry is rounded, stripped of consecutive duplicate vertices and oriented
+ * per RFC 7946 (exterior ring counterclockwise, holes clockwise).
  */
 export async function writeOutput(
   /** AirspaceFeature objects to serialize into the output file. */
@@ -59,7 +63,7 @@ export async function writeOutput(
 
   const geoFeatures: Feature[] = features.map((f) => ({
     type: 'Feature',
-    geometry: roundPolygonCoords(f.boundary, COORDINATE_PRECISION),
+    geometry: normalizeGeometry(f.boundary),
     properties: {
       type: f.type,
       name: f.name,
@@ -70,6 +74,11 @@ export async function writeOutput(
       controllingFacility: f.controllingFacility,
       scheduleDescription: f.scheduleDescription,
       artccStratum: f.artccStratum,
+      exclusions: f.exclusions?.map((exclusion) => ({
+        floor: exclusion.floor,
+        ceiling: exclusion.ceiling,
+        boundary: normalizeGeometry(exclusion.boundary),
+      })),
     },
   }));
 
@@ -100,6 +109,16 @@ export async function writeOutput(
     generatedBy: 'tools/build-airspace-data',
     properties: collection.properties,
   });
+}
+
+/**
+ * Prepares a polygon for output: rounds its coordinates, removes consecutive
+ * duplicate vertices and orients its rings per RFC 7946.
+ */
+function normalizeGeometry(polygon: Polygon): Polygon {
+  return normalizeWinding(
+    removeDuplicateVertices(roundPolygonCoords(polygon, COORDINATE_PRECISION)),
+  );
 }
 
 /**

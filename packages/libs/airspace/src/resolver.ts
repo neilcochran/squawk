@@ -3,7 +3,13 @@ import type { FeatureCollection, Feature } from 'geojson';
 import { polygon, polygonGeoJson, type BoundingBox } from '@squawk/geo';
 import { fuzzySearch } from '@squawk/search';
 import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
-import type { AirspaceFeature, AirspaceType, AltitudeBound, ArtccStratum } from '@squawk/types';
+import type {
+  AirspaceFeature,
+  AirspaceType,
+  AirspaceVolume,
+  AltitudeBound,
+  ArtccStratum,
+} from '@squawk/types';
 
 import { altitudeMatches } from './vertical-filter.js';
 
@@ -120,7 +126,10 @@ export interface AirspaceResolverOptions {
 export interface AirspaceResolver {
   /**
    * Returns every airspace feature whose lateral polygon contains the given
-   * position and whose vertical bounds contain the given altitude.
+   * position and whose vertical bounds contain the given altitude. A bound
+   * marked `inclusive: false` excludes its own value, and a feature is not
+   * returned when the position and altitude fall inside one of its
+   * `exclusions`.
    *
    * @param query - Position, altitude, and optional type filter.
    * @returns All matching features, in no particular order.
@@ -308,8 +317,33 @@ function parseFeature(geoFeature: Feature): IndexedFeature | null {
     scheduleDescription: (props.scheduleDescription as string) ?? null,
     artccStratum: (props.artccStratum as ArtccStratum) ?? null,
   };
+  if (Array.isArray(props.exclusions) && props.exclusions.length > 0) {
+    feature.exclusions = props.exclusions as AirspaceVolume[];
+  }
 
   return { feature, ring, boundingBox: polygon.boundingBox(ring) };
+}
+
+/**
+ * Whether a position at an altitude falls inside one of a feature's
+ * exclusion volumes, in which case the feature does not apply there.
+ */
+function insideExclusion(
+  feature: AirspaceFeature,
+  lon: number,
+  lat: number,
+  altitudeFt: number,
+): boolean {
+  if (feature.exclusions === undefined) {
+    return false;
+  }
+  return feature.exclusions.some((exclusion) => {
+    if (!altitudeMatches(altitudeFt, exclusion.floor, exclusion.ceiling)) {
+      return false;
+    }
+    const ring = exclusion.boundary.coordinates[0];
+    return ring !== undefined && polygon.pointInPolygon(lon, lat, ring);
+  });
 }
 
 /**
@@ -380,6 +414,9 @@ export function createAirspaceResolver(options: AirspaceResolverOptions): Airspa
           continue;
         }
         if (!altitudeMatches(altitudeFt, feature.floor, feature.ceiling)) {
+          continue;
+        }
+        if (insideExclusion(feature, lon, lat, altitudeFt)) {
           continue;
         }
         results.push(feature);

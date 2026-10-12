@@ -18,12 +18,36 @@ export type AltitudeReference = 'MSL' | 'AGL' | 'SFC';
  * limit the FAA leaves undefined or unlimited: the upper ARTCC strata, some
  * restricted and warning areas, and Class E areas outside Class A. See
  * {@link AirspaceType} for how Class E ceilings beneath Class A are resolved.
+ * One published ceiling sits above the sentinel: R-2535B San Nicolas Island
+ * is designated from the surface to 100,000 ft MSL and carries that value.
  */
 export interface AltitudeBound {
   /** Altitude value in feet. For SFC reference this is 0. */
   valueFt: number;
   /** Reference datum that determines how valueFt should be interpreted. */
   reference: AltitudeReference;
+  /**
+   * `false` when the bound excludes its own value, as in a MOA designated
+   * "to but not including FL 180" or an area "excluding the airspace below
+   * 5,500 ft". Absent or `true` means the value is included. The FAA
+   * publishes the distinction for Special Use Airspace volumes, and the data
+   * build uses it for the Class E ceiling beneath Class A, which ends where
+   * Class A begins.
+   */
+  inclusive?: boolean;
+}
+
+/**
+ * A block of airspace: a lateral polygon between a floor and a ceiling.
+ * Used for the volumes an {@link AirspaceFeature} excludes.
+ */
+export interface AirspaceVolume {
+  /** Lower vertical bound of the volume. */
+  floor: AltitudeBound;
+  /** Upper vertical bound of the volume. */
+  ceiling: AltitudeBound;
+  /** Lateral boundary polygon in WGS84 coordinates. */
+  boundary: Polygon;
 }
 
 /**
@@ -45,10 +69,11 @@ export interface AltitudeBound {
  * The FAA publishes no upper limit for most Class E areas, because 14 CFR
  * 71.71 ends them at the overlying controlled airspace rather than at a
  * number. Where a Class E area lies beneath Class A, the data build resolves
- * that to a ceiling of 17,999 ft MSL, the last foot below Class A; elsewhere
- * (Hawaii, and beyond the lateral extent of Class A) the ceiling stays the
- * 99999 sentinel. A Class E area with a published ceiling, such as a surface
- * area under a Class B shelf, keeps it.
+ * that to a ceiling of 18,000 ft MSL marked exclusive (`inclusive: false`),
+ * the altitude at which Class A begins; elsewhere (Hawaii, and beyond the
+ * lateral extent of Class A) the ceiling stays the 99999 sentinel. A Class E
+ * area with a published ceiling, such as a surface area under a Class B
+ * shelf, keeps it.
  *
  * MOA, RESTRICTED, PROHIBITED, WARNING, ALERT, and NSA are Special Use
  * Airspace (SUA) types.
@@ -186,6 +211,11 @@ export function isArtccStratum(value: string): value is ArtccStratum {
  *
  * - Class B airspace is stored as multiple separate features (one per
  *   concentric ring), each with its own polygon and floor/ceiling.
+ * - Special Use Airspace published as several volumes (a base area plus
+ *   further areas with their own altitude blocks, such as A-682 Travis AFB
+ *   or the Birmingham 2 MOA) is stored as one feature per volume.
+ * - A Class E area published as several disjoint parts (the Florida Class
+ *   E5 area and its Key West part) is stored as one feature per part.
  * - ARTCC centers are stored as multiple features (one per stratum: LOW,
  *   HIGH, plus oceanic UTA/CTA/FIR strata), and a single stratum can map
  *   to multiple sub-polygons when the source data has disjoint shapes
@@ -194,6 +224,8 @@ export function isArtccStratum(value: string): value is ArtccStratum {
  *
  * Consumers that need to treat the full structure as a unit can group
  * features by `identifier` (and optionally `artccStratum` for ARTCC).
+ * Polygon rings follow RFC 7946: the exterior ring runs counterclockwise
+ * and holes clockwise.
  *
  * Vertical bounds whose reference is AGL cannot be precisely compared to an
  * aircraft MSL altitude without terrain elevation data. The @squawk/airspace
@@ -207,11 +239,17 @@ export interface AirspaceFeature {
   /**
    * Identifier for this feature. The semantics depend on `type`:
    *
-   * - Class B/C/D/E2: associated airport's FAA location identifier (e.g.
-   *   "DCA", "JFK"). ICAO-prefixed codes such as "KDCA" do not appear here.
-   * - Special Use Airspace: official NASR designator (e.g. "R-2303A").
+   * - Class B/C/D/E2/E3/E4: the associated airport's identifier as NASR
+   *   publishes it, normally the FAA location identifier (e.g. "DCA",
+   *   "JFK"); a handful of areas carry an ICAO code (e.g. "KRME"). Empty
+   *   for the few areas that belong to a Canadian airport whose zone
+   *   crosses the border (the Lynden and Sault Ste Marie Class D areas),
+   *   which NASR publishes without an identifier.
+   * - Class E5/E6/E7: NASR publishes no designator for most of these
+   *   areas, so the identifier is usually empty.
+   * - Special Use Airspace: official NASR designator (e.g. "R2303A").
    * - ARTCC: three-letter center code (e.g. "ZNY", "ZBW").
-   * - Other Class E subtypes: NASR designator from the source data.
+   * - Class A: empty; the feature is derived, not published.
    */
   identifier: string;
   /** Lower vertical bound of this feature. */
@@ -231,10 +269,12 @@ export interface AirspaceFeature {
    */
   state: string | null;
   /**
-   * The controlling facility or agency. For Class B/C/D this is the TRACON
-   * or ARTCC identifier (e.g. "PCT"). For SUA this is the controlling
-   * military or civil authority name. Always null for ARTCC features.
-   * Null if not available in the source data.
+   * The controlling ARTCC for Special Use Airspace, as the three-letter
+   * center code (e.g. "ZKC"), where the source publishes one; most MOAs,
+   * restricted areas and warning areas carry it, alert, prohibited and
+   * national security areas do not. NASR publishes no controlling facility
+   * for Class B/C/D/E areas, so it is null for them, and it is always null
+   * for ARTCC and Class A features.
    */
   controllingFacility: string | null;
   /**
@@ -250,4 +290,14 @@ export interface AirspaceFeature {
    * Null for all non-ARTCC airspace types.
    */
   artccStratum: ArtccStratum | null;
+  /**
+   * Volumes carved out of this feature. Within an exclusion's boundary,
+   * between its floor and ceiling, the airspace does not apply: A-211 Dothan
+   * excludes the Class D areas of three airports, R-5601F Fort Sill excludes
+   * the airspace below 5,500 ft MSL over part of its area. Most exclusions
+   * cover only part of the feature's height, so they cannot be expressed as
+   * holes in `boundary`. Only Special Use Airspace carries them (the `SUBTR`
+   * components of the FAA's SAA data); absent when the feature has none.
+   */
+  exclusions?: AirspaceVolume[];
 }

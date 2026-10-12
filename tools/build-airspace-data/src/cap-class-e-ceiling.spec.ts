@@ -124,15 +124,16 @@ describe('polygonsOverlap', () => {
 });
 
 describe('capClassECeilings', () => {
-  it('caps an undefined Class E ceiling beneath Class A to 17,999 ft MSL', () => {
+  it('caps an undefined Class E ceiling beneath Class A to an exclusive 18,000 ft MSL', () => {
     const [capped] = capClassECeilings([feature('CLASS_E5', square(-95, 35, 1))], [classA]);
-    expect(capped?.ceiling).toEqual({ valueFt: 17999, reference: 'MSL' });
+    expect(capped?.ceiling).toEqual({ valueFt: 18000, reference: 'MSL', inclusive: false });
     expect(capped?.ceiling).toEqual(CLASS_E_CEILING_UNDER_CLASS_A);
   });
 
   it('caps a Class E area that only partly overlaps Class A', () => {
     const [capped] = capClassECeilings([feature('CLASS_E4', square(-101, 35, 2))], [classA]);
-    expect(capped?.ceiling.valueFt).toBe(17999);
+    expect(capped?.ceiling.valueFt).toBe(18000);
+    expect(capped?.ceiling.inclusive).toBe(false);
   });
 
   it('leaves a Class E area outside every Class A polygon at the sentinel', () => {

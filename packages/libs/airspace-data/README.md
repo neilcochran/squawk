@@ -18,6 +18,11 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 - ARTCC (Air Route Traffic Control Center) lateral boundaries for all
   US-controlled centers, published per stratum (LOW/HIGH/UTA, plus oceanic
   CTA/FIR where applicable)
+- One feature per published volume or part: each Class B ring, each Special
+  Use Airspace area with its own altitude block (a base area plus any
+  additional areas), and each detached part of a Class E area
+- Polygon rings oriented per RFC 7946 (exterior counterclockwise, holes
+  clockwise), with arcs traced along the great circle
 
 ## Usage
 
@@ -93,21 +98,34 @@ that reading them this way does not pull the records into memory.
 The export is a GeoJSON `FeatureCollection`. Each feature's geometry is a Polygon
 representing one airspace boundary. Feature properties include:
 
-| Property              | Type                 | Description                                                                                                 |
-| --------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `type`                | string               | Airspace type (CLASS_B, CLASS_C, CLASS_D, CLASS_E2-E7, MOA, RESTRICTED, ARTCC, etc.)                        |
-| `name`                | string               | Human-readable name                                                                                         |
-| `identifier`          | string               | NASR designator, airport identifier, or 3-letter ARTCC code                                                 |
-| `floor`               | AltitudeBound        | Lower vertical bound                                                                                        |
-| `ceiling`             | AltitudeBound        | Upper vertical bound                                                                                        |
-| `state`               | string or null       | Two-letter US state abbreviation                                                                            |
-| `controllingFacility` | string or null       | Controlling ARTCC or facility (null for ARTCC features)                                                     |
-| `scheduleDescription` | string or null       | Operating schedule text                                                                                     |
-| `artccStratum`        | ArtccStratum or null | For ARTCC features, the stratum (`LOW`, `HIGH`, `UTA`, `CTA`, `FIR`, `CTA/FIR`); `null` for all other types |
+| Property              | Type                 | Description                                                                                                                                                    |
+| --------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                | string               | Airspace type (CLASS_B, CLASS_C, CLASS_D, CLASS_E2-E7, MOA, RESTRICTED, ARTCC, etc.)                                                                           |
+| `name`                | string               | Human-readable name                                                                                                                                            |
+| `identifier`          | string               | Airport identifier (Class B/C/D/E2-E4), NASR designator (SUA), or 3-letter center code (ARTCC); empty where NASR publishes none (most Class E5/E6/E7, Class A) |
+| `floor`               | AltitudeBound        | Lower vertical bound                                                                                                                                           |
+| `ceiling`             | AltitudeBound        | Upper vertical bound                                                                                                                                           |
+| `state`               | string or null       | Two-letter US state abbreviation                                                                                                                               |
+| `controllingFacility` | string or null       | Controlling ARTCC of a Special Use Airspace feature, where published; null for Class B/C/D/E, Class A and ARTCC features                                       |
+| `scheduleDescription` | string or null       | Operating schedule text                                                                                                                                        |
+| `artccStratum`        | ArtccStratum or null | For ARTCC features, the stratum (`LOW`, `HIGH`, `UTA`, `CTA`, `FIR`, `CTA/FIR`); `null` for all other types                                                    |
+| `exclusions`          | AirspaceVolume[]     | Volumes carved out of the feature (Special Use Airspace only); absent when none                                                                                |
 
-`AltitudeBound` is `{ valueFt: number, reference: 'MSL' | 'AGL' | 'SFC' }`. A
+`AltitudeBound` is `{ valueFt: number, reference: 'MSL' | 'AGL' | 'SFC', inclusive?: boolean }`.
+`inclusive: false` marks a bound that excludes its own value, as published for the
+Special Use Airspace designated "to but not including FL 180" and as the build sets
+for Class E ceilings beneath Class A; a bound without the flag includes its value. A
 `ceiling` of `{ valueFt: 99999, reference: 'MSL' }` is a sentinel for an upper limit
 the FAA leaves undefined or unlimited.
+
+Special Use Airspace that the FAA publishes with volumes carved out of it carries
+them as `exclusions`, a list of `{ floor, ceiling, boundary }` volumes: within an
+exclusion's boundary, between its floor and ceiling, the airspace does not apply.
+A-211 Dothan excludes the Class D areas of three airports below their ceilings;
+R-5601F Fort Sill excludes the airspace below 5,500 ft MSL over part of its area.
+Most exclusions cover only part of the feature's height, which is why they are
+separate volumes rather than holes in the polygon. `@squawk/airspace` applies them
+in `query()`.
 
 ## Data source
 
@@ -134,8 +152,34 @@ Class E ceilings beneath Class A are the one attribute the build resolves rather
 than copies. NASR leaves the upper limit of nearly every Class E area undefined,
 because 14 CFR 71.71 ends those areas at the overlying controlled airspace rather
 than at a number. Where a Class E area overlaps a Class A feature, the build sets
-its ceiling to 17,999 ft MSL, the last foot below Class A; where it does not
+its ceiling to 18,000 ft MSL marked exclusive, the altitude at which Class A begins; where it does not
 (Hawaii, and beyond the lateral extent of Class A) the ceiling stays the 99,999
 sentinel, and a Class E area with a published ceiling keeps it. Special Use
 Airspace with an undefined ceiling is left alone, since restricted and warning
 areas genuinely extend through Class A.
+
+## Coverage limits and known issues
+
+- Special Use Airspace exclusions are published on the feature rather than cut
+  out of its polygon, because 214 of the 233 carve-outs cover only part of the
+  feature's height. A consumer that draws or tests the polygon alone sees the
+  full footprint; apply `exclusions` (as `@squawk/airspace` does) to honour
+  them.
+- The two `LYNDEN CLASS D` features and the `SAULT STE MARIE CLASS D` and
+  `CLASS E4` features have an empty `identifier`. They are the United States
+  portions of the Abbotsford, Boundary Bay and Sault Ste Marie (Ontario)
+  control zones, which the FAA designates under the nearest US town and NASR
+  publishes without an airport identifier.
+- The FAA derives the endpoints of a Special Use Airspace arc separately from
+  the published corner coordinates, so an arc end commonly misses the adjoining
+  corner by a few tenths of a nautical mile. The build joins an arc end to a
+  corner within a nautical mile of it; six areas keep a crossing of a few
+  hundred metres where the published corners themselves overlap an edge, and
+  the Illinois Class E5 ring crosses itself twice in the same way.
+- Two Special Use Airspace files in the current cycle publish no surface
+  geometry and are not included.
+- One ceiling sits above the 99,999 ft sentinel: `R-2535B SAN NICOLAS ISLAND`
+  is designated from the surface to 100,000 ft MSL, so its ceiling is the
+  published 100,000 rather than the undefined-ceiling sentinel. Treat any
+  ceiling of 99,999 as undefined and anything else, including this one, as a
+  published value.
