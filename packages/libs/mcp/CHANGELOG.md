@@ -1,5 +1,37 @@
 # @squawk/mcp
 
+## 0.14.6
+
+### Patch Changes
+
+- 4ec8650: ### Changed
+
+  - `query_airspace_at_position` honours exclusive altitude bounds and airspace exclusions, lists each feature's exclusions as vertical bounds with a vertex count, and its description explains both.
+
+- Updated dependencies [4ec8650]
+- Updated dependencies [4ec8650]
+- Updated dependencies [1709931]
+- Updated dependencies [4ec8650]
+  - @squawk/airspace-data@0.9.0
+  - @squawk/airspace@0.10.0
+  - @squawk/procedure-data@0.9.1
+  - @squawk/types@0.13.0
+  - @squawk/airport-data@0.8.5
+  - @squawk/airports@0.7.6
+  - @squawk/airway-data@0.6.6
+  - @squawk/airways@0.6.2
+  - @squawk/fix-data@0.7.5
+  - @squawk/fixes@0.5.6
+  - @squawk/flightplan@0.8.1
+  - @squawk/geo@0.5.3
+  - @squawk/icao-registry@0.5.12
+  - @squawk/icao-registry-data@0.8.18
+  - @squawk/navaid-data@0.7.5
+  - @squawk/navaids@0.6.6
+  - @squawk/notams@0.3.16
+  - @squawk/procedures@0.8.1
+  - @squawk/weather@0.6.5
+
 ## 0.14.5
 
 ### Patch Changes

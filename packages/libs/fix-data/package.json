@@ -1,6 +1,6 @@
 {
   "name": "@squawk/fix-data",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "type": "module",
   "description": "Pre-processed FAA NASR fix/waypoint snapshot for use with @squawk/fixes",
   "author": "Neil Cochran",
@@ -48,7 +48,7 @@
     "api:report": "api-extractor run --local --verbose && api-extractor run --local --verbose -c api-extractor.browser.json && api-extractor run --local --verbose -c api-extractor.meta.json"
   },
   "dependencies": {
-    "@squawk/types": "^0.12.0"
+    "@squawk/types": "^0.13.0"
   },
   "keywords": [
     "aviation",

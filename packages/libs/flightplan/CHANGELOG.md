@@ -1,5 +1,13 @@
 # @squawk/flightplan
 
+## 0.8.1
+
+### Patch Changes
+
+- Updated dependencies [4ec8650]
+  - @squawk/types@0.13.0
+  - @squawk/geo@0.5.3
+
 ## 0.8.0
 
 ### Minor Changes

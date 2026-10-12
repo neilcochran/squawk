@@ -1,5 +1,19 @@
 # @squawk/airspace
 
+## 0.10.0
+
+### Minor Changes
+
+- 4ec8650: ### Changed
+
+  - `query()` honours exclusive bounds and exclusions. A bound marked `inclusive: false` no longer matches its own value, so a query at exactly 18,000 ft returns Class A without the MOA or Class E area that ends there, and a feature is not returned when the position and altitude fall inside one of its `exclusions`. The other lookups return features with their exclusions attached.
+
+### Patch Changes
+
+- Updated dependencies [4ec8650]
+  - @squawk/types@0.13.0
+  - @squawk/geo@0.5.3
+
 ## 0.9.6
 
 ### Patch Changes
