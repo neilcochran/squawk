@@ -1,5 +1,12 @@
 # @squawk/airport-data
 
+## 0.8.5
+
+### Patch Changes
+
+- Updated dependencies [4ec8650]
+  - @squawk/types@0.13.0
+
 ## 0.8.4
 
 ### Patch Changes

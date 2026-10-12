@@ -1,5 +1,12 @@
 # @squawk/fix-data
 
+## 0.7.5
+
+### Patch Changes
+
+- Updated dependencies [4ec8650]
+  - @squawk/types@0.13.0
+
 ## 0.7.4
 
 ### Patch Changes
