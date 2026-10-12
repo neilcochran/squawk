@@ -8,6 +8,7 @@ import {
   composeName,
   findEmbeddedMissedApproachStart,
   isCommonRouteRouteType,
+  runwayFromTransitionIdentifier,
 } from './parse-cifp.js';
 
 /**
@@ -188,7 +189,7 @@ describe('buildFixIndex', () => {
     expect(index.has('FEYPU::K5::PC'), 'must not index under airport region K5').toBe(false);
   });
 
-  it('falls back to the airport region when the waypoint region is blank (PG/PI/PN)', () => {
+  it('keys runway (PG) records by airport, falling back to the airport region when the waypoint region is blank', () => {
     // Runways never populate r[19:21]; we must index them by the airport's region.
     const record = buildRunwayRecord({
       airport: 'KJFK',
@@ -198,7 +199,34 @@ describe('buildFixIndex', () => {
       lon: 'W073470505',
     });
     const index = buildFixIndex([record]);
-    assert(index.has('RW04L::K6::PG'), 'expected runway indexed under airport region');
+    assert(
+      index.has('KJFK::RW04L::K6::PG'),
+      'expected runway indexed under its airport and the airport region',
+    );
+    expect(index.has('RW04L::K6::PG'), 'must not index a runway without its airport').toBe(false);
+  });
+
+  it('keeps runway records of different airports apart when they share an identifier', () => {
+    // Every airport in a region has a RW26; a region-wide key would let the
+    // last airport read win and hand its threshold to every other airport.
+    const hardin = buildRunwayRecord({
+      airport: '00U ',
+      airportRegion: 'K1',
+      runwayIdent: 'RW26',
+      lat: 'N45443986',
+      lon: 'W107390598',
+    });
+    const other = buildRunwayRecord({
+      airport: 'KCYS',
+      airportRegion: 'K1',
+      runwayIdent: 'RW26',
+      lat: 'N41092396',
+      lon: 'W104480540',
+    });
+    const index = buildFixIndex([hardin, other]);
+    expect(index.get('00U::RW26::K1::PG')?.lat).toBeCloseTo(45.744406, 5);
+    expect(index.get('KCYS::RW26::K1::PG')?.lat).toBeCloseTo(41.156656, 5);
+    expect(index.get('00U::RW26::K1::PG')?.category).toBe('RUNWAY');
   });
 
   it('dual-indexes NDB (DB) records under both DB and PN section codes', () => {
@@ -449,6 +477,7 @@ describe('buildFixIndex', () => {
     });
     const index = buildFixIndex([record]);
     assert(index.has('TEST::K6::PN'), 'expected PN section key for subsection N');
+    assert(index.has('KJFK::TEST::K6::PN'), 'expected airport-scoped PN key as well');
   });
 
   it('indexes terminal-IAP-fix (PI) records when subsection is I', () => {
@@ -467,6 +496,8 @@ describe('buildFixIndex', () => {
     });
     const index = buildFixIndex([record]);
     assert(index.has('TEST::K6::PI'), 'expected PI section key for subsection I');
+    assert(index.has('KJFK::TEST::K6::PI'), 'expected airport-scoped PI key as well');
+    expect(index.get('TEST::K6::PI')).toBe(index.get('KJFK::TEST::K6::PI'));
   });
 
   it('falls back to airport region for I/N records when waypoint region is blank', () => {
@@ -660,8 +691,57 @@ describe('composeName', () => {
     expect(composeName(rec, makeBuckets('B'))).toBe('LOC_BC RWY 22');
   });
 
-  it('composes a runway name with sidedness and variant suffix', () => {
-    const rec = makeRec('IAP', 'I04LY');
-    expect(composeName(rec, makeBuckets('I'))).toBe('ILS RWY 04L');
+  it('places the multiple-approach indicator between the type and the runway', () => {
+    expect(composeName(makeRec('IAP', 'I04LY'), makeBuckets('I'))).toBe('ILS Y RWY 04L');
+    expect(composeName(makeRec('IAP', 'I01LZ'), makeBuckets('I'))).toBe('ILS Z RWY 01L');
+    expect(composeName(makeRec('IAP', 'R21-Y'), makeBuckets('R'))).toBe('RNAV Y RWY 21');
+    expect(composeName(makeRec('IAP', 'H25-X'), makeBuckets('H'))).toBe('RNAV_RNP X RWY 25');
+  });
+
+  it('names a course-identified approach by its final approach course', () => {
+    expect(composeName(makeRec('IAP', 'R027'), makeBuckets('R'))).toBe('RNAV 027');
+  });
+
+  it('prefixes helicopter approaches (route type qualifier 2 = H) with COPTER', () => {
+    const finalRecord = makeRec('IAP', 'R250');
+    finalRecord.leg.routeTypeQualifier2 = 'H';
+    const buckets = new Map<string, DecodedLegRecord[]>([['R', [finalRecord]]]);
+    expect(composeName(makeRec('IAP', 'R250'), buckets)).toBe('COPTER RNAV 250');
+    const runwayRecord = makeRec('IAP', 'H16RZ');
+    runwayRecord.leg.routeTypeQualifier2 = 'H';
+    const runwayBuckets = new Map<string, DecodedLegRecord[]>([['H', [runwayRecord]]]);
+    expect(composeName(makeRec('IAP', 'H16RZ'), runwayBuckets)).toBe('COPTER RNAV_RNP Z RWY 16R');
+  });
+
+  it('names a circling approach with its circling letter', () => {
+    expect(composeName(makeRec('IAP', 'VOR-A'), makeBuckets('V'))).toBe('VOR-A');
+    expect(composeName(makeRec('IAP', 'RNV-B'), makeBuckets('R'))).toBe('RNAV-B');
+    expect(composeName(makeRec('IAP', 'RNVA'), makeBuckets('R'))).toBe('RNAV-A');
+  });
+
+  it('falls back to the identifier when it carries no runway, course or circling letter', () => {
+    expect(composeName(makeRec('IAP', 'V'), makeBuckets('V'))).toBe('V');
+  });
+
+  it('uses the identifier type letter as the label when the route type is unrecognized', () => {
+    expect(composeName(makeRec('IAP', 'I04L'), makeBuckets('K'))).toBe('I RWY 04L');
+  });
+});
+
+describe('runwayFromTransitionIdentifier', () => {
+  it('extracts the runway designator from RW-prefixed identifiers', () => {
+    expect(runwayFromTransitionIdentifier('RW04L')).toBe('04L');
+    expect(runwayFromTransitionIdentifier('RW13')).toBe('13');
+    expect(runwayFromTransitionIdentifier('RW28B')).toBe('28B');
+    expect(runwayFromTransitionIdentifier('RW02C')).toBe('02C');
+    expect(runwayFromTransitionIdentifier(' rw17b ')).toBe('17B');
+  });
+
+  it('returns undefined for ALL, blank, enroute and malformed identifiers', () => {
+    expect(runwayFromTransitionIdentifier('ALL')).toBe(undefined);
+    expect(runwayFromTransitionIdentifier('')).toBe(undefined);
+    expect(runwayFromTransitionIdentifier('BBOTL')).toBe(undefined);
+    expect(runwayFromTransitionIdentifier('RW4L')).toBe(undefined);
+    expect(runwayFromTransitionIdentifier('RW04LX')).toBe(undefined);
   });
 });

@@ -1,5 +1,7 @@
 import { describe, it, beforeAll, expect, assert } from 'vitest';
 
+import type { Procedure } from '@squawk/types';
+
 import { createProcedureResolver } from './resolver.js';
 import type { ProcedureResolver } from './resolver.js';
 
@@ -103,6 +105,51 @@ describe('byAirportAndRunway', () => {
 
   it('returns an empty array when no procedure serves the runway', () => {
     expect(resolver.byAirportAndRunway('KJFK', '99Z')).toEqual([]);
+  });
+
+  it('matches both-parallels (RWnnB) runway transitions against either parallel', () => {
+    const withBoth = resolver
+      .byType('SID')
+      .find((p) => p.transitions.some((t) => /^RW\d\dB$/.test(t.name)));
+    assert(withBoth !== undefined, 'expected a SID with a RWnnB transition');
+    const airport = withBoth.airports[0];
+    assert(airport !== undefined);
+    const transition = withBoth.transitions.find((t) => /^RW\d\dB$/.test(t.name));
+    assert(transition !== undefined);
+    const digits = transition.name.substring(2, 4);
+    for (const runway of [`${digits}L`, `${digits}R`, `${digits}C`, digits]) {
+      assert(
+        resolver.byAirportAndRunway(airport, runway).includes(withBoth),
+        `expected ${withBoth.identifier} (${transition.name}) to serve runway ${runway}`,
+      );
+    }
+    const otherDigits = digits === '04' ? '22' : '04';
+    expect(resolver.byAirportAndRunway(airport, `${otherDigits}L`)).not.toContain(withBoth);
+  });
+
+  it('matches runway-specific common routes', () => {
+    const withRunwayRoute = resolver
+      .byType('SID')
+      .find((p) => p.commonRoutes.some((r) => r.runway !== undefined));
+    assert(withRunwayRoute !== undefined, 'expected a SID with a runway-specific common route');
+    const airport = withRunwayRoute.airports[0];
+    const runway = withRunwayRoute.commonRoutes.find((r) => r.runway !== undefined)?.runway;
+    assert(airport !== undefined && runway !== undefined);
+    expect(resolver.byAirportAndRunway(airport, runway)).toContain(withRunwayRoute);
+  });
+
+  it('treats an ALL transition as serving every runway', () => {
+    const procedure: Procedure = {
+      name: 'ANYRW1',
+      identifier: 'ANYRW1',
+      type: 'SID',
+      airports: ['KAAA'],
+      commonRoutes: [],
+      transitions: [{ name: 'ALL', legs: [] }],
+    };
+    const local = createProcedureResolver({ data: [procedure] });
+    expect(local.byAirportAndRunway('KAAA', '09')).toEqual([procedure]);
+    expect(local.byAirportAndRunway('KAAA', '27R')).toEqual([procedure]);
   });
 });
 
@@ -413,24 +460,33 @@ describe('IAP structural invariants', () => {
     }
   });
 
-  it('circling approaches (no runway) have identifiers with no digit-runway pattern', () => {
+  /**
+   * `true` when an approach identifier names its approach by a three-digit
+   * final approach course (`R027`) rather than by a runway or a circling
+   * letter. Such approaches have no `runway`.
+   */
+  function isCourseNamed(identifier: string): boolean {
+    return /^\d{3}$/.test(identifier.substring(1));
+  }
+
+  it('approaches without a runway are circling or course-named, never runway-style', () => {
     const iaps = resolver.byType('IAP');
-    const circling = iaps.filter((p) => p.runway === undefined);
-    assert(circling.length > 0, 'expected some circling approaches in the dataset');
-    // A circling approach identifier's chars after the leading approach-type
-    // letter must NOT begin with two digits (which would indicate a runway).
-    for (const c of circling) {
+    const noRunway = iaps.filter((p) => p.runway === undefined);
+    assert(noRunway.length > 0, 'expected some approaches without a runway in the dataset');
+    // The chars after the leading approach-type letter must NOT begin with a
+    // two-digit runway number (two digits not followed by a third digit).
+    for (const c of noRunway) {
       const afterPrefix = c.identifier.substring(1);
       assert(
-        !/^\d{2}/.test(afterPrefix),
-        `circling approach ${c.airports[0]} ${c.identifier} has a runway-style identifier`,
+        !/^\d{2}(?!\d)/.test(afterPrefix),
+        `approach ${c.airports[0]} ${c.identifier} has a runway-style identifier but no runway`,
       );
     }
   });
 
   it('most circling approaches use the dashed -A/-B/-C/... suffix convention', () => {
     const iaps = resolver.byType('IAP');
-    const circling = iaps.filter((p) => p.runway === undefined);
+    const circling = iaps.filter((p) => p.runway === undefined && !isCourseNamed(p.identifier));
     const dashed = circling.filter((c) => /-[A-Z]$/.test(c.identifier));
     // Vast majority use the standard dashed suffix; a handful of older
     // identifiers (e.g. "RNVA" without the dash) are accepted as-is.

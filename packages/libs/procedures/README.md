@@ -119,8 +119,10 @@ Case-insensitive. Returns `Procedure[]`.
 
 Returns procedures at an airport that serve a specific runway. For IAPs, the
 match is on the `runway` field directly. For SIDs and STARs, the match is on a
-runway transition named `RW<runway>` (for example `RW04L`). Case-insensitive.
-Returns `Procedure[]`.
+common route published for the runway, or on a runway transition serving it:
+`RW<runway>` (for example `RW04L`), a both-parallels transition (`RW04B` serves
+`04L`, `04R`, `04C` and `04`), or `ALL`. Case-insensitive. Returns
+`Procedure[]`.
 
 ### `resolver.byType(type)`
 

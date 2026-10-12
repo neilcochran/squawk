@@ -19,7 +19,8 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 - Full ARINC 424 leg model per procedure: path terminators (IF, TF, CF, DF, CA, CI, CR, FA, FC, FD, FM, HA, HF, HM, PI, RF, AF, VA, VD, VI, VM, VR)
 - Altitude constraints (at / at-or-above / at-or-below / between / glide-slope / step-down descriptors) with primary and secondary altitudes
 - Speed constraints with descriptor
-- Recommended navaid, RNP value, turn direction, arc radius, center fix (for RF legs)
+- Recommended navaid, RNP value, turn direction (with the mandatory-turn flag), arc radius, center fix (for RF legs)
+- Vertical path angle on final approach legs, transition altitude per procedure, GNSS/FMS indication and route type qualifiers (straight-in, circling, copter) as published
 - Approach-role flags: IAF, IF (intermediate), FAF, FACF, MAP, fly-over
 - Named transitions (approach transitions for IAPs, enroute / runway transitions for SIDs and STARs)
 - Missed-approach sequences for IAPs
@@ -107,32 +108,35 @@ that reading them this way does not pull the records into memory.
 
 Each record is a full `Procedure` object from `@squawk/types`. Key fields:
 
-| Property         | Type                      | Description                                                          |
-| ---------------- | ------------------------- | -------------------------------------------------------------------- |
-| `name`           | string                    | Human-readable name (e.g. `AALLE4`, `ILS RWY 04L`)                   |
-| `identifier`     | string                    | CIFP procedure identifier (e.g. `AALLE4`, `I04L`)                    |
-| `type`           | ProcedureType             | `SID`, `STAR`, or `IAP`                                              |
-| `airports`       | string[]                  | Airports served by this procedure                                    |
-| `commonRoutes`   | ProcedureCommonRoute[]    | Trunk paths with legs and per-route adapted airports                 |
-| `transitions`    | ProcedureTransition[]     | Named transitions (approach / enroute / runway depending on type)    |
-| `approachType`   | ApproachType \| undefined | Approach classification (IAPs only)                                  |
-| `runway`         | string \| undefined       | Runway served by the approach (IAPs with a runway-specific approach) |
-| `missedApproach` | MissedApproachSequence    | Missed-approach climb-out (IAPs only)                                |
+| Property               | Type                      | Description                                                                               |
+| ---------------------- | ------------------------- | ----------------------------------------------------------------------------------------- |
+| `name`                 | string                    | Human-readable name (e.g. `AALLE4`, `ILS RWY 04L`, `RNAV Y RWY 21`)                       |
+| `identifier`           | string                    | CIFP procedure identifier (e.g. `AALLE4`, `I04L`, `R21-Y`)                                |
+| `type`                 | ProcedureType             | `SID`, `STAR`, or `IAP`                                                                   |
+| `airports`             | string[]                  | Airports served by this procedure                                                         |
+| `commonRoutes`         | ProcedureCommonRoute[]    | Trunk paths with legs, adapted airports, and the runway when the route is runway-specific |
+| `transitions`          | ProcedureTransition[]     | Named transitions (approach / enroute / runway depending on type)                         |
+| `transitionAltitudeFt` | number \| undefined       | Transition altitude in feet MSL (18,000 on US procedures)                                 |
+| `approachType`         | ApproachType \| undefined | Approach classification (IAPs only)                                                       |
+| `runway`               | string \| undefined       | Runway served by the approach (IAPs with a runway-specific approach)                      |
+| `missedApproach`       | MissedApproachSequence    | Missed-approach climb-out (IAPs only)                                                     |
 
 Each `ProcedureLeg` carries:
 
-| Property                                                                                                                            | Type                       | Description                                            |
-| ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------ |
-| `pathTerminator`                                                                                                                    | ProcedureLegPathTerminator | ARINC 424 path terminator (e.g. `TF`, `CF`, `CA`)      |
-| `fixIdentifier`, `category`, `lat`, `lon`, `icaoRegionCode`                                                                         | (see types)                | Termination fix (absent on pure heading/altitude legs) |
-| `altitudeConstraint`                                                                                                                | AltitudeConstraint         | Descriptor + primary/secondary altitudes in feet       |
-| `speedConstraint`                                                                                                                   | SpeedConstraint            | Descriptor + speed in knots                            |
-| `courseDeg`, `courseIsTrue`                                                                                                         | number / boolean           | Outbound or intercept course                           |
-| `distanceNm`, `holdTimeMin`                                                                                                         | number                     | Distance or hold time (leg-type dependent)             |
-| `recommendedNavaid`, `thetaDeg`, `rhoNm`, `rnpNm`                                                                                   | (see types)                | Recommended navaid + bearing/distance/RNP reference    |
-| `turnDirection`                                                                                                                     | `'L' \| 'R'`               | Commanded turn direction                               |
-| `arcRadiusNm`, `centerFix`                                                                                                          | (see types)                | Populated on RF constant-radius-arc legs               |
-| `isInitialApproachFix`, `isIntermediateFix`, `isFinalApproachFix`, `isFinalApproachCourseFix`, `isMissedApproachPoint`, `isFlyover` | boolean                    | Approach role flags                                    |
+| Property                                                                                                                            | Type                          | Description                                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------- |
+| `pathTerminator`                                                                                                                    | ProcedureLegPathTerminator    | ARINC 424 path terminator (e.g. `TF`, `CF`, `CA`)                                             |
+| `fixIdentifier`, `category`, `lat`, `lon`, `icaoRegionCode`                                                                         | (see types)                   | Termination fix (absent on pure heading/altitude legs)                                        |
+| `altitudeConstraint`                                                                                                                | AltitudeConstraint            | Descriptor + primary/secondary altitudes in feet                                              |
+| `speedConstraint`                                                                                                                   | SpeedConstraint               | Descriptor + speed in knots                                                                   |
+| `courseDeg`, `courseIsTrue`                                                                                                         | number / boolean              | Outbound or intercept course                                                                  |
+| `distanceNm`, `holdTimeMin`                                                                                                         | number                        | Distance or hold time (leg-type dependent)                                                    |
+| `recommendedNavaid`, `thetaDeg`, `rhoNm`, `rnpNm`                                                                                   | (see types)                   | Recommended navaid + bearing/distance/RNP reference                                           |
+| `turnDirection`, `turnDirectionValid`                                                                                               | `'L' \| 'R' \| 'E'` / boolean | Commanded turn direction and whether it is mandatory                                          |
+| `verticalAngleDeg`                                                                                                                  | number                        | Vertical path angle in degrees, negative for a descent (final approach legs)                  |
+| `arcRadiusNm`, `centerFix`                                                                                                          | (see types)                   | Populated on RF constant-radius-arc legs                                                      |
+| `isInitialApproachFix`, `isIntermediateFix`, `isFinalApproachFix`, `isFinalApproachCourseFix`, `isMissedApproachPoint`, `isFlyover` | boolean                       | Approach role flags                                                                           |
+| `gnssFmsIndication`, `routeTypeQualifier1`, `routeTypeQualifier2`                                                                   | (see types)                   | ARINC 424 GNSS/FMS indication, required navigation sensor, and minimums codes (approach legs) |
 
 ## Data source
 
@@ -152,3 +156,20 @@ from regular SIDs using CIFP data alone - the ODP indicator lives in the d-TPP
 Textual ODPs (plain-English climb instructions published in the d-TPP
 supplement) are not carried by CIFP at all and are therefore not included in
 this dataset.
+
+## Coverage limits and known issues
+
+- Only procedures published for airports are included. CIFP's heliport
+  procedures (two heliport approaches in the current cycle) are not.
+- About 900 SIDs and STARs consist only of transitions, with an empty
+  `commonRoutes`. CIFP publishes them that way.
+- Approaches that are not aligned with a runway are named by their final
+  approach course (for example `RNAV 027` for identifier `R027`) and have no
+  `runway`.
+- `courseIsTrue` is never set in the current cycle because CIFP publishes every
+  course as magnetic.
+- One leg has no coordinates: the initial fix of the `KDAF R36` approach
+  references NDB `CMY`, which the current CIFP cycle does not publish.
+- Six legs carry an FAA placeholder `rhoNm` of 999.9, and nine `+` altitude
+  constraints carry a second altitude that the descriptor does not use. Both
+  come from the source data unchanged.

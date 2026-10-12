@@ -220,10 +220,29 @@ describe('decodePrimaryLegRecord', () => {
     });
   });
 
-  it('defaults a blank speed descriptor to at-or-below', () => {
+  it('normalizes a blank speed descriptor to mandatory (@), as ARINC 424 5.261 defines it', () => {
     const raw = buildLegRecord({ 99: '180' });
     const decoded = decodePrimaryLegRecord(raw);
-    expect(decoded?.leg.speedConstraint?.descriptor).toBe('-');
+    expect(decoded?.leg.speedConstraint).toEqual({ descriptor: '@', speedKt: 180 });
+  });
+
+  it('keeps an explicit @ speed descriptor', () => {
+    const raw = buildLegRecord({ 99: '210', 117: '@' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.speedConstraint?.descriptor).toBe('@');
+  });
+
+  it('decodes the RF arc radius in thousandths of a nautical mile', () => {
+    // ARINC 424 field 5.204: `003610` is 3.610 NM.
+    const raw = buildLegRecord({ 47: 'RF', 56: '003610' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.arcRadiusNm).toBe(3.61);
+  });
+
+  it('omits the arc radius when the field is blank', () => {
+    const raw = buildLegRecord({ 47: 'RF' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.arcRadiusNm).toBe(undefined);
   });
 
   it('decodes magnetic course from the 4-character field', () => {
@@ -293,7 +312,7 @@ describe('decodePrimaryLegRecord', () => {
   });
 
   it('ignores unknown turn direction characters', () => {
-    const raw = buildLegRecord({ 43: 'E' });
+    const raw = buildLegRecord({ 43: 'X' });
     const decoded = decodePrimaryLegRecord(raw);
     expect(decoded?.leg.turnDirection).toBe(undefined);
   });
@@ -305,6 +324,14 @@ describe('decodePrimaryLegRecord', () => {
     // 303 = 30 * 10^-3 = 0.03 NM
     const rnp003 = decodePrimaryLegRecord(buildLegRecord({ 44: '303' }));
     expect(rnp003?.leg.rnpNm).toBe(0.03);
+  });
+
+  it('decodes RNP values without binary floating-point noise', () => {
+    // 302 = 30 * 10^-2 must be exactly 0.3, not 0.30000000000000004.
+    expect(decodePrimaryLegRecord(buildLegRecord({ 44: '302' }))?.leg.rnpNm).toBe(0.3);
+    expect(decodePrimaryLegRecord(buildLegRecord({ 44: '602' }))?.leg.rnpNm).toBe(0.6);
+    expect(decodePrimaryLegRecord(buildLegRecord({ 44: '702' }))?.leg.rnpNm).toBe(0.7);
+    expect(decodePrimaryLegRecord(buildLegRecord({ 44: '201' }))?.leg.rnpNm).toBe(2);
   });
 
   it('decodes the recommended navaid with its region', () => {
@@ -328,6 +355,50 @@ describe('decodePrimaryLegRecord', () => {
     const rfLeg = decodePrimaryLegRecord(buildLegRecord({ 47: 'RF', 106: 'JFK  ', 112: 'K6' }));
     expect(rfLeg?.leg.centerFix).toBe('JFK');
     expect(rfLeg?.leg.centerFixIcaoRegionCode).toBe('K6');
+  });
+
+  it('decodes the vertical angle in hundredths of a degree', () => {
+    expect(decodePrimaryLegRecord(buildLegRecord({ 102: '-300' }))?.leg.verticalAngleDeg).toBe(-3);
+    expect(decodePrimaryLegRecord(buildLegRecord({ 102: '-301' }))?.leg.verticalAngleDeg).toBe(
+      -3.01,
+    );
+    expect(decodePrimaryLegRecord(buildLegRecord({ 102: ' 000' }))?.leg.verticalAngleDeg).toBe(0);
+    expect(decodePrimaryLegRecord(buildLegRecord())?.leg.verticalAngleDeg).toBe(undefined);
+  });
+
+  it('flags a mandatory turn direction (TDV = Y) and accepts either-direction turns', () => {
+    const mandatory = decodePrimaryLegRecord(buildLegRecord({ 43: 'L', 49: 'Y' }));
+    expect(mandatory?.leg.turnDirection).toBe('L');
+    expect(mandatory?.leg.turnDirectionValid).toBe(true);
+    const advisory = decodePrimaryLegRecord(buildLegRecord({ 43: 'R' }));
+    expect(advisory?.leg.turnDirection).toBe('R');
+    expect(advisory?.leg.turnDirectionValid).toBe(undefined);
+    expect(decodePrimaryLegRecord(buildLegRecord({ 43: 'E' }))?.leg.turnDirection).toBe('E');
+  });
+
+  it('carries the GNSS/FMS indication and route type qualifiers as published', () => {
+    const decoded = decodePrimaryLegRecord(buildLegRecord({ 116: 'A', 118: 'JS' }));
+    expect(decoded?.leg.gnssFmsIndication).toBe('A');
+    expect(decoded?.leg.routeTypeQualifier1).toBe('J');
+    expect(decoded?.leg.routeTypeQualifier2).toBe('S');
+    const blank = decodePrimaryLegRecord(buildLegRecord());
+    expect(blank?.leg.gnssFmsIndication).toBe(undefined);
+    expect(blank?.leg.routeTypeQualifier1).toBe(undefined);
+    expect(blank?.leg.routeTypeQualifier2).toBe(undefined);
+  });
+
+  it('omits GNSS/FMS indication and qualifier codes that ARINC 424 does not define', () => {
+    const decoded = decodePrimaryLegRecord(buildLegRecord({ 116: 'Z', 118: 'ZZ' }));
+    expect(decoded?.leg.gnssFmsIndication).toBe(undefined);
+    expect(decoded?.leg.routeTypeQualifier1).toBe(undefined);
+    expect(decoded?.leg.routeTypeQualifier2).toBe(undefined);
+  });
+
+  it('decodes the transition altitude onto the record', () => {
+    expect(decodePrimaryLegRecord(buildLegRecord({ 94: '18000' }))?.transitionAltitudeFt).toBe(
+      18000,
+    );
+    expect(decodePrimaryLegRecord(buildLegRecord())?.transitionAltitudeFt).toBe(undefined);
   });
 
   it('omits fix fields on a legless leg (e.g. VA heading-to-altitude)', () => {

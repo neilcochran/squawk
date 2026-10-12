@@ -198,6 +198,7 @@ export interface SidRouteElement {
     legs: ProcedureLeg[];
     procedure: Procedure;
     raw: string;
+    transition?: string;
     type: 'sid';
 }
 
@@ -217,6 +218,7 @@ export interface StarRouteElement {
     legs: ProcedureLeg[];
     procedure: Procedure;
     raw: string;
+    transition?: string;
     type: 'star';
 }
 

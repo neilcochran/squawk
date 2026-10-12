@@ -1,6 +1,9 @@
 import type {
   AltitudeConstraint,
   AltitudeConstraintDescriptor,
+  ApproachRouteQualifier1,
+  ApproachRouteQualifier2,
+  GnssFmsIndication,
   ProcedureLeg,
   ProcedureLegFixCategory,
   ProcedureLegPathTerminator,
@@ -93,6 +96,51 @@ const VALID_SPEED_DESCRIPTORS: ReadonlySet<SpeedConstraintDescriptor> =
   new Set<SpeedConstraintDescriptor>(['@', '+', '-']);
 
 /**
+ * Valid GNSS/FMS indication codes (ARINC 424 field 5.222).
+ */
+const VALID_GNSS_FMS_INDICATIONS: ReadonlySet<GnssFmsIndication> = new Set<GnssFmsIndication>([
+  '0',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  'A',
+  'B',
+  'C',
+  'G',
+  'L',
+  'P',
+  'U',
+]);
+
+/**
+ * Valid approach route type qualifier 1 codes (ARINC 424 field 5.7, column 119).
+ */
+const VALID_APPROACH_ROUTE_QUALIFIERS_1: ReadonlySet<ApproachRouteQualifier1> =
+  new Set<ApproachRouteQualifier1>([
+    'A',
+    'B',
+    'D',
+    'F',
+    'J',
+    'L',
+    'N',
+    'P',
+    'R',
+    'T',
+    'U',
+    'V',
+    'W',
+  ]);
+
+/**
+ * Valid approach route type qualifier 2 codes (ARINC 424 field 5.7, column 120).
+ */
+const VALID_APPROACH_ROUTE_QUALIFIERS_2: ReadonlySet<ApproachRouteQualifier2> =
+  new Set<ApproachRouteQualifier2>(['A', 'B', 'C', 'E', 'H', 'I', 'L', 'S', 'V']);
+
+/**
  * Metadata accompanying a decoded procedure leg, used by the parser to
  * group legs into procedures and route sections.
  */
@@ -115,6 +163,8 @@ export interface DecodedLegRecord {
   fixSectionCode: string;
   /** `true` when this record carries the Waypoint Description Code position-2 `M` flag, marking the first leg of an embedded missed-approach procedure inside an IAP final-approach route. */
   startsEmbeddedMissedApproach: boolean;
+  /** Transition altitude in feet (columns 95-99), when the record carries one. CIFP publishes it on a subset of each procedure's records; the parser lifts it to the procedure. */
+  transitionAltitudeFt?: number;
   /** The decoded leg. */
   leg: ProcedureLeg;
 }
@@ -193,13 +243,17 @@ export function decodePrimaryLegRecord(raw: string): DecodedLegRecord | undefine
   const startsEmbeddedMissedApproach = isFirstMissedApproachLeg(descriptionCode);
 
   const turnDirection = raw.charAt(43);
-  if (turnDirection === 'L' || turnDirection === 'R') {
-    leg.turnDirection = turnDirection as TurnDirection;
+  if (isTurnDirection(turnDirection)) {
+    leg.turnDirection = turnDirection;
   }
 
   const rnpNm = parseRnp(raw.substring(44, 47));
   if (rnpNm !== undefined) {
     leg.rnpNm = rnpNm;
+  }
+
+  if (raw.charAt(49) === 'Y') {
+    leg.turnDirectionValid = true;
   }
 
   const recommendedNavaid = raw.substring(50, 54).trim();
@@ -211,7 +265,7 @@ export function decodePrimaryLegRecord(raw: string): DecodedLegRecord | undefine
     }
   }
 
-  const arcRadiusNm = parseTenThousandths(raw.substring(56, 62));
+  const arcRadiusNm = parseThousandths(raw.substring(56, 62));
   if (arcRadiusNm !== undefined) {
     leg.arcRadiusNm = arcRadiusNm;
   }
@@ -258,6 +312,11 @@ export function decodePrimaryLegRecord(raw: string): DecodedLegRecord | undefine
     leg.speedConstraint = speedConstraint;
   }
 
+  const verticalAngleDeg = parseVerticalAngle(raw.substring(102, 106));
+  if (verticalAngleDeg !== undefined) {
+    leg.verticalAngleDeg = verticalAngleDeg;
+  }
+
   if (pathTerminator === 'RF') {
     const centerFix = raw.substring(106, 111).trim();
     if (centerFix.length > 0) {
@@ -269,7 +328,22 @@ export function decodePrimaryLegRecord(raw: string): DecodedLegRecord | undefine
     }
   }
 
-  return {
+  const gnssFmsIndication = raw.charAt(116);
+  if (isGnssFmsIndication(gnssFmsIndication)) {
+    leg.gnssFmsIndication = gnssFmsIndication;
+  }
+
+  const routeTypeQualifier1 = raw.charAt(118);
+  if (isApproachRouteQualifier1(routeTypeQualifier1)) {
+    leg.routeTypeQualifier1 = routeTypeQualifier1;
+  }
+
+  const routeTypeQualifier2 = raw.charAt(119);
+  if (isApproachRouteQualifier2(routeTypeQualifier2)) {
+    leg.routeTypeQualifier2 = routeTypeQualifier2;
+  }
+
+  const record: DecodedLegRecord = {
     airport,
     airportIcaoRegionCode,
     procedureIdentifier,
@@ -281,6 +355,59 @@ export function decodePrimaryLegRecord(raw: string): DecodedLegRecord | undefine
     startsEmbeddedMissedApproach,
     leg,
   };
+
+  const transitionAltitudeFt = parseAltitudeFt(raw.substring(94, 99));
+  if (transitionAltitudeFt !== undefined) {
+    record.transitionAltitudeFt = transitionAltitudeFt;
+  }
+
+  return record;
+}
+
+/**
+ * Narrows a raw character to a valid {@link TurnDirection}.
+ */
+function isTurnDirection(value: string): value is TurnDirection {
+  return value === 'L' || value === 'R' || value === 'E';
+}
+
+/**
+ * Narrows a raw character to a valid {@link GnssFmsIndication}.
+ */
+function isGnssFmsIndication(value: string): value is GnssFmsIndication {
+  return VALID_GNSS_FMS_INDICATIONS.has(value as GnssFmsIndication);
+}
+
+/**
+ * Narrows a raw character to a valid {@link ApproachRouteQualifier1}.
+ */
+function isApproachRouteQualifier1(value: string): value is ApproachRouteQualifier1 {
+  return VALID_APPROACH_ROUTE_QUALIFIERS_1.has(value as ApproachRouteQualifier1);
+}
+
+/**
+ * Narrows a raw character to a valid {@link ApproachRouteQualifier2}.
+ */
+function isApproachRouteQualifier2(value: string): value is ApproachRouteQualifier2 {
+  return VALID_APPROACH_ROUTE_QUALIFIERS_2.has(value as ApproachRouteQualifier2);
+}
+
+/**
+ * Parses the 4-character Vertical Angle field (ARINC 424 field 5.70): a
+ * sign and three digits with two implied decimal places, so `-300` is a
+ * 3.00 degree descent and ` 000` is a published angle of zero. Returns
+ * `undefined` when the field is blank or not numeric.
+ */
+function parseVerticalAngle(raw: string): number | undefined {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+  const value = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(value)) {
+    return undefined;
+  }
+  return value / 100;
 }
 
 /**
@@ -355,6 +482,10 @@ export function isFirstMissedApproachLeg(descriptionCode: string): boolean {
  * - `101` - `10 * 10^-1` = 1.0 NM.
  * - `303` - `30 * 10^-3` = 0.03 NM.
  *
+ * The value is computed as an integer division by a power of ten so
+ * that `302` yields exactly `0.3` rather than the `0.30000000000000004`
+ * a multiplication by `10^-2` produces.
+ *
  * Returns `undefined` for a blank or unparseable value.
  */
 function parseRnp(raw: string): number | undefined {
@@ -370,7 +501,7 @@ function parseRnp(raw: string): number | undefined {
   if (Number.isNaN(mantissa) || Number.isNaN(exponent)) {
     return undefined;
   }
-  return mantissa * Math.pow(10, -exponent);
+  return mantissa / 10 ** exponent;
 }
 
 /**
@@ -390,10 +521,11 @@ function parseTenths(raw: string): number | undefined {
 }
 
 /**
- * Parses a value encoded as ten-thousandths (for example `012345` = 1.2345).
- * Used for arc radius encoded in nautical miles to four decimal places.
+ * Parses a value encoded as thousandths (for example `003610` = 3.61).
+ * Used for the ARC Radius field (ARINC 424 field 5.204), which carries
+ * the radius in nautical miles to three decimal places.
  */
-function parseTenThousandths(raw: string): number | undefined {
+function parseThousandths(raw: string): number | undefined {
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
     return undefined;
@@ -402,7 +534,7 @@ function parseTenThousandths(raw: string): number | undefined {
   if (Number.isNaN(value)) {
     return undefined;
   }
-  return value / 10000;
+  return value / 1000;
 }
 
 /**
@@ -528,9 +660,10 @@ function parseAltitudeConstraint(
 /**
  * Parses a leg speed constraint from the 3-character speed slice and
  * the 1-character descriptor character. An empty speed slice produces
- * `undefined`. The descriptor is taken from ARINC 424 field 5.261; a
- * blank descriptor defaults to `-` (at or below, the most common
- * published restriction).
+ * `undefined`. The descriptor is taken from ARINC 424 field 5.261,
+ * which defines a blank or `@` as a mandatory speed (cross the fix at
+ * the speed), `+` as a minimum (at or above) and `-` as a maximum (at
+ * or below); a blank descriptor is therefore normalized to `@`.
  */
 function parseSpeedConstraint(
   speedRaw: string,
@@ -544,7 +677,7 @@ function parseSpeedConstraint(
   if (Number.isNaN(speedKt) || speedKt === 0) {
     return undefined;
   }
-  const rawDescriptor = descriptorRaw === ' ' || descriptorRaw === '' ? '-' : descriptorRaw;
+  const rawDescriptor = descriptorRaw === ' ' || descriptorRaw === '' ? '@' : descriptorRaw;
   if (!VALID_SPEED_DESCRIPTORS.has(rawDescriptor as SpeedConstraintDescriptor)) {
     return undefined;
   }

@@ -91,7 +91,7 @@ export interface ProcedureResolver {
    * Returns every procedure at an airport that serves a specific runway.
    *
    * - For IAPs this matches the `runway` field directly.
-   * - For SIDs and STARs this matches procedures that publish a runway transition named `RW<runway>` (e.g. `RW04L`).
+   * - For SIDs and STARs this matches procedures whose common route is published for the runway, or that publish a runway transition serving it: `RW<runway>` (e.g. `RW04L`), a both-parallels transition (`RW04B` serves `04L`, `04R`, `04C` and `04`), or `ALL`.
    */
   byAirportAndRunway(airportId: string, runway: string): Procedure[];
 
@@ -215,17 +215,21 @@ export function createProcedureResolver(options: ProcedureResolverOptions): Proc
     byAirportAndRunway(airportId: string, runway: string): Procedure[] {
       const candidates = byAirportMap.get(airportId.toUpperCase()) ?? [];
       const runwayUpper = runway.toUpperCase();
-      const runwayTransitionName = `RW${runwayUpper}`;
       return candidates.filter((proc) => {
         if (proc.runway !== undefined && proc.runway.toUpperCase() === runwayUpper) {
           return true;
         }
-        for (const transition of proc.transitions) {
-          if (transition.name.toUpperCase() === runwayTransitionName) {
-            return true;
-          }
+        if (
+          proc.commonRoutes.some(
+            (route) =>
+              route.runway !== undefined && runwayDesignatorCovers(route.runway, runwayUpper),
+          )
+        ) {
+          return true;
         }
-        return false;
+        return proc.transitions.some((transition) =>
+          transitionServesRunway(transition.name, runwayUpper),
+        );
       });
     },
 
@@ -302,6 +306,56 @@ export function createProcedureResolver(options: ProcedureResolverOptions): Proc
       }));
     },
   };
+}
+
+/**
+ * Pattern matching a CIFP runway transition name: `RW` followed by the
+ * runway designator (`RW04L`, `RW13`, `RW28B`).
+ */
+const RUNWAY_TRANSITION_NAME = /^RW(\d{2}[LRCB]?)$/;
+
+/**
+ * Pattern matching a runway identifier as consumers pass it: two digits
+ * and an optional sidedness letter.
+ */
+const RUNWAY_IDENTIFIER = /^\d{2}[LRC]?$/;
+
+/**
+ * Returns `true` when a SID or STAR transition serves the given runway.
+ * `ALL` serves every runway; a `RW`-prefixed name serves the runways its
+ * designator covers (see {@link runwayDesignatorCovers}).
+ *
+ * @param transitionName - CIFP transition name, in any case.
+ * @param runwayUpper - Upper-case runway identifier to test (`04L`).
+ */
+function transitionServesRunway(transitionName: string, runwayUpper: string): boolean {
+  const upper = transitionName.toUpperCase();
+  if (upper === 'ALL') {
+    return true;
+  }
+  const designator = RUNWAY_TRANSITION_NAME.exec(upper)?.[1];
+  return designator !== undefined && runwayDesignatorCovers(designator, runwayUpper);
+}
+
+/**
+ * Returns `true` when a CIFP runway designator covers a runway: an exact
+ * match, or a both-parallels designator (`04B`) for any runway with the
+ * same number (`04L`, `04R`, `04C`, or a bare `04`).
+ *
+ * @param designator - Runway designator from the data (`04L`, `28B`), in any case.
+ * @param runwayUpper - Upper-case runway identifier to test.
+ */
+function runwayDesignatorCovers(designator: string, runwayUpper: string): boolean {
+  const upper = designator.toUpperCase();
+  if (upper === runwayUpper) {
+    return true;
+  }
+  if (!upper.endsWith('B')) {
+    return false;
+  }
+  return (
+    RUNWAY_IDENTIFIER.test(runwayUpper) && runwayUpper.substring(0, 2) === upper.substring(0, 2)
+  );
 }
 
 /**

@@ -148,13 +148,15 @@ describe('parse', () => {
   });
 
   it('resolves a SID procedure', () => {
-    const result = resolver.parse('ACCRA5');
-    expect(result.elements.length).toBe(1);
-    const el = result.elements[0]!;
+    const result = resolver.parse('KMKE ACCRA5');
+    expect(result.elements.length).toBe(2);
+    const el = result.elements[1]!;
     expect(el.type).toBe('sid');
     if (el.type === 'sid') {
       expect(el.procedure.identifier).toBe('ACCRA5');
       expect(el.procedure.type).toBe('SID');
+      expect(el.transition).toBe(undefined);
+      assert(el.legs.length > 0, 'expected the common route to be expanded');
     }
   });
 
@@ -223,15 +225,11 @@ describe('parse', () => {
     }
   });
 
-  it('marks a dotted procedure with an unknown transition as resolved with empty waypoints', () => {
+  it('marks a dotted procedure with an unknown transition as unresolved', () => {
     const result = resolver.parse('RBELA1.NOTAREALXFER');
     expect(result.elements.length).toBe(1);
-    const el = result.elements[0]!;
-    expect(el.type).toBe('sid');
-    if (el.type === 'sid') {
-      expect(el.procedure.identifier).toBe('RBELA1');
-      expect(el.legs.length).toBe(0);
-    }
+    expect(result.elements[0]!.type).toBe('unresolved');
+    expect(result.elements[0]!.raw).toBe('RBELA1.NOTAREALXFER');
   });
 
   it('marks a dotted token with an unknown procedure as unresolved', () => {
@@ -239,6 +237,41 @@ describe('parse', () => {
     expect(result.elements.length).toBe(1);
     expect(result.elements[0]!.type).toBe('unresolved');
     expect(result.elements[0]!.raw).toBe('NOTAPROC.JJIMY');
+  });
+
+  it('merges the transition named by the fix that follows a SID', () => {
+    const result = resolver.parse('KPWM RBELA1 JJIMY');
+    const sid = result.elements.find((e) => e.type === 'sid');
+    assert(sid && sid.type === 'sid');
+    expect(sid.transition).toBe('JJIMY');
+    const identifiers = sid.legs.map((leg) => leg.fixIdentifier);
+    expect(identifiers[identifiers.length - 1]).toBe('JJIMY');
+    // The fix token after the SID is still parsed as its own waypoint.
+    expect(result.elements[2]?.type).toBe('waypoint');
+  });
+
+  it('merges the transition named by the waypoint that precedes a STAR', () => {
+    const result = resolver.parse('BBOTL AALLE4');
+    const star = result.elements.find((e) => e.type === 'star');
+    assert(star && star.type === 'star');
+    expect(star.transition).toBe('BBOTL');
+    expect(star.legs[0]?.fixIdentifier).toBe('BBOTL');
+  });
+
+  it('expands a transition-only SID through the fix that follows it', () => {
+    // NANDR4 at 50F is published as transitions only, with no common route.
+    const result = resolver.parse('50F NANDR4 EAKER');
+    const sid = result.elements.find((e) => e.type === 'sid');
+    assert(sid && sid.type === 'sid');
+    expect(sid.procedure.commonRoutes.length).toBe(0);
+    expect(sid.transition).toBe('EAKER');
+    assert(sid.legs.length > 0, 'expected the EAKER transition legs');
+  });
+
+  it('marks a transition-only procedure without a usable adjacent fix as unresolved', () => {
+    const result = resolver.parse('50F NANDR4 DCT');
+    expect(result.elements[1]?.type).toBe('unresolved');
+    expect(result.elements[1]?.raw).toBe('NANDR4');
   });
 
   it('parses DDMMN/DDDMMEW coordinates', () => {

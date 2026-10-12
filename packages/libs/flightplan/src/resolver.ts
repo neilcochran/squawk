@@ -127,6 +127,8 @@ export interface SidRouteElement {
   raw: string;
   /** Resolved procedure record. */
   procedure: Procedure;
+  /** Name of the transition merged into `legs`: the one named in a dotted token (`DEEZZ6.CANDR`), or the fix following the SID when it names one of the procedure's transitions. Absent when only the common route was expanded. */
+  transition?: string;
   /** Ordered legs for the procedure expansion. */
   legs: ProcedureLeg[];
 }
@@ -141,6 +143,8 @@ export interface StarRouteElement {
   raw: string;
   /** Resolved procedure record. */
   procedure: Procedure;
+  /** Name of the transition merged into `legs`: the one named in a dotted token (`AALLE4.BBOTL`), or the waypoint preceding the STAR when it names one of the procedure's transitions. Absent when only the common route was expanded. */
+  transition?: string;
   /** Ordered legs for the procedure expansion. */
   legs: ProcedureLeg[];
 }
@@ -444,22 +448,33 @@ function tryAirport(
  * the most recent airport is the best available hint).
  *
  * Accepts both the bare CIFP identifier (e.g. `DEEZZ6`) and the dotted
- * identifier-with-transition form (e.g. `DEEZZ6.CANDR`). When a
- * transition is supplied it is forwarded to the procedure resolver so
- * that the transition's legs are merged into the expansion.
+ * identifier-with-transition form (e.g. `DEEZZ6.CANDR`). A dotted
+ * transition is forwarded to the procedure resolver so that the
+ * transition's legs are merged into the expansion. Without one, the
+ * adjacent fix is tried as the transition name: the token after a SID
+ * or the waypoint before a STAR, which is how routes are usually filed
+ * (`KJFK DEEZZ6 CANDR`). When neither names a transition the common
+ * route alone is expanded.
+ *
+ * Returns `undefined` when the token is not a known SID or STAR. Returns
+ * an `unresolved` element when the procedure is known but cannot be
+ * expanded: the dotted transition is not one of its transitions, or it
+ * has no common route and no adjacent fix names a transition.
  */
 function tryProcedure(
   token: string,
   procedures: FlightplanProcedureLookup | undefined,
   airportContext: string | undefined,
-): SidRouteElement | StarRouteElement | undefined {
+  previousWaypoint: string | undefined,
+  nextToken: string | undefined,
+): SidRouteElement | StarRouteElement | UnresolvedRouteElement | undefined {
   if (!procedures) {
     return undefined;
   }
 
   const dotIndex = token.indexOf('.');
   const identifier = dotIndex >= 0 ? token.slice(0, dotIndex) : token;
-  const transitionName = dotIndex >= 0 ? token.slice(dotIndex + 1) : undefined;
+  const dottedTransition = dotIndex >= 0 ? token.slice(dotIndex + 1) : undefined;
 
   if (identifier.length === 0) {
     return undefined;
@@ -483,15 +498,41 @@ function tryProcedure(
   }
 
   const airportForExpansion = proc.airports[0];
-  const legs =
-    airportForExpansion === undefined
-      ? []
-      : (procedures.expand(airportForExpansion, identifier, transitionName)?.legs ?? []);
-
-  if (proc.type === 'SID') {
-    return { type: 'sid', raw: token, procedure: proc, legs };
+  if (airportForExpansion === undefined) {
+    return { type: 'unresolved', raw: token };
   }
-  return { type: 'star', raw: token, procedure: proc, legs };
+
+  const adjacentFix = proc.type === 'SID' ? nextToken : previousWaypoint;
+  const transitionName = dottedTransition ?? inferTransitionName(proc, adjacentFix);
+  const expansion = procedures.expand(airportForExpansion, identifier, transitionName);
+  if (expansion === undefined) {
+    return { type: 'unresolved', raw: token };
+  }
+
+  const element: SidRouteElement | StarRouteElement =
+    proc.type === 'SID'
+      ? { type: 'sid', raw: token, procedure: proc, legs: expansion.legs }
+      : { type: 'star', raw: token, procedure: proc, legs: expansion.legs };
+  if (transitionName !== undefined) {
+    element.transition = transitionName;
+  }
+  return element;
+}
+
+/**
+ * Returns the procedure's transition whose name matches the adjacent fix
+ * token, in the procedure's own spelling, or `undefined` when there is
+ * no adjacent fix or no transition by that name.
+ */
+function inferTransitionName(
+  procedure: Procedure,
+  adjacentFix: string | undefined,
+): string | undefined {
+  if (adjacentFix === undefined) {
+    return undefined;
+  }
+  const upper = adjacentFix.toUpperCase();
+  return procedure.transitions.find((t) => t.name.toUpperCase() === upper)?.name;
 }
 
 /**
@@ -688,20 +729,31 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
           continue;
         }
 
-        // Try procedure (SID/STAR)
-        const procElement = tryProcedure(token, procedures, lastAirportIdent);
+        // Try procedure (SID/STAR). The fix after a SID or before a STAR may
+        // name the transition when the token itself does not.
+        const procElement = tryProcedure(
+          token,
+          procedures,
+          lastAirportIdent,
+          lastWaypointIdent,
+          tokens[i + 1]?.toUpperCase(),
+        );
         if (procElement) {
           elements.push(procElement);
-          // Update last waypoint to the last fix in the procedure expansion
-          // that actually terminates at a fix (some leg types have no fix).
-          for (let j = procElement.legs.length - 1; j >= 0; j--) {
-            const leg = procElement.legs[j];
-            if (leg?.fixIdentifier !== undefined) {
-              lastWaypointIdent = leg.fixIdentifier;
-              if (leg.lat !== undefined && leg.lon !== undefined) {
-                lastPosition = { lat: leg.lat, lon: leg.lon };
+          if (procElement.type === 'unresolved') {
+            lastWaypointIdent = undefined;
+          } else {
+            // Update last waypoint to the last fix in the procedure expansion
+            // that actually terminates at a fix (some leg types have no fix).
+            for (let j = procElement.legs.length - 1; j >= 0; j--) {
+              const leg = procElement.legs[j];
+              if (leg?.fixIdentifier !== undefined) {
+                lastWaypointIdent = leg.fixIdentifier;
+                if (leg.lat !== undefined && leg.lon !== undefined) {
+                  lastPosition = { lat: leg.lat, lon: leg.lon };
+                }
+                break;
               }
-              break;
             }
           }
           i++;

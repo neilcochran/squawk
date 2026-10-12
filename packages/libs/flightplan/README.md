@@ -120,8 +120,8 @@ Each element has a `type` discriminant and a `raw` field with the original token
 | Type            | Description                               | Key fields                                                  |
 | --------------- | ----------------------------------------- | ----------------------------------------------------------- |
 | `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                   |
-| `sid`           | Standard Instrument Departure             | `procedure`, `legs`                                         |
-| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`                                         |
+| `sid`           | Standard Instrument Departure             | `procedure`, `legs`, `transition`                           |
+| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`, `transition`                           |
 | `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`, `gaps`        |
 | `direct`        | DCT (direct) indicator                    | -                                                           |
 | `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                         |
@@ -152,8 +152,24 @@ is not defined and is not valid as filed.
 When a token matches an airway designation and both a previous waypoint
 and a next token (exit fix) are available, the resolver expands the airway
 between those fixes. The exit fix token is consumed as part of the airway
-element. If expansion fails, the airway token falls through to other
-resolution strategies.
+element. If expansion fails, the airway token is marked `unresolved` and the
+exit fix token is parsed on its own.
+
+### Procedure handling
+
+A token that names a SID or STAR is expanded through the procedure provider.
+The dotted `PROCEDURE.TRANSITION` form (`DEEZZ6.CANDR`) merges the named
+transition into the expansion. Without a dotted transition, the resolver looks
+at the adjacent fix - the token after a SID, or the waypoint before a STAR -
+and merges that transition when the procedure publishes one by that name,
+which is how routes are usually filed (`KJFK DEEZZ6 CANDR`). Otherwise the
+common route alone is expanded. The `sid` or `star` element records the merged
+transition in `transition`.
+
+A procedure that cannot be expanded is marked `unresolved`: either the dotted
+transition is not one of its transitions, or the procedure has no common route
+(some SIDs and STARs are published as transitions only) and no adjacent fix
+names one of its transitions.
 
 ### Identifier ambiguity
 

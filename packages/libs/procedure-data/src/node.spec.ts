@@ -1,6 +1,33 @@
 import { describe, it, expect, assert } from 'vitest';
 
+import type { Procedure, ProcedureLeg } from '@squawk/types';
+
 import { usBundledProcedures } from './node.js';
+
+/**
+ * Great-circle distance in nautical miles between two points.
+ */
+function distanceNm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * toRad;
+  const dLon = (lon2 - lon1) * toRad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) ** 2;
+  return 2 * 3440.065 * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Every leg sequence of a procedure: each common route, each transition
+ * and the missed approach.
+ */
+function legSequences(procedure: Procedure): ProcedureLeg[][] {
+  return [
+    ...procedure.commonRoutes.map((route) => route.legs),
+    ...procedure.transitions.map((transition) => transition.legs),
+    ...(procedure.missedApproach !== undefined ? [procedure.missedApproach.legs] : []),
+  ];
+}
 
 describe('usBundledProcedures', () => {
   it('loads with a reasonable number of records', () => {
@@ -395,5 +422,290 @@ describe('usBundledProcedures', () => {
       }
     }
     assert(checked > 0, 'expected some speed constraints in the dataset');
+  });
+
+  it('resolves runway legs against the procedure airport', () => {
+    // 00U (Hardin, MT) RNAV RWY 26 must end on Hardin's own runway 26, not on
+    // the runway 26 of whichever other airport in the region was read last.
+    const hardin = usBundledProcedures.records.find(
+      (r) => r.airports.includes('00U') && r.identifier === 'R26',
+    );
+    assert(hardin !== undefined, 'expected 00U R26');
+    const runwayLeg = legSequences(hardin)
+      .flat()
+      .find((l) => l.category === 'RUNWAY' && l.fixIdentifier === 'RW26');
+    assert(runwayLeg?.lat !== undefined && runwayLeg.lon !== undefined);
+    expect(distanceNm(runwayLeg.lat, runwayLeg.lon, 45.7444, -107.6517)).toBeLessThan(0.5);
+  });
+
+  it('keeps every airport runway legs within one airfield of each other', () => {
+    // All runway thresholds referenced by an airport's procedures belong to
+    // that airport, so they cannot be spread over more than a few miles.
+    const bounds = new Map<
+      string,
+      { minLat: number; maxLat: number; minLon: number; maxLon: number }
+    >();
+    for (const p of usBundledProcedures.records) {
+      const airport = p.airports[0];
+      if (airport === undefined) {
+        continue;
+      }
+      for (const leg of legSequences(p).flat()) {
+        if (leg.category !== 'RUNWAY' || leg.lat === undefined || leg.lon === undefined) {
+          continue;
+        }
+        const b = bounds.get(airport);
+        if (b === undefined) {
+          bounds.set(airport, {
+            minLat: leg.lat,
+            maxLat: leg.lat,
+            minLon: leg.lon,
+            maxLon: leg.lon,
+          });
+        } else {
+          b.minLat = Math.min(b.minLat, leg.lat);
+          b.maxLat = Math.max(b.maxLat, leg.lat);
+          b.minLon = Math.min(b.minLon, leg.lon);
+          b.maxLon = Math.max(b.maxLon, leg.lon);
+        }
+      }
+    }
+    assert(bounds.size > 1000, 'expected runway legs at more than 1,000 airports');
+    const spread: string[] = [];
+    for (const [airport, b] of bounds) {
+      const diagonalNm = distanceNm(b.minLat, b.minLon, b.maxLat, b.maxLon);
+      if (diagonalNm > 10) {
+        spread.push(`${airport}: ${diagonalNm.toFixed(1)} nm`);
+      }
+    }
+    expect(spread, `runway legs spread over more than 10 nm:\n  ${spread.join('\n  ')}`).toEqual(
+      [],
+    );
+  });
+
+  it('RF arc radii are consistent with the chord from the preceding fix', () => {
+    // The preceding fix and the RF leg's own fix both lie on the arc, so their
+    // separation cannot exceed the arc's diameter. A radius scaled by the wrong
+    // power of ten fails this on nearly every leg.
+    let checked = 0;
+    const violations: string[] = [];
+    for (const p of usBundledProcedures.records) {
+      for (const legs of legSequences(p)) {
+        for (let i = 1; i < legs.length; i++) {
+          const leg = legs[i];
+          const previous = legs[i - 1];
+          if (
+            leg === undefined ||
+            previous === undefined ||
+            leg.pathTerminator !== 'RF' ||
+            leg.arcRadiusNm === undefined ||
+            leg.lat === undefined ||
+            leg.lon === undefined ||
+            previous.lat === undefined ||
+            previous.lon === undefined
+          ) {
+            continue;
+          }
+          checked += 1;
+          const chordNm = distanceNm(previous.lat, previous.lon, leg.lat, leg.lon);
+          if (chordNm > 2 * leg.arcRadiusNm * 1.02 + 0.05) {
+            violations.push(
+              `${p.airports[0]} ${p.identifier} ${previous.fixIdentifier}->${leg.fixIdentifier}: chord ${chordNm.toFixed(2)} nm, radius ${leg.arcRadiusNm} nm`,
+            );
+          }
+        }
+      }
+    }
+    assert(checked > 1000, 'expected more than 1,000 RF legs with resolvable chords');
+    expect(
+      violations.length,
+      `RF chords longer than the arc diameter:\n  ${violations.slice(0, 5).join('\n  ')}`,
+    ).toBe(0);
+  });
+
+  it('uses all three speed descriptors, with mandatory (@) the common STAR case', () => {
+    const counts = { '@': 0, '+': 0, '-': 0 };
+    let starMandatory = 0;
+    let starMaximum = 0;
+    for (const p of usBundledProcedures.records) {
+      for (const leg of legSequences(p).flat()) {
+        if (leg.speedConstraint === undefined) {
+          continue;
+        }
+        counts[leg.speedConstraint.descriptor] += 1;
+        if (p.type === 'STAR') {
+          if (leg.speedConstraint.descriptor === '@') {
+            starMandatory += 1;
+          } else if (leg.speedConstraint.descriptor === '-') {
+            starMaximum += 1;
+          }
+        }
+      }
+    }
+    assert(counts['@'] > 1000, `expected many mandatory speeds, got ${counts['@']}`);
+    assert(counts['-'] > 1000, `expected many maximum speeds, got ${counts['-']}`);
+    assert(counts['+'] > 0, 'expected some minimum speeds');
+    assert(
+      starMandatory > starMaximum,
+      `expected STAR speed restrictions to be mostly mandatory: @ ${starMandatory}, - ${starMaximum}`,
+    );
+  });
+
+  it('gives every IAP at an airport a distinct name', () => {
+    const seen = new Set<string>();
+    const duplicates: string[] = [];
+    for (const p of usBundledProcedures.records) {
+      if (p.type !== 'IAP') {
+        continue;
+      }
+      const key = `${p.airports[0]}::${p.name}`;
+      if (seen.has(key)) {
+        duplicates.push(`${key} (${p.identifier})`);
+      }
+      seen.add(key);
+    }
+    expect(duplicates, `IAPs sharing a name:\n  ${duplicates.slice(0, 5).join('\n  ')}`).toEqual(
+      [],
+    );
+  });
+
+  it('names multiple approaches of the same type with their indicator letter', () => {
+    const indicatorNames = usBundledProcedures.records.filter(
+      (r) => r.type === 'IAP' && /^[A-Z_]+ [A-Z] RWY \d{2}[LRC]?$/.test(r.name),
+    );
+    assert(
+      indicatorNames.length > 500,
+      `expected many Y/Z-style names, got ${indicatorNames.length}`,
+    );
+    const jfk = usBundledProcedures.records.find(
+      (r) => r.airports.includes('KJFK') && r.identifier === 'R027',
+    );
+    assert(jfk !== undefined, 'expected the course-named KJFK R027 approach');
+    expect(jfk.name).toBe('RNAV 027');
+    expect(jfk.runway).toBe(undefined);
+  });
+
+  it('records the runway on runway-specific SID and STAR common routes', () => {
+    let populated = 0;
+    for (const p of usBundledProcedures.records) {
+      for (const route of p.commonRoutes) {
+        if (route.runway === undefined) {
+          continue;
+        }
+        populated += 1;
+        assert(
+          p.type !== 'IAP',
+          `IAP common route carries a runway: ${p.airports[0]} ${p.identifier}`,
+        );
+        assert(/^\d{2}[LRCB]?$/.test(route.runway), `unexpected runway designator ${route.runway}`);
+      }
+    }
+    assert(populated >= 20, `expected at least 20 runway-specific common routes, got ${populated}`);
+  });
+
+  it('carries RNP values with at most three decimals', () => {
+    let checked = 0;
+    for (const p of usBundledProcedures.records) {
+      for (const leg of legSequences(p).flat()) {
+        if (leg.rnpNm === undefined) {
+          continue;
+        }
+        checked += 1;
+        const scaled = leg.rnpNm * 1000;
+        assert(
+          Math.abs(scaled - Math.round(scaled)) < 1e-9,
+          `RNP value carries floating-point noise: ${leg.rnpNm}`,
+        );
+      }
+    }
+    assert(checked > 1000, 'expected many RNP values');
+  });
+
+  it('carries the vertical angle on final approach legs as a descent angle', () => {
+    let count = 0;
+    for (const p of usBundledProcedures.records) {
+      for (const leg of legSequences(p).flat()) {
+        if (leg.verticalAngleDeg === undefined) {
+          continue;
+        }
+        count += 1;
+        assert(
+          leg.verticalAngleDeg <= 0 && leg.verticalAngleDeg >= -10,
+          `implausible vertical angle ${leg.verticalAngleDeg} on ${p.airports[0]} ${p.identifier}`,
+        );
+      }
+    }
+    assert(count > 10_000, `expected vertical angles on many approach legs, got ${count}`);
+  });
+
+  it('publishes the transition altitude on nearly every procedure', () => {
+    const withAltitude = usBundledProcedures.records.filter(
+      (r) => r.transitionAltitudeFt !== undefined,
+    );
+    assert(
+      withAltitude.length / usBundledProcedures.records.length > 0.99,
+      `expected a transition altitude on more than 99% of procedures, got ${withAltitude.length}`,
+    );
+    for (const p of withAltitude) {
+      assert(
+        p.transitionAltitudeFt === 18_000,
+        `unexpected transition altitude ${p.transitionAltitudeFt} on ${p.airports[0]} ${p.identifier}`,
+      );
+    }
+  });
+
+  it('carries route type qualifiers on approach legs and names copter approaches', () => {
+    const qualifier2 = new Map<string, number>();
+    let qualifier1 = 0;
+    let gnssFms = 0;
+    for (const p of usBundledProcedures.records) {
+      for (const leg of legSequences(p).flat()) {
+        if (leg.routeTypeQualifier2 !== undefined) {
+          qualifier2.set(
+            leg.routeTypeQualifier2,
+            (qualifier2.get(leg.routeTypeQualifier2) ?? 0) + 1,
+          );
+        }
+        if (leg.routeTypeQualifier1 !== undefined) {
+          qualifier1 += 1;
+        }
+        if (leg.gnssFmsIndication !== undefined) {
+          gnssFms += 1;
+        }
+      }
+    }
+    expect([...qualifier2.keys()].sort()).toEqual(['C', 'H', 'S']);
+    assert((qualifier2.get('C') ?? 0) > 1000, 'expected many circling approach legs');
+    assert(qualifier1 > 100_000, 'expected route type qualifier 1 on most approach legs');
+    assert(gnssFms > 100_000, 'expected the GNSS/FMS indication on most approach legs');
+    const copter = usBundledProcedures.records.find(
+      (r) => r.airports.includes('KLGA') && r.identifier === 'R250',
+    );
+    assert(copter !== undefined, 'expected the KLGA R250 copter approach');
+    expect(copter.name).toBe('COPTER RNAV 250');
+  });
+
+  it('flags a mandatory turn direction only alongside a turn direction', () => {
+    let count = 0;
+    for (const p of usBundledProcedures.records) {
+      for (const leg of legSequences(p).flat()) {
+        if (leg.turnDirectionValid !== true) {
+          continue;
+        }
+        count += 1;
+        assert(
+          leg.turnDirection !== undefined,
+          `mandatory turn without a direction on ${p.airports[0]} ${p.identifier}`,
+        );
+      }
+    }
+    assert(count > 1000, `expected many mandatory turn directions, got ${count}`);
+  });
+
+  it('gives every SID and STAR a common route or a transition', () => {
+    const empty = usBundledProcedures.records.filter(
+      (r) => r.type !== 'IAP' && r.commonRoutes.length === 0 && r.transitions.length === 0,
+    );
+    expect(empty.map((r) => `${r.airports[0]} ${r.identifier}`)).toEqual([]);
   });
 });
