@@ -159,12 +159,12 @@ export function isAirwayDirection(value: string): value is AirwayDirection {
  * - `NAVAID` - A radio navigation facility (VOR, VORTAC, NDB, etc.)
  * - `FIX` - A named intersection or reporting point
  * - `WAYPOINT` - A named waypoint (typically RNAV)
- * - `BORDER` - A US border crossing point. Reserved: NASR publishes border
- *   crossings without coordinates, and the bundled data omits every point it
- *   cannot place, so no bundled waypoint carries this value.
  * - `OTHER` - Other point type (unnamed, turning point, etc.)
+ *
+ * NASR publishes US border crossings as airway points without coordinates;
+ * the bundled data omits them.
  */
-export type AirwayWaypointType = 'NAVAID' | 'FIX' | 'WAYPOINT' | 'BORDER' | 'OTHER';
+export type AirwayWaypointType = 'NAVAID' | 'FIX' | 'WAYPOINT' | 'OTHER';
 
 /**
  * A single waypoint along an airway route. Waypoints are ordered

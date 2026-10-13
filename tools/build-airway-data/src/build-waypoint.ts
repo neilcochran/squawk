@@ -142,11 +142,8 @@ export function publishedDistanceNm(
 /**
  * Determines the AirwayWaypointType from an AWY2 facility/fix type string.
  */
-export function classifyWaypointType(facilityType: string, name: string): AirwayWaypointType {
+export function classifyWaypointType(facilityType: string): AirwayWaypointType {
   if (!facilityType) {
-    if (name.includes('BORDER') || name.includes('MEXICAN') || name.includes('CANADIAN')) {
-      return 'BORDER';
-    }
     return 'OTHER';
   }
 
@@ -210,7 +207,7 @@ export function buildWaypoint(
     return undefined;
   }
 
-  const waypointType = classifyWaypointType(point.facilityType, point.name);
+  const waypointType = classifyWaypointType(point.facilityType);
 
   const wp: AirwayWaypoint = {
     name: point.name,

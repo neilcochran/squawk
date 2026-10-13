@@ -53,6 +53,7 @@ const sampleAirport: Airport = {
   lat: 42.3643,
   lon: -71.0052,
   timezone: 'America/New_York',
+  elevationFt: 20,
   runways: [],
   frequencies: [],
 };

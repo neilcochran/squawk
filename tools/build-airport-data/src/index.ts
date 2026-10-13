@@ -7,7 +7,7 @@ import { parseNasrArgs, parseCsv } from '@squawk/build-shared';
 import type { CsvRecord } from '@squawk/build-shared';
 import type { Airport } from '@squawk/types';
 
-import { buildAirport } from './parse-airports.js';
+import { buildAirport, isAirportFrequencyRecord } from './parse-airports.js';
 import { writeOutput } from './write-output.js';
 
 /** Subdirectory within a NASR subscription directory containing the CSV data ZIP. */
@@ -108,7 +108,14 @@ async function main(): Promise<void> {
     const rwyBySite = groupBy(rwyRecords, (r) => r.SITE_NO);
     const rwyEndBySite = groupBy(rwyEndRecords, (r) => r.SITE_NO);
 
-    const freqByFacility = groupBy(freqRecords, (r) => r.SERVICED_FACILITY ?? r.FACILITY);
+    // FRQ.csv also lists the frequencies of navaids and other facilities that
+    // share an airport's identifier; keep the rows the FAA lists under the
+    // airport itself and its weather, RCO, FSS and radio services.
+    const airportFreqRecords = freqRecords.filter(isAirportFrequencyRecord);
+    console.log(
+      `[index] Kept ${airportFreqRecords.length} of ${freqRecords.length} frequency rows for airport site types.`,
+    );
+    const freqByFacility = groupBy(airportFreqRecords, (r) => r.SERVICED_FACILITY ?? r.FACILITY);
 
     const ilsBaseBySite = groupBy(ilsBaseRecords, (r) => r.SITE_NO);
     const ilsGsBySite = groupBy(ilsGsRecords, (r) => r.SITE_NO);

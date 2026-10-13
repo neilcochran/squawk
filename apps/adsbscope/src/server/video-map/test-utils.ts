@@ -20,6 +20,7 @@ export function makeAirport(overrides: Partial<Airport> = {}): Airport {
     lat: 40.1,
     lon: -74,
     timezone: 'America/New_York',
+    elevationFt: 120,
     towerType: 'NON-ATCT',
     runways: [],
     frequencies: [],

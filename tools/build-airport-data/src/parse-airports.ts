@@ -11,13 +11,20 @@ import type {
   IlsSystem,
   IlsSystemType,
   OwnershipType,
+  PavementClassification,
+  PavementClassificationSystem,
+  PavementEvaluationMethod,
+  PavementType,
   Runway,
   RunwayEnd,
   RunwayLighting,
   RunwayMarkingCondition,
   RunwayMarkingType,
+  RvrLocation,
+  SubgradeStrengthCategory,
   SurfaceCondition,
   SurfaceTreatment,
+  TirePressureCategory,
   VgsiType,
 } from '@squawk/types';
 import { ILS_CATEGORY_MAP, ILS_SYSTEM_TYPE_MAP } from '@squawk/types';
@@ -121,6 +128,63 @@ const glideSlopeTypeMap: Record<string, string> = {
   GD: 'GLIDE SLOPE/DME',
 };
 
+/** Maps the letters of the RWY_VISUAL_RANGE_EQUIP_CODE column to RVR locations. */
+const rvrLocationMap: Record<string, RvrLocation> = {
+  T: 'TOUCHDOWN',
+  M: 'MIDPOINT',
+  R: 'ROLLOUT',
+};
+
+/** Maps PAVEMENT_CLASSIFICATION values to the rating system. */
+const pavementSystemMap: Record<string, PavementClassificationSystem> = {
+  PCN: 'PCN',
+  PCR: 'PCR',
+};
+
+/** Maps PAVEMENT_TYPE_CODE values. */
+const pavementTypeMap: Record<string, PavementType> = {
+  R: 'RIGID',
+  F: 'FLEXIBLE',
+};
+
+/** Maps SUBGRADE_STRENGTH_CODE values. */
+const subgradeStrengthMap: Record<string, SubgradeStrengthCategory> = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
+  D: 'D',
+};
+
+/** Maps TIRE_PRES_CODE values. */
+const tirePressureMap: Record<string, TirePressureCategory> = {
+  W: 'W',
+  X: 'X',
+  Y: 'Y',
+  Z: 'Z',
+};
+
+/** Maps DTRM_METHOD_CODE values. */
+const evaluationMethodMap: Record<string, PavementEvaluationMethod> = {
+  T: 'TECHNICAL',
+  U: 'USING_AIRCRAFT',
+};
+
+/** SERVICED_SITE_TYPE values that name the airport itself. */
+const AIRPORT_SITE_TYPES: ReadonlySet<string> = new Set([
+  'AIRPORT',
+  'HELIPORT',
+  'SEAPLANE BASE',
+  'GLIDERPORT',
+  'ULTRALIGHT',
+  'BALLOONPORT',
+]);
+
+/** SERVICED_SITE_TYPE values of the services the FAA lists under an airport: its weather broadcast, remote communications outlet, flight service station or radio. */
+const AIRPORT_SERVICE_SITE_TYPE = /^(AWOS|ASOS|RCO|FSS|RADIO)/;
+
+/** A frequency value at or above this is published in kHz (HF) rather than MHz. */
+const KHZ_THRESHOLD = 1000;
+
 /**
  * Safely parses a string to a float, returning undefined if empty or NaN.
  */
@@ -144,13 +208,166 @@ function parseOptInt(val: string | undefined): number | undefined {
 }
 
 /**
+ * Parses a positive integer dimension, returning undefined when blank, not a
+ * number, or the FAA's `0` placeholder for an unknown value.
+ */
+function parseDimension(val: string | undefined): number | undefined {
+  const n = parseOptInt(val);
+  return n !== undefined && n > 0 ? n : undefined;
+}
+
+/**
+ * Whether a FRQ.csv record whose serviced facility shares an airport's
+ * identifier is one of that airport's frequencies. The file also lists the
+ * frequencies of navaids, remote centre air/ground sites and other facilities
+ * that happen to share the identifier; those are told apart by the serviced
+ * site type and the providing facility type.
+ *
+ * @param rec - Parsed FRQ.csv record.
+ * @returns `true` when the record belongs to the airport or to a weather, RCO, FSS or radio service the FAA lists under it.
+ */
+export function isAirportFrequencyRecord(rec: CsvRecord): boolean {
+  if (rec.FACILITY_TYPE === 'NAVAID') {
+    return false;
+  }
+  const siteType = rec.SERVICED_SITE_TYPE ?? '';
+  return AIRPORT_SITE_TYPES.has(siteType) || AIRPORT_SERVICE_SITE_TYPE.test(siteType);
+}
+
+/**
+ * The parts of a FRQ.csv FREQ value.
+ */
+export interface ParsedFrequency {
+  /** Frequency in MHz, with kHz values converted. */
+  frequencyMhz: number;
+  /** Whether the value carries the FAA's receive-only qualifier `R`. */
+  receiveOnly: boolean;
+  /** Whether the value carries the FAA's on-request qualifier `X`. */
+  onRequest: boolean;
+  /** Text the FAA appended after the value (an HF family name, for example), if any. */
+  note: string | undefined;
+}
+
+/**
+ * Parses a FRQ.csv FREQ value: a number in MHz, or in kHz for HF, optionally
+ * followed by an `R` or `X` qualifier and by free text (`122.1R`, `8903X`,
+ * `11387 CARIBBEAN FAMILY B`). Paired navaid values such as `116.65/113Y` do
+ * not parse.
+ *
+ * @param raw - The FREQ column value.
+ * @returns The parsed parts, or undefined when the value is not a frequency.
+ */
+export function parseFrequencyField(raw: string): ParsedFrequency | undefined {
+  const match = /^(\d+(?:\.\d+)?)([RX])?(?:\s+(.*))?$/.exec(raw.trim());
+  const valueText = match?.[1];
+  if (valueText === undefined) {
+    return undefined;
+  }
+  let frequencyMhz = parseFloat(valueText);
+  if (!Number.isFinite(frequencyMhz) || frequencyMhz <= 0) {
+    return undefined;
+  }
+  if (frequencyMhz >= KHZ_THRESHOLD) {
+    frequencyMhz = Number((frequencyMhz / 1000).toFixed(4));
+  }
+  const qualifier = match?.[2];
+  const note = match?.[3]?.trim();
+  return {
+    frequencyMhz,
+    receiveOnly: qualifier === 'R',
+    onRequest: qualifier === 'X',
+    note: note === undefined || note === '' ? undefined : note,
+  };
+}
+
+/**
+ * Parses the RWY_VISUAL_RANGE_EQUIP_CODE column, one letter per location at
+ * which RVR is measured (`T`, `M`, `R` in any combination) or `N` for none.
+ *
+ * @param code - The column value.
+ * @returns The locations in touchdown, midpoint, rollout order.
+ */
+export function parseRvrLocations(code: string | undefined): RvrLocation[] {
+  const locations: RvrLocation[] = [];
+  for (const letter of code ?? '') {
+    const location = rvrLocationMap[letter];
+    if (location !== undefined && !locations.includes(location)) {
+      locations.push(location);
+    }
+  }
+  return locations;
+}
+
+/**
+ * Builds the pavement classification of a runway from the six APT_RWY.csv
+ * columns that hold its parts. A runway without a rating has all six blank;
+ * a rating with an unrecognised code is left off and the code is logged.
+ *
+ * @param rec - Parsed APT_RWY.csv record.
+ * @returns The classification, or undefined when the runway has none.
+ */
+export function buildPavementClassification(rec: CsvRecord): PavementClassification | undefined {
+  const systemCode = rec.PAVEMENT_CLASSIFICATION ?? '';
+  const typeCode = rec.PAVEMENT_TYPE_CODE ?? '';
+  const subgradeCode = rec.SUBGRADE_STRENGTH_CODE ?? '';
+  const tireCode = rec.TIRE_PRES_CODE ?? '';
+  const methodCode = rec.DTRM_METHOD_CODE ?? '';
+  const value = parseOptInt(rec.PCN_PCR_NUMBER);
+  if (
+    systemCode === '' ||
+    typeCode === '' ||
+    subgradeCode === '' ||
+    tireCode === '' ||
+    methodCode === '' ||
+    value === undefined
+  ) {
+    return undefined;
+  }
+  const system = lookupCode(
+    pavementSystemMap,
+    systemCode,
+    'PAVEMENT_CLASSIFICATION',
+    'parse-airports',
+  );
+  const pavementType = lookupCode(
+    pavementTypeMap,
+    typeCode,
+    'PAVEMENT_TYPE_CODE',
+    'parse-airports',
+  );
+  const subgradeStrength = lookupCode(
+    subgradeStrengthMap,
+    subgradeCode,
+    'SUBGRADE_STRENGTH_CODE',
+    'parse-airports',
+  );
+  const tirePressure = lookupCode(tirePressureMap, tireCode, 'TIRE_PRES_CODE', 'parse-airports');
+  const evaluationMethod = lookupCode(
+    evaluationMethodMap,
+    methodCode,
+    'DTRM_METHOD_CODE',
+    'parse-airports',
+  );
+  if (
+    system === undefined ||
+    pavementType === undefined ||
+    subgradeStrength === undefined ||
+    tirePressure === undefined ||
+    evaluationMethod === undefined
+  ) {
+    return undefined;
+  }
+  return { system, value, pavementType, subgradeStrength, tirePressure, evaluationMethod };
+}
+
+/**
  * Builds an IlsSystem from ILS CSV records for a specific runway end.
  * Merges base, glide slope, and DME component data into a single object.
  *
  * @param baseRec - Parsed ILS_BASE.csv record for this runway end.
  * @param gsRec - Parsed ILS_GS.csv record for this runway end, if present.
  * @param dmeRec - Parsed ILS_DME.csv record for this runway end, if present.
- * @returns An IlsSystem object, or undefined if the system type is unrecognized or shutdown.
+ * @returns An IlsSystem object, or undefined if the system type is unrecognized, the system is shutdown, or the localizer identifier, frequency or course is missing.
  */
 function buildIlsSystem(
   baseRec: CsvRecord,
@@ -172,11 +389,19 @@ function buildIlsSystem(
     return undefined;
   }
 
-  const ils: IlsSystem = { systemType };
-
-  if (baseRec.ILS_LOC_ID) {
-    ils.identifier = 'I-' + baseRec.ILS_LOC_ID;
+  const locId = baseRec.ILS_LOC_ID;
+  const locFreq = parseOptFloat(baseRec.LOC_FREQ);
+  const course = parseOptFloat(baseRec.APCH_BEAR);
+  if (!locId || locFreq === undefined || course === undefined) {
+    return undefined;
   }
+
+  const ils: IlsSystem = {
+    systemType,
+    identifier: 'I-' + locId,
+    localizerFrequencyMhz: locFreq,
+    localizerMagneticCourseDeg: course,
+  };
 
   const catCode = baseRec.CATEGORY;
   if (catCode) {
@@ -184,16 +409,6 @@ function buildIlsSystem(
     if (category) {
       ils.category = category;
     }
-  }
-
-  const locFreq = parseOptFloat(baseRec.LOC_FREQ);
-  if (locFreq !== undefined) {
-    ils.localizerFrequencyMhz = locFreq;
-  }
-
-  const course = parseOptFloat(baseRec.APCH_BEAR);
-  if (course !== undefined) {
-    ils.localizerMagneticCourseDeg = course;
   }
 
   // Glide slope data from ILS_GS record.
@@ -303,8 +518,10 @@ function buildRunwayEnd(rec: CsvRecord, ils: IlsSystem | undefined): RunwayEnd {
     }
   }
 
-  if (rec.RWY_VISUAL_RANGE_EQUIP_CODE === 'Y') {
+  const rvrLocations = parseRvrLocations(rec.RWY_VISUAL_RANGE_EQUIP_CODE);
+  if (rvrLocations.length > 0) {
     end.hasRvr = true;
+    end.rvrLocations = rvrLocations;
   }
   if (rec.APCH_LGT_SYSTEM_CODE) {
     end.approachLights = rec.APCH_LGT_SYSTEM_CODE;
@@ -367,11 +584,11 @@ function buildRunway(
     }),
   };
 
-  const len = parseOptInt(rec.RWY_LEN);
+  const len = parseDimension(rec.RWY_LEN);
   if (len !== undefined) {
     runway.lengthFt = len;
   }
-  const width = parseOptInt(rec.RWY_WIDTH);
+  const width = parseDimension(rec.RWY_WIDTH);
   if (width !== undefined) {
     runway.widthFt = width;
   }
@@ -395,8 +612,9 @@ function buildRunway(
     }
   }
 
-  if (rec.PCN) {
-    runway.pcn = rec.PCN;
+  const pavementClassification = buildPavementClassification(rec);
+  if (pavementClassification !== undefined) {
+    runway.pavementClassification = pavementClassification;
   }
 
   const lgt = rec.RWY_LGT_CODE;
@@ -431,22 +649,46 @@ function buildRunway(
  * Builds an AirportFrequency from a FRQ.csv record.
  *
  * @param rec - Parsed FRQ.csv record.
- * @returns An AirportFrequency object, or undefined if the frequency is missing.
+ * @returns An AirportFrequency object, or undefined if the frequency or its use is missing.
  */
-function buildFrequency(rec: CsvRecord): AirportFrequency | undefined {
-  const freq = parseOptFloat(rec.FREQ);
+export function buildFrequency(rec: CsvRecord): AirportFrequency | undefined {
+  const parsed = parseFrequencyField(rec.FREQ ?? '');
   const use = rec.FREQ_USE;
-  if (freq === undefined || !use) {
+  if (parsed === undefined || !use) {
     return undefined;
   }
 
   const result: AirportFrequency = {
-    frequencyMhz: freq,
+    frequencyMhz: parsed.frequencyMhz,
     use,
   };
 
   if (rec.SECTORIZATION) {
     result.sectorization = rec.SECTORIZATION;
+  }
+  if (parsed.receiveOnly) {
+    result.receiveOnly = true;
+  }
+  if (parsed.onRequest) {
+    result.onRequest = true;
+  }
+  if (rec.FACILITY) {
+    result.provider = rec.FACILITY;
+  }
+  if (rec.FACILITY_TYPE) {
+    result.providerType = rec.FACILITY_TYPE;
+  }
+  if (rec.TOWER_OR_COMM_CALL) {
+    result.callSign = rec.TOWER_OR_COMM_CALL;
+  }
+  if (rec.PRIMARY_APPROACH_RADIO_CALL) {
+    result.approachCallSign = rec.PRIMARY_APPROACH_RADIO_CALL;
+  }
+  const remark = [parsed.note, rec.REMARK]
+    .filter((part): part is string => part !== undefined && part !== '')
+    .join('; ');
+  if (remark !== '') {
+    result.remark = remark;
   }
 
   return result;
@@ -458,7 +700,7 @@ function buildFrequency(rec: CsvRecord): AirportFrequency | undefined {
  * @param base - Parsed APT_BASE.csv record.
  * @param rwyRecords - Associated APT_RWY.csv records.
  * @param rwyEndRecords - Associated APT_RWY_END.csv records.
- * @param freqRecords - Associated FRQ.csv records.
+ * @param freqRecords - Associated FRQ.csv records, already limited to the airport's own.
  * @param ilsBaseRecords - Associated ILS_BASE.csv records for this airport.
  * @param ilsGsRecords - Associated ILS_GS.csv records for this airport.
  * @param ilsDmeRecords - Associated ILS_DME.csv records for this airport.
@@ -481,8 +723,18 @@ export function buildAirport(
   const siteNo = base.SITE_NO;
   const lat = parseOptFloat(base.LAT_DECIMAL);
   const lon = parseOptFloat(base.LONG_DECIMAL);
+  const elevationFt = parseOptFloat(base.ELEV);
 
-  if (!faaId || !name || !city || !country || !siteNo || lat === undefined || lon === undefined) {
+  if (
+    !faaId ||
+    !name ||
+    !city ||
+    !country ||
+    !siteNo ||
+    lat === undefined ||
+    lon === undefined ||
+    elevationFt === undefined
+  ) {
     return undefined;
   }
 
@@ -522,6 +774,7 @@ export function buildAirport(
     lat,
     lon,
     timezone,
+    elevationFt,
     runways: [],
     frequencies: [],
   };
@@ -532,10 +785,6 @@ export function buildAirport(
 
   if (base.ICAO_ID) {
     airport.icao = base.ICAO_ID;
-  }
-  const elev = parseOptFloat(base.ELEV);
-  if (elev !== undefined) {
-    airport.elevationFt = elev;
   }
   const magVar = parseOptFloat(base.MAG_VARN);
   if (magVar !== undefined) {
@@ -550,7 +799,7 @@ export function buildAirport(
   }
   const tpa = parseOptFloat(base.TPA);
   if (tpa !== undefined) {
-    airport.trafficPatternAltitudeFt = tpa;
+    airport.trafficPatternAltitudeFtAgl = tpa;
   }
   if (base.CHART_NAME) {
     airport.sectionChart = base.CHART_NAME;
@@ -660,12 +909,19 @@ export function buildAirport(
     airport.runways.push(buildRunway(rwyRec, ends, ilsByRwyEnd));
   }
 
-  // Build frequencies
+  // Build frequencies, dropping rows the FAA publishes twice.
+  const seenFrequencies = new Set<string>();
   for (const freqRec of freqRecords) {
     const freq = buildFrequency(freqRec);
-    if (freq) {
-      airport.frequencies.push(freq);
+    if (freq === undefined) {
+      continue;
     }
+    const key = JSON.stringify(freq);
+    if (seenFrequencies.has(key)) {
+      continue;
+    }
+    seenFrequencies.add(key);
+    airport.frequencies.push(freq);
   }
 
   return airport;

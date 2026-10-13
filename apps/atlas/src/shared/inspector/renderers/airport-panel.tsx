@@ -59,7 +59,7 @@ export function AirportPanel({ record }: AirportPanelProps): ReactElement {
         <InspectorSection title={`Frequencies (${record.frequencies.length})`}>
           {record.frequencies.map((frequency, idx) => (
             <InspectorRow key={`${frequency.use}-${idx}`} label={frequency.use}>
-              {`${frequency.frequencyMhz.toFixed(2)} MHz`}
+              {`${frequency.frequencyMhz.toFixed(frequency.frequencyMhz < 30 ? 3 : 2)} MHz`}
             </InspectorRow>
           ))}
         </InspectorSection>

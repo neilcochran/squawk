@@ -20,6 +20,7 @@ function baseRec(overrides: Partial<CsvRecord> = {}): CsvRecord {
     SITE_NO: '15793.*A',
     LAT_DECIMAL: '40.6398',
     LONG_DECIMAL: '-73.7789',
+    ELEV: '13',
     SITE_TYPE_CODE: 'A',
     OWNERSHIP_TYPE_CODE: 'PU',
     FACILITY_USE_CODE: 'PU',
@@ -67,7 +68,7 @@ describe('buildAirport - optional base fields', () => {
     expect(airport.magneticVariationDeg).toBe(13.5);
     expect(airport.magneticVariationDirection).toBe('W');
     expect(airport.magneticVariationYear).toBe(2020);
-    expect(airport.trafficPatternAltitudeFt).toBe(1000);
+    expect(airport.trafficPatternAltitudeFtAgl).toBe(1000);
     expect(airport.sectionChart).toBe('NEW YORK');
     expect(airport.artccId).toBe('ZNY');
     expect(airport.towerType).toBe('T');
@@ -150,7 +151,12 @@ describe('buildAirport - runways with full optional fields', () => {
       SURFACE_TYPE_CODE: 'ASPH-CONC',
       COND: 'EXCELLENT',
       TREATMENT_CODE: 'GRVD',
-      PCN: '99/F/A/W/T',
+      PAVEMENT_CLASSIFICATION: 'PCN',
+      PCN_PCR_NUMBER: '99',
+      PAVEMENT_TYPE_CODE: 'F',
+      SUBGRADE_STRENGTH_CODE: 'A',
+      TIRE_PRES_CODE: 'W',
+      DTRM_METHOD_CODE: 'T',
       RWY_LGT_CODE: 'HIGH',
       GROSS_WT_SW: '100.0',
       GROSS_WT_DW: '210.0',
@@ -167,7 +173,14 @@ describe('buildAirport - runways with full optional fields', () => {
     expect(r.surfaceType).toBe('ASPH-CONC');
     expect(r.condition).toBe('EXCELLENT');
     expect(r.treatment).toBe('GROOVED');
-    expect(r.pcn).toBe('99/F/A/W/T');
+    expect(r.pavementClassification).toEqual({
+      system: 'PCN',
+      value: 99,
+      pavementType: 'FLEXIBLE',
+      subgradeStrength: 'A',
+      tirePressure: 'W',
+      evaluationMethod: 'TECHNICAL',
+    });
     expect(r.lighting).toBe('HIGH');
     expect(r.weightLimitSingleWheelKlb).toBe(100);
     expect(r.weightLimitDualWheelKlb).toBe(210);
@@ -202,7 +215,7 @@ describe('buildAirport - runways with full optional fields', () => {
       DISPLACED_THR_ELEV: '13',
       TDZ_ELEV: '13',
       VGSI_CODE: 'P4L',
-      RWY_VISUAL_RANGE_EQUIP_CODE: 'Y',
+      RWY_VISUAL_RANGE_EQUIP_CODE: 'TMR',
       APCH_LGT_SYSTEM_CODE: 'ALSF2',
       RWY_END_LGTS_FLAG: 'Y',
       CNTRLN_LGTS_AVBL_FLAG: 'Y',
@@ -238,6 +251,7 @@ describe('buildAirport - runways with full optional fields', () => {
     expect(e.tdzElevationFt).toBe(13);
     expect(e.vgsiType).toBe('PAPI-4L');
     expect(e.hasRvr).toBe(true);
+    expect(e.rvrLocations).toEqual(['TOUCHDOWN', 'MIDPOINT', 'ROLLOUT']);
     expect(e.approachLights).toBe('ALSF2');
     expect(e.hasReil).toBe(true);
     expect(e.hasCenterlineLights).toBe(true);
@@ -354,6 +368,9 @@ describe('buildAirport - ILS systems', () => {
       SITE_NO: '15793.*A',
       RWY_END_ID: '04L',
       SYSTEM_TYPE_CODE: 'LS',
+      ILS_LOC_ID: 'IJFK',
+      LOC_FREQ: '109.5',
+      APCH_BEAR: '040',
     };
     const ilsGs = {
       SITE_NO: '15793.*A',
@@ -417,17 +434,22 @@ describe('buildAirport - ILS systems', () => {
     expect(e.ils).toBe(undefined);
   });
 
-  it('omits localizer course and frequency when the values are missing', () => {
+  it('drops an ILS whose localizer identifier, frequency or course is missing', () => {
     const runway = { SITE_NO: '15793.*A', RWY_ID: '04L/22R' };
     const end = { SITE_NO: '15793.*A', RWY_ID: '04L/22R', RWY_END_ID: '04L' };
-    const ilsBase = { SITE_NO: '15793.*A', RWY_END_ID: '04L', SYSTEM_TYPE_CODE: 'LS' };
-    const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [], []);
-    const ils = airport?.runways[0]?.ends[0]?.ils;
-    assert(ils);
-    expect(ils.identifier).toBe(undefined);
-    expect(ils.category).toBe(undefined);
-    expect(ils.localizerFrequencyMhz).toBe(undefined);
-    expect(ils.localizerMagneticCourseDeg).toBe(undefined);
+    const complete = {
+      SITE_NO: '15793.*A',
+      RWY_END_ID: '04L',
+      SYSTEM_TYPE_CODE: 'LS',
+      ILS_LOC_ID: 'IJFK',
+      LOC_FREQ: '109.5',
+      APCH_BEAR: '040',
+    };
+    for (const missing of ['ILS_LOC_ID', 'LOC_FREQ', 'APCH_BEAR']) {
+      const ilsBase = { ...complete, [missing]: '' };
+      const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [], []);
+      expect(airport?.runways[0]?.ends[0]?.ils).toBe(undefined);
+    }
   });
 
   it('omits ILS category when the code is unknown', () => {
@@ -437,6 +459,9 @@ describe('buildAirport - ILS systems', () => {
       SITE_NO: '15793.*A',
       RWY_END_ID: '04L',
       SYSTEM_TYPE_CODE: 'LS',
+      ILS_LOC_ID: 'IJFK',
+      LOC_FREQ: '109.5',
+      APCH_BEAR: '040',
       CATEGORY: 'BOGUS',
     };
     const airport = buildAirport(baseRec(), [runway], [end], [], [ilsBase], [], []);

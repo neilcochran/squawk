@@ -121,12 +121,17 @@ describe('usBundledAirways', () => {
     assert(airway('SPZK214').waypoints.length >= 8);
   });
 
-  it('never carries the reserved BORDER waypoint type', () => {
-    const waypointTypes = new Set(allWaypoints().map((wp) => wp.waypointType));
+  it('uses only the published waypoint types', () => {
+    const waypointTypes = new Set<string>(allWaypoints().map((wp) => wp.waypointType));
     assert(waypointTypes.has('NAVAID'), 'expected NAVAID waypoints');
     assert(waypointTypes.has('FIX'), 'expected FIX waypoints');
     assert(waypointTypes.has('WAYPOINT'), 'expected WAYPOINT waypoints');
-    expect(waypointTypes.has('BORDER')).toBe(false);
+    for (const type of waypointTypes) {
+      assert(
+        ['NAVAID', 'FIX', 'WAYPOINT', 'OTHER'].includes(type),
+        `unexpected waypoint type ${type}`,
+      );
+    }
   });
 
   it('contains airways with MEA data on waypoints', () => {

@@ -38,7 +38,7 @@ export function registerAirportTools(server: McpServer): void {
     {
       title: 'Get airport by FAA identifier',
       description:
-        'Looks up a US airport by its FAA location identifier (e.g. "JFK", "LAX", "3N6"). Returns the full airport record including runways, frequencies, and ILS data, or null if no match is found.',
+        'Looks up a US airport by its FAA location identifier (e.g. "JFK", "LAX", "3N6"). Returns the full airport record including runways (with pavement classification, RVR locations and declared distances), frequencies (in MHz, with the FAA\'s receive-only and on-request qualifiers, the providing facility and its type, call signs and remarks; HF frequencies the FAA publishes in kHz are converted), and ILS data, or null if no match is found. The traffic pattern altitude is in feet above the field.',
       inputSchema: {
         faaId: z.string().min(1).describe('FAA location identifier (case-insensitive).'),
       },
@@ -64,7 +64,7 @@ export function registerAirportTools(server: McpServer): void {
     {
       title: 'Get airport by ICAO code',
       description:
-        'Looks up a US airport by its ICAO code (e.g. "KJFK", "KLAX"). Returns the full airport record including runways, frequencies, and ILS data, or null if no match is found.',
+        'Looks up a US airport by its ICAO code (e.g. "KJFK", "KLAX"). Returns the full airport record including runways (with pavement classification, RVR locations and declared distances), frequencies (in MHz, with the FAA\'s receive-only and on-request qualifiers, the providing facility and its type, call signs and remarks; HF frequencies the FAA publishes in kHz are converted), and ILS data, or null if no match is found. The traffic pattern altitude is in feet above the field.',
       inputSchema: {
         icao: z.string().min(1).describe('ICAO airport code (case-insensitive).'),
       },
