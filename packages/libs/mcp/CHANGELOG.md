@@ -1,5 +1,34 @@
 # @squawk/mcp
 
+## 0.14.8
+
+### Patch Changes
+
+- 83773dc: ### Changed
+
+  - `get_airport_by_faa_id` and `get_airport_by_icao` describe the airport record they return: frequencies in MHz with the FAA's receive-only and on-request qualifiers, the providing facility, call signs and remarks, runways with their pavement classification and RVR locations, and the traffic pattern altitude in feet above the field.
+
+- Updated dependencies [83773dc]
+- Updated dependencies [83773dc]
+  - @squawk/airport-data@0.9.0
+  - @squawk/types@0.15.0
+  - @squawk/airports@0.7.8
+  - @squawk/flightplan@0.9.1
+  - @squawk/airspace@0.10.2
+  - @squawk/airway-data@0.7.1
+  - @squawk/airways@0.7.1
+  - @squawk/fix-data@0.7.7
+  - @squawk/fixes@0.5.8
+  - @squawk/geo@0.5.5
+  - @squawk/icao-registry@0.5.14
+  - @squawk/icao-registry-data@0.8.20
+  - @squawk/navaid-data@0.7.7
+  - @squawk/navaids@0.6.8
+  - @squawk/notams@0.3.18
+  - @squawk/procedure-data@0.9.3
+  - @squawk/procedures@0.8.3
+  - @squawk/weather@0.6.7
+
 ## 0.14.7
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@squawk/navaids",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "type": "module",
   "description": "Navaid queries by identifier, frequency, type, location, or name search",
   "author": "Neil Cochran",
@@ -41,12 +41,12 @@
     "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
-    "@squawk/geo": "^0.5.4",
+    "@squawk/geo": "^0.5.5",
     "@squawk/search": "^0.1.0",
-    "@squawk/types": "^0.14.0"
+    "@squawk/types": "^0.15.0"
   },
   "devDependencies": {
-    "@squawk/navaid-data": "^0.7.6",
+    "@squawk/navaid-data": "^0.7.7",
     "@types/node": "^26.6.4"
   },
   "keywords": [

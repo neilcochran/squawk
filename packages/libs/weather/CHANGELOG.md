@@ -1,5 +1,12 @@
 # @squawk/weather
 
+## 0.6.7
+
+### Patch Changes
+
+- Updated dependencies [83773dc]
+  - @squawk/types@0.15.0
+
 ## 0.6.6
 
 ### Patch Changes

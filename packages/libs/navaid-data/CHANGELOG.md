@@ -1,5 +1,12 @@
 # @squawk/navaid-data
 
+## 0.7.7
+
+### Patch Changes
+
+- Updated dependencies [83773dc]
+  - @squawk/types@0.15.0
+
 ## 0.7.6
 
 ### Patch Changes
