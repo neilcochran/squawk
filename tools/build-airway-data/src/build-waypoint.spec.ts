@@ -10,40 +10,35 @@ import { pointRecord, segmentRecord } from './test-utils.js';
 
 describe('classifyWaypointType', () => {
   it('classifies VOR/VORTAC/NDB/TACAN/DME facility types as NAVAID', () => {
-    expect(classifyWaypointType('VOR/DME', 'JFK')).toBe('NAVAID');
-    expect(classifyWaypointType('VORTAC', 'BOS')).toBe('NAVAID');
-    expect(classifyWaypointType('NDB', 'XYZ')).toBe('NAVAID');
-    expect(classifyWaypointType('TACAN', 'XYZ')).toBe('NAVAID');
-    expect(classifyWaypointType('VOR/DME/TACAN', 'XYZ')).toBe('NAVAID');
+    expect(classifyWaypointType('VOR/DME')).toBe('NAVAID');
+    expect(classifyWaypointType('VORTAC')).toBe('NAVAID');
+    expect(classifyWaypointType('NDB')).toBe('NAVAID');
+    expect(classifyWaypointType('TACAN')).toBe('NAVAID');
+    expect(classifyWaypointType('VOR/DME/TACAN')).toBe('NAVAID');
   });
 
   it('classifies WAY-PT as WAYPOINT', () => {
-    expect(classifyWaypointType('WAY-PT', 'OBAAK')).toBe('WAYPOINT');
+    expect(classifyWaypointType('WAY-PT')).toBe('WAYPOINT');
   });
 
   it('classifies REP-PT, AWY-INTXN, COORDN-FIX, MIL-REP-PT, FIX, TURN-PT as FIX', () => {
-    expect(classifyWaypointType('REP-PT', 'ABC')).toBe('FIX');
-    expect(classifyWaypointType('AWY-INTXN', 'ABC')).toBe('FIX');
-    expect(classifyWaypointType('COORDN-FIX', 'ABC')).toBe('FIX');
-    expect(classifyWaypointType('MIL-REP-PT', 'ABC')).toBe('FIX');
-    expect(classifyWaypointType('FIX', 'ABC')).toBe('FIX');
-    expect(classifyWaypointType('TURN-PT', 'ABC')).toBe('FIX');
+    expect(classifyWaypointType('REP-PT')).toBe('FIX');
+    expect(classifyWaypointType('AWY-INTXN')).toBe('FIX');
+    expect(classifyWaypointType('COORDN-FIX')).toBe('FIX');
+    expect(classifyWaypointType('MIL-REP-PT')).toBe('FIX');
+    expect(classifyWaypointType('FIX')).toBe('FIX');
+    expect(classifyWaypointType('TURN-PT')).toBe('FIX');
   });
 
-  it('classifies ARTCC-BDRY and unknown facility types as OTHER', () => {
-    expect(classifyWaypointType('ARTCC-BDRY', 'ABC')).toBe('OTHER');
-    expect(classifyWaypointType('UNKNOWN', 'ABC')).toBe('OTHER');
-  });
-
-  it('classifies border names when facilityType is empty', () => {
-    expect(classifyWaypointType('', 'U.S. CANADIAN BORDER')).toBe('BORDER');
-    expect(classifyWaypointType('', 'U.S. MEXICAN BORDER')).toBe('BORDER');
-    expect(classifyWaypointType('', 'RANDOM')).toBe('OTHER');
+  it('classifies ARTCC-BDRY, unknown and blank facility types as OTHER', () => {
+    expect(classifyWaypointType('ARTCC-BDRY')).toBe('OTHER');
+    expect(classifyWaypointType('UNKNOWN')).toBe('OTHER');
+    expect(classifyWaypointType('')).toBe('OTHER');
   });
 
   it('matches facility types case-insensitively', () => {
-    expect(classifyWaypointType('vor/dme', 'ABC')).toBe('NAVAID');
-    expect(classifyWaypointType('way-pt', 'ABC')).toBe('WAYPOINT');
+    expect(classifyWaypointType('vor/dme')).toBe('NAVAID');
+    expect(classifyWaypointType('way-pt')).toBe('WAYPOINT');
   });
 });
 

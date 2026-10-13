@@ -170,8 +170,8 @@ points are not included).
 ## Coverage limits and known issues
 
 - Border crossing points ("U.S. CANADIAN BORDER", "U.S. MEXICAN BORDER") are
-  published without coordinates and are not included, so no waypoint carries
-  the `BORDER` type and the leg into a border crossing has no distance. Ten
+  published without coordinates and are not included, so the leg into a
+  border crossing has no distance. Ten
   legs between two included waypoints also have no published distance (for
   example `J1` TIJ to TEYON and `T719` MOCKA to EEVER); `@squawk/flightplan`
   measures those legs by great circle.

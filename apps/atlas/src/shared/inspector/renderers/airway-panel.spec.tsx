@@ -131,7 +131,7 @@ describe('AirwayPanel', () => {
       designation: 'V16',
       type: 'VICTOR',
       region: 'US',
-      waypoints: [{ name: 'BORDER POINT NORTH', waypointType: 'BORDER', lat: 40, lon: -100 }],
+      waypoints: [{ name: 'BORDER POINT NORTH', waypointType: 'OTHER', lat: 40, lon: -100 }],
     };
     render(<AirwayPanel record={record} />);
     expect(screen.getByText('BORDER POINT NORTH')).toBeInTheDocument();

@@ -109,6 +109,63 @@ export type RunwayMarkingType = 'PIR' | 'NPI' | 'BSC' | 'BUOY' | 'STOL' | 'NONE'
 export type RunwayMarkingCondition = 'GOOD' | 'FAIR' | 'POOR';
 
 /**
+ * Location along a runway at which runway visual range (RVR) is measured.
+ */
+export type RvrLocation = 'TOUCHDOWN' | 'MIDPOINT' | 'ROLLOUT';
+
+/**
+ * Pavement strength rating system: the ICAO Pavement Classification Number
+ * (`PCN`, compared against an aircraft's ACN) or its successor, the Pavement
+ * Classification Rating (`PCR`, compared against an aircraft's ACR).
+ */
+export type PavementClassificationSystem = 'PCN' | 'PCR';
+
+/**
+ * Pavement type of a rated runway: `RIGID` (concrete) or `FLEXIBLE` (asphalt).
+ */
+export type PavementType = 'RIGID' | 'FLEXIBLE';
+
+/**
+ * Subgrade strength category of a rated runway, `A` (high) to `D` (ultra low),
+ * per FAA Advisory Circular 150/5335-5.
+ */
+export type SubgradeStrengthCategory = 'A' | 'B' | 'C' | 'D';
+
+/**
+ * Maximum allowable tire pressure category of a rated runway, `W` (unlimited)
+ * to `Z` (low), per FAA Advisory Circular 150/5335-5.
+ */
+export type TirePressureCategory = 'W' | 'X' | 'Y' | 'Z';
+
+/**
+ * How a pavement rating was determined: `TECHNICAL` evaluation or
+ * `USING_AIRCRAFT` experience.
+ */
+export type PavementEvaluationMethod = 'TECHNICAL' | 'USING_AIRCRAFT';
+
+/**
+ * The published strength rating of a runway pavement, which the FAA writes as
+ * `PCN/10/F/C/X/T` or `PCR/1102/F/D/X/T`: the system, the rating value, the
+ * pavement type, the subgrade strength category, the tire pressure category
+ * and the evaluation method. An aircraft may use the pavement without weight
+ * restriction when its ACN or ACR does not exceed the value.
+ */
+export interface PavementClassification {
+  /** Rating system the value belongs to. */
+  system: PavementClassificationSystem;
+  /** Rating value (e.g. 10 for a PCN, 1102 for a PCR). */
+  value: number;
+  /** Pavement type. */
+  pavementType: PavementType;
+  /** Subgrade strength category. */
+  subgradeStrength: SubgradeStrengthCategory;
+  /** Tire pressure category. */
+  tirePressure: TirePressureCategory;
+  /** How the rating was determined. */
+  evaluationMethod: PavementEvaluationMethod;
+}
+
+/**
  * ILS approach category indicating the minimum decision height and
  * runway visual range for which the system is certified.
  */
@@ -156,13 +213,16 @@ export interface IlsSystem {
   /** System type describing the installed component combination. */
   systemType: IlsSystemType;
   /** ILS facility identifier (e.g. "I-ANB", "I-JFK"). */
-  identifier?: string;
+  identifier: string;
   /** ILS approach category. */
   category?: IlsCategory;
   /** Localizer frequency in MHz (e.g. 110.9). */
-  localizerFrequencyMhz?: number;
-  /** Localizer front course bearing in magnetic degrees. */
-  localizerMagneticCourseDeg?: number;
+  localizerFrequencyMhz: number;
+  /**
+   * Localizer front course in magnetic degrees, as published. A few military
+   * fields publish the true course instead (see the airport data README).
+   */
+  localizerMagneticCourseDeg: number;
   /** Glide slope angle in degrees (typically around 3.0). */
   glideSlopeAngleDeg?: number;
   /** Glide slope class/type code (e.g. "GS" for standard glide slope, "GD" for glide slope with DME). */
@@ -178,7 +238,7 @@ export interface IlsSystem {
 export interface RunwayEnd {
   /** Runway end designator (e.g. "04L", "22R", "09"). */
   id: string;
-  /** True heading in degrees. */
+  /** True heading in degrees. The FAA publishes north as both 0 and 360; normalize before comparing headings. */
   trueHeadingDeg?: number;
   /** Instrument Landing System installed at this runway end. */
   ils?: IlsSystem;
@@ -206,8 +266,10 @@ export interface RunwayEnd {
   tdzElevationFt?: number;
   /** Type of visual glide slope indicator. */
   vgsiType?: VgsiType;
-  /** Whether runway visual range equipment is installed. */
+  /** Whether runway visual range equipment is installed at any location of this end; `rvrLocations` says where. */
   hasRvr?: boolean;
+  /** Locations along the runway at which RVR is measured, in touchdown, midpoint, rollout order. */
+  rvrLocations?: RvrLocation[];
   /** Approach lighting system code. */
   approachLights?: string;
   /** Whether runway end identifier lights are available. */
@@ -238,9 +300,9 @@ export interface RunwayEnd {
 export interface Runway {
   /** Runway designator (e.g. "04L/22R", "09/27", "H1"). */
   id: string;
-  /** Runway length in feet. */
+  /** Runway length in feet; absent where the FAA publishes no length (its 0 placeholder). */
   lengthFt?: number;
-  /** Runway width in feet. */
+  /** Runway width in feet; absent where the FAA publishes no width (its 0 placeholder). */
   widthFt?: number;
   /** Surface type code (e.g. "CONC", "ASPH", "TURF", "GRVL"). */
   surfaceType?: string;
@@ -248,8 +310,8 @@ export interface Runway {
   condition?: SurfaceCondition;
   /** Surface treatment applied. */
   treatment?: SurfaceTreatment;
-  /** Pavement Classification Number value. */
-  pcn?: string;
+  /** Published pavement strength rating (PCN or PCR) with its component codes. */
+  pavementClassification?: PavementClassification;
   /** Edge lighting intensity. */
   lighting?: RunwayLighting;
   /** Maximum single-wheel gross weight in thousands of pounds. */
@@ -265,15 +327,41 @@ export interface Runway {
 }
 
 /**
- * A communication frequency associated with an airport facility.
+ * A communication frequency published for an airport facility: the tower,
+ * approach, clearance, CTAF, UNICOM and emergency frequencies, the weather
+ * broadcast (AWOS/ASOS), and the remote communications outlets and flight
+ * service radio frequencies the FAA lists under the airport.
  */
 export interface AirportFrequency {
-  /** Frequency in MHz (e.g. 119.1, 121.9). */
+  /**
+   * Frequency in MHz (e.g. 119.1, 121.9). Most are VHF or UHF; military
+   * fields also publish VHF FM and other bands, and the HF frequencies the FAA
+   * publishes in kHz (5696) are converted to MHz (5.696).
+   */
   frequencyMhz: number;
   /** Purpose or usage of this frequency (e.g. "LCL/P", "GND/P", "ATIS", "UNICOM", "CLASS B"). */
   use: string;
   /** Sectorization or applicability description (e.g. "RWY 04L/22R", "FREQS 2000 FT & BLW"). */
   sectorization?: string;
+  /** Whether the facility only receives on this frequency (the FAA's `R` qualifier, e.g. 122.1R at a remote communications outlet). */
+  receiveOnly?: boolean;
+  /** Whether the frequency is available on request (the FAA's `X` qualifier). */
+  onRequest?: boolean;
+  /** Identifier or name of the facility that provides the service, as published (e.g. "JFK", "NEW YORK"). Present on every bundled record. */
+  provider?: string;
+  /**
+   * Type of the facility that provides the service, as the FAA codes it:
+   * `ATCT`, `ATCT-TRACON`, `ATCT-RAPCON`, `ATCT-RATCF`, `ATCT-A/C`, `TRACON`,
+   * `RCAG`, `NON-ATCT` (the airport itself), `ASOS_AWOS`, `RCO` or `FSS`.
+   * Present on every bundled record.
+   */
+  providerType?: string;
+  /** Call sign of the tower or communications facility (e.g. "KENNEDY TOWER" is published as "KENNEDY"). */
+  callSign?: string;
+  /** Call sign of the primary approach control (e.g. "NEW YORK"). */
+  approachCallSign?: string;
+  /** FAA remark about the frequency, including any text the FAA appends to the frequency itself (e.g. an HF family name). */
+  remark?: string;
 }
 
 /**
@@ -301,7 +389,7 @@ export interface Airport {
   state?: string;
   /** Two-letter country code (e.g. "US"). */
   country: string;
-  /** County name. */
+  /** County name. Present on every bundled record. */
   county?: string;
   /** Latitude in decimal degrees. */
   lat: number;
@@ -310,20 +398,20 @@ export interface Airport {
   /** IANA time zone identifier for the facility location (e.g. "America/New_York", "Pacific/Honolulu"). */
   timezone: string;
   /** Field elevation in feet MSL. */
-  elevationFt?: number;
+  elevationFt: number;
   /** Magnetic variation in degrees. */
   magneticVariationDeg?: number;
   /** Magnetic variation direction ("E" or "W"). */
   magneticVariationDirection?: string;
-  /** Year the magnetic variation was last determined. */
+  /** Year the magnetic variation was last determined, as published (the FAA carries 2030 on some records and 1904 on one). */
   magneticVariationYear?: number;
-  /** Traffic pattern altitude in feet MSL. */
-  trafficPatternAltitudeFt?: number;
+  /** Traffic pattern altitude in feet above the field (AGL), as the FAA publishes it. */
+  trafficPatternAltitudeFtAgl?: number;
   /** Sectional chart name (e.g. "NEW YORK", "LOS ANGELES"). */
   sectionChart?: string;
-  /** Responsible ARTCC identifier (e.g. "ZNY", "ZLA"). */
+  /** Responsible ARTCC identifier (e.g. "ZNY", "ZLA"). Present on every bundled record. */
   artccId?: string;
-  /** Type of control tower (e.g. "ATCT", "NON-ATCT", "TRSA"). */
+  /** Type of control tower (e.g. "ATCT", "NON-ATCT", "TRSA"). Present on every bundled record. */
   towerType?: string;
   /** Available fuel types (e.g. "100LL,A"). */
   fuelTypes?: string;

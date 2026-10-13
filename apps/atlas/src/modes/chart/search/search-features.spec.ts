@@ -39,6 +39,7 @@ function makeAirport(overrides: Partial<Airport> = {}): Airport {
     lat: 40,
     lon: -75,
     timezone: 'America/New_York',
+    elevationFt: 100,
     runways: [],
     frequencies: [],
     ...overrides,

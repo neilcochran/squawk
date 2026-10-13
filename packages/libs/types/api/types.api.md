@@ -127,7 +127,7 @@ export interface Airport {
     city: string;
     country: string;
     county?: string;
-    elevationFt?: number;
+    elevationFt: number;
     faaId: string;
     facilityType: FacilityType;
     frequencies: AirportFrequency[];
@@ -151,13 +151,20 @@ export interface Airport {
     status: FacilityStatus;
     timezone: string;
     towerType?: string;
-    trafficPatternAltitudeFt?: number;
+    trafficPatternAltitudeFtAgl?: number;
     useType: FacilityUseType;
 }
 
 // @public
 export interface AirportFrequency {
+    approachCallSign?: string;
+    callSign?: string;
     frequencyMhz: number;
+    onRequest?: boolean;
+    provider?: string;
+    providerType?: string;
+    receiveOnly?: boolean;
+    remark?: string;
     sectorization?: string;
     use: string;
 }
@@ -275,7 +282,7 @@ export interface AirwayWaypoint {
 }
 
 // @public
-export type AirwayWaypointType = 'NAVAID' | 'FIX' | 'WAYPOINT' | 'BORDER' | 'OTHER';
+export type AirwayWaypointType = 'NAVAID' | 'FIX' | 'WAYPOINT' | 'OTHER';
 
 // @public
 export interface AltitudeBound {
@@ -408,9 +415,9 @@ export interface IlsSystem {
     dmeChannel?: string;
     glideSlopeAngleDeg?: number;
     glideSlopeType?: string;
-    identifier?: string;
-    localizerFrequencyMhz?: number;
-    localizerMagneticCourseDeg?: number;
+    identifier: string;
+    localizerFrequencyMhz: number;
+    localizerMagneticCourseDeg: number;
     systemType: IlsSystemType;
 }
 
@@ -495,6 +502,25 @@ export type NavaidType = 'VOR' | 'VORTAC' | 'VOR/DME' | 'TACAN' | 'DME' | 'NDB' 
 
 // @public
 export type OwnershipType = 'PUBLIC' | 'PRIVATE';
+
+// @public
+export interface PavementClassification {
+    evaluationMethod: PavementEvaluationMethod;
+    pavementType: PavementType;
+    subgradeStrength: SubgradeStrengthCategory;
+    system: PavementClassificationSystem;
+    tirePressure: TirePressureCategory;
+    value: number;
+}
+
+// @public
+export type PavementClassificationSystem = 'PCN' | 'PCR';
+
+// @public
+export type PavementEvaluationMethod = 'TECHNICAL' | 'USING_AIRCRAFT';
+
+// @public
+export type PavementType = 'RIGID' | 'FLEXIBLE';
 
 // @public
 export interface Position extends Coordinates {
@@ -584,7 +610,7 @@ export interface Runway {
     id: string;
     lengthFt?: number;
     lighting?: RunwayLighting;
-    pcn?: string;
+    pavementClassification?: PavementClassification;
     surfaceType?: string;
     treatment?: SurfaceTreatment;
     weightLimitDdtKlb?: number;
@@ -616,6 +642,7 @@ export interface RunwayEnd {
     markingCondition?: RunwayMarkingCondition;
     markingType?: RunwayMarkingType;
     rightTraffic?: boolean;
+    rvrLocations?: RvrLocation[];
     tdzElevationFt?: number;
     thresholdCrossingHeightFt?: number;
     todaFt?: number;
@@ -634,6 +661,9 @@ export type RunwayMarkingCondition = 'GOOD' | 'FAIR' | 'POOR';
 export type RunwayMarkingType = 'PIR' | 'NPI' | 'BSC' | 'BUOY' | 'STOL' | 'NONE';
 
 // @public
+export type RvrLocation = 'TOUCHDOWN' | 'MIDPOINT' | 'ROLLOUT';
+
+// @public
 export interface SpeedConstraint {
     descriptor: SpeedConstraintDescriptor;
     speedKt: number;
@@ -641,6 +671,9 @@ export interface SpeedConstraint {
 
 // @public
 export type SpeedConstraintDescriptor = '@' | '+' | '-';
+
+// @public
+export type SubgradeStrengthCategory = 'A' | 'B' | 'C' | 'D';
 
 // @public
 export type SurfaceCondition = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'FAILED';
@@ -664,6 +697,9 @@ export interface TargetStateAndStatus {
     tcasOperational: boolean;
     vnavModeActive: boolean | undefined;
 }
+
+// @public
+export type TirePressureCategory = 'W' | 'X' | 'Y' | 'Z';
 
 // @public
 export type TurnDirection = 'L' | 'R' | 'E';
