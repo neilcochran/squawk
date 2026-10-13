@@ -26,6 +26,7 @@ const AIRWAY_TYPE_VALUES = [
   'BAHAMA',
   'PACIFIC',
   'PUERTO_RICO',
+  'SPECIAL',
 ] as const satisfies readonly AirwayType[];
 
 /**
@@ -41,7 +42,7 @@ export function registerAirwayTools(server: McpServer): void {
     {
       title: 'Get airways by designation',
       description:
-        'Looks up US airways by designation (e.g. "V16", "J60", "Q1"). Multiple airways can share the same designation across regions (for example V16 exists in both the contiguous US and Hawaii), so the result is always an array. Returns an empty array when no match is found.',
+        'Looks up US airways by designation (e.g. "V16", "J60", "Q1"; oceanic and special routes carry their NASR category prefix, e.g. "ATA315", "SPZK214"). Multiple airways can share the same designation across regions (for example V16 exists in both the contiguous US and Hawaii), so the result is always an array. SPECIAL routes are the FAA\'s non-regulatory ZK helicopter air ambulance routes, not on public charts and filed only with FAA Flight Standards approval. Returns an empty array when no match is found.',
       inputSchema: {
         designation: z.string().min(1).describe('Airway designation (case-insensitive).'),
       },
@@ -61,7 +62,7 @@ export function registerAirwayTools(server: McpServer): void {
     {
       title: 'Expand an airway between two fixes',
       description:
-        'Expands an airway between two fixes, returning the ordered sequence of waypoints from the entry fix to the exit fix (inclusive). Airways can be traversed in either direction. The gaps array lists any published discontinuity inside the expansion (the FAA discontinues some airways partway, e.g. J60 between JOT and DJB): the waypoints on both sides are still returned, but a non-empty gaps array means the airway is not defined between them and a route filing it across the gap is not valid as filed. Returns null if the entry/exit fixes are not found on the airway.',
+        'Expands an airway between two fixes, returning the ordered sequence of waypoints from the entry fix to the exit fix (inclusive). Airways can be traversed in either direction. The gaps array lists any published discontinuity inside the expansion (the FAA discontinues some airways partway, e.g. J60 between JOT and DJB): the waypoints on both sides are still returned, but a non-empty gaps array means the airway is not defined between them and a route filing it across the gap is not valid as filed. The unusable array lists, in the same index/from/to shape, any segment the FAA marks unusable (e.g. J34 between DRYER and GAABE): still published with its distance but without an MEA, and not to be flown. Each waypoint carries the segment altitudes (MEA, MOCA, MAA, GNSS and DME/DME/IRU MEA, each direction present only with its altitude), the MCA at the waypoint it applies to, and any FAA remarks. Returns null if the entry/exit fixes are not found on the airway.',
       inputSchema: {
         designation: z.string().min(1).describe('Airway designation (case-insensitive).'),
         entryFix: z.string().min(1).describe('Identifier of the entry fix (case-insensitive).'),

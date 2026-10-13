@@ -23,6 +23,7 @@ function makeRoute(distance?: Partial<RouteDistanceResult>): PlanRoute {
           distanceNm: 30,
           cumulativeDistanceNm: 30,
           crossesGap: false,
+          unusable: false,
         },
         {
           from: 'MERIT',
@@ -34,6 +35,7 @@ function makeRoute(distance?: Partial<RouteDistanceResult>): PlanRoute {
           distanceNm: 2000,
           cumulativeDistanceNm: 2030,
           crossesGap: false,
+          unusable: false,
         },
       ],
       totalDistanceNm: 2030,

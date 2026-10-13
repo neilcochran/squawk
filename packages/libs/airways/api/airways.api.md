@@ -6,6 +6,7 @@
 
 import type { Airway } from '@squawk/types';
 import type { AirwayGap } from '@squawk/types';
+import type { AirwaySegmentReference } from '@squawk/types';
 import type { AirwayType } from '@squawk/types';
 import type { AirwayWaypoint } from '@squawk/types';
 import { MatchRange } from '@squawk/search';
@@ -20,6 +21,7 @@ export interface AirwayByFixResult {
 export interface AirwayExpansionResult {
     airway: Airway;
     gaps: AirwayGap[];
+    unusable: AirwaySegmentReference[];
     waypoints: AirwayWaypoint[];
 }
 

@@ -101,6 +101,7 @@ The result contains:
 - `airway` - the full Airway record
 - `waypoints` - the ordered slice of waypoints between the two fixes
 - `gaps` - any published discontinuity inside the slice, each with the `index` of the waypoint before the gap and the `from` and `to` waypoint identifiers. The FAA discontinues some airways partway (J60 between JOT and DJB, for example); the waypoints on both sides are still returned, but a non-empty `gaps` means the airway is not defined between them and a route filing it across the gap is not valid as filed
+- `unusable` - any segment inside the slice the FAA marks unusable, in the same `index` / `from` / `to` shape. An unusable segment (J34 between DRYER and GAABE, for example) is still published with its waypoints and distance but has no MEA and may not be flown, so a route filing the airway across it is not valid as filed
 
 ### `resolver.byFix(ident)`
 

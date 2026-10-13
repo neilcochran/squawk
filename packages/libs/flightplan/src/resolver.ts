@@ -2,6 +2,7 @@ import type {
   Airport,
   Airway,
   AirwayGap,
+  AirwaySegmentReference,
   AirwayWaypoint,
   Fix,
   Navaid,
@@ -75,15 +76,22 @@ export interface FlightplanAirwayLookup {
   byDesignation(designation: string): Airway[];
   /**
    * Expands an airway between entry and exit fixes, returning ordered
-   * waypoints. `gaps` lists any published discontinuity the expansion crosses;
-   * a lookup that cannot report gaps may omit it, and the route then reports
-   * none.
+   * waypoints. `gaps` lists any published discontinuity the expansion crosses
+   * and `unusable` any segment the FAA marks unusable; a lookup that cannot
+   * report either may omit it, and the route then reports none.
    */
   expand(
     designation: string,
     entryFix: string,
     exitFix: string,
-  ): { airway: Airway; waypoints: AirwayWaypoint[]; gaps?: AirwayGap[] } | undefined;
+  ):
+    | {
+        airway: Airway;
+        waypoints: AirwayWaypoint[];
+        gaps?: AirwayGap[];
+        unusable?: AirwaySegmentReference[];
+      }
+    | undefined;
 }
 
 /**
@@ -173,6 +181,13 @@ export interface AirwayRouteElement {
    * the route can be drawn and measured.
    */
   gaps: AirwayGap[];
+  /**
+   * Segments inside the expansion the FAA marks unusable, in traversal order.
+   * Empty when every segment may be flown. The waypoints are still returned so
+   * the route can be drawn and measured, but a route filing the airway across
+   * an unusable segment is not valid as filed.
+   */
+  unusable: AirwaySegmentReference[];
 }
 
 /**
@@ -684,6 +699,7 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
                 exitFix,
                 waypoints: expansion.waypoints,
                 gaps: expansion.gaps ?? [],
+                unusable: expansion.unusable ?? [],
               });
               // The exit fix is consumed as part of the airway; update last waypoint
               lastWaypointIdent = exitFix;

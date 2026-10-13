@@ -117,23 +117,26 @@ the configured lookup providers.
 
 Each element has a `type` discriminant and a `raw` field with the original token.
 
-| Type            | Description                               | Key fields                                                  |
-| --------------- | ----------------------------------------- | ----------------------------------------------------------- |
-| `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                   |
-| `sid`           | Standard Instrument Departure             | `procedure`, `legs`, `transition`                           |
-| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`, `transition`                           |
-| `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`, `gaps`        |
-| `direct`        | DCT (direct) indicator                    | -                                                           |
-| `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                         |
-| `coordinate`    | Lat/lon specified in the route string     | `lat`, `lon`                                                |
-| `speedAltitude` | Speed/altitude group (e.g. N0450F350)     | `speedKt`/`speedKmPerHr`/`mach`, `flightLevel`/`altitudeFt` |
-| `unresolved`    | Token that could not be resolved          | -                                                           |
+| Type            | Description                               | Key fields                                                       |
+| --------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                        |
+| `sid`           | Standard Instrument Departure             | `procedure`, `legs`, `transition`                                |
+| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`, `transition`                                |
+| `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`, `gaps`, `unusable` |
+| `direct`        | DCT (direct) indicator                    | -                                                                |
+| `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                              |
+| `coordinate`    | Lat/lon specified in the route string     | `lat`, `lon`                                                     |
+| `speedAltitude` | Speed/altitude group (e.g. N0450F350)     | `speedKt`/`speedKmPerHr`/`mach`, `flightLevel`/`altitudeFt`      |
+| `unresolved`    | Token that could not be resolved          | -                                                                |
 
 An airway element's `gaps` lists any published discontinuity its expansion
 crosses (the FAA discontinues some airways partway, such as J60 between JOT and
 DJB). The waypoints on both sides are still returned so the route can be drawn
 and measured, but a non-empty `gaps` means the route files the airway where it
-is not defined and is not valid as filed.
+is not defined and is not valid as filed. Its `unusable` lists, in the same
+shape, any segment the FAA marks unusable (J34 between DRYER and GAABE, for
+example): the segment is still published with its distance but may not be
+flown, so a route across it is not valid as filed either.
 
 ### Coordinate formats
 
@@ -213,7 +216,7 @@ console.log(result.totalDistanceNm, result.estimatedTimeEnrouteHrs);
 
 **Returns:** `RouteDistanceResult` with:
 
-- `legs` - ordered `RouteLeg` values, each with `from`/`to` point labels, their `fromLat`/`fromLon`/`toLat`/`toLon` coordinates in decimal degrees, `distanceNm`, `cumulativeDistanceNm`, and `crossesGap`, which is true when the leg spans a published gap in the airway it came from (the leg is a straight line that counts toward the total but is not a flyable airway segment)
+- `legs` - ordered `RouteLeg` values, each with `from`/`to` point labels, their `fromLat`/`fromLon`/`toLat`/`toLon` coordinates in decimal degrees, `distanceNm`, `cumulativeDistanceNm`, `crossesGap`, which is true when the leg spans a published gap in the airway it came from (the leg is a straight line that counts toward the total but is not a flyable airway segment), and `unusable`, which is true when the leg is an airway segment the FAA marks unusable (counted toward the total but not to be flown)
 - `totalDistanceNm` - total great-circle distance in nautical miles
 - `estimatedTimeEnrouteHrs` - ETE in hours, or `undefined` when no ground speed was given
 - `unresolvedElements` - route elements that could not contribute coordinates

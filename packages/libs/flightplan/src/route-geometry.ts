@@ -57,6 +57,11 @@ export interface GeoPoint {
    * the airway it was expanded from.
    */
   gapToNext?: true;
+  /**
+   * Set when the leg from this point to the next is an airway segment the FAA
+   * marks unusable.
+   */
+  unusableToNext?: true;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,10 +118,13 @@ export function extractGeoPoints(elements: RouteElement[]): {
       ) {
         last.precomputedDistanceToNextNm = point.precomputedDistanceToNextNm;
       }
-      // Likewise carry a gap marker, so the leg out of the merged point is
-      // still reported as crossing the gap.
+      // Likewise carry a gap or unusable marker, so the leg out of the merged
+      // point is still reported as crossing the gap or as unusable.
       if (point.gapToNext) {
         last.gapToNext = true;
+      }
+      if (point.unusableToNext) {
+        last.unusableToNext = true;
       }
       return;
     }
@@ -139,6 +147,7 @@ export function extractGeoPoints(elements: RouteElement[]): {
 
       case 'airway': {
         const gapIndexes = new Set(el.gaps.map((gap) => gap.index));
+        const unusableIndexes = new Set(el.unusable.map((segment) => segment.index));
         for (let i = 0; i < el.waypoints.length; i++) {
           const wp = el.waypoints[i]!;
           const isLast = i === el.waypoints.length - 1;
@@ -155,6 +164,9 @@ export function extractGeoPoints(elements: RouteElement[]): {
           }
           if (!isLast && gapIndexes.has(i)) {
             point.gapToNext = true;
+          }
+          if (!isLast && unusableIndexes.has(i)) {
+            point.unusableToNext = true;
           }
           emit(point);
         }

@@ -158,6 +158,7 @@ describe('formatAirwayType', () => {
       ['RED', 'Red'],
       ['AMBER', 'Amber'],
       ['BLUE', 'Blue'],
+      ['SPECIAL', 'Special (non-regulatory)'],
     ];
     for (const [input, expected] of cases) {
       expect(formatAirwayType(input)).toBe(expected);

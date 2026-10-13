@@ -1,4 +1,10 @@
-import type { Airport, AirwayGap, AirwayWaypoint, ProcedureLeg } from '@squawk/types';
+import type {
+  Airport,
+  AirwayGap,
+  AirwaySegmentReference,
+  AirwayWaypoint,
+  ProcedureLeg,
+} from '@squawk/types';
 
 import type {
   AirportRouteElement,
@@ -113,6 +119,7 @@ export function makeAirway(
     lon: number;
     distanceToNextNm?: number;
     discontinued?: boolean;
+    unusable?: boolean;
   }[],
 ): AirwayRouteElement {
   const built = waypoints.map((wp) => {
@@ -131,14 +138,26 @@ export function makeAirway(
     if (wp.discontinued) {
       base.discontinued = true;
     }
+    if (wp.unusable) {
+      base.unusable = true;
+    }
     return base;
   });
   const gaps: AirwayGap[] = [];
+  const unusable: AirwaySegmentReference[] = [];
   for (let i = 0; i < built.length - 1; i++) {
     const from = built[i]!;
     const to = built[i + 1]!;
+    const reference = {
+      index: i,
+      from: from.identifier ?? from.name,
+      to: to.identifier ?? to.name,
+    };
     if (from.discontinued) {
-      gaps.push({ index: i, from: from.identifier ?? from.name, to: to.identifier ?? to.name });
+      gaps.push(reference);
+    }
+    if (from.unusable) {
+      unusable.push(reference);
     }
   }
   return {
@@ -149,6 +168,7 @@ export function makeAirway(
     exitFix: built[built.length - 1]?.identifier ?? built[built.length - 1]?.name ?? '',
     waypoints: built,
     gaps,
+    unusable,
   };
 }
 

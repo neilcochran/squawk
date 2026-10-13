@@ -68,6 +68,24 @@ describe('computeRouteTiming', () => {
       assert.ok(result.legs[1]!.eteHrs !== undefined && result.legs[1]!.eteHrs > 0);
     });
 
+    it('carries the airway unusable flag onto each timing leg', () => {
+      const awp = makeAirway('J34', [
+        { identifier: 'DJB', lat: 41.4, lon: -82.2, unusable: true },
+        { identifier: 'GAABE', lat: 41.6, lon: -81.8 },
+        { identifier: 'MAINE', lat: 41.9, lon: -81.3 },
+      ]);
+
+      const result = computeRouteTiming(route([awp]), { trueAirspeedKt: 120 });
+      assert.deepEqual(
+        result.legs.map((leg) => leg.unusable),
+        [true, false],
+      );
+      assert.deepEqual(
+        result.legs.map((leg) => leg.crossesGap),
+        [false, false],
+      );
+    });
+
     it('treats an undefined provider result as calm', () => {
       const a = makeWaypoint('A', 40.0, -74.0);
       const b = makeWaypoint('B', 41.0, -74.0);

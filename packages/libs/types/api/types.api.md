@@ -196,28 +196,38 @@ export interface AirspaceVolume {
 export interface Airway {
     designation: string;
     region: AirwayRegion;
+    remarks?: string[];
     type: AirwayType;
     waypoints: AirwayWaypoint[];
 }
 
 // @public
+export const AIRWAY_DIRECTIONS: readonly ["N BND", "NE BND", "E BND", "SE BND", "S BND", "SW BND", "W BND", "NW BND"];
+
+// @public
 export const AIRWAY_REGION_MAP: Record<string, AirwayRegion>;
 
 // @public
-export const AIRWAY_TYPES: readonly ["VICTOR", "JET", "RNAV_Q", "RNAV_T", "GREEN", "RED", "AMBER", "BLUE", "ATLANTIC", "BAHAMA", "PACIFIC", "PUERTO_RICO"];
+export const AIRWAY_TYPES: readonly ["VICTOR", "JET", "RNAV_Q", "RNAV_T", "GREEN", "RED", "AMBER", "BLUE", "ATLANTIC", "BAHAMA", "PACIFIC", "PUERTO_RICO", "SPECIAL"];
 
 // @public
-export interface AirwayGap {
+export type AirwayDirection = 'N BND' | 'NE BND' | 'E BND' | 'SE BND' | 'S BND' | 'SW BND' | 'W BND' | 'NW BND';
+
+// @public
+export type AirwayGap = AirwaySegmentReference;
+
+// @public
+export type AirwayRegion = 'US' | 'ALASKA' | 'HAWAII';
+
+// @public
+export interface AirwaySegmentReference {
     from: string;
     index: number;
     to: string;
 }
 
 // @public
-export type AirwayRegion = 'US' | 'ALASKA' | 'HAWAII';
-
-// @public
-export type AirwayType = 'VICTOR' | 'JET' | 'RNAV_Q' | 'RNAV_T' | 'GREEN' | 'RED' | 'AMBER' | 'BLUE' | 'ATLANTIC' | 'BAHAMA' | 'PACIFIC' | 'PUERTO_RICO';
+export type AirwayType = 'VICTOR' | 'JET' | 'RNAV_Q' | 'RNAV_T' | 'GREEN' | 'RED' | 'AMBER' | 'BLUE' | 'ATLANTIC' | 'BAHAMA' | 'PACIFIC' | 'PUERTO_RICO' | 'SPECIAL';
 
 // @public
 export interface AirwayWaypoint {
@@ -225,10 +235,14 @@ export interface AirwayWaypoint {
     changeoverDistanceNm?: number;
     discontinued?: boolean;
     distanceToNextNm?: number;
+    dmeDmeIruMinimumEnrouteAltitudeDirection?: AirwayDirection;
+    dmeDmeIruMinimumEnrouteAltitudeFt?: number;
+    dmeDmeIruMinimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
+    dmeDmeIruMinimumEnrouteAltitudeOppositeFt?: number;
     dogleg?: boolean;
-    gnssMinimumEnrouteAltitudeDirection?: string;
+    gnssMinimumEnrouteAltitudeDirection?: AirwayDirection;
     gnssMinimumEnrouteAltitudeFt?: number;
-    gnssMinimumEnrouteAltitudeOppositeDirection?: string;
+    gnssMinimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
     gnssMinimumEnrouteAltitudeOppositeFt?: number;
     icaoRegionCode?: string;
     identifier?: string;
@@ -236,21 +250,26 @@ export interface AirwayWaypoint {
     lon: number;
     magneticCourseDeg?: number;
     magneticCourseOppositeDeg?: number;
+    magneticVariationDeg?: number;
+    magneticVariationDirection?: 'E' | 'W';
     maximumAuthorizedAltitudeFt?: number;
-    minimumCrossingAltitudeDirection?: string;
+    minimumCrossingAltitudeDirection?: AirwayDirection;
     minimumCrossingAltitudeFt?: number;
-    minimumCrossingAltitudeOppositeDirection?: string;
+    minimumCrossingAltitudeOppositeDirection?: AirwayDirection;
     minimumCrossingAltitudeOppositeFt?: number;
-    minimumEnrouteAltitudeDirection?: string;
+    minimumEnrouteAltitudeDirection?: AirwayDirection;
     minimumEnrouteAltitudeFt?: number;
-    minimumEnrouteAltitudeOppositeDirection?: string;
+    minimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
     minimumEnrouteAltitudeOppositeFt?: number;
     minimumObstructionClearanceAltitudeFt?: number;
     minimumReceptionAltitudeFt?: number;
     name: string;
     navaidFacilityType?: string;
+    remarks?: string[];
+    rnpNm?: number;
     signalGap?: boolean;
     state?: string;
+    unusable?: boolean;
     usAirspaceOnly?: boolean;
     waypointType: AirwayWaypointType;
 }
@@ -400,6 +419,9 @@ export type IlsSystemType = 'ILS' | 'ILS/DME' | 'LOCALIZER' | 'LOC/DME' | 'LOC/G
 
 // @public
 export function isAirspaceType(value: string): value is AirspaceType;
+
+// @public
+export function isAirwayDirection(value: string): value is AirwayDirection;
 
 // @public
 export function isAirwayType(value: string): value is AirwayType;

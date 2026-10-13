@@ -161,7 +161,7 @@ export type AirwayCategory = (typeof AIRWAY_CATEGORIES)[number];
  * "oceanic & regional" catch-all and includes the Alaska / colored airways.
  */
 export const AIRWAY_CATEGORY_TYPES: Record<AirwayCategory, readonly AirwayType[]> = {
-  LOW: ['VICTOR', 'RNAV_T'],
+  LOW: ['VICTOR', 'RNAV_T', 'SPECIAL'],
   HIGH: ['JET', 'RNAV_Q'],
   OCEANIC: ['ATLANTIC', 'BAHAMA', 'PACIFIC', 'PUERTO_RICO', 'GREEN', 'RED', 'AMBER', 'BLUE'],
 };
