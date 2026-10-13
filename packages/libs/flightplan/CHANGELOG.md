@@ -1,5 +1,19 @@
 # @squawk/flightplan
 
+## 0.9.0
+
+### Minor Changes
+
+- 311c537: ### Added
+
+  - Airway route elements carry `unusable`, the segments of the expansion the FAA marks unusable, beside `gaps`, and `RouteLeg` and the timing legs carry an `unusable` flag beside `crossesGap`, so a route across such a segment is measured and timed like any other but can be reported as not valid as filed. An airway lookup that cannot report unusable segments may omit them.
+
+### Patch Changes
+
+- Updated dependencies [311c537]
+  - @squawk/types@0.14.0
+  - @squawk/geo@0.5.4
+
 ## 0.8.1
 
 ### Patch Changes

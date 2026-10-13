@@ -1,5 +1,13 @@
 # @squawk/airports
 
+## 0.7.7
+
+### Patch Changes
+
+- Updated dependencies [311c537]
+  - @squawk/types@0.14.0
+  - @squawk/geo@0.5.4
+
 ## 0.7.6
 
 ### Patch Changes

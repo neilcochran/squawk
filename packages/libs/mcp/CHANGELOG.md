@@ -1,5 +1,36 @@
 # @squawk/mcp
 
+## 0.14.7
+
+### Patch Changes
+
+- 311c537: ### Changed
+
+  - `expand_airway_segment`, `parse_flightplan_route`, `compute_route_distance` and `get_route_timing` report the airway segments the FAA marks unusable and describe them beside the published gaps, `search_airways` accepts the `SPECIAL` airway type, and `get_airway_by_designation` explains the category-prefixed oceanic and special route designations.
+
+- Updated dependencies [311c537]
+- Updated dependencies [311c537]
+- Updated dependencies [311c537]
+- Updated dependencies [311c537]
+  - @squawk/airway-data@0.7.0
+  - @squawk/airways@0.7.0
+  - @squawk/flightplan@0.9.0
+  - @squawk/types@0.14.0
+  - @squawk/airport-data@0.8.6
+  - @squawk/airports@0.7.7
+  - @squawk/airspace@0.10.1
+  - @squawk/fix-data@0.7.6
+  - @squawk/fixes@0.5.7
+  - @squawk/geo@0.5.4
+  - @squawk/icao-registry@0.5.13
+  - @squawk/icao-registry-data@0.8.19
+  - @squawk/navaid-data@0.7.6
+  - @squawk/navaids@0.6.7
+  - @squawk/notams@0.3.17
+  - @squawk/procedure-data@0.9.2
+  - @squawk/procedures@0.8.2
+  - @squawk/weather@0.6.6
+
 ## 0.14.6
 
 ### Patch Changes

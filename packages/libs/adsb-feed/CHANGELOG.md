@@ -1,5 +1,13 @@
 # @squawk/adsb-feed
 
+## 0.9.5
+
+### Patch Changes
+
+- Updated dependencies [311c537]
+  - @squawk/types@0.14.0
+  - @squawk/mode-s@0.4.5
+
 ## 0.9.4
 
 ### Patch Changes
