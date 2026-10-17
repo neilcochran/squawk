@@ -1,5 +1,13 @@
 # @squawk/adsbtop
 
+## 0.7.14
+
+### Patch Changes
+
+- deddf22: ### Changed
+
+  - Upgraded to Ink 8, picking up its rendering, text wrapping, and keyboard input fixes.
+
 ## 0.7.13
 
 ### Patch Changes
