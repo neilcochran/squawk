@@ -1,5 +1,31 @@
 # @squawk/mcp
 
+## 0.15.1
+
+### Patch Changes
+
+- Updated dependencies [8698c2d]
+- Updated dependencies [8698c2d]
+  - @squawk/airport-data@0.9.2
+  - @squawk/navaid-data@0.8.2
+  - @squawk/fix-data@0.8.1
+  - @squawk/airway-data@0.7.3
+  - @squawk/procedure-data@0.9.5
+  - @squawk/airspace-data@0.9.1
+  - @squawk/types@0.17.0
+  - @squawk/airports@0.8.1
+  - @squawk/airspace@0.10.4
+  - @squawk/airways@0.8.1
+  - @squawk/fixes@0.5.10
+  - @squawk/flightplan@0.10.1
+  - @squawk/geo@0.5.7
+  - @squawk/icao-registry@0.6.1
+  - @squawk/icao-registry-data@0.9.1
+  - @squawk/navaids@0.7.1
+  - @squawk/notams@0.3.20
+  - @squawk/procedures@0.8.6
+  - @squawk/weather@0.6.9
+
 ## 0.15.0
 
 ### Minor Changes
