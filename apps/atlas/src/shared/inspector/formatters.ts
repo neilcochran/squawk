@@ -6,6 +6,7 @@ import type {
   Fix,
   FixNavaidAssociation,
   Navaid,
+  NavaidCheckpoint,
 } from '@squawk/types';
 
 /**
@@ -112,6 +113,22 @@ export function formatNavaidStatus(status: Navaid['status']): string {
     case 'SHUTDOWN':
       return 'Shutdown';
   }
+}
+
+/**
+ * Formats a VOR receiver checkpoint as the radial the receiver should
+ * indicate there and where it is used: `"R-133, ground"`, or
+ * `"R-090, airborne at 3000 ft MSL"` for an airborne checkpoint with a
+ * published altitude. Radials take the conventional three digits.
+ */
+export function formatNavaidCheckpoint(checkpoint: NavaidCheckpoint): string {
+  const radial = `R-${checkpoint.magneticBearingDeg.toFixed(0).padStart(3, '0')}`;
+  if (checkpoint.type === 'GROUND') {
+    return `${radial}, ground`;
+  }
+  return checkpoint.altitudeFt === undefined
+    ? `${radial}, airborne`
+    : `${radial}, airborne at ${checkpoint.altitudeFt} ft MSL`;
 }
 
 /**

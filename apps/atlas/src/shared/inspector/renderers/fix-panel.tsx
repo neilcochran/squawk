@@ -4,6 +4,7 @@ import type { Fix } from '@squawk/types';
 
 import { formatFixNavaidAssociation, formatFixUseCode } from '../formatters.ts';
 
+import { InspectorRemarks } from './inspector-remarks.tsx';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**
@@ -50,11 +51,10 @@ export function FixPanel({ record }: FixPanelProps): ReactElement {
           ))}
         </InspectorSection>
       ) : null}
-      {record.chartingRemark !== undefined ? (
-        <InspectorSection title="Remark">
-          <p className="text-sm text-slate-700 dark:text-slate-300">{record.chartingRemark}</p>
-        </InspectorSection>
-      ) : null}
+      <InspectorRemarks
+        title="Remark"
+        remarks={record.chartingRemark !== undefined ? [record.chartingRemark] : []}
+      />
     </>
   );
 }

@@ -11,6 +11,7 @@ import {
   formatAirwayWaypointAltitudes,
 } from '../formatters.ts';
 
+import { InspectorRemarks } from './inspector-remarks.tsx';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**
@@ -60,15 +61,7 @@ export function AirwayPanel({ record }: AirwayPanelProps): ReactElement {
         <InspectorRow label="Region">{formatAirwayRegion(record.region)}</InspectorRow>
         <InspectorRow label="Waypoints">{record.waypoints.length}</InspectorRow>
       </InspectorSection>
-      {record.remarks !== undefined && record.remarks.length > 0 ? (
-        <InspectorSection title="Remarks">
-          {record.remarks.map((remark, idx) => (
-            <p key={idx} className="text-sm text-slate-700 dark:text-slate-300">
-              {remark}
-            </p>
-          ))}
-        </InspectorSection>
-      ) : null}
+      <InspectorRemarks title="Remarks" remarks={record.remarks ?? []} />
       {record.waypoints.length > 0 ? (
         <InspectorSection title="Route">
           {record.waypoints.map((waypoint, idx) => {

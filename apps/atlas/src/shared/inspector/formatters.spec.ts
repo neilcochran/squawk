@@ -11,6 +11,7 @@ import {
   formatAirwayWaypointAltitudes,
   formatFixNavaidAssociation,
   formatFixUseCode,
+  formatNavaidCheckpoint,
   formatNavaidFrequency,
   formatNavaidMagVariation,
   formatNavaidStatus,
@@ -114,6 +115,28 @@ describe('formatNavaidMagVariation', () => {
         buildNavaid({ magneticVariationDeg: 14, magneticVariationDirection: 'W' }),
       ),
     ).toBe('14 deg W');
+  });
+});
+
+describe('formatNavaidCheckpoint', () => {
+  it('reads a ground checkpoint as its three-digit radial', () => {
+    expect(
+      formatNavaidCheckpoint({ type: 'GROUND', magneticBearingDeg: 5, description: 'RUNUP' }),
+    ).toBe('R-005, ground');
+  });
+
+  it('adds the altitude to an airborne checkpoint when one is published', () => {
+    expect(
+      formatNavaidCheckpoint({
+        type: 'AIRBORNE',
+        magneticBearingDeg: 270,
+        altitudeFt: 2500,
+        description: 'OVER BRIDGE',
+      }),
+    ).toBe('R-270, airborne at 2500 ft MSL');
+    expect(
+      formatNavaidCheckpoint({ type: 'AIRBORNE', magneticBearingDeg: 270, description: 'X' }),
+    ).toBe('R-270, airborne');
   });
 });
 
