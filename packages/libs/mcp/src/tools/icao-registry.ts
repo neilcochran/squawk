@@ -31,7 +31,7 @@ export function registerIcaoRegistryTools(server: McpServer): void {
     {
       title: 'Look up an aircraft by ICAO hex address',
       description:
-        'Looks up a US-registered aircraft by its 24-bit ICAO hex address (the same identifier transmitted by Mode S and ADS-B). Returns registration, make, model, operator, aircraft type, engine type, and year of manufacture when known. Returns null when no match is found. Backed by `@squawk/icao-registry-data`, which is an optional peer dependency of `@squawk/mcp`; if the package is not installed the tool returns an actionable error including the install command. The first successful call may take a few hundred milliseconds while the bundled FAA registration snapshot decompresses.',
+        'Looks up a US-registered aircraft by its 24-bit ICAO hex address (the same identifier transmitted by Mode S and ADS-B). Returns registration, registration status and expiration date, make, model, operator, aircraft type, engine type, and year of manufacture when known. The record is not necessarily a current registration: the FAA registry also lists pending, sale-reported, expired and revoked registrations, and `registrationStatus` says which (`valid`, `validManufacturerDealer` and `validTrainee` are the valid ones). The operator is absent where the FAA publishes no registrant name. Returns null when no match is found. Backed by `@squawk/icao-registry-data`, which is an optional peer dependency of `@squawk/mcp`; if the package is not installed the tool returns an actionable error including the install command. The first successful call may take a few hundred milliseconds while the bundled FAA registration snapshot decompresses.',
       inputSchema: {
         icaoHex: z
           .string()

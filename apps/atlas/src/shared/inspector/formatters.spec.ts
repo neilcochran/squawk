@@ -9,6 +9,7 @@ import {
   formatAirwayRegion,
   formatAirwayType,
   formatAirwayWaypointAltitude,
+  formatFixNavaidAssociation,
   formatFixUseCode,
   formatNavaidFrequency,
   formatNavaidMagVariation,
@@ -122,6 +123,46 @@ describe('formatNavaidStatus', () => {
     expect(formatNavaidStatus('OPERATIONAL_RESTRICTED')).toBe('Operational (restricted)');
     expect(formatNavaidStatus('OPERATIONAL_VFR')).toBe('Operational (VFR only)');
     expect(formatNavaidStatus('SHUTDOWN')).toBe('Shutdown');
+  });
+});
+
+describe('formatFixNavaidAssociation', () => {
+  it('prints the bearing and distance when both are published', () => {
+    expect(
+      formatFixNavaidAssociation({
+        navaidId: 'BOS',
+        navaidType: 'VOR/DME',
+        magneticBearingDeg: 270.4,
+        distanceNm: 14.62,
+      }),
+    ).toBe('270 deg / 14.6 nm');
+  });
+
+  it('prints the bearing alone for a radial or localizer course without a distance', () => {
+    expect(
+      formatFixNavaidAssociation({ navaidId: 'PDK', navaidType: 'LOC', magneticBearingDeg: 25.51 }),
+    ).toBe('26 deg');
+  });
+
+  it('prints the distance alone for a DME arc', () => {
+    expect(
+      formatFixNavaidAssociation({ navaidId: 'CZF', navaidType: 'DME', distanceNm: 1.8 }),
+    ).toBe('1.8 nm');
+  });
+
+  it('prints the facility type when neither is published', () => {
+    expect(formatFixNavaidAssociation({ navaidId: 'CPS', navaidType: 'OM' })).toBe('OM');
+  });
+
+  it('prints a published bearing or distance of zero', () => {
+    expect(
+      formatFixNavaidAssociation({
+        navaidId: 'LNK',
+        navaidType: 'VORTAC',
+        magneticBearingDeg: 0,
+        distanceNm: 0,
+      }),
+    ).toBe('0 deg / 0.0 nm');
   });
 });
 

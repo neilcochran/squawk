@@ -116,25 +116,33 @@ export function buildFix(rec: CsvRecord): Fix | undefined {
 }
 
 /**
- * Builds a FixNavaidAssociation from a parsed FIX_NAV.csv record.
+ * Builds a FixNavaidAssociation from a parsed FIX_NAV.csv record. The bearing
+ * and distance are each optional in the source: a fix defined by a localizer
+ * course or a VOR radial has no distance, one defined by a DME arc has no
+ * bearing, and some marker and localizer associations carry neither.
  *
  * @param rec - Parsed CSV record from FIX_NAV.csv.
- * @returns A FixNavaidAssociation object, or undefined if required fields are missing.
+ * @returns A FixNavaidAssociation object, or undefined if the facility identifier or type is missing.
  */
 export function buildNavaidAssociation(rec: CsvRecord): FixNavaidAssociation | undefined {
   const navaidId = rec.NAV_ID;
   const navaidType = rec.NAV_TYPE;
-  const bearing = parseOptFloat(rec.BEARING);
-  const dist = parseOptFloat(rec.DISTANCE);
 
-  if (!navaidId || !navaidType || bearing === undefined || dist === undefined) {
+  if (!navaidId || !navaidType) {
     return undefined;
   }
 
-  return {
-    navaidId,
-    navaidType,
-    bearingDeg: bearing,
-    distanceNm: dist,
-  };
+  const association: FixNavaidAssociation = { navaidId, navaidType };
+
+  const bearing = parseOptFloat(rec.BEARING);
+  if (bearing !== undefined) {
+    association.magneticBearingDeg = bearing;
+  }
+
+  const distance = parseOptFloat(rec.DISTANCE);
+  if (distance !== undefined) {
+    association.distanceNm = distance;
+  }
+
+  return association;
 }

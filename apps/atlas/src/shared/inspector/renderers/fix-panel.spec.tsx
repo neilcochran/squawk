@@ -45,14 +45,32 @@ describe('FixPanel', () => {
       <FixPanel
         record={buildFix({
           navaidAssociations: [
-            { navaidId: 'BOS', bearingDeg: 270, distanceNm: 14.6 } as never,
-            { navaidId: 'JFK', bearingDeg: 90.4, distanceNm: 22.1 } as never,
+            { navaidId: 'BOS', navaidType: 'VOR/DME', magneticBearingDeg: 270, distanceNm: 14.6 },
+            { navaidId: 'JFK', navaidType: 'VOR/DME', magneticBearingDeg: 90.4, distanceNm: 22.1 },
           ],
         })}
       />,
     );
     expect(screen.getByText('Navaid associations (2)')).toBeInTheDocument();
     expect(screen.getByText('270 deg / 14.6 nm')).toBeInTheDocument();
+  });
+
+  it('renders an association that publishes only a bearing, only a distance, or neither', () => {
+    render(
+      <FixPanel
+        record={buildFix({
+          navaidAssociations: [
+            { navaidId: 'CPS', navaidType: 'LOC', magneticBearingDeg: 122.22 },
+            { navaidId: 'CZF', navaidType: 'DME', distanceNm: 1.8 },
+            { navaidId: 'RHI', navaidType: 'OM' },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText('Navaid associations (3)')).toBeInTheDocument();
+    expect(screen.getByText('122 deg')).toBeInTheDocument();
+    expect(screen.getByText('1.8 nm')).toBeInTheDocument();
+    expect(screen.getByText('OM')).toBeInTheDocument();
   });
 
   it('omits the navaid associations section when empty', () => {

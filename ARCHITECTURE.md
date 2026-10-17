@@ -33,7 +33,7 @@ Six guiding principles shape every decision in this repo:
 - **Designed for composition.** Libraries fit together naturally when building an application, and compose with each other directly when that is the cleanest design.
 - **Published quality from day one.** Every library ships with a README, TypeScript types, unit tests, and a changelog.
 - **Runtime-pure libraries.** Libraries are written to run in any modern JS runtime. Node-only surface is isolated to opt-in entries; server-only packages (`@squawk/mcp`, build tools) are explicitly Node-only.
-- **Complete data models.** Models capture all reasonable, distinct fields for a concept, even fields not currently consumed. The libraries are published for others to build on; completeness and correctness of the data model is a primary goal.
+- **Complete data models, within reason.** Models aim to capture the fields a consumer could reasonably use, including ones nothing in this repo reads yet. Completeness is a guide, not a rule: a source field earns its place by being populated enough and useful enough to a consumer, and a niche or barely populated one is left out and noted in the data package README. Correctness of what is modelled is not negotiable.
 
 ---
 

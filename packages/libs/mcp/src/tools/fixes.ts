@@ -37,7 +37,7 @@ export function registerFixTools(server: McpServer): void {
     {
       title: 'Get fixes by identifier',
       description:
-        'Looks up US fixes/waypoints by identifier (e.g. "MERIT", "BOSCO"). Multiple fixes can share the same identifier across ICAO regions, so the result is always an array. Returns an empty array when no match is found.',
+        'Looks up US fixes/waypoints by identifier (e.g. "MERIT", "BOSCO"). Multiple fixes can share the same identifier across ICAO regions, so the result is always an array. Returns an empty array when no match is found. Each fix lists the facilities that define it in `navaidAssociations` (navaids, localizers as type LOC, marker beacons as OM or MM) with the magnetic bearing and the distance from each; either or both are absent where the FAA publishes none, as for a localizer course without a distance.',
       inputSchema: {
         ident: z.string().min(1).describe('Fix identifier (case-insensitive).'),
       },

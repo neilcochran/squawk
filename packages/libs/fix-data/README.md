@@ -20,7 +20,7 @@ Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. 
 - Operational flags (pitch, catch, SUA/ATCAA)
 - Minimum reception altitude where published
 - Chart type associations (IAP, STAR, SID, ENROUTE, etc.)
-- Navaid associations with bearing and distance
+- The facilities that define each fix (navaids, localizers and marker beacons), with the magnetic bearing and the distance from each where the FAA publishes them
 
 ## Installation
 
@@ -117,7 +117,45 @@ Each record is a full `Fix` object from `@squawk/types`. Key fields:
 | `suaAtcaa`                   | boolean                    | Special Use Airspace / ATCAA association             |
 | `minimumReceptionAltitudeFt` | number or undefined        | MRA in feet                                          |
 | `chartTypes`                 | string[]                   | Charts the fix appears on (IAP, STAR, ENROUTE, etc.) |
-| `navaidAssociations`         | FixNavaidAssociation[]     | Bearing/distance from nearby navaids                 |
+| `navaidAssociations`         | FixNavaidAssociation[]     | Facilities that define the fix (see below)           |
+
+Each `navaidAssociations` entry is a facility that defines the fix:
+
+| Property             | Type                | Description                                                       |
+| -------------------- | ------------------- | ----------------------------------------------------------------- |
+| `navaidId`           | string              | Facility identifier (e.g. "BOS"; "PDK" for the localizer "I-PDK") |
+| `navaidType`         | string              | VOR, VORTAC, VOR/DME, TACAN, DME, NDB, NDB/DME, LOC, OM, or MM    |
+| `magneticBearingDeg` | number or undefined | Magnetic bearing from the facility to the fix                     |
+| `distanceNm`         | number or undefined | Distance from the facility to the fix, in nautical miles          |
+
+## Coverage limits and known issues
+
+- Computer navigation fixes (use code `CN`) are FAA automation points and are
+  left out.
+- A navaid association carries a bearing, a distance, both or neither, as the
+  FAA publishes it. About a quarter give a bearing alone (a localizer course,
+  or a radial from a VOR without DME), a few a distance alone, and a fix at a
+  marker beacon usually neither. Check each for `undefined` before use.
+- Association bearings are magnetic, and north is published as both 0 and 360.
+  A localizer's distance is measured from the localizer antenna or, where the
+  ILS has a DME sited elsewhere, from that DME.
+- `navaidType` values `LOC`, `OM` and `MM` are localizers and marker beacons,
+  which `@squawk/navaid-data` does not carry. A localizer's `navaidId` is the
+  ILS identifier in `@squawk/airport-data` without its `I-` prefix.
+- On 21 associations the published bearing or distance disagrees with the
+  positions of the fix and the facility by 2 nm or more: `BRINA` sits on the
+  `VTU` VOR but is published 9.5 nm from it, `LANBY` is off from both of its
+  navaids, `IZERU` publishes a distance of 0, and five fixes defined from the
+  `GSB` TACAN are each about 2.4 nm off. The intended values are not known, so
+  they are carried as published; work from the coordinates where the geometry
+  matters.
+- A fix whose ICAO region is `K` or `P` alone is an offshore fix. Its `state`
+  holds the FAA's offshore area code (`OA` Atlantic, `OG` Gulf, `OP` Pacific)
+  rather than a US state, and Pacific island fixes use `QM` (Midway) and `QW`
+  (Wake). Country `IB` is the FAA's code for the British West Indies, not an
+  ISO code.
+- Fixes at exactly 90 degrees north (`NOPOL`), on the antimeridian at 180 or
+  -180, and on the equator at 0 are real positions, not placeholders.
 
 ## Data source
 

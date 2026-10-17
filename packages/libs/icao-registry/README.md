@@ -69,6 +69,6 @@ Browser consumers that need fresh FAA data should fetch and parse the ZIP server
 ## API
 
 - `createIcaoRegistry({ data })` - builds a registry from an array of `AircraftRegistration` records.
-- `registry.lookup(icaoHex)` - resolves a 24-bit ICAO hex address to a record, or `undefined`.
+- `registry.lookup(icaoHex)` - resolves a 24-bit ICAO hex address to a record, or `undefined`. The record is returned whatever its registration status: FAA data includes pending, sale-reported, expired and revoked registrations alongside valid ones, so check `registrationStatus` before presenting a hit as a current registration.
 - `registry.recordCount` - total number of records in the loaded dataset.
-- `parseFaaRegistryZip(buffer)` - parses a downloaded FAA `ReleasableAircraft.zip` into the `AircraftRegistration[]` shape that `createIcaoRegistry` expects. Node-only; not exported from the `/browser` entry.
+- `parseFaaRegistryZip(buffer)` - parses a downloaded FAA `ReleasableAircraft.zip` into the `AircraftRegistration[]` shape that `createIcaoRegistry` expects. Every aircraft with a Mode S address is returned with its `registrationStatus` and `registrationExpirationDate`; the FAA's `REGISTRATION PENDING` and `SALE REPORTED` placeholder names and a year of manufacture of 0 are left unset. Node-only; not exported from the `/browser` entry.

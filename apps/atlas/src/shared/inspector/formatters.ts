@@ -1,4 +1,11 @@
-import type { Airport, Airway, AirwayWaypoint, Fix, Navaid } from '@squawk/types';
+import type {
+  Airport,
+  Airway,
+  AirwayWaypoint,
+  Fix,
+  FixNavaidAssociation,
+  Navaid,
+} from '@squawk/types';
 
 /**
  * Centralized string formatters for the per-type inspector panel
@@ -104,6 +111,23 @@ export function formatNavaidStatus(status: Navaid['status']): string {
     case 'SHUTDOWN':
       return 'Shutdown';
   }
+}
+
+/**
+ * Formats the geometry a fix's navaid association publishes: the bearing and
+ * distance from the facility when both are published, either one alone when
+ * only one is, and the facility type when the FAA publishes neither (as for a
+ * fix at a marker beacon).
+ */
+export function formatFixNavaidAssociation(association: FixNavaidAssociation): string {
+  const parts: string[] = [];
+  if (association.magneticBearingDeg !== undefined) {
+    parts.push(`${association.magneticBearingDeg.toFixed(0)} deg`);
+  }
+  if (association.distanceNm !== undefined) {
+    parts.push(`${association.distanceNm.toFixed(1)} nm`);
+  }
+  return parts.length > 0 ? parts.join(' / ') : association.navaidType;
 }
 
 /** Converts the FixUseCode discriminator to a sentence-cased label. */

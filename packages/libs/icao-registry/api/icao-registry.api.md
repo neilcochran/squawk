@@ -7,6 +7,7 @@
 import { AircraftRegistration } from '@squawk/types';
 import { AircraftType } from '@squawk/types';
 import { EngineType } from '@squawk/types';
+import { RegistrationStatus } from '@squawk/types';
 
 export { AircraftRegistration }
 
@@ -30,5 +31,7 @@ export interface IcaoRegistryOptions {
 
 // @public
 export function parseFaaRegistryZip(zipBuffer: Buffer): AircraftRegistration[];
+
+export { RegistrationStatus }
 
 ```

@@ -25,11 +25,11 @@ Gzipped JSON file written to `packages/libs/fix-data/data/fixes.json.gz`.
 
 ## Input files
 
-| File         | Purpose                                                       |
-| ------------ | ------------------------------------------------------------- |
-| FIX_BASE.csv | Fix base records: ID, location, use code, ARTCC, flags        |
-| FIX_CHRT.csv | Chart type associations per fix (IAP, STAR, ENROUTE, etc.)    |
-| FIX_NAV.csv  | Navaid associations: bearing and distance from nearby navaids |
+| File         | Purpose                                                        |
+| ------------ | -------------------------------------------------------------- |
+| FIX_BASE.csv | Fix base records: ID, location, use code, ARTCC, flags         |
+| FIX_CHRT.csv | Chart type associations per fix (IAP, STAR, ENROUTE, etc.)     |
+| FIX_NAV.csv  | Defining facilities, with bearing and distance where published |
 
 ## Usage
 

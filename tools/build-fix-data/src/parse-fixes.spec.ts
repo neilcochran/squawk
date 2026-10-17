@@ -128,7 +128,7 @@ describe('buildNavaidAssociation', () => {
     expect(assoc).toEqual({
       navaidId: 'BOS',
       navaidType: 'VOR/DME',
-      bearingDeg: 240,
+      magneticBearingDeg: 240,
       distanceNm: 17.3,
     });
   });
@@ -145,15 +145,31 @@ describe('buildNavaidAssociation', () => {
     ).toBe(undefined);
   });
 
-  it('returns undefined when bearing or distance is missing or non-numeric', () => {
+  it('keeps a bearing-only association, as for a localizer course or a radial without DME', () => {
     expect(
-      buildNavaidAssociation({
-        NAV_ID: 'BOS',
-        NAV_TYPE: 'VOR',
-        BEARING: '',
-        DISTANCE: '5',
-      }),
-    ).toBe(undefined);
+      buildNavaidAssociation({ NAV_ID: 'PDK', NAV_TYPE: 'LOC', BEARING: '25.51', DISTANCE: '' }),
+    ).toEqual({ navaidId: 'PDK', navaidType: 'LOC', magneticBearingDeg: 25.51 });
+  });
+
+  it('keeps a distance-only association, as for a DME arc', () => {
+    expect(
+      buildNavaidAssociation({ NAV_ID: 'MCN', NAV_TYPE: 'DME', BEARING: '', DISTANCE: '12.5' }),
+    ).toEqual({ navaidId: 'MCN', navaidType: 'DME', distanceNm: 12.5 });
+  });
+
+  it('keeps an association that publishes neither a bearing nor a distance', () => {
+    expect(
+      buildNavaidAssociation({ NAV_ID: 'RHI', NAV_TYPE: 'OM', BEARING: '', DISTANCE: '' }),
+    ).toEqual({ navaidId: 'RHI', navaidType: 'OM' });
+  });
+
+  it('keeps a published bearing or distance of zero', () => {
+    expect(
+      buildNavaidAssociation({ NAV_ID: 'LNK', NAV_TYPE: 'VORTAC', BEARING: '0', DISTANCE: '12' }),
+    ).toEqual({ navaidId: 'LNK', navaidType: 'VORTAC', magneticBearingDeg: 0, distanceNm: 12 });
+  });
+
+  it('leaves a non-numeric bearing or distance unset', () => {
     expect(
       buildNavaidAssociation({
         NAV_ID: 'BOS',
@@ -161,6 +177,6 @@ describe('buildNavaidAssociation', () => {
         BEARING: 'nope',
         DISTANCE: '5',
       }),
-    ).toBe(undefined);
+    ).toEqual({ navaidId: 'BOS', navaidType: 'VOR', distanceNm: 5 });
   });
 });

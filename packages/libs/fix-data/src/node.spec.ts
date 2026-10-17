@@ -69,14 +69,87 @@ describe('usBundledFixes', () => {
     assert(withCharts !== undefined, 'expected at least one fix with chart types');
   });
 
-  it('contains records with navaid associations', () => {
-    const withNav = usBundledFixes.records.find((r) => r.navaidAssociations.length > 0);
-    assert(withNav !== undefined, 'expected at least one fix with navaid associations');
-    const assoc = withNav.navaidAssociations[0]!;
-    expect(typeof assoc.navaidId).toBe('string');
-    expect(typeof assoc.navaidType).toBe('string');
-    expect(typeof assoc.bearingDeg).toBe('number');
-    expect(typeof assoc.distanceNm).toBe('number');
+  it('carries every navaid association the FAA publishes', () => {
+    const associations = usBundledFixes.records.flatMap((r) => r.navaidAssociations);
+    assert(
+      associations.length >= 25_000,
+      `expected at least 25,000 associations, found ${associations.length}`,
+    );
+    for (const association of associations) {
+      assert(association.navaidId.length > 0, 'association without a facility identifier');
+      assert(association.navaidType.length > 0, 'association without a facility type');
+    }
+  });
+
+  it('keeps associations that publish only a bearing, only a distance, or neither', () => {
+    const associations = usBundledFixes.records.flatMap((r) => r.navaidAssociations);
+    const both = associations.filter(
+      (a) => a.magneticBearingDeg !== undefined && a.distanceNm !== undefined,
+    );
+    const bearingOnly = associations.filter(
+      (a) => a.magneticBearingDeg !== undefined && a.distanceNm === undefined,
+    );
+    const distanceOnly = associations.filter(
+      (a) => a.magneticBearingDeg === undefined && a.distanceNm !== undefined,
+    );
+    const neither = associations.filter(
+      (a) => a.magneticBearingDeg === undefined && a.distanceNm === undefined,
+    );
+    assert(both.length > 15_000, `bearing and distance: ${both.length}`);
+    assert(bearingOnly.length > 5_000, `bearing only: ${bearingOnly.length}`);
+    assert(distanceOnly.length > 500, `distance only: ${distanceOnly.length}`);
+    assert(neither.length > 100, `neither: ${neither.length}`);
+  });
+
+  it('publishes bearings from 0 to 360 and distances that are not negative', () => {
+    for (const fix of usBundledFixes.records) {
+      for (const association of fix.navaidAssociations) {
+        const label = `${fix.identifier} from ${association.navaidId}`;
+        if (association.magneticBearingDeg !== undefined) {
+          assert(
+            association.magneticBearingDeg >= 0 && association.magneticBearingDeg <= 360,
+            `${label}: bearing ${association.magneticBearingDeg}`,
+          );
+        }
+        if (association.distanceNm !== undefined) {
+          assert(
+            association.distanceNm >= 0 && association.distanceNm < 300,
+            `${label}: distance ${association.distanceNm}`,
+          );
+        }
+      }
+    }
+  });
+
+  it('keeps the definition of a fix whose associations all lack a bearing or a distance', () => {
+    const acore = usBundledFixes.records.find((r) => r.identifier === 'ACORE');
+    assert(acore !== undefined, 'expected to find ACORE fix');
+    const localizer = acore.navaidAssociations.find((a) => a.navaidType === 'LOC');
+    assert(localizer !== undefined, 'expected ACORE to keep its localizer association');
+    expect(typeof localizer.magneticBearingDeg).toBe('number');
+    expect(localizer.distanceNm).toBe(undefined);
+    const marker = acore.navaidAssociations.find((a) => a.navaidType === 'OM');
+    assert(marker !== undefined, 'expected ACORE to keep its outer marker association');
+    expect(marker.magneticBearingDeg).toBe(undefined);
+    expect(marker.distanceNm).toBe(undefined);
+  });
+
+  it('includes the fixes at the pole, on the antimeridian and on the equator', () => {
+    for (const fix of usBundledFixes.records) {
+      assert(fix.lat >= -90 && fix.lat <= 90, `${fix.identifier}: lat ${fix.lat}`);
+      assert(fix.lon >= -180 && fix.lon <= 180, `${fix.identifier}: lon ${fix.lon}`);
+    }
+    const pole = usBundledFixes.records.find((r) => r.identifier === 'NOPOL');
+    assert(pole !== undefined, 'expected to find NOPOL fix');
+    expect(pole.lat).toBe(90);
+    assert(
+      usBundledFixes.records.some((r) => Math.abs(r.lon) === 180),
+      'expected a fix on the antimeridian',
+    );
+    assert(
+      usBundledFixes.records.some((r) => r.lat === 0),
+      'expected a fix on the equator',
+    );
   });
 
   it('can find a known fix by scanning records', () => {

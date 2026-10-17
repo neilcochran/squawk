@@ -6,14 +6,21 @@ import AdmZip from 'adm-zip';
 import { parseNasrArgs, parseCsv } from '@squawk/build-shared';
 import type { Navaid } from '@squawk/types';
 
-import { buildNavaid } from './parse-navaids.js';
+import {
+  attachNavaidCheckpoints,
+  attachNavaidRemarks,
+  buildNavaid,
+  navaidKey,
+} from './parse-navaids.js';
 import { writeOutput } from './write-output.js';
 
 /** Subdirectory within a NASR subscription directory containing the CSV data ZIP. */
 const CSV_DATA_DIR = 'CSV_Data';
 
-/** CSV file extracted from the NASR data ZIP. */
+/** CSV files extracted from the NASR data ZIP. */
 const NAV_BASE_CSV = 'NAV_BASE.csv';
+const NAV_RMK_CSV = 'NAV_RMK.csv';
+const NAV_CKPT_CSV = 'NAV_CKPT.csv';
 
 /**
  * Main entry point. Parses CLI arguments, resolves input file paths,
@@ -58,6 +65,7 @@ async function main(): Promise<void> {
     // Build Navaid objects, excluding shutdown facilities.
     console.log('[index] Building navaid records...');
     const navaids: Navaid[] = [];
+    const navaidsByKey = new Map<string, Navaid>();
     let skipped = 0;
 
     for (const rec of baseRecords) {
@@ -67,14 +75,42 @@ async function main(): Promise<void> {
       }
 
       const navaid = buildNavaid(rec);
-      if (navaid) {
+      const key = navaidKey(rec);
+      if (navaid && key !== undefined) {
         navaids.push(navaid);
+        navaidsByKey.set(key, navaid);
       } else {
         skipped++;
       }
     }
 
     console.log(`[index] Built ${navaids.length} navaid records (skipped ${skipped}).`);
+
+    // Attach remarks from NAV_RMK.
+    console.log(`[index] Reading ${NAV_RMK_CSV}...`);
+    const rmkBuffer = csvZip.readFile(NAV_RMK_CSV);
+    if (rmkBuffer) {
+      const rmkRecords = parseCsv(rmkBuffer.toString('utf-8'));
+      const attached = attachNavaidRemarks(navaidsByKey, rmkRecords);
+      console.log(
+        `[index] Parsed ${rmkRecords.length} records from ${NAV_RMK_CSV}; attached ${attached} remarks.`,
+      );
+    } else {
+      console.log(`[index] Warning: ${NAV_RMK_CSV} not found in ZIP, skipping remarks.`);
+    }
+
+    // Attach VOR receiver checkpoints from NAV_CKPT.
+    console.log(`[index] Reading ${NAV_CKPT_CSV}...`);
+    const ckptBuffer = csvZip.readFile(NAV_CKPT_CSV);
+    if (ckptBuffer) {
+      const ckptRecords = parseCsv(ckptBuffer.toString('utf-8'));
+      const attached = attachNavaidCheckpoints(navaidsByKey, ckptRecords);
+      console.log(
+        `[index] Parsed ${ckptRecords.length} records from ${NAV_CKPT_CSV}; attached ${attached} checkpoints.`,
+      );
+    } else {
+      console.log(`[index] Warning: ${NAV_CKPT_CSV} not found in ZIP, skipping checkpoints.`);
+    }
 
     await writeOutput(navaids, nasrCycleDate, outputPath);
   } finally {
