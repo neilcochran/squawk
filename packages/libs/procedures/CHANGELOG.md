@@ -1,5 +1,16 @@
 # @squawk/procedures
 
+## 0.8.5
+
+### Patch Changes
+
+- 334a4ee: ### Changed
+
+  - The README states that leg constraints, path terminators, holds, RF arc data and fix-role flags are returned as published and not interpreted, and that an arc leg draws as a straight line between its end fixes.
+
+- Updated dependencies [334a4ee]
+  - @squawk/types@0.16.1
+
 ## 0.8.4
 
 ### Patch Changes

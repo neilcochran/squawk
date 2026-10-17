@@ -1,5 +1,37 @@
 # @squawk/mcp
 
+## 0.15.0
+
+### Minor Changes
+
+- 334a4ee: ### Added
+
+  - `find_nearest_navaids`, `search_navaids` and `find_navaids_by_frequency` accept `navaidStatuses` and `publicUseOnly`.
+  - `find_nearest_airports` and `search_airports` accept `useTypes` (`PUBLIC`, `PRIVATE`).
+
+  ### Fixed
+  - `compute_route_distance`, `get_route_timing` and `get_route_geometry` measure an airway flown against its published order correctly.
+
+  ### Changed
+  - `expand_airway_segment` describes the new `reversed` flag and how to read segment fields with it. `compute_route_distance` says that no altitude or procedure constraint is checked.
+
+### Patch Changes
+
+- Updated dependencies [334a4ee]
+- Updated dependencies [334a4ee]
+- Updated dependencies [334a4ee]
+- Updated dependencies [334a4ee]
+- Updated dependencies [334a4ee]
+- Updated dependencies [334a4ee]
+- Updated dependencies [334a4ee]
+  - @squawk/airports@0.8.0
+  - @squawk/airways@0.8.0
+  - @squawk/flightplan@0.10.0
+  - @squawk/navaid-data@0.8.1
+  - @squawk/navaids@0.7.0
+  - @squawk/procedures@0.8.5
+  - @squawk/types@0.16.1
+
 ## 0.14.9
 
 ### Patch Changes

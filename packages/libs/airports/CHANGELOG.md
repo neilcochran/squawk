@@ -1,5 +1,21 @@
 # @squawk/airports
 
+## 0.8.0
+
+### Minor Changes
+
+- 334a4ee: ### Added
+
+  - `nearest` and `search` accept `useTypes` to keep only public-use or only private-use facilities. Most facilities in the FAA data are private use.
+
+  ### Changed
+  - The README lists the `minRunwayLengthFt` option of `nearest`, which it had left out.
+
+### Patch Changes
+
+- Updated dependencies [334a4ee]
+  - @squawk/types@0.16.1
+
 ## 0.7.9
 
 ### Patch Changes
