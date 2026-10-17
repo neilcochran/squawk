@@ -85,6 +85,31 @@ describe('AirspacePanel', () => {
     expect(setHoveredFeatureIndexMock).toHaveBeenCalledWith(undefined);
   });
 
+  it('renders an exclusive ceiling as below its value and the unlimited sentinel as Unlimited', () => {
+    render(
+      <AirspacePanel
+        features={[
+          buildFeature({
+            type: 'MOA',
+            identifier: 'MEUREKAL',
+            floor: { valueFt: 5000, reference: 'MSL', inclusive: false },
+            ceiling: { valueFt: 18000, reference: 'MSL', inclusive: false },
+          }),
+          buildFeature({
+            type: 'MOA',
+            identifier: 'MEUREKAL',
+            floor: { valueFt: 18000, reference: 'MSL' },
+            ceiling: { valueFt: 99999, reference: 'MSL' },
+          }),
+        ]}
+      />,
+    );
+    expect(screen.getByText('Above 5000 ft MSL')).toBeInTheDocument();
+    expect(screen.getByText('Below 18000 ft MSL')).toBeInTheDocument();
+    expect(screen.getByText('18000 ft MSL')).toBeInTheDocument();
+    expect(screen.getByText('Unlimited')).toBeInTheDocument();
+  });
+
   it('renders nothing when given an empty features array (defensive single-feature path)', () => {
     const { container } = render(<AirspacePanel features={[]} />);
     expect(container.textContent).toBe('');

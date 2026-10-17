@@ -65,8 +65,12 @@ export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
     }
     return (
       <InspectorSection title={sectionTitle(feature, 0)}>
-        <InspectorRow label="Floor">{formatAltitudeBoundVerbose(feature.floor)}</InspectorRow>
-        <InspectorRow label="Ceiling">{formatAltitudeBoundVerbose(feature.ceiling)}</InspectorRow>
+        <InspectorRow label="Floor">
+          {formatAltitudeBoundVerbose(feature.floor, 'floor')}
+        </InspectorRow>
+        <InspectorRow label="Ceiling">
+          {formatAltitudeBoundVerbose(feature.ceiling, 'ceiling')}
+        </InspectorRow>
         <InspectorRow label="Name">{feature.name}</InspectorRow>
         <InspectorRow label="State">{feature.state}</InspectorRow>
         <InspectorRow label="Controlling">{feature.controllingFacility}</InspectorRow>
@@ -99,8 +103,12 @@ export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
           onPointerEnter={(): void => setHoveredFeatureIndex(idx)}
           onPointerLeave={(): void => setHoveredFeatureIndex(undefined)}
         >
-          <InspectorRow label="Floor">{formatAltitudeBoundVerbose(feature.floor)}</InspectorRow>
-          <InspectorRow label="Ceiling">{formatAltitudeBoundVerbose(feature.ceiling)}</InspectorRow>
+          <InspectorRow label="Floor">
+            {formatAltitudeBoundVerbose(feature.floor, 'floor')}
+          </InspectorRow>
+          <InspectorRow label="Ceiling">
+            {formatAltitudeBoundVerbose(feature.ceiling, 'ceiling')}
+          </InspectorRow>
           <InspectorRow label="Stratum">{feature.artccStratum}</InspectorRow>
         </InspectorSection>
       ))}

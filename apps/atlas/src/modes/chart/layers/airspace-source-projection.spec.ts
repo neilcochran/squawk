@@ -3,8 +3,10 @@ import { describe, it, expect } from 'vitest';
 
 import {
   AIRSPACE_CEILING_FT_PROPERTY,
+  AIRSPACE_CEILING_INCLUSIVE_PROPERTY,
   AIRSPACE_CEILING_REF_PROPERTY,
   AIRSPACE_FLOOR_FT_PROPERTY,
+  AIRSPACE_FLOOR_INCLUSIVE_PROPERTY,
   AIRSPACE_FLOOR_REF_PROPERTY,
   AIRSPACE_MATCH_KEY_PROPERTY,
 } from '../../../shared/inspector/airspace-feature.ts';
@@ -20,8 +22,8 @@ import {
 interface BuildFeatureParams {
   type: string;
   identifier: string;
-  floor?: { valueFt: number; reference: 'MSL' | 'AGL' | 'SFC' };
-  ceiling?: { valueFt: number; reference: 'MSL' | 'AGL' | 'SFC' };
+  floor?: { valueFt: number; reference: 'MSL' | 'AGL' | 'SFC'; inclusive?: boolean };
+  ceiling?: { valueFt: number; reference: 'MSL' | 'AGL' | 'SFC'; inclusive?: boolean };
   artccStratum?: string;
   geometry?: Polygon;
 }
@@ -174,6 +176,30 @@ describe('projectAirspaceSource', () => {
     expect(props?.[AIRSPACE_CEILING_FT_PROPERTY]).toBe(10000);
     expect(props?.[AIRSPACE_CEILING_REF_PROPERTY]).toBe('MSL');
     expect(airspaceBadgeGroups(state)?.get('CLASS_B/BOS')).toBeUndefined();
+  });
+
+  it('flags an exclusive bound and leaves an inclusive one unflagged', () => {
+    const result = projectAirspaceSource(
+      loadedState([
+        buildFeature({
+          type: 'MOA',
+          identifier: 'MEUREKAL',
+          floor: { valueFt: 5000, reference: 'MSL', inclusive: false },
+          ceiling: { valueFt: 18000, reference: 'MSL', inclusive: false },
+        }),
+        buildFeature({
+          type: 'CLASS_B',
+          identifier: 'BOS',
+          floor: { valueFt: 0, reference: 'SFC' },
+          ceiling: { valueFt: 7000, reference: 'MSL', inclusive: true },
+        }),
+      ]),
+    );
+    const [moa, classB] = (result as FeatureCollection).features;
+    expect(moa?.properties?.[AIRSPACE_FLOOR_INCLUSIVE_PROPERTY]).toBe(false);
+    expect(moa?.properties?.[AIRSPACE_CEILING_INCLUSIVE_PROPERTY]).toBe(false);
+    expect(classB?.properties).not.toHaveProperty(AIRSPACE_FLOOR_INCLUSIVE_PROPERTY);
+    expect(classB?.properties).not.toHaveProperty(AIRSPACE_CEILING_INCLUSIVE_PROPERTY);
   });
 
   it('numbers a multi-feature group highest layer first, not in dataset order', () => {

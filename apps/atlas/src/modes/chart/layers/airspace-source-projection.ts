@@ -6,8 +6,10 @@ import type { AltitudeBound } from '@squawk/types';
 import type { AirspaceDatasetState } from '../../../shared/data/airspace-dataset.ts';
 import {
   AIRSPACE_CEILING_FT_PROPERTY,
+  AIRSPACE_CEILING_INCLUSIVE_PROPERTY,
   AIRSPACE_CEILING_REF_PROPERTY,
   AIRSPACE_FLOOR_FT_PROPERTY,
+  AIRSPACE_FLOOR_INCLUSIVE_PROPERTY,
   AIRSPACE_FLOOR_REF_PROPERTY,
   AIRSPACE_MATCH_KEY_PROPERTY,
   orderAirspaceFeatures,
@@ -119,9 +121,10 @@ export function getAirspaceProjection(dataset: LoadedAirspaceDataset): AirspaceP
  * The airspace source data for MapLibre: every dataset feature decorated
  * with the synthetic `__atlasMatchKey` property (used by the highlight
  * filters), `__atlasFeatureIndex` (used by the per-feature focus filter
- * and the badges), and primitive altitude properties (used by the
- * extrusion expressions and the disambiguation popover's altitude
- * subtitle), with its polygon vertices clamped inside the Mercator world
+ * and the badges), and primitive altitude properties (the value and
+ * datum used by the extrusion expressions and the disambiguation
+ * popover's altitude subtitle, plus an exclusive-bound flag the subtitle
+ * alone reads), with its polygon vertices clamped inside the Mercator world
  * (see {@link MAX_SOURCE_LATITUDE}). Returns undefined while the dataset
  * is still loading or errored.
  */
@@ -208,9 +211,15 @@ function buildAirspaceProjection(dataset: LoadedAirspaceDataset): AirspaceProjec
           [AIRSPACE_FLOOR_FT_PROPERTY]: floorPrimitives.valueFt,
           [AIRSPACE_FLOOR_REF_PROPERTY]: floorPrimitives.reference,
         }),
+        ...(floorPrimitives?.inclusive === false && {
+          [AIRSPACE_FLOOR_INCLUSIVE_PROPERTY]: false,
+        }),
         ...(ceilingPrimitives !== undefined && {
           [AIRSPACE_CEILING_FT_PROPERTY]: ceilingPrimitives.valueFt,
           [AIRSPACE_CEILING_REF_PROPERTY]: ceilingPrimitives.reference,
+        }),
+        ...(ceilingPrimitives?.inclusive === false && {
+          [AIRSPACE_CEILING_INCLUSIVE_PROPERTY]: false,
         }),
       },
     };
@@ -334,10 +343,10 @@ function altitudeKeyOf(feature: Feature | undefined): AirspaceAltitudeKey {
 }
 
 /**
- * Narrows a nested `{ valueFt, reference }` object pulled off a
- * GeoJSON property bag into the shared {@link AltitudeBound} shape.
- * Returns `undefined` when the input is missing, not an object, or
- * has unexpected field types - the projection code then omits the
+ * Narrows a nested `{ valueFt, reference, inclusive? }` object pulled
+ * off a GeoJSON property bag into the shared {@link AltitudeBound}
+ * shape. Returns `undefined` when the input is missing, not an object,
+ * or has unexpected field types - the projection code then omits the
  * corresponding flat-primitive properties so downstream consumers
  * get `undefined` reads instead of garbage values.
  */
@@ -348,7 +357,11 @@ function readNestedAltitudeBound(value: unknown): AltitudeBound | undefined {
   if (!('valueFt' in value) || !('reference' in value)) {
     return undefined;
   }
-  return readAltitudeBoundPrimitives(value.valueFt, value.reference);
+  return readAltitudeBoundPrimitives(
+    value.valueFt,
+    value.reference,
+    'inclusive' in value ? value.inclusive : undefined,
+  );
 }
 
 /**

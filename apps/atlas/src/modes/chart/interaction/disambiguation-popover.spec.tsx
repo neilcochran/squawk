@@ -588,16 +588,17 @@ describe('DisambiguationPopover', () => {
   });
 
   it('renders an AGL suffix on altitude bounds with AGL reference', () => {
-    // A Class E5 polygon whose floor is 700 AGL and ceiling is at FL180
-    // (17999 MSL). The AGL suffix matters: 700 AGL and 700 MSL are very
-    // different airspace floors.
+    // A Class E5 polygon whose floor is 700 AGL and whose ceiling ends
+    // where Class A begins (18000 MSL, exclusive). The AGL suffix
+    // matters: 700 AGL and 700 MSL are very different airspace floors.
     const classE5 = buildFeature(AIRSPACE_FILL_LAYER_ID, {
       type: 'CLASS_E5',
       identifier: 'BILLINGS',
       __atlasFloorFt: 700,
       __atlasFloorRef: 'AGL',
-      __atlasCeilingFt: 17999,
+      __atlasCeilingFt: 18000,
       __atlasCeilingRef: 'MSL',
+      __atlasCeilingInclusive: false,
     });
     const moa = buildFeature(AIRSPACE_FILL_LAYER_ID, {
       type: 'MOA',
@@ -618,7 +619,7 @@ describe('DisambiguationPopover', () => {
     );
 
     const e5Row = screen.getByRole('menuitem', { name: /billings/i });
-    expect(e5Row).toHaveTextContent('700ft AGL-17999ft');
+    expect(e5Row).toHaveTextContent('700ft AGL-<18k');
   });
 
   it('omits the subtitle when airspace altitude bounds are missing or malformed', () => {
