@@ -44,7 +44,7 @@
     "@squawk/types": "^0.16.0"
   },
   "devDependencies": {
-    "@types/node": "^26.6.4"
+    "@types/node": "^26.6.5"
   },
   "keywords": [
     "aviation",
