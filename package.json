@@ -30,6 +30,7 @@
     "docs": "typedoc",
     "build:data": "node scripts/build-data.js",
     "check-coverage": "node scripts/check-coverage.js",
+    "profile:data": "node scripts/profile-data.js",
     "check-mcp-pin": "node scripts/check-mcp-pin.js",
     "clean": "node scripts/clean.js",
     "publish": "changeset publish",

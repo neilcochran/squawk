@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gunzipSync } from 'node:zlib';
+import { gzipSync } from 'node:zlib';
 
 import { describe, it, expect } from 'vitest';
 
@@ -9,27 +9,52 @@ import { loadUsBundledAirspace } from './browser.js';
 import { usBundledAirspace } from './node.js';
 
 const dataPath = resolve(dirname(fileURLToPath(import.meta.url)), '../data/airspace.geojson.gz');
-const gzBytes = readFileSync(dataPath);
-const decompressedBytes = gunzipSync(gzBytes);
+
+/**
+ * A small dataset in the bundled file's on-disk shape. The tests that only
+ * exercise fetching and decoding use it instead of the real snapshot, so they
+ * do not decompress the whole file; the first test still loads the real file
+ * end to end.
+ */
+const fixtureFile = {
+  type: 'FeatureCollection',
+  properties: {
+    nasrCycleDate: '2026-01-22',
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    featureCount: 0,
+  },
+  features: [],
+};
+const fixtureDataset = fixtureFile;
+const fixtureJson = Buffer.from(JSON.stringify(fixtureFile));
+const fixtureGz = gzipSync(fixtureJson);
 
 describe('loadUsBundledAirspace', () => {
-  it('produces the same dataset as the Node export when the body is raw gzip', async () => {
+  it('produces the same dataset as the Node export from the bundled file', async () => {
     const dataset = await loadUsBundledAirspace({
-      fetch: async () => new Response(gzBytes),
+      fetch: async () => new Response(readFileSync(dataPath)),
     });
 
     expect(dataset).toEqual(usBundledAirspace);
   });
 
-  it('produces the same dataset when the server advertises Content-Encoding: gzip', async () => {
+  it('decompresses a body served as raw gzip', async () => {
+    const dataset = await loadUsBundledAirspace({
+      fetch: async () => new Response(fixtureGz),
+    });
+
+    expect(dataset).toEqual(fixtureDataset);
+  });
+
+  it('reads the body as is when the server advertises Content-Encoding: gzip', async () => {
     const dataset = await loadUsBundledAirspace({
       fetch: async () =>
-        new Response(decompressedBytes, {
+        new Response(fixtureJson, {
           headers: { 'content-encoding': 'gzip' },
         }),
     });
 
-    expect(dataset).toEqual(usBundledAirspace);
+    expect(dataset).toEqual(fixtureDataset);
   });
 
   it('throws when the response is not ok', async () => {
@@ -47,7 +72,7 @@ describe('loadUsBundledAirspace', () => {
       url: 'https://cdn.example/airspace.geojson.gz',
       fetch: async (input) => {
         received = input instanceof Request ? input.url : input;
-        return new Response(gzBytes);
+        return new Response(fixtureGz);
       },
     });
 
@@ -67,12 +92,12 @@ describe('loadUsBundledAirspace', () => {
     let called = false;
     globalThis.fetch = async () => {
       called = true;
-      return new Response(gzBytes);
+      return new Response(fixtureGz);
     };
     try {
       const dataset = await loadUsBundledAirspace();
       expect(called).toBe(true);
-      expect(dataset).toEqual(usBundledAirspace);
+      expect(dataset).toEqual(fixtureDataset);
     } finally {
       globalThis.fetch = original;
     }

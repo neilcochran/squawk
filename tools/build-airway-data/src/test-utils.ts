@@ -114,8 +114,6 @@ export function segmentRecord(overrides: Partial<AirwaySegmentRecord> = {}): Air
     gnssMinimumEnrouteAltitudeOppositeDirection: undefined,
     dmeDmeIruMinimumEnrouteAltitudeFt: undefined,
     dmeDmeIruMinimumEnrouteAltitudeDirection: undefined,
-    dmeDmeIruMinimumEnrouteAltitudeOppositeFt: undefined,
-    dmeDmeIruMinimumEnrouteAltitudeOppositeDirection: undefined,
     dogleg: false,
     rnpNm: undefined,
     unusable: false,

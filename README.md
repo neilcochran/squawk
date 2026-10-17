@@ -130,6 +130,7 @@ npm run test         # run all tests
 npm run lint         # lint all packages
 npm run docs         # generate documentation
 npm run build:data   # rebuild the *-data snapshots from FAA source files (see Tools)
+npm run profile:data # check every snapshot against its types and value ranges
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor workflow.

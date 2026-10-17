@@ -5,6 +5,17 @@ import type { Procedure, ProcedureLeg } from '@squawk/types';
 import { usBundledProcedures } from './node.js';
 
 /**
+ * Number of decimal places in a number's shortest decimal representation,
+ * reading exponent notation (`1.5e-7` has 8).
+ */
+function decimalPlaces(value: number): number {
+  const [mantissa = '', exponent] = String(Math.abs(value)).split('e');
+  const fraction = mantissa.split('.')[1] ?? '';
+  const shift = exponent === undefined ? 0 : -Number(exponent);
+  return Math.max(0, fraction.length + shift);
+}
+
+/**
  * Great-circle distance in nautical miles between two points.
  */
 function distanceNm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -735,5 +746,21 @@ describe('usBundledProcedures', () => {
       (r) => r.type !== 'IAP' && r.commonRoutes.length === 0 && r.transitions.length === 0,
     );
     expect(empty.map((r) => `${r.airports[0]} ${r.identifier}`)).toEqual([]);
+  });
+});
+
+describe('coordinate precision', () => {
+  it('carries at most 6 decimal places on leg positions', () => {
+    let most = 0;
+    for (const procedure of usBundledProcedures.records) {
+      for (const legs of legSequences(procedure)) {
+        for (const leg of legs) {
+          if (leg.lat !== undefined && leg.lon !== undefined) {
+            most = Math.max(most, decimalPlaces(leg.lat), decimalPlaces(leg.lon));
+          }
+        }
+      }
+    }
+    assert(most <= 6, `found a coordinate with ${most} decimal places`);
   });
 });

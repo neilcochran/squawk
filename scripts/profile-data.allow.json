@@ -1,0 +1,62 @@
+[
+  {
+    "dataset": "airports",
+    "key": "Airport.status",
+    "flag": "CONSTANT",
+    "reason": "The FAA airport file lists open facilities only; the airport-data README says so."
+  },
+  {
+    "dataset": "navaids",
+    "key": "NavaidCheckpoint.altitudeFt",
+    "flag": "NEVER_DEFINED",
+    "reason": "Altitude of an airborne VOR receiver checkpoint. The FAA publishes only ground checkpoints this cycle; kept so an airborne one is not published without its altitude."
+  },
+  {
+    "dataset": "navaids",
+    "key": "NavaidCheckpoint.type",
+    "flag": "CONSTANT",
+    "reason": "Every published VOR receiver checkpoint is a ground checkpoint this cycle; the navaid-data README says so."
+  },
+  {
+    "dataset": "navaids",
+    "key": "Navaid.markerShape",
+    "flag": "CONSTANT",
+    "reason": "Every remaining fan marker has an elliptical pattern; the Navaid TSDoc says so."
+  },
+  {
+    "dataset": "airways",
+    "key": "AirwayWaypoint.dmeDmeIruMinimumEnrouteAltitudeDirection",
+    "flag": "NEVER_DEFINED",
+    "reason": "No FAA record publishes a direction for a DME/DME/IRU MEA (the AWY and CSV direction columns are blank). Kept so a directional value is not read as applying both ways if the FAA starts publishing one."
+  },
+  {
+    "dataset": "airways",
+    "key": "AirwayWaypoint.rnpNm",
+    "flag": "CONSTANT",
+    "reason": "Every airway segment that publishes an RNP value publishes 1.0 nm this cycle."
+  },
+  {
+    "dataset": "airspace",
+    "key": "AirspaceFeature.identifier",
+    "flag": "EMPTY_STRING",
+    "reason": "Class A and the area-based Class E5, E6 and E7 airspace have no associated airport, and three Class D and one Class E4 area are US portions of Canadian control zones; the airspace-data README says so."
+  },
+  {
+    "dataset": "airspace",
+    "key": "AltitudeBound.valueFt",
+    "flag": "OUT_OF_BOUNDS",
+    "reason": "R-2535B publishes a 100,000 ft ceiling, above the 99,999 ft sentinel for unlimited; carried as published and documented in the airspace-data README."
+  },
+  {
+    "dataset": "procedures",
+    "key": "ProcedureLeg.courseIsTrue",
+    "flag": "NEVER_DEFINED",
+    "reason": "No CIFP leg publishes a true course this cycle. Kept so a true course is not read as magnetic if one is published."
+  },
+  {
+    "dataset": "procedures",
+    "key": "Procedure.transitionAltitudeFt",
+    "flag": "CONSTANT",
+    "reason": "The transition altitude is 18,000 ft throughout US airspace."
+  }
+]

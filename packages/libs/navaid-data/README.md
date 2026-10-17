@@ -142,6 +142,7 @@ Each `checkpoints` entry is a published spot for checking a VOR receiver:
 
 ## Coverage limits and known issues
 
+- Coordinates carry up to 8 decimal places, the precision of the FAA's decimal columns (about 1 mm). The same point can differ in its last places between squawk datasets (a navaid in the navaid data and as an airway waypoint, for example), so compare positions across datasets with a tolerance.
 - Shutdown navaids are left out, so `status` is never `SHUTDOWN`.
 - Identifiers are not unique. About 70 are shared by two or more navaids (four
   NDBs use `IL`), so a look-up by identifier can return several records;

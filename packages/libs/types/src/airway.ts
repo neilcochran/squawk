@@ -233,12 +233,11 @@ export interface AirwayWaypoint {
   gnssMinimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
   /** DME/DME/IRU MEA in feet for this segment, if published (mostly on Q routes). */
   dmeDmeIruMinimumEnrouteAltitudeFt?: number;
-  /** Direction the DME/DME/IRU MEA applies to; absent when it applies in both directions. */
+  /**
+   * Direction the DME/DME/IRU MEA applies to; absent when it applies in both
+   * directions. No FAA record sets it at present.
+   */
   dmeDmeIruMinimumEnrouteAltitudeDirection?: AirwayDirection;
-  /** DME/DME/IRU MEA in the opposite direction in feet. */
-  dmeDmeIruMinimumEnrouteAltitudeOppositeFt?: number;
-  /** Direction the opposite DME/DME/IRU MEA applies to. */
-  dmeDmeIruMinimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
   /**
    * Minimum crossing altitude (MCA) in feet at this waypoint for traffic in
    * `minimumCrossingAltitudeDirection`. NASR publishes an MCA on the first

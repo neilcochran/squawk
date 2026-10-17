@@ -32,7 +32,7 @@ Short, kebab-case, intent-describing branch names: `fetch-weather`, `route-dista
 
 - Open against `main`, with the PR body referencing the accepted issue (`Closes #N`). Trivial fixes are exempt.
 - Include a [changeset](.changeset/) for any user-facing change to a published `@squawk/*` package. The changeset format is documented in [CONVENTIONS.md](CONVENTIONS.md#changeset-format).
-- CI must pass: lint, knip, format, build, tests + per-file and aggregate coverage, pack-shape checks, and README-data-date checks. Details in [ARCHITECTURE.md](ARCHITECTURE.md#quality-gates).
+- CI must pass: lint, knip, format, build, tests + per-file and aggregate coverage, pack-shape checks, README-data-date checks, and the data profile (`npm run profile:data`). Details in [ARCHITECTURE.md](ARCHITECTURE.md#quality-gates).
 - Reviews go through `@neilcochran` (I'm the only code owner today, see [CODEOWNERS](.github/CODEOWNERS)).
 
 ## Reporting bugs

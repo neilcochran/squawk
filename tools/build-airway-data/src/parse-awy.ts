@@ -86,8 +86,6 @@ export function parseAwy1(line: string): Awy1Record {
     minimumCrossingAltitudePoint: crossingAltitudePointField(line, 240, 40),
     dmeDmeIruMinimumEnrouteAltitudeFt: intField(line, 280, 5),
     dmeDmeIruMinimumEnrouteAltitudeDirection: directionField(line, 285, 6),
-    dmeDmeIruMinimumEnrouteAltitudeOppositeFt: intField(line, 291, 5),
-    dmeDmeIruMinimumEnrouteAltitudeOppositeDirection: directionField(line, 296, 6),
     dogleg: field(line, 302, 1) === 'Y',
     rnpNm: numField(line, 303, 5),
     unusable: field(line, 308, 1) === 'U',

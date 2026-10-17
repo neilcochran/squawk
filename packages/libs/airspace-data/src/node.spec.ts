@@ -3,6 +3,17 @@ import { describe, it, expect, assert } from 'vitest';
 
 import { usBundledAirspace } from './node.js';
 
+/**
+ * Number of decimal places in a number's shortest decimal representation,
+ * reading exponent notation (`1.5e-7` has 8).
+ */
+function decimalPlaces(value: number): number {
+  const [mantissa = '', exponent] = String(Math.abs(value)).split('e');
+  const fraction = mantissa.split('.')[1] ?? '';
+  const shift = exponent === undefined ? 0 : -Number(exponent);
+  return Math.max(0, fraction.length + shift);
+}
+
 /** The Special Use Airspace types, whose boundaries the build traces from arcs and lines. */
 const SUA_TYPES = new Set(['MOA', 'RESTRICTED', 'WARNING', 'ALERT', 'PROHIBITED', 'NSA']);
 
@@ -546,5 +557,25 @@ describe('usBundledAirspace', () => {
         );
       }
     }
+  });
+});
+
+describe('coordinate precision', () => {
+  it('carries at most 5 decimal places on boundary and exclusion vertices', () => {
+    let most = 0;
+    const measure = (rings: Position[][]): void => {
+      for (const ring of rings) {
+        for (const [lon, lat] of ring) {
+          most = Math.max(most, decimalPlaces(lon ?? 0), decimalPlaces(lat ?? 0));
+        }
+      }
+    };
+    for (const feature of usBundledAirspace.features) {
+      measure(ringsOf(feature));
+      for (const exclusion of feature.properties?.exclusions ?? []) {
+        measure(exclusion.boundary.coordinates);
+      }
+    }
+    assert(most <= 5, `found a coordinate with ${most} decimal places`);
   });
 });

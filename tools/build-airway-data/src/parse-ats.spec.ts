@@ -94,8 +94,6 @@ describe('parseAts1', () => {
     expect(rec.gnssMinimumEnrouteAltitudeOppositeDirection).toBe('SW BND');
     expect(rec.dmeDmeIruMinimumEnrouteAltitudeFt).toBe(18000);
     expect(rec.dmeDmeIruMinimumEnrouteAltitudeDirection).toBe('N BND');
-    expect(rec.dmeDmeIruMinimumEnrouteAltitudeOppositeFt).toBe(20000);
-    expect(rec.dmeDmeIruMinimumEnrouteAltitudeOppositeDirection).toBe('S BND');
     expect(rec.dogleg).toBe(true);
     expect(rec.rnpNm).toBe(1);
     expect(rec.unusable).toBe(true);

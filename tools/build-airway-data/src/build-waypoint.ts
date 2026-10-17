@@ -73,10 +73,6 @@ export interface AirwaySegmentRecord {
   dmeDmeIruMinimumEnrouteAltitudeFt: number | undefined;
   /** DME/DME/IRU MEA direction. */
   dmeDmeIruMinimumEnrouteAltitudeDirection: AirwayDirection | undefined;
-  /** DME/DME/IRU MEA opposite. */
-  dmeDmeIruMinimumEnrouteAltitudeOppositeFt: number | undefined;
-  /** DME/DME/IRU MEA opposite direction. */
-  dmeDmeIruMinimumEnrouteAltitudeOppositeDirection: AirwayDirection | undefined;
   /** Dogleg indicator. */
   dogleg: boolean;
   /** Required navigation performance in nautical miles. */
@@ -277,14 +273,6 @@ export function buildWaypoint(
     if (segment.dmeDmeIruMinimumEnrouteAltitudeDirection !== undefined) {
       wp.dmeDmeIruMinimumEnrouteAltitudeDirection =
         segment.dmeDmeIruMinimumEnrouteAltitudeDirection;
-    }
-  }
-  if (segment.dmeDmeIruMinimumEnrouteAltitudeOppositeFt !== undefined) {
-    wp.dmeDmeIruMinimumEnrouteAltitudeOppositeFt =
-      segment.dmeDmeIruMinimumEnrouteAltitudeOppositeFt;
-    if (segment.dmeDmeIruMinimumEnrouteAltitudeOppositeDirection !== undefined) {
-      wp.dmeDmeIruMinimumEnrouteAltitudeOppositeDirection =
-        segment.dmeDmeIruMinimumEnrouteAltitudeOppositeDirection;
     }
   }
   const distanceToNextNm = segment.discontinued

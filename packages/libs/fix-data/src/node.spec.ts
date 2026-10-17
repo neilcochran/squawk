@@ -2,6 +2,17 @@ import { describe, it, expect, assert } from 'vitest';
 
 import { usBundledFixes } from './node.js';
 
+/**
+ * Number of decimal places in a number's shortest decimal representation,
+ * reading exponent notation (`1.5e-7` has 8).
+ */
+function decimalPlaces(value: number): number {
+  const [mantissa = '', exponent] = String(Math.abs(value)).split('e');
+  const fraction = mantissa.split('.')[1] ?? '';
+  const shift = exponent === undefined ? 0 : -Number(exponent);
+  return Math.max(0, fraction.length + shift);
+}
+
 describe('usBundledFixes', () => {
   it('loads with a reasonable number of records', () => {
     assert(usBundledFixes.records.length > 50_000);
@@ -156,5 +167,15 @@ describe('usBundledFixes', () => {
     const merit = usBundledFixes.records.find((r) => r.identifier === 'MERIT');
     assert(merit !== undefined, 'expected to find MERIT fix');
     expect(merit.country).toBe('US');
+  });
+});
+
+describe('coordinate precision', () => {
+  it('carries at most 8 decimal places on fix positions', () => {
+    let most = 0;
+    for (const fix of usBundledFixes.records) {
+      most = Math.max(most, decimalPlaces(fix.lat), decimalPlaces(fix.lon));
+    }
+    assert(most <= 8, `found a coordinate with ${most} decimal places`);
   });
 });
