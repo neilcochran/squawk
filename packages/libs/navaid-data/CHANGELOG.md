@@ -1,5 +1,16 @@
 # @squawk/navaid-data
 
+## 0.8.1
+
+### Patch Changes
+
+- 334a4ee: ### Fixed
+
+  - The 40 navaids not open to public use carry `publicUse: false` instead of leaving it unset, so they can be told apart from records with no flag. `simultaneousVoice` is `false` where the FAA says no and unset only where it says nothing.
+
+- Updated dependencies [334a4ee]
+  - @squawk/types@0.16.1
+
 ## 0.8.0
 
 ### Minor Changes

@@ -1,5 +1,18 @@
 # @squawk/navaids
 
+## 0.7.0
+
+### Minor Changes
+
+- 334a4ee: ### Added
+
+  - `nearest`, `search` and `byFrequency` accept `statuses`, a set of operational statuses to include, and `publicUseOnly`, which keeps only navaids open to public use. Restricted, VFR-only and non-public navaids could not be told apart in these queries before.
+
+### Patch Changes
+
+- Updated dependencies [334a4ee]
+  - @squawk/types@0.16.1
+
 ## 0.6.9
 
 ### Patch Changes
