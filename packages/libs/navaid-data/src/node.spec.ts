@@ -208,6 +208,21 @@ describe('usBundledNavaids', () => {
     expect(ack.checkpoints[0]?.airportId).toBe('ACK');
   });
 
+  it('says on every record whether the navaid is open to public use', () => {
+    let notPublic = 0;
+    for (const record of usBundledNavaids.records) {
+      assert(record.publicUse !== undefined, `${record.identifier} has no public-use flag`);
+      if (!record.publicUse) {
+        notPublic++;
+      }
+    }
+    assert(notPublic > 0, 'expected navaids that are not open to public use');
+    assert(
+      usBundledNavaids.records.some((r) => r.simultaneousVoice === false),
+      'expected navaids published without simultaneous voice',
+    );
+  });
+
   it('names the associated city on every record', () => {
     for (const record of usBundledNavaids.records) {
       assert(record.city !== undefined && record.city.length > 0, record.identifier);

@@ -10,7 +10,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { AirportSearchQuery, NearestAirportQuery } from '@squawk/airports';
-import type { FacilityType } from '@squawk/types';
+import type { FacilityType, FacilityUseType } from '@squawk/types';
 
 import { getAirportResolver } from '../resolvers.js';
 
@@ -23,6 +23,9 @@ const FACILITY_TYPE_VALUES = [
   'ULTRALIGHT',
   'BALLOONPORT',
 ] as const satisfies readonly FacilityType[];
+
+/** All {@link FacilityUseType} values, used for input validation. */
+const USE_TYPE_VALUES = ['PUBLIC', 'PRIVATE'] as const satisfies readonly FacilityUseType[];
 
 /**
  * Registers airport lookup tools (by FAA ID, by ICAO code, nearest, text
@@ -109,6 +112,12 @@ export function registerAirportTools(server: McpServer): void {
           .array(z.enum(FACILITY_TYPE_VALUES))
           .optional()
           .describe('Restrict results to these facility types. Omit to include all types.'),
+        useTypes: z
+          .array(z.enum(USE_TYPE_VALUES))
+          .optional()
+          .describe(
+            'Restrict results to these use types: PUBLIC (open to the public) or PRIVATE (prior permission required; most heliports and many small fields). Omit to include both.',
+          ),
         minRunwayLengthFt: z
           .number()
           .positive()
@@ -116,7 +125,7 @@ export function registerAirportTools(server: McpServer): void {
           .describe('Only include airports with at least one runway meeting this length in feet.'),
       },
     },
-    async ({ lat, lon, maxDistanceNm, limit, facilityTypes, minRunwayLengthFt }) => {
+    async ({ lat, lon, maxDistanceNm, limit, facilityTypes, useTypes, minRunwayLengthFt }) => {
       const resolver = await getAirportResolver();
       const query: NearestAirportQuery = { lat, lon };
       if (maxDistanceNm !== undefined) {
@@ -127,6 +136,9 @@ export function registerAirportTools(server: McpServer): void {
       }
       if (facilityTypes !== undefined) {
         query.types = new Set(facilityTypes);
+      }
+      if (useTypes !== undefined) {
+        query.useTypes = new Set(useTypes);
       }
       if (minRunwayLengthFt !== undefined) {
         query.minRunwayLengthFt = minRunwayLengthFt;
@@ -160,6 +172,12 @@ export function registerAirportTools(server: McpServer): void {
           .array(z.enum(FACILITY_TYPE_VALUES))
           .optional()
           .describe('Restrict results to these facility types. Omit to include all types.'),
+        useTypes: z
+          .array(z.enum(USE_TYPE_VALUES))
+          .optional()
+          .describe(
+            'Restrict results to these use types: PUBLIC (open to the public) or PRIVATE (prior permission required; most heliports and many small fields). Omit to include both.',
+          ),
         minScore: z
           .number()
           .min(0)
@@ -170,7 +188,7 @@ export function registerAirportTools(server: McpServer): void {
           ),
       },
     },
-    async ({ text, limit, facilityTypes, minScore }) => {
+    async ({ text, limit, facilityTypes, useTypes, minScore }) => {
       const resolver = await getAirportResolver();
       const query: AirportSearchQuery = { text };
       if (limit !== undefined) {
@@ -178,6 +196,9 @@ export function registerAirportTools(server: McpServer): void {
       }
       if (facilityTypes !== undefined) {
         query.types = new Set(facilityTypes);
+      }
+      if (useTypes !== undefined) {
+        query.useTypes = new Set(useTypes);
       }
       if (minScore !== undefined) {
         query.minScore = minScore;

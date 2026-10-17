@@ -1,7 +1,7 @@
 import { greatCircle } from '@squawk/geo';
 import { fuzzySearch } from '@squawk/search';
 import type { FuzzySearchOptions, MatchRange, SearchField } from '@squawk/search';
-import type { Airport, FacilityType } from '@squawk/types';
+import type { Airport, FacilityType, FacilityUseType } from '@squawk/types';
 
 /**
  * Options for creating an airport resolver.
@@ -25,6 +25,8 @@ export interface NearestAirportQuery {
   limit?: number;
   /** Optional set of facility types to include. When omitted, all types are included. */
   types?: ReadonlySet<FacilityType>;
+  /** Optional set of use types to include (`PUBLIC`, `PRIVATE`). When omitted, both are included. */
+  useTypes?: ReadonlySet<FacilityUseType>;
   /** Minimum runway length in feet. When set, only airports with at least one runway meeting this length are included. */
   minRunwayLengthFt?: number;
 }
@@ -55,6 +57,8 @@ export interface AirportSearchQuery {
   limit?: number;
   /** Optional set of facility types to include. When omitted, all types are included. */
   types?: ReadonlySet<FacilityType>;
+  /** Optional set of use types to include (`PUBLIC`, `PRIVATE`). When omitted, both are included. */
+  useTypes?: ReadonlySet<FacilityUseType>;
   /** Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0, which keeps every match. Raise it to drop weak fuzzy matches. */
   minScore?: number;
 }
@@ -171,6 +175,10 @@ export function createAirportResolver(options: AirportResolverOptions): AirportR
           continue;
         }
 
+        if (query.useTypes && !query.useTypes.has(airport.useType)) {
+          continue;
+        }
+
         if (
           query.minRunwayLengthFt !== undefined &&
           !airport.runways.some(
@@ -208,8 +216,11 @@ export function createAirportResolver(options: AirportResolverOptions): AirportR
       };
 
       const types = query.types;
-      if (types) {
-        options.filter = (airport) => types.has(airport.facilityType);
+      const useTypes = query.useTypes;
+      if (types || useTypes) {
+        options.filter = (airport) =>
+          (!types || types.has(airport.facilityType)) &&
+          (!useTypes || useTypes.has(airport.useType));
       }
 
       return fuzzySearch(airports, query.text, options).map((match) => ({

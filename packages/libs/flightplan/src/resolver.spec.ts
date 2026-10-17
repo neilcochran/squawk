@@ -11,6 +11,7 @@ import type {
   FlightplanAirwayLookup,
   FlightplanProcedureLookup,
 } from './resolver.js';
+import { computeRouteDistance } from './route-distance.js';
 
 let airports: FlightplanAirportLookup;
 let navaids: FlightplanNavaidLookup;
@@ -515,6 +516,25 @@ describe('coordinate routes', () => {
 });
 
 describe('airway edge cases', () => {
+  it('records whether the airway is flown against its published order', () => {
+    const forward = resolver.parse('CIVET J60 BLD').elements.find((el) => el.type === 'airway');
+    const reverse = resolver.parse('BLD J60 CIVET').elements.find((el) => el.type === 'airway');
+    if (forward?.type !== 'airway' || reverse?.type !== 'airway') {
+      throw new Error('expected airway elements');
+    }
+    expect(forward.reversed).toBe(false);
+    expect(reverse.reversed).toBe(true);
+  });
+
+  it('measures an airway flown in reverse with the same leg distances as flown forward', () => {
+    const forward = computeRouteDistance(resolver.parse('CIVET J60 BLD'));
+    const reverse = computeRouteDistance(resolver.parse('BLD J60 CIVET'));
+    expect(reverse.totalDistanceNm).toBeCloseTo(forward.totalDistanceNm, 6);
+    expect(reverse.legs.map((leg) => leg.distanceNm)).toEqual(
+      forward.legs.map((leg) => leg.distanceNm).reverse(),
+    );
+  });
+
   it('carries the published gaps of the expansion on the airway element', () => {
     const result = resolver.parse('LAX J60 SAX');
     const airway = result.elements.find((el) => el.type === 'airway');

@@ -117,17 +117,17 @@ the configured lookup providers.
 
 Each element has a `type` discriminant and a `raw` field with the original token.
 
-| Type            | Description                               | Key fields                                                       |
-| --------------- | ----------------------------------------- | ---------------------------------------------------------------- |
-| `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                        |
-| `sid`           | Standard Instrument Departure             | `procedure`, `legs`, `transition`                                |
-| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`, `transition`                                |
-| `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`, `gaps`, `unusable` |
-| `direct`        | DCT (direct) indicator                    | -                                                                |
-| `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                              |
-| `coordinate`    | Lat/lon specified in the route string     | `lat`, `lon`                                                     |
-| `speedAltitude` | Speed/altitude group (e.g. N0450F350)     | `speedKt`/`speedKmPerHr`/`mach`, `flightLevel`/`altitudeFt`      |
-| `unresolved`    | Token that could not be resolved          | -                                                                |
+| Type            | Description                               | Key fields                                                                   |
+| --------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
+| `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                                    |
+| `sid`           | Standard Instrument Departure             | `procedure`, `legs`, `transition`                                            |
+| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`, `transition`                                            |
+| `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`, `gaps`, `unusable`, `reversed` |
+| `direct`        | DCT (direct) indicator                    | -                                                                            |
+| `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                                          |
+| `coordinate`    | Lat/lon specified in the route string     | `lat`, `lon`                                                                 |
+| `speedAltitude` | Speed/altitude group (e.g. N0450F350)     | `speedKt`/`speedKmPerHr`/`mach`, `flightLevel`/`altitudeFt`                  |
+| `unresolved`    | Token that could not be resolved          | -                                                                            |
 
 An airway element's `gaps` lists any published discontinuity its expansion
 crosses (the FAA discontinues some airways partway, such as J60 between JOT and
@@ -136,7 +136,11 @@ and measured, but a non-empty `gaps` means the route files the airway where it
 is not defined and is not valid as filed. Its `unusable` lists, in the same
 shape, any segment the FAA marks unusable (J34 between DRYER and GAABE, for
 example): the segment is still published with its distance but may not be
-flown, so a route across it is not valid as filed either.
+flown, so a route across it is not valid as filed either. Its `reversed` is
+true when the route flies the airway against its published waypoint order. Each
+waypoint's segment fields (`distanceToNextNm`, the MEAs, the course) describe
+the segment to the next waypoint in published order, so in a reversed element
+they describe the segment between the waypoint and the one before it.
 
 ### Coordinate formats
 
@@ -157,6 +161,25 @@ and a next token (exit fix) are available, the resolver expands the airway
 between those fixes. The exit fix token is consumed as part of the airway
 element. If expansion fails, the airway token is marked `unresolved` and the
 exit fix token is parsed on its own.
+
+An airway lookup supplied in place of `@squawk/airways` may leave out
+`reversed`. The route is still expanded, and the legs of that airway are
+measured as great circles instead of with the published segment distances.
+
+### What the resolver does not check
+
+Parsing, distance and timing describe the route as filed. Nothing in this
+package validates altitudes or applies constraints:
+
+- Airway altitudes (MEA, MAA, MOCA, the GNSS and DME/DME/IRU MEAs, minimum
+  crossing altitudes, and their directions) are carried on the airway waypoints
+  as published. A cruise altitude in a speed/altitude group is not compared
+  with them, and no altitude is chosen for the direction of flight.
+- Procedure legs keep their altitude and speed constraints, path terminators,
+  holds and arc data as published. Distance and geometry use only the legs that
+  end at a fix, joined by straight lines.
+- Airway changeover points, signal gaps and the US-airspace-only flag are
+  returned as published and do not affect the route.
 
 ### Procedure handling
 
@@ -199,7 +222,8 @@ Computes the total great-circle route distance and optional estimated time
 enroute from a parsed route. Walks the same ordered point sequence as the
 geometry helpers below, so distance and geometry stay in agreement. Airway
 segments use the FAA-published per-segment distance where the data carries a
-positive one, falling back to great-circle computation otherwise.
+positive one, in either direction of travel, falling back to great-circle
+computation otherwise.
 
 ```typescript
 import { computeRouteDistance } from '@squawk/flightplan';

@@ -30,6 +30,7 @@ export interface AirwayRouteElement {
     exitFix: string;
     gaps: AirwayGap[];
     raw: string;
+    reversed?: boolean;
     type: 'airway';
     unusable: AirwaySegmentReference[];
     waypoints: AirwayWaypoint[];
@@ -78,6 +79,7 @@ export interface FlightplanAirwayLookup {
         waypoints: AirwayWaypoint[];
         gaps?: AirwayGap[];
         unusable?: AirwaySegmentReference[];
+        reversed?: boolean;
     } | undefined;
 }
 

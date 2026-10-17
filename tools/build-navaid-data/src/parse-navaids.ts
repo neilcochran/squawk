@@ -28,6 +28,22 @@ const NO_MAGNETIC_VARIATION_TYPES: ReadonlySet<NavaidType> = new Set(['DME', 'VO
 const SURVEY_SOURCE_REMARK_COLUMNS: ReadonlySet<string> = new Set(['LAT_LONG_SOURCE_CODE', 'ELEV']);
 
 /**
+ * Parses a NASR Y/N flag.
+ *
+ * @param val - The flag column value.
+ * @returns true for "Y", false for "N", or undefined when the column is blank or holds anything else.
+ */
+function parseYesNo(val: string | undefined): boolean | undefined {
+  if (val === 'Y') {
+    return true;
+  }
+  if (val === 'N') {
+    return false;
+  }
+  return undefined;
+}
+
+/**
  * Safely parses a string to a float, returning undefined if empty or NaN.
  */
 function parseOptFloat(val: string | undefined): number | undefined {
@@ -186,16 +202,18 @@ export function buildNavaid(rec: CsvRecord): Navaid | undefined {
     navaid.powerOutputWatts = pwr;
   }
 
-  if (rec.SIMUL_VOICE_FLAG === 'Y') {
-    navaid.simultaneousVoice = true;
+  const simultaneousVoice = parseYesNo(rec.SIMUL_VOICE_FLAG);
+  if (simultaneousVoice !== undefined) {
+    navaid.simultaneousVoice = simultaneousVoice;
   }
 
   if (rec.NDB_CLASS_CODE) {
     navaid.ndbClass = rec.NDB_CLASS_CODE;
   }
 
-  if (rec.PUBLIC_USE_FLAG === 'Y') {
-    navaid.publicUse = true;
+  const publicUse = parseYesNo(rec.PUBLIC_USE_FLAG);
+  if (publicUse !== undefined) {
+    navaid.publicUse = publicUse;
   }
 
   if (rec.OPER_HOURS) {

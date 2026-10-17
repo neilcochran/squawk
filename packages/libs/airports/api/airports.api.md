@@ -6,6 +6,7 @@
 
 import type { Airport } from '@squawk/types';
 import type { FacilityType } from '@squawk/types';
+import type { FacilityUseType } from '@squawk/types';
 import { MatchRange } from '@squawk/search';
 
 // @public
@@ -30,6 +31,7 @@ export interface AirportSearchQuery {
     minScore?: number;
     text: string;
     types?: ReadonlySet<FacilityType>;
+    useTypes?: ReadonlySet<FacilityUseType>;
 }
 
 // @public
@@ -53,6 +55,7 @@ export interface NearestAirportQuery {
     maxDistanceNm?: number;
     minRunwayLengthFt?: number;
     types?: ReadonlySet<FacilityType>;
+    useTypes?: ReadonlySet<FacilityUseType>;
 }
 
 // @public

@@ -83,9 +83,9 @@ export interface RouteDistanceResult {
  * indicate which parts of the route could not contribute to the distance
  * calculation.
  *
- * Airway segments use the FAA-published `distanceToNextNm` value where the
- * source publishes a positive one, falling back to great-circle computation
- * otherwise. A leg that spans a published gap in its airway is still measured
+ * Airway segments use the FAA-published segment distance where the source
+ * publishes a positive one and the airway element says which direction it is
+ * flown in, falling back to great-circle computation otherwise. A leg that spans a published gap in its airway is still measured
  * as a straight line and counted, but is flagged with `crossesGap`, and a leg
  * on an airway segment the FAA marks unusable is flagged with `unusable`, so
  * the caller can see that the route is not valid as filed.

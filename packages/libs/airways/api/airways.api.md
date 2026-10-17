@@ -21,6 +21,7 @@ export interface AirwayByFixResult {
 export interface AirwayExpansionResult {
     airway: Airway;
     gaps: AirwayGap[];
+    reversed: boolean;
     unusable: AirwaySegmentReference[];
     waypoints: AirwayWaypoint[];
 }

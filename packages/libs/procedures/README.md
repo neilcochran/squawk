@@ -156,6 +156,14 @@ Returns `ProcedureExpansionResult | undefined`, containing:
 - `procedure` - the full `Procedure` record.
 - `legs` - the ordered `ProcedureLeg` sequence.
 
+The resolver returns every leg field as CIFP publishes it and interprets none
+of them: altitude and speed constraints, the ARINC 424 path terminator, course,
+hold time, the recommended navaid with its theta and rho, the RNP value, the
+turn direction, the arc radius and center fix of an RF leg, the fix-role flags
+(initial, intermediate and final approach fix, final approach course fix,
+missed approach point) and the fly-over flag. The missed approach legs are
+carried on the procedure but are not part of an expansion.
+
 ### `resolver.search(query)`
 
 Fuzzy-searches procedures across identifier and name. Matching is case-insensitive
@@ -192,8 +200,10 @@ contribute a point; legs whose ARINC 424 path terminator ends at an altitude,
 DME distance, radial, intercept, or manual event (`CA`, `FA`, `VA`, `CD`, `FD`,
 `VD`, `CR`, `VR`, `CI`, `VI`, `FM`, `VM`, and the `HA`/`HM` holds) carry no
 coordinate and are skipped, so a non-positional leg in the middle of a sequence
-leaves a gap. Consecutive duplicate points are suppressed. Returns
-`ProcedureLegPoint[]`, each with `label`, `lat`, and `lon`.
+leaves a gap. An RF or AF arc leg ends at a fix, so it contributes its end
+point and is drawn as a straight line rather than an arc. Consecutive duplicate
+points are suppressed. Returns `ProcedureLegPoint[]`, each with `label`,
+`lat`, and `lon`.
 
 ### `expansionToLineString(legs)`
 

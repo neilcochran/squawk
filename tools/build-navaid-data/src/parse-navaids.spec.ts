@@ -151,13 +151,16 @@ describe('buildNavaid', () => {
       }
     });
 
-    it('sets simultaneousVoice and publicUse from Y flags only', () => {
+    it('sets simultaneousVoice and publicUse from their Y and N flags', () => {
       const yes = buildNavaid(baseRec({ SIMUL_VOICE_FLAG: 'Y', PUBLIC_USE_FLAG: 'Y' }));
       const no = buildNavaid(baseRec({ SIMUL_VOICE_FLAG: 'N', PUBLIC_USE_FLAG: 'N' }));
       expect(yes?.simultaneousVoice).toBe(true);
       expect(yes?.publicUse).toBe(true);
-      expect(no?.simultaneousVoice).toBe(undefined);
-      expect(no?.publicUse).toBe(undefined);
+      expect(no?.simultaneousVoice).toBe(false);
+      expect(no?.publicUse).toBe(false);
+      const blank = buildNavaid(baseRec({ SIMUL_VOICE_FLAG: '', PUBLIC_USE_FLAG: '' }));
+      expect(blank?.simultaneousVoice).toBe(undefined);
+      expect(blank?.publicUse).toBe(undefined);
     });
 
     it('includes low/high ARTCC identifiers and marker fields', () => {

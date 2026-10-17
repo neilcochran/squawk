@@ -8,7 +8,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { NavaidFrequencyQuery, NavaidSearchQuery, NearestNavaidQuery } from '@squawk/navaids';
-import type { NavaidType } from '@squawk/types';
+import type { NavaidStatus, NavaidType } from '@squawk/types';
 
 import { getNavaidResolver } from '../resolvers.js';
 
@@ -25,6 +25,14 @@ const NAVAID_TYPE_VALUES = [
   'MARINE_NDB',
   'VOT',
 ] as const satisfies readonly NavaidType[];
+
+/** All {@link NavaidStatus} values, used for input validation. */
+const NAVAID_STATUS_VALUES = [
+  'OPERATIONAL_IFR',
+  'OPERATIONAL_RESTRICTED',
+  'OPERATIONAL_VFR',
+  'SHUTDOWN',
+] as const satisfies readonly NavaidStatus[];
 
 /**
  * Registers navaid lookup tools on the given MCP server. Each handler pulls
@@ -106,6 +114,18 @@ export function registerNavaidTools(server: McpServer): void {
           .array(z.enum(NAVAID_TYPE_VALUES))
           .optional()
           .describe('Restrict results to these navaid types. Omit to include all types.'),
+        navaidStatuses: z
+          .array(z.enum(NAVAID_STATUS_VALUES))
+          .optional()
+          .describe(
+            'Restrict results to these operational statuses. OPERATIONAL_RESTRICTED navaids are usable with published restrictions (unusable radials and the like, listed in remarks); OPERATIONAL_VFR navaids are not for IFR use. Omit to include all statuses.',
+          ),
+        publicUseOnly: z
+          .boolean()
+          .optional()
+          .describe(
+            'When true, only navaids open to public use are returned (private and most military navaids are not).',
+          ),
         limit: z
           .number()
           .int()
@@ -114,11 +134,17 @@ export function registerNavaidTools(server: McpServer): void {
           .describe('Maximum number of results to return. Defaults to 20.'),
       },
     },
-    async ({ frequency, navaidTypes, limit }) => {
+    async ({ frequency, navaidTypes, navaidStatuses, publicUseOnly, limit }) => {
       const resolver = await getNavaidResolver();
       const query: NavaidFrequencyQuery = { frequency };
       if (navaidTypes !== undefined) {
         query.types = new Set(navaidTypes);
+      }
+      if (navaidStatuses !== undefined) {
+        query.statuses = new Set(navaidStatuses);
+      }
+      if (publicUseOnly !== undefined) {
+        query.publicUseOnly = publicUseOnly;
       }
       if (limit !== undefined) {
         query.limit = limit;
@@ -155,9 +181,21 @@ export function registerNavaidTools(server: McpServer): void {
           .array(z.enum(NAVAID_TYPE_VALUES))
           .optional()
           .describe('Restrict results to these navaid types. Omit to include all types.'),
+        navaidStatuses: z
+          .array(z.enum(NAVAID_STATUS_VALUES))
+          .optional()
+          .describe(
+            'Restrict results to these operational statuses. OPERATIONAL_RESTRICTED navaids are usable with published restrictions (unusable radials and the like, listed in remarks); OPERATIONAL_VFR navaids are not for IFR use. Omit to include all statuses.',
+          ),
+        publicUseOnly: z
+          .boolean()
+          .optional()
+          .describe(
+            'When true, only navaids open to public use are returned (private and most military navaids are not).',
+          ),
       },
     },
-    async ({ lat, lon, maxDistanceNm, limit, navaidTypes }) => {
+    async ({ lat, lon, maxDistanceNm, limit, navaidTypes, navaidStatuses, publicUseOnly }) => {
       const resolver = await getNavaidResolver();
       const query: NearestNavaidQuery = { lat, lon };
       if (maxDistanceNm !== undefined) {
@@ -168,6 +206,12 @@ export function registerNavaidTools(server: McpServer): void {
       }
       if (navaidTypes !== undefined) {
         query.types = new Set(navaidTypes);
+      }
+      if (navaidStatuses !== undefined) {
+        query.statuses = new Set(navaidStatuses);
+      }
+      if (publicUseOnly !== undefined) {
+        query.publicUseOnly = publicUseOnly;
       }
       const results = resolver.nearest(query);
       return {
@@ -192,6 +236,18 @@ export function registerNavaidTools(server: McpServer): void {
           .array(z.enum(NAVAID_TYPE_VALUES))
           .optional()
           .describe('Restrict results to these navaid types. Omit to include all types.'),
+        navaidStatuses: z
+          .array(z.enum(NAVAID_STATUS_VALUES))
+          .optional()
+          .describe(
+            'Restrict results to these operational statuses. OPERATIONAL_RESTRICTED navaids are usable with published restrictions (unusable radials and the like, listed in remarks); OPERATIONAL_VFR navaids are not for IFR use. Omit to include all statuses.',
+          ),
+        publicUseOnly: z
+          .boolean()
+          .optional()
+          .describe(
+            'When true, only navaids open to public use are returned (private and most military navaids are not).',
+          ),
         limit: z
           .number()
           .int()
@@ -208,11 +264,17 @@ export function registerNavaidTools(server: McpServer): void {
           ),
       },
     },
-    async ({ text, navaidTypes, limit, minScore }) => {
+    async ({ text, navaidTypes, navaidStatuses, publicUseOnly, limit, minScore }) => {
       const resolver = await getNavaidResolver();
       const query: NavaidSearchQuery = { text };
       if (navaidTypes !== undefined) {
         query.types = new Set(navaidTypes);
+      }
+      if (navaidStatuses !== undefined) {
+        query.statuses = new Set(navaidStatuses);
+      }
+      if (publicUseOnly !== undefined) {
+        query.publicUseOnly = publicUseOnly;
       }
       if (limit !== undefined) {
         query.limit = limit;

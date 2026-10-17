@@ -171,8 +171,13 @@ export type AirwayWaypointType = 'NAVAID' | 'FIX' | 'WAYPOINT' | 'OTHER';
  * west-to-east / south-to-north per FAA convention.
  *
  * Segment fields (MEA, MOCA, MAA, distance, course, gap and unusable flags)
- * describe the segment from this waypoint to the next one in the sequence.
- * Point fields (MRA, MCA, magnetic variation) describe the waypoint itself.
+ * describe the segment from this waypoint to the next one in the airway's
+ * published order. A slice of the airway taken in the opposite direction
+ * still carries them that way, so there each waypoint's segment fields
+ * describe the segment between it and the waypoint before it in the slice.
+ * Directional values (`NE`, `SW` and so on) are compass directions and
+ * read the same either way. Point fields (MRA, MCA, magnetic variation)
+ * describe the waypoint itself.
  */
 export interface AirwayWaypoint {
   /** Waypoint name (navaid name, fix identifier, or descriptive name). */

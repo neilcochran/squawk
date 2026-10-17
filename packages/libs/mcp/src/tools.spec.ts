@@ -707,6 +707,50 @@ describe('airport tools', () => {
       await close();
     }
   });
+
+  it('find_nearest_airports honors useTypes', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_nearest_airports',
+        arguments: {
+          lat: 40.6413,
+          lon: -73.7781,
+          maxDistanceNm: 40,
+          limit: 50,
+          useTypes: ['PUBLIC'],
+        },
+      });
+      const parsed = z
+        .object({ results: z.array(z.object({ airport: z.object({ useType: z.string() }) })) })
+        .parse(result.structuredContent);
+      assert(parsed.results.length > 0);
+      for (const { airport } of parsed.results) {
+        expect(airport.useType).toBe('PUBLIC');
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('search_airports honors useTypes', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'search_airports',
+        arguments: { text: 'hospital', limit: 20, useTypes: ['PRIVATE'] },
+      });
+      const parsed = z
+        .object({ results: z.array(z.object({ airport: z.object({ useType: z.string() }) })) })
+        .parse(result.structuredContent);
+      assert(parsed.results.length > 0);
+      for (const { airport } of parsed.results) {
+        expect(airport.useType).toBe('PRIVATE');
+      }
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('airspace tools', () => {
@@ -975,6 +1019,67 @@ describe('navaid tools', () => {
       });
       const parsed = z.object({ navaids: z.array(z.unknown()) }).parse(result.structuredContent);
       assert(Array.isArray(parsed.navaids));
+    } finally {
+      await close();
+    }
+  });
+
+  it('find_nearest_navaids honors navaidStatuses and publicUseOnly', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'find_nearest_navaids',
+        arguments: {
+          lat: 40.6413,
+          lon: -73.7781,
+          maxDistanceNm: 150,
+          limit: 50,
+          navaidStatuses: ['OPERATIONAL_IFR'],
+          publicUseOnly: true,
+        },
+      });
+      const parsed = z
+        .object({
+          results: z.array(
+            z.object({ navaid: z.object({ status: z.string(), publicUse: z.boolean() }) }),
+          ),
+        })
+        .parse(result.structuredContent);
+      assert(parsed.results.length > 0);
+      for (const { navaid } of parsed.results) {
+        expect(navaid.status).toBe('OPERATIONAL_IFR');
+        expect(navaid.publicUse).toBe(true);
+      }
+    } finally {
+      await close();
+    }
+  });
+
+  it('search_navaids and find_navaids_by_frequency honor navaidStatuses', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const search = await client.callTool({
+        name: 'search_navaids',
+        arguments: { text: 'A', limit: 20, navaidStatuses: ['OPERATIONAL_RESTRICTED'] },
+      });
+      const searched = z
+        .object({ navaids: z.array(z.object({ navaid: z.object({ status: z.string() }) })) })
+        .parse(search.structuredContent);
+      assert(searched.navaids.length > 0);
+      for (const { navaid } of searched.navaids) {
+        expect(navaid.status).toBe('OPERATIONAL_RESTRICTED');
+      }
+
+      const byFrequency = await client.callTool({
+        name: 'find_navaids_by_frequency',
+        arguments: { frequency: 113.5, navaidStatuses: ['OPERATIONAL_VFR'], publicUseOnly: true },
+      });
+      const tuned = z
+        .object({ navaids: z.array(z.object({ status: z.string() })) })
+        .parse(byFrequency.structuredContent);
+      for (const navaid of tuned.navaids) {
+        expect(navaid.status).toBe('OPERATIONAL_VFR');
+      }
     } finally {
       await close();
     }

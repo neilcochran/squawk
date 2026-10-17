@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.14.9"]
+      "args": ["-y", "@squawk/mcp@0.15.0"]
     }
   }
 }
@@ -172,7 +172,7 @@ Pinning works the same way:
         "-p",
         "@squawk/icao-registry-data@0.8.12",
         "-p",
-        "@squawk/mcp@0.14.9",
+        "@squawk/mcp@0.15.0",
         "squawk-mcp"
       ]
     }

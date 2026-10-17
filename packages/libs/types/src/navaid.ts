@@ -192,11 +192,17 @@ export interface Navaid {
   dmeServiceVolume?: string;
   /** Transmitter power output in watts. */
   powerOutputWatts?: number;
-  /** Whether simultaneous voice transmission is available on the frequency. */
+  /**
+   * Whether simultaneous voice transmission is available on the frequency.
+   * Absent where the source does not say.
+   */
   simultaneousVoice?: boolean;
   /** NDB classification code (e.g. "HH", "H", "MH", "MHW", "HW", "LOM", "LMM"). */
   ndbClass?: string;
-  /** Whether the navaid is available for public use. */
+  /**
+   * Whether the navaid is available for public use: false for a private or
+   * military facility. Present on every bundled record.
+   */
   publicUse?: boolean;
   /** Scheduled operating hours (e.g. "24", "SS-SR"). */
   operatingHours?: string;

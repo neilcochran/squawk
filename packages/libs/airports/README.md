@@ -81,13 +81,15 @@ Case-insensitive. Returns `Airport | undefined`.
 
 Finds airports nearest to a geographic position, sorted by distance ascending.
 
-| Property        | Type                       | Description                                                          |
-| --------------- | -------------------------- | -------------------------------------------------------------------- |
-| `lat`           | number                     | Latitude in decimal degrees (WGS84)                                  |
-| `lon`           | number                     | Longitude in decimal degrees (WGS84)                                 |
-| `maxDistanceNm` | number                     | Optional. Maximum distance in nautical miles. Defaults to 30         |
-| `limit`         | number                     | Optional. Maximum number of results. Defaults to 10                  |
-| `types`         | ReadonlySet\<FacilityType> | Optional. When provided, only facilities of these types are returned |
+| Property            | Type                          | Description                                                                                    |
+| ------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| `lat`               | number                        | Latitude in decimal degrees (WGS84)                                                            |
+| `lon`               | number                        | Longitude in decimal degrees (WGS84)                                                           |
+| `maxDistanceNm`     | number                        | Optional. Maximum distance in nautical miles. Defaults to 30                                   |
+| `limit`             | number                        | Optional. Maximum number of results. Defaults to 10                                            |
+| `types`             | ReadonlySet\<FacilityType>    | Optional. When provided, only facilities of these types are returned                           |
+| `useTypes`          | ReadonlySet\<FacilityUseType> | Optional. When provided, only facilities of these use types (`PUBLIC`, `PRIVATE`) are returned |
+| `minRunwayLengthFt` | number                        | Optional. When provided, only airports with at least one runway this long are returned         |
 
 Returns `NearestAirportResult[]`, each containing:
 
@@ -109,6 +111,14 @@ const heliports = resolver.nearest({
   lon: -73.7781,
   types: new Set(['HELIPORT']),
 });
+
+// Find public-use airports only; most facilities in the FAA data are private use
+const publicAirports = resolver.nearest({
+  lat: 40.6413,
+  lon: -73.7781,
+  types: new Set(['AIRPORT']),
+  useTypes: new Set(['PUBLIC']),
+});
 ```
 
 ### `resolver.search(query)`
@@ -117,12 +127,13 @@ Fuzzy-searches airports across FAA ID, ICAO code, name, and city. Matching is
 case-insensitive and tolerant of prefixes, substrings, subsequences, and small typos.
 Results are scored and returned best-match first.
 
-| Property   | Type                       | Description                                                                              |
-| ---------- | -------------------------- | ---------------------------------------------------------------------------------------- |
-| `text`     | string                     | Search text, matched fuzzily against each airport's FAA ID, ICAO code, name, and city    |
-| `limit`    | number                     | Optional. Maximum number of results. Defaults to 20                                      |
-| `types`    | ReadonlySet\<FacilityType> | Optional. When provided, only facilities of these types are returned                     |
-| `minScore` | number                     | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
+| Property   | Type                          | Description                                                                                    |
+| ---------- | ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| `text`     | string                        | Search text, matched fuzzily against each airport's FAA ID, ICAO code, name, and city          |
+| `limit`    | number                        | Optional. Maximum number of results. Defaults to 20                                            |
+| `types`    | ReadonlySet\<FacilityType>    | Optional. When provided, only facilities of these types are returned                           |
+| `useTypes` | ReadonlySet\<FacilityUseType> | Optional. When provided, only facilities of these use types (`PUBLIC`, `PRIVATE`) are returned |
+| `minScore` | number                        | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0       |
 
 Returns `AirportSearchResult[]`, sorted by descending score, each containing:
 

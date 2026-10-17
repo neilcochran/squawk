@@ -336,3 +336,89 @@ describe('createNavaidResolver with empty dataset', () => {
     expect(empty.search({ text: 'test' }).length).toBe(0);
   });
 });
+
+describe('status and public-use filters', () => {
+  const restrictedOnly = new Set(['OPERATIONAL_RESTRICTED'] as const);
+  const vfrOnly = new Set(['OPERATIONAL_VFR'] as const);
+
+  it('limits nearest results to the requested statuses', () => {
+    const all = resolver.nearest({ lat: 39.8, lon: -98.6, maxDistanceNm: 400, limit: 500 });
+    const restricted = resolver.nearest({
+      lat: 39.8,
+      lon: -98.6,
+      maxDistanceNm: 400,
+      limit: 500,
+      statuses: restrictedOnly,
+    });
+    assert(restricted.length > 0, 'expected restricted navaids in range');
+    assert(restricted.length < all.length, 'expected the filter to drop some navaids');
+    for (const { navaid } of restricted) {
+      expect(navaid.status).toBe('OPERATIONAL_RESTRICTED');
+    }
+  });
+
+  it('keeps only public-use navaids when asked', () => {
+    const query = { lat: 39.8, lon: -98.6, maxDistanceNm: 3000, limit: 2000 };
+    const everything = resolver.nearest(query);
+    assert(
+      everything.some(({ navaid }) => navaid.publicUse !== true),
+      'expected at least one navaid that is not public use',
+    );
+    const publicOnly = resolver.nearest({ ...query, publicUseOnly: true });
+    assert(publicOnly.length > 0);
+    assert(publicOnly.length < everything.length);
+    for (const { navaid } of publicOnly) {
+      expect(navaid.publicUse).toBe(true);
+    }
+  });
+
+  it('applies the filters to frequency lookups', () => {
+    const restricted = resolver
+      .byType(new Set<NavaidType>(['VOR/DME']))
+      .find((navaid) => navaid.status === 'OPERATIONAL_RESTRICTED');
+    assert(restricted?.frequencyMhz !== undefined, 'expected a restricted VOR/DME');
+    const frequency = restricted.frequencyMhz;
+    const unfiltered = resolver.byFrequency({ frequency, limit: 100 });
+    const ifrOnly = resolver.byFrequency({
+      frequency,
+      limit: 100,
+      statuses: new Set(['OPERATIONAL_IFR'] as const),
+      publicUseOnly: true,
+    });
+    expect(unfiltered).toContain(restricted);
+    expect(ifrOnly).not.toContain(restricted);
+    for (const navaid of ifrOnly) {
+      expect(navaid.status).toBe('OPERATIONAL_IFR');
+      expect(navaid.publicUse).toBe(true);
+    }
+  });
+
+  it('applies the filters to text search', () => {
+    const results = resolver.search({ text: 'A', limit: 50, statuses: vfrOnly });
+    assert(results.length > 0, 'expected VFR-only navaids to match');
+    for (const { navaid } of results) {
+      expect(navaid.status).toBe('OPERATIONAL_VFR');
+    }
+  });
+
+  it('combines a status filter with a type filter', () => {
+    const results = resolver.nearest({
+      lat: 39.8,
+      lon: -98.6,
+      maxDistanceNm: 3000,
+      limit: 2000,
+      types: new Set<NavaidType>(['NDB']),
+      statuses: restrictedOnly,
+    });
+    assert(results.length > 0);
+    for (const { navaid } of results) {
+      expect(navaid.type).toBe('NDB');
+      expect(navaid.status).toBe('OPERATIONAL_RESTRICTED');
+    }
+  });
+
+  it('returns everything when publicUseOnly is false', () => {
+    const query = { lat: 42.3656, lon: -71.0096, maxDistanceNm: 100, limit: 200 };
+    expect(resolver.nearest({ ...query, publicUseOnly: false })).toEqual(resolver.nearest(query));
+  });
+});
