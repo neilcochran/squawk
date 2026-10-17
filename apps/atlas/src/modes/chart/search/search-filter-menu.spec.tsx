@@ -389,7 +389,7 @@ describe('SearchFilterMenu', () => {
 
       expect(navigateMock).toHaveBeenCalledTimes(1);
       const next = applyLatestSearchUpdate(makePrev());
-      expect(next.searchAirwayCategories).toEqual(['LOW', 'HIGH']);
+      expect(next.searchAirwayCategories).toEqual(['LOW', 'HIGH', 'SPECIAL']);
       expect(next.searchLayers).toEqual([...LAYER_IDS]);
     });
   });

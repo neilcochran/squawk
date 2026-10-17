@@ -16,7 +16,7 @@ An interactive aeronautical map of the US. The data comes from the bundled `@squ
 - **Airports** - all FAA NASR airports.
 - **Navaids** - VOR / DME / TACAN / NDB. Appears at zoom 5+.
 - **Fixes** - waypoints. Appears at zoom 7+ (sub-pixel below).
-- **Airways** - low altitude (V / RNAV-T), high altitude (J / RNAV-Q), and oceanic + regional (Atlantic, Bahama, Pacific, Puerto Rico, plus the Alaska colored airways). Each category individually toggleable.
+- **Airways** - low altitude (V / RNAV-T), high altitude (J / RNAV-Q), oceanic + regional (Atlantic, Bahama, Pacific, Puerto Rico, plus the Alaska colored airways), and special routes (the non-regulatory routes flown mainly by helicopter air ambulances, which are not on public charts; off by default). Each category individually toggleable.
 - **Airspace** - Class A, B, C, D, E (collapsing the underlying E2-E7 strata into the user-facing concept), MOA, Restricted, Prohibited, Warning, Alert, NSA, and ARTCC. Each class individually toggleable. Class A and ARTCC are off by default at the CONUS view since each blankets the whole chart and dominates every other tint.
 
 A **Reset to defaults** row at the foot of the menu returns every layer, airspace class, and airway category to its default state in one click, and stays inert while the menu already matches the defaults.

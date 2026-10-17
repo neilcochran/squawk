@@ -170,6 +170,8 @@ export function AirwaysLayer(): ReactElement | null {
           colors.airway.low,
           ['JET', 'RNAV_Q'],
           colors.airway.high,
+          ['SPECIAL'],
+          colors.airway.special,
           colors.airway.regional,
         ],
         'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 7, 1.6, 10, 2.6],

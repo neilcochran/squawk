@@ -135,19 +135,26 @@ export const SEARCHABLE_AIRSPACE_CLASSES: readonly SearchableAirspaceClass[] =
 
 /**
  * User-facing airway categories exposed by the layer toggle. Groups the
- * underlying `AirwayType` values into three buckets: low-altitude V-routes
- * and RNAV-T, high-altitude J-routes and RNAV-Q, and a combined
- * "oceanic & regional" bucket that covers the actual oceanic routes
- * (Atlantic, Bahama, Pacific, Puerto Rico) plus the small set of
- * Alaska / historical colored airways (GREEN, RED, AMBER, BLUE).
+ * underlying `AirwayType` values into four buckets: low-altitude V-routes
+ * and RNAV-T, high-altitude J-routes and RNAV-Q, a combined "oceanic &
+ * regional" bucket that covers the actual oceanic routes (Atlantic, Bahama,
+ * Pacific, Puerto Rico) plus the small set of Alaska / historical colored
+ * airways (GREEN, RED, AMBER, BLUE), and the FAA's special routes.
  *
  * The colored airways were originally proposed as their own bucket, but the
  * shipping US dataset only contains 7 of them - all in Alaska - so a
  * standalone "Colored" toggle was effectively empty for any user not
  * already looking at Alaska. Folding them into the regional bucket gives
  * them a sensible home without surprising the user.
+ *
+ * Special routes get a bucket of their own instead: they are non-regulatory
+ * low-level RNAV routes, used mainly by helicopter air ambulance operators,
+ * that are not on public charts and may be filed only with FAA Flight
+ * Standards approval, so drawing them as ordinary low-altitude airways would
+ * misrepresent them. The bucket is off by default (see
+ * {@link CHART_DEFAULTS.airwayCategories}).
  */
-export const AIRWAY_CATEGORIES = ['LOW', 'HIGH', 'OCEANIC'] as const;
+export const AIRWAY_CATEGORIES = ['LOW', 'HIGH', 'OCEANIC', 'SPECIAL'] as const;
 
 /**
  * Discriminated string-literal type for a single user-facing airway category.
@@ -161,9 +168,10 @@ export type AirwayCategory = (typeof AIRWAY_CATEGORIES)[number];
  * "oceanic & regional" catch-all and includes the Alaska / colored airways.
  */
 export const AIRWAY_CATEGORY_TYPES: Record<AirwayCategory, readonly AirwayType[]> = {
-  LOW: ['VICTOR', 'RNAV_T', 'SPECIAL'],
+  LOW: ['VICTOR', 'RNAV_T'],
   HIGH: ['JET', 'RNAV_Q'],
   OCEANIC: ['ATLANTIC', 'BAHAMA', 'PACIFIC', 'PUERTO_RICO', 'GREEN', 'RED', 'AMBER', 'BLUE'],
+  SPECIAL: ['SPECIAL'],
 };
 
 /**
@@ -210,8 +218,12 @@ export const CHART_DEFAULTS = {
    * country-wide slab and the sector outlines beneath it.
    */
   airspaceClasses: AIRSPACE_CLASSES.filter((cls) => cls !== 'CLASS_A' && cls !== 'ARTCC'),
-  /** Default active airway categories: every category visible. */
-  airwayCategories: AIRWAY_CATEGORIES,
+  /**
+   * Default active airway categories: every category except special routes,
+   * which are not on public charts and need Flight Standards approval to
+   * file, so they are drawn only on request.
+   */
+  airwayCategories: AIRWAY_CATEGORIES.filter((category) => category !== 'SPECIAL'),
   /**
    * Default search-filter layer set: every layer is searchable. The search
    * filter is the "what to search" choice, independent of what the map draws;
@@ -228,7 +240,12 @@ export const CHART_DEFAULTS = {
    * {@link SEARCHABLE_AIRSPACE_CLASSES}).
    */
   searchAirspaceClasses: SEARCHABLE_AIRSPACE_CLASSES,
-  /** Default searchable airway categories: every category. */
+  /**
+   * Default searchable airway categories: every category, including special
+   * routes. As with ARTCC among the airspace classes, the filter expresses
+   * intent to search the category; whether special-route results surface
+   * still depends on their Layers-menu visibility unless include-hidden is on.
+   */
   searchAirwayCategories: AIRWAY_CATEGORIES,
   /**
    * Default include-hidden toggle: off, so search surfaces only features the

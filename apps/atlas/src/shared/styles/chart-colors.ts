@@ -44,7 +44,7 @@ export interface ChartAirportColors {
   minor: string;
 }
 
-/** Airway line colors keyed by altitude band. */
+/** Airway line colors keyed by layer-toggle category. */
 export interface ChartAirwayColors {
   /** Low-altitude airways (VICTOR / RNAV_T). */
   low: string;
@@ -52,6 +52,8 @@ export interface ChartAirwayColors {
   high: string;
   /** Regional / oceanic airways. */
   regional: string;
+  /** Special (non-regulatory) routes, a hue no other layer uses so they never read as a charted airway. */
+  special: string;
 }
 
 /**
@@ -136,7 +138,7 @@ export interface ChartColorPalette {
   fix: string;
   /** Navaid point symbol fill. */
   navaid: string;
-  /** Airway line colors keyed by altitude band. */
+  /** Airway line colors keyed by layer-toggle category. */
   airway: ChartAirwayColors;
   /** Airspace polygon fill / outline palette keyed by class. */
   airspace: ChartAirspaceColors;
@@ -169,6 +171,7 @@ const LIGHT_PALETTE: ChartColorPalette = {
     low: '#475569',
     high: '#4338ca',
     regional: '#94a3b8',
+    special: '#4d7c0f',
   },
   airspace: {
     classA: '#0f766e',
@@ -222,6 +225,7 @@ const DARK_PALETTE: ChartColorPalette = {
     low: '#cbd5e1',
     high: '#818cf8',
     regional: '#94a3b8',
+    special: '#a3e635',
   },
   airspace: {
     classA: '#2dd4bf',
