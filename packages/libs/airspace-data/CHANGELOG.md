@@ -1,5 +1,13 @@
 # @squawk/airspace-data
 
+## 0.9.1
+
+### Patch Changes
+
+- 8698c2d: ### Changed
+
+  - The README states the precision of the coordinates and that the same point can differ in its last decimal places between squawk datasets, so positions from different datasets should be compared with a tolerance.
+
 ## 0.9.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@squawk/airports",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "type": "module",
   "description": "Pure logic library for querying US airport data by identifier, location, or name",
   "author": "Neil Cochran",
@@ -41,12 +41,12 @@
     "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
-    "@squawk/geo": "^0.5.6",
+    "@squawk/geo": "^0.5.7",
     "@squawk/search": "^0.1.0",
-    "@squawk/types": "^0.16.1"
+    "@squawk/types": "^0.17.0"
   },
   "devDependencies": {
-    "@squawk/airport-data": "^0.9.1",
+    "@squawk/airport-data": "^0.9.2",
     "@types/node": "^26.6.5"
   },
   "keywords": [

@@ -1,5 +1,16 @@
 # @squawk/fix-data
 
+## 0.8.1
+
+### Patch Changes
+
+- 8698c2d: ### Changed
+
+  - The README states the precision of the coordinates and that the same point can differ in its last decimal places between squawk datasets, so positions from different datasets should be compared with a tolerance.
+
+- Updated dependencies [8698c2d]
+  - @squawk/types@0.17.0
+
 ## 0.8.0
 
 ### Minor Changes

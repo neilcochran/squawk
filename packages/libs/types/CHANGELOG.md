@@ -1,5 +1,13 @@
 # @squawk/types
 
+## 0.17.0
+
+### Minor Changes
+
+- 8698c2d: ### Changed
+
+  - Breaking: `AirwayWaypoint.dmeDmeIruMinimumEnrouteAltitudeOppositeFt` and `dmeDmeIruMinimumEnrouteAltitudeOppositeDirection` are removed. No FAA airway record has populated them, and the FAA's current CSV airway format does not define an opposite-direction DME/DME/IRU MEA. `dmeDmeIruMinimumEnrouteAltitudeDirection` stays, documented as unset on every current record.
+
 ## 0.16.1
 
 ### Patch Changes
