@@ -154,8 +154,6 @@ describe('buildWaypoint', () => {
         gnssMinimumEnrouteAltitudeOppositeDirection: 'NW BND',
         dmeDmeIruMinimumEnrouteAltitudeFt: 18000,
         dmeDmeIruMinimumEnrouteAltitudeDirection: 'E BND',
-        dmeDmeIruMinimumEnrouteAltitudeOppositeFt: 20000,
-        dmeDmeIruMinimumEnrouteAltitudeOppositeDirection: 'W BND',
       }),
       pointRecord({ minimumReceptionAltitudeFt: 2500 }),
     );
@@ -172,8 +170,6 @@ describe('buildWaypoint', () => {
     expect(wp.gnssMinimumEnrouteAltitudeOppositeDirection).toBe('NW BND');
     expect(wp.dmeDmeIruMinimumEnrouteAltitudeFt).toBe(18000);
     expect(wp.dmeDmeIruMinimumEnrouteAltitudeDirection).toBe('E BND');
-    expect(wp.dmeDmeIruMinimumEnrouteAltitudeOppositeFt).toBe(20000);
-    expect(wp.dmeDmeIruMinimumEnrouteAltitudeOppositeDirection).toBe('W BND');
     expect(wp.minimumReceptionAltitudeFt).toBe(2500);
   });
 

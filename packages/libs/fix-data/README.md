@@ -130,6 +130,7 @@ Each `navaidAssociations` entry is a facility that defines the fix:
 
 ## Coverage limits and known issues
 
+- Coordinates carry up to 8 decimal places, the precision of the FAA's decimal columns (about 1 mm). The same point can differ in its last places between squawk datasets (a navaid in the navaid data and as an airway waypoint, for example), so compare positions across datasets with a tolerance.
 - Computer navigation fixes (use code `CN`) are FAA automation points and are
   left out.
 - A navaid association carries a bearing, a distance, both or neither, as the

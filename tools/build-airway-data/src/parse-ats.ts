@@ -105,8 +105,6 @@ export function parseAts1(line: string): Ats1Record {
     minimumCrossingAltitudePoint: crossingAltitudePointField(line, 271, 50),
     dmeDmeIruMinimumEnrouteAltitudeFt: intField(line, 321, 5),
     dmeDmeIruMinimumEnrouteAltitudeDirection: directionField(line, 326, 6),
-    dmeDmeIruMinimumEnrouteAltitudeOppositeFt: intField(line, 332, 5),
-    dmeDmeIruMinimumEnrouteAltitudeOppositeDirection: directionField(line, 337, 6),
     dogleg: field(line, 343, 1) === 'Y',
     rnpNm: numField(line, 344, 5),
     unusable: field(line, 349, 1) === 'U',

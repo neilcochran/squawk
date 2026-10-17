@@ -2,6 +2,17 @@ import { describe, it, expect, assert } from 'vitest';
 
 import { usBundledNavaids } from './node.js';
 
+/**
+ * Number of decimal places in a number's shortest decimal representation,
+ * reading exponent notation (`1.5e-7` has 8).
+ */
+function decimalPlaces(value: number): number {
+  const [mantissa = '', exponent] = String(Math.abs(value)).split('e');
+  const fraction = mantissa.split('.')[1] ?? '';
+  const shift = exponent === undefined ? 0 : -Number(exponent);
+  return Math.max(0, fraction.length + shift);
+}
+
 describe('usBundledNavaids', () => {
   it('loads with a reasonable number of records', () => {
     assert(usBundledNavaids.records.length > 1_000);
@@ -245,5 +256,18 @@ describe('usBundledNavaids', () => {
     assert(bos !== undefined, 'expected to find BOS navaid');
     expect(bos.country).toBe('US');
     assert(bos.type === 'VOR' || bos.type === 'VORTAC' || bos.type === 'VOR/DME');
+  });
+});
+
+describe('coordinate precision', () => {
+  it('carries at most 8 decimal places on navaid and DME positions', () => {
+    let most = 0;
+    for (const navaid of usBundledNavaids.records) {
+      most = Math.max(most, decimalPlaces(navaid.lat), decimalPlaces(navaid.lon));
+      if (navaid.dmeLat !== undefined && navaid.dmeLon !== undefined) {
+        most = Math.max(most, decimalPlaces(navaid.dmeLat), decimalPlaces(navaid.dmeLon));
+      }
+    }
+    assert(most <= 8, `found a coordinate with ${most} decimal places`);
   });
 });

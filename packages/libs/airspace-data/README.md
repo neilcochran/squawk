@@ -160,6 +160,7 @@ areas genuinely extend through Class A.
 
 ## Coverage limits and known issues
 
+- Boundary coordinates are rounded to 5 decimal places (about 1 m), which keeps the polygons small while staying well inside the precision of the published boundaries. The same point can differ in its last places between squawk datasets (a navaid in the navaid data and as an airway waypoint, for example), so compare positions across datasets with a tolerance.
 - Special Use Airspace exclusions are published on the feature rather than cut
   out of its polygon, because 214 of the 233 carve-outs cover only part of the
   feature's height. A consumer that draws or tests the polygon alone sees the

@@ -246,8 +246,6 @@ export interface AirwayWaypoint {
     distanceToNextNm?: number;
     dmeDmeIruMinimumEnrouteAltitudeDirection?: AirwayDirection;
     dmeDmeIruMinimumEnrouteAltitudeFt?: number;
-    dmeDmeIruMinimumEnrouteAltitudeOppositeDirection?: AirwayDirection;
-    dmeDmeIruMinimumEnrouteAltitudeOppositeFt?: number;
     dogleg?: boolean;
     gnssMinimumEnrouteAltitudeDirection?: AirwayDirection;
     gnssMinimumEnrouteAltitudeFt?: number;

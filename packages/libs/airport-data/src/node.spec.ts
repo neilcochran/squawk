@@ -4,6 +4,17 @@ import type { Airport, AirportFrequency, IlsSystem, RunwayEnd } from '@squawk/ty
 
 import { usBundledAirports } from './node.js';
 
+/**
+ * Number of decimal places in a number's shortest decimal representation,
+ * reading exponent notation (`1.5e-7` has 8).
+ */
+function decimalPlaces(value: number): number {
+  const [mantissa = '', exponent] = String(Math.abs(value)).split('e');
+  const fraction = mantissa.split('.')[1] ?? '';
+  const shift = exponent === undefined ? 0 : -Number(exponent);
+  return Math.max(0, fraction.length + shift);
+}
+
 function airport(faaId: string): Airport {
   const found = usBundledAirports.records.find((r) => r.faaId === faaId);
   assert(found !== undefined, `expected to find ${faaId}`);
@@ -389,5 +400,22 @@ describe('usBundledAirports', () => {
       ilsDmeWithChannel > 100,
       `expected >100 ILS/DME with DME channel, got ${ilsDmeWithChannel}`,
     );
+  });
+});
+
+describe('coordinate precision', () => {
+  it('carries at most 8 decimal places on airport and runway-end positions', () => {
+    let most = 0;
+    for (const airport of usBundledAirports.records) {
+      most = Math.max(most, decimalPlaces(airport.lat), decimalPlaces(airport.lon));
+      for (const runway of airport.runways) {
+        for (const end of runway.ends) {
+          if (end.lat !== undefined && end.lon !== undefined) {
+            most = Math.max(most, decimalPlaces(end.lat), decimalPlaces(end.lon));
+          }
+        }
+      }
+    }
+    assert(most <= 8, `found a coordinate with ${most} decimal places`);
   });
 });

@@ -82,8 +82,6 @@ describe('parseAwy1', () => {
     expect(rec.gnssMinimumEnrouteAltitudeOppositeDirection).toBe('W BND');
     expect(rec.dmeDmeIruMinimumEnrouteAltitudeFt).toBe(18000);
     expect(rec.dmeDmeIruMinimumEnrouteAltitudeDirection).toBe('E BND');
-    expect(rec.dmeDmeIruMinimumEnrouteAltitudeOppositeFt).toBe(20000);
-    expect(rec.dmeDmeIruMinimumEnrouteAltitudeOppositeDirection).toBe('W BND');
     expect(rec.dogleg).toBe(true);
     expect(rec.rnpNm).toBe(1);
     expect(rec.unusable).toBe(true);
@@ -120,7 +118,6 @@ describe('parseAwy1', () => {
     expect(rec.minimumCrossingAltitudeDirection).toBe(undefined);
     expect(rec.minimumCrossingAltitudeOppositeDirection).toBe(undefined);
     expect(rec.gnssMinimumEnrouteAltitudeOppositeDirection).toBe(undefined);
-    expect(rec.dmeDmeIruMinimumEnrouteAltitudeOppositeDirection).toBe(undefined);
   });
 
   it('reads the MEA GAP column as unusable only for U', () => {

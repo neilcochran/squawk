@@ -159,6 +159,7 @@ this dataset.
 
 ## Coverage limits and known issues
 
+- Coordinates carry up to 6 decimal places (about 10 cm), converted from CIFP's degree, minute and second values, which are given to a hundredth of a second (about 30 cm). The same point can differ in its last places between squawk datasets (a navaid in the navaid data and as an airway waypoint, for example), so compare positions across datasets with a tolerance.
 - Only procedures published for airports are included. CIFP's heliport
   procedures (two heliport approaches in the current cycle) are not.
 - About 900 SIDs and STARs consist only of transitions, with an empty

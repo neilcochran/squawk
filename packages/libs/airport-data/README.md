@@ -180,6 +180,7 @@ airport sit up to 20 nm from it.
 
 ## Coverage limits and known issues
 
+- Coordinates carry up to 8 decimal places, the precision of the FAA's decimal columns (about 1 mm). The same point can differ in its last places between squawk datasets (a navaid in the navaid data and as an airway waypoint, for example), so compare positions across datasets with a tolerance.
 - Frequencies published for a navaid that shares the airport's identifier (an
   NDB named `AAA` at airport `AAA`) are not the airport's and are left out.
 - The FAA publishes `0` for a runway length or width it does not know; those

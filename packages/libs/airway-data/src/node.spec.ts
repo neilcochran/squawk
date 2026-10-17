@@ -5,6 +5,17 @@ import { AIRWAY_DIRECTIONS } from '@squawk/types';
 
 import { usBundledAirways } from './node.js';
 
+/**
+ * Number of decimal places in a number's shortest decimal representation,
+ * reading exponent notation (`1.5e-7` has 8).
+ */
+function decimalPlaces(value: number): number {
+  const [mantissa = '', exponent] = String(Math.abs(value)).split('e');
+  const fraction = mantissa.split('.')[1] ?? '';
+  const shift = exponent === undefined ? 0 : -Number(exponent);
+  return Math.max(0, fraction.length + shift);
+}
+
 /** Mean Earth radius in nautical miles. */
 const EARTH_RADIUS_NM = 3440.065;
 
@@ -38,7 +49,6 @@ const DIRECTION_FIELDS: [keyof AirwayWaypoint, keyof AirwayWaypoint][] = [
   ['gnssMinimumEnrouteAltitudeFt', 'gnssMinimumEnrouteAltitudeDirection'],
   ['gnssMinimumEnrouteAltitudeOppositeFt', 'gnssMinimumEnrouteAltitudeOppositeDirection'],
   ['dmeDmeIruMinimumEnrouteAltitudeFt', 'dmeDmeIruMinimumEnrouteAltitudeDirection'],
-  ['dmeDmeIruMinimumEnrouteAltitudeOppositeFt', 'dmeDmeIruMinimumEnrouteAltitudeOppositeDirection'],
   ['minimumCrossingAltitudeFt', 'minimumCrossingAltitudeDirection'],
   ['minimumCrossingAltitudeOppositeFt', 'minimumCrossingAltitudeOppositeDirection'],
 ];
@@ -357,5 +367,17 @@ describe('usBundledAirways', () => {
   it('waypointCount matches actual waypoint total', () => {
     const actualCount = usBundledAirways.records.reduce((sum, a) => sum + a.waypoints.length, 0);
     expect(usBundledAirways.properties.waypointCount).toBe(actualCount);
+  });
+});
+
+describe('coordinate precision', () => {
+  it('carries at most 6 decimal places on waypoint positions', () => {
+    let most = 0;
+    for (const airway of usBundledAirways.records) {
+      for (const waypoint of airway.waypoints) {
+        most = Math.max(most, decimalPlaces(waypoint.lat), decimalPlaces(waypoint.lon));
+      }
+    }
+    assert(most <= 6, `found a coordinate with ${most} decimal places`);
   });
 });

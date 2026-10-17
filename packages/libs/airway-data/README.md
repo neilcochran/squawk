@@ -169,6 +169,7 @@ points are not included).
 
 ## Coverage limits and known issues
 
+- Coordinates carry up to 6 decimal places (about 10 cm), converted from the FAA's degree, minute and second values. The same point can differ in its last places between squawk datasets (a navaid in the navaid data and as an airway waypoint, for example), so compare positions across datasets with a tolerance.
 - Border crossing points ("U.S. CANADIAN BORDER", "U.S. MEXICAN BORDER") are
   published without coordinates and are not included, so the leg into a
   border crossing has no distance. Ten
