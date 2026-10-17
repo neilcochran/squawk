@@ -132,20 +132,21 @@ export function formatNavaidCheckpoint(checkpoint: NavaidCheckpoint): string {
 }
 
 /**
- * Formats the geometry a fix's navaid association publishes: the bearing and
- * distance from the facility when both are published, either one alone when
- * only one is, and the facility type when the FAA publishes neither (as for a
- * fix at a marker beacon).
+ * Formats the geometry a fix's navaid association publishes: the magnetic
+ * bearing (`"122 deg M"`) and the distance from the facility when both are
+ * published, either one alone when only one is, and `"-"` when the FAA
+ * publishes neither (as for a fix at a marker beacon). The facility type is
+ * not repeated here; the panel labels each row with it.
  */
 export function formatFixNavaidAssociation(association: FixNavaidAssociation): string {
   const parts: string[] = [];
   if (association.magneticBearingDeg !== undefined) {
-    parts.push(`${association.magneticBearingDeg.toFixed(0)} deg`);
+    parts.push(`${association.magneticBearingDeg.toFixed(0)} deg M`);
   }
   if (association.distanceNm !== undefined) {
     parts.push(`${association.distanceNm.toFixed(1)} nm`);
   }
-  return parts.length > 0 ? parts.join(' / ') : association.navaidType;
+  return parts.length > 0 ? parts.join(' / ') : '-';
 }
 
 /** Converts the FixUseCode discriminator to a sentence-cased label. */

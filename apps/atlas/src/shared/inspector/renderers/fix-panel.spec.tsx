@@ -1,9 +1,17 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import type { Fix } from '@squawk/types';
 
 import { FixPanel } from './fix-panel.tsx';
+
+const { useFixAssociationSelectionsMock } = vi.hoisted(() => ({
+  useFixAssociationSelectionsMock: vi.fn<(fix: Fix) => ReadonlyArray<string | undefined>>(),
+}));
+
+vi.mock('../fix-association-selection.ts', () => ({
+  useFixAssociationSelections: useFixAssociationSelectionsMock,
+}));
 
 function buildFix(overrides: Partial<Fix> = {}): Fix {
   return {
@@ -23,6 +31,44 @@ function buildFix(overrides: Partial<Fix> = {}): Fix {
 }
 
 describe('FixPanel', () => {
+  beforeEach(() => {
+    useFixAssociationSelectionsMock.mockImplementation((fix) =>
+      fix.navaidAssociations.map(() => undefined),
+    );
+  });
+
+  it('links a navaid association row to its navaid and leaves an unlinkable row plain', () => {
+    const onSelectEntity = vi.fn<(selection: string) => void>();
+    useFixAssociationSelectionsMock.mockReturnValue([undefined, 'navaid:TOY']);
+    render(
+      <FixPanel
+        record={buildFix({
+          navaidAssociations: [
+            { navaidId: 'CPS', navaidType: 'LOC', magneticBearingDeg: 122.22 },
+            { navaidId: 'TOY', navaidType: 'VORTAC', magneticBearingDeg: 202.71 },
+          ],
+        })}
+        onSelectEntity={onSelectEntity}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'CPS LOC' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'TOY VORTAC' }));
+    expect(onSelectEntity).toHaveBeenCalledWith('navaid:TOY');
+  });
+
+  it('leaves every association row plain without a selection handler', () => {
+    useFixAssociationSelectionsMock.mockReturnValue(['navaid:TOY']);
+    render(
+      <FixPanel
+        record={buildFix({
+          navaidAssociations: [{ navaidId: 'TOY', navaidType: 'VORTAC', magneticBearingDeg: 202 }],
+        })}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'TOY VORTAC' })).toBeNull();
+    expect(screen.getByText('TOY VORTAC')).toBeInTheDocument();
+  });
+
   it('renders classification and location rows for a minimal fix', () => {
     render(<FixPanel record={buildFix()} />);
     expect(screen.getByText('Classification')).toBeInTheDocument();
@@ -52,7 +98,22 @@ describe('FixPanel', () => {
       />,
     );
     expect(screen.getByText('Navaid associations (2)')).toBeInTheDocument();
-    expect(screen.getByText('270 deg / 14.6 nm')).toBeInTheDocument();
+    expect(screen.getByText('BOS VOR/DME').closest('div')).toHaveTextContent('270 deg M / 14.6 nm');
+  });
+
+  it('labels each row with the facility type so a localizer and its marker read apart', () => {
+    render(
+      <FixPanel
+        record={buildFix({
+          navaidAssociations: [
+            { navaidId: 'CPS', navaidType: 'LOC', magneticBearingDeg: 122.22 },
+            { navaidId: 'CPS', navaidType: 'OM' },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText('CPS LOC').closest('div')).toHaveTextContent('122 deg M');
+    expect(screen.getByText('CPS OM').closest('div')).toHaveTextContent(/^CPS OM-$/);
   });
 
   it('renders an association that publishes only a bearing, only a distance, or neither', () => {
@@ -68,9 +129,9 @@ describe('FixPanel', () => {
       />,
     );
     expect(screen.getByText('Navaid associations (3)')).toBeInTheDocument();
-    expect(screen.getByText('122 deg')).toBeInTheDocument();
+    expect(screen.getByText('122 deg M')).toBeInTheDocument();
     expect(screen.getByText('1.8 nm')).toBeInTheDocument();
-    expect(screen.getByText('OM')).toBeInTheDocument();
+    expect(screen.getByText('RHI OM').closest('div')).toHaveTextContent(/^RHI OM-$/);
   });
 
   it('omits the navaid associations section when empty', () => {

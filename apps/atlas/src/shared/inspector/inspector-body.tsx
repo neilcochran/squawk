@@ -13,6 +13,12 @@ import { NavaidPanel } from './renderers/navaid-panel.tsx';
 export interface InspectorBodyProps {
   /** Resolution state - the body renders only when status is `resolved`. */
   state: ResolvedEntityState;
+  /**
+   * Selects another entity by its `selected` value, panning to it first.
+   * Handed to renderers whose rows link to other entities (the fix
+   * panel's navaid associations).
+   */
+  onSelectEntity: (selection: string) => void;
 }
 
 /**
@@ -20,7 +26,7 @@ export interface InspectorBodyProps {
  * states the body is empty (the header carries the status); for
  * resolved entities, dispatches to a per-type renderer.
  */
-export function InspectorBody({ state }: InspectorBodyProps): ReactElement | null {
+export function InspectorBody({ state, onSelectEntity }: InspectorBodyProps): ReactElement | null {
   if (state.status !== 'resolved') {
     return null;
   }
@@ -31,7 +37,7 @@ export function InspectorBody({ state }: InspectorBodyProps): ReactElement | nul
     case 'navaid':
       return <NavaidPanel record={entity.record} />;
     case 'fix':
-      return <FixPanel record={entity.record} />;
+      return <FixPanel record={entity.record} onSelectEntity={onSelectEntity} />;
     case 'airway':
       return <AirwayPanel record={entity.record} />;
     case 'airspace':

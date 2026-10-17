@@ -1,5 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 
+import { FOCUS_RING_CLASSES } from '../../styles/style-tokens.ts';
+
 /**
  * Props for {@link InspectorRow}.
  */
@@ -16,6 +18,13 @@ export interface InspectorRowProps {
   onPointerEnter?: () => void;
   /** Optional pointer-leave handler that pairs with {@link onPointerEnter}. */
   onPointerLeave?: () => void;
+  /**
+   * Optional handler that makes the label a button selecting the entity
+   * it names, as the fix panel does for a navaid association. The whole
+   * row is the click target, while the button keeps the label as its
+   * accessible name and takes keyboard focus.
+   */
+  onLabelSelect?: () => void;
 }
 
 /**
@@ -24,32 +33,46 @@ export interface InspectorRowProps {
  * rendering when `children` is `null` or `undefined` so callers can pass
  * optional fields directly without a guard at every site.
  *
- * When `onPointerEnter` is supplied the row paints with a subtle hover
- * tint so the user reads it as interactive - hovering drives a
- * downstream effect (e.g. brightening the matching airway leg on the
- * map). Static rows without a hover handler keep the flat layout.
+ * When `onPointerEnter` or `onLabelSelect` is supplied the row paints
+ * with a subtle hover tint so the user reads it as interactive - hovering
+ * drives a downstream effect (e.g. brightening the matching airway leg on
+ * the map) or clicking selects what the label names. A selectable row
+ * also grows to a 44px touch target below the `md:` breakpoint. Static
+ * rows keep the flat layout.
  */
 export function InspectorRow({
   label,
   children,
   onPointerEnter,
   onPointerLeave,
+  onLabelSelect,
 }: InspectorRowProps): ReactElement | null {
   if (children === null || children === undefined) {
     return null;
   }
-  const interactive = onPointerEnter !== undefined;
+  const selectable = onLabelSelect !== undefined;
+  const interactive = onPointerEnter !== undefined || selectable;
   return (
     <div
-      className={
-        interactive
-          ? 'flex justify-between gap-3 rounded py-1.5 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800'
-          : 'flex justify-between gap-3 py-1.5 text-sm'
-      }
+      className={`flex justify-between gap-3 py-1.5 text-sm ${
+        interactive ? 'rounded transition-colors hover:bg-slate-100 dark:hover:bg-slate-800' : ''
+      } ${selectable ? 'relative min-h-11 items-center md:min-h-0' : ''}`}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
     >
-      <dt className="shrink-0 text-slate-500 dark:text-slate-400">{label}</dt>
+      <dt className="shrink-0 text-slate-500 dark:text-slate-400">
+        {selectable ? (
+          <button
+            type="button"
+            onClick={onLabelSelect}
+            className={`font-medium text-indigo-600 after:absolute after:inset-0 hover:underline dark:text-indigo-400 ${FOCUS_RING_CLASSES}`}
+          >
+            {label}
+          </button>
+        ) : (
+          label
+        )}
+      </dt>
       <dd className="text-right text-slate-900 dark:text-slate-100">{children}</dd>
     </div>
   );

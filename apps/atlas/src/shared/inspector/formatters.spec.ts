@@ -158,13 +158,13 @@ describe('formatFixNavaidAssociation', () => {
         magneticBearingDeg: 270.4,
         distanceNm: 14.62,
       }),
-    ).toBe('270 deg / 14.6 nm');
+    ).toBe('270 deg M / 14.6 nm');
   });
 
   it('prints the bearing alone for a radial or localizer course without a distance', () => {
     expect(
       formatFixNavaidAssociation({ navaidId: 'PDK', navaidType: 'LOC', magneticBearingDeg: 25.51 }),
-    ).toBe('26 deg');
+    ).toBe('26 deg M');
   });
 
   it('prints the distance alone for a DME arc', () => {
@@ -173,8 +173,8 @@ describe('formatFixNavaidAssociation', () => {
     ).toBe('1.8 nm');
   });
 
-  it('prints the facility type when neither is published', () => {
-    expect(formatFixNavaidAssociation({ navaidId: 'CPS', navaidType: 'OM' })).toBe('OM');
+  it('prints a hyphen when neither is published, since the row label carries the type', () => {
+    expect(formatFixNavaidAssociation({ navaidId: 'CPS', navaidType: 'OM' })).toBe('-');
   });
 
   it('prints a published bearing or distance of zero', () => {
@@ -185,7 +185,7 @@ describe('formatFixNavaidAssociation', () => {
         magneticBearingDeg: 0,
         distanceNm: 0,
       }),
-    ).toBe('0 deg / 0.0 nm');
+    ).toBe('0 deg M / 0.0 nm');
   });
 });
 
