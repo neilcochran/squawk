@@ -2,11 +2,22 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/icao-registry-data)](https://www.npmjs.com/package/@squawk/icao-registry-data) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Pre-processed snapshot of US aircraft registrations from the **2026-10-09** FAA ReleasableAircraft database. Data only - no dependency on `@squawk/icao-registry`. Versioned and released independently.
+Pre-processed snapshot of US aircraft registrations from the **2026-10-13** FAA ReleasableAircraft database. Data only - no dependency on `@squawk/icao-registry`. Versioned and released independently.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_icao-registry-data.html)**
 
 Part of the [@squawk](https://www.npmjs.com/org/squawk) aviation library suite. See all packages on npm.
+
+## Coverage
+
+- Every aircraft in the FAA registry that has a Mode S (24-bit ICAO) address,
+  about 317,000 records
+- Registration (N-number), make, model, registrant, aircraft type, engine type
+  and year of manufacture
+- Registration status and expiration date. The registry is not limited to
+  current registrations: it also lists pending, sale-reported, expired and
+  revoked registrations and N-numbers assigned but never registered, and each
+  record says which it is
 
 ## Installation
 
@@ -59,6 +70,40 @@ const dataset = await loadUsBundledRegistry({
 
 The loader also accepts a custom `fetch` implementation, which is useful in
 tests or in edge environments that need a configured fetcher.
+
+## Data format
+
+Each record is an `AircraftRegistration` object from `@squawk/types`:
+
+| Property                     | Type                            | Description                                                          |
+| ---------------------------- | ------------------------------- | -------------------------------------------------------------------- |
+| `icaoHex`                    | string                          | 24-bit ICAO address, uppercase hex (e.g. "A004B3")                   |
+| `registration`               | string                          | N-number (e.g. "N100")                                               |
+| `registrationStatus`         | RegistrationStatus or undefined | `valid`, `registrationPending`, `saleReported`, `revoked`, and so on |
+| `registrationExpirationDate` | string or undefined             | Expiration date as `YYYY-MM-DD`                                      |
+| `make`                       | string or undefined             | Manufacturer name                                                    |
+| `model`                      | string or undefined             | Model designation                                                    |
+| `operator`                   | string or undefined             | Registrant name                                                      |
+| `aircraftType`               | AircraftType or undefined       | `fixedWingSingleEngine`, `rotorcraft`, `glider`, and so on           |
+| `engineType`                 | EngineType or undefined         | `reciprocating`, `turboFan`, `electric`, and so on                   |
+| `yearManufactured`           | number or undefined             | Year of manufacture                                                  |
+
+## Coverage limits and known issues
+
+- A record is not necessarily a current registration. About 2% carry a status
+  other than `valid`: pending, sale reported, assigned but never registered,
+  expired, revoked or canceled. Check `registrationStatus` before presenting a
+  record as the aircraft's current registration. The FAA describes `valid`,
+  `validManufacturerDealer` and `validTrainee` as valid registrations.
+- `operator` is absent on about 8,600 records: those where the FAA publishes
+  no registrant name, and the pending and sale-reported registrations where
+  it publishes `REGISTRATION PENDING` or `SALE REPORTED` in place of one.
+- `registrationExpirationDate` is published for valid registrations and
+  rarely for any other status. A few dates lie in the past.
+- `yearManufactured` is absent on about a fifth of records, where the FAA
+  publishes no year or 0.
+- Aircraft with no Mode S address on record are left out, and deregistered
+  aircraft are not part of the FAA's registered-aircraft file.
 
 ## Data source
 

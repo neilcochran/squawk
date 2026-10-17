@@ -81,18 +81,37 @@ export const FIX_COMPULSORY_MAP: Record<string, FixCompulsory> = {
 };
 
 /**
- * A navigational aid association for a fix, indicating the bearing and
- * distance from a nearby navaid to the fix position.
+ * A navigational aid association for a fix: a facility that defines the fix,
+ * with the bearing and distance from the facility to the fix where they are
+ * published. Many fixes are defined by a bearing alone (a localizer course or
+ * a VOR radial without DME) or a distance alone (a DME arc), and a fix at a
+ * marker beacon or on a localizer may carry neither.
  */
 export interface FixNavaidAssociation {
-  /** Navaid identifier (e.g. "PDK", "BOS"). */
+  /**
+   * Identifier of the facility (e.g. "PDK", "BOS"). For a localizer this is
+   * the ILS identifier without its "I-" prefix.
+   */
   navaidId: string;
-  /** Navaid facility type (e.g. "VOR", "VORTAC", "LOC", "NDB"). */
+  /**
+   * Facility type (e.g. "VOR", "VORTAC", "VOR/DME", "TACAN", "DME", "NDB",
+   * "NDB/DME", "LOC", "OM", "MM").
+   */
   navaidType: string;
-  /** Bearing in degrees from the navaid to the fix. */
-  bearingDeg: number;
-  /** DME distance in nautical miles from the navaid to the fix. */
-  distanceNm: number;
+  /**
+   * Magnetic bearing in degrees from the facility to the fix: the radial of
+   * a VOR or TACAN, the bearing from an NDB, or the course from a localizer
+   * antenna. North is published as both 0 and 360. Absent when the fix is
+   * defined by distance alone or the bearing is not published.
+   */
+  magneticBearingDeg?: number;
+  /**
+   * Distance in nautical miles from the facility to the fix. For a localizer
+   * it is measured from the localizer antenna or, where the ILS has a DME
+   * sited elsewhere, from that DME. Absent when the fix is defined by bearing
+   * alone or the distance is not published.
+   */
+  distanceNm?: number;
 }
 
 /**
