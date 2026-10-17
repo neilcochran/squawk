@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
+import type { AirspaceFeature } from '@squawk/types';
+
 import {
   AIRSPACE_CEILING_FT_PROPERTY,
   AIRSPACE_CEILING_INCLUSIVE_PROPERTY,
@@ -7,8 +9,11 @@ import {
   AIRSPACE_FLOOR_FT_PROPERTY,
   AIRSPACE_FLOOR_INCLUSIVE_PROPERTY,
   AIRSPACE_FLOOR_REF_PROPERTY,
+  airspaceExclusionKey,
   compareAirspaceByAltitudeDesc,
+  exclusionSpansFullHeight,
   formatAirspaceAltitudeRange,
+  formatAltitudeBand,
   formatAltitudeBoundCompact,
   formatAltitudeBoundVerbose,
   readAltitudeBoundPrimitives,
@@ -167,5 +172,71 @@ describe('formatAirspaceAltitudeRange', () => {
   it('returns undefined when a bound is missing', () => {
     expect(formatAirspaceAltitudeRange({ [AIRSPACE_FLOOR_FT_PROPERTY]: 0 })).toBeUndefined();
     expect(formatAirspaceAltitudeRange(null)).toBeUndefined();
+  });
+});
+
+describe('formatAltitudeBand', () => {
+  it('joins the floor and ceiling into one band', () => {
+    expect(
+      formatAltitudeBand({ valueFt: 0, reference: 'SFC' }, { valueFt: 1500, reference: 'AGL' }),
+    ).toBe('SFC to 1500 ft AGL');
+  });
+
+  it('keeps an exclusive or unlimited ceiling a lower-case phrase', () => {
+    expect(
+      formatAltitudeBand(
+        { valueFt: 0, reference: 'SFC' },
+        { valueFt: 10000, reference: 'MSL', inclusive: false },
+      ),
+    ).toBe('SFC to below 10000 ft MSL');
+    expect(
+      formatAltitudeBand(
+        { valueFt: 18000, reference: 'MSL' },
+        { valueFt: 99999, reference: 'MSL' },
+      ),
+    ).toBe('18000 ft MSL to unlimited');
+  });
+});
+
+describe('exclusionSpansFullHeight', () => {
+  const moa: Pick<AirspaceFeature, 'floor' | 'ceiling'> = {
+    floor: { valueFt: 500, reference: 'AGL' },
+    ceiling: { valueFt: 18000, reference: 'MSL' },
+  };
+
+  it('is true when the volume reaches from the surface past the ceiling', () => {
+    expect(
+      exclusionSpansFullHeight(
+        { floor: { valueFt: 0, reference: 'SFC' }, ceiling: { valueFt: 18000, reference: 'MSL' } },
+        moa,
+      ),
+    ).toBe(true);
+  });
+
+  it('is false when the volume stops below the ceiling', () => {
+    expect(
+      exclusionSpansFullHeight(
+        { floor: { valueFt: 0, reference: 'SFC' }, ceiling: { valueFt: 1500, reference: 'AGL' } },
+        moa,
+      ),
+    ).toBe(false);
+  });
+
+  it('is false when a floor cannot be compared across datums', () => {
+    expect(
+      exclusionSpansFullHeight(
+        {
+          floor: { valueFt: 100, reference: 'MSL' },
+          ceiling: { valueFt: 18000, reference: 'MSL' },
+        },
+        moa,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('airspaceExclusionKey', () => {
+  it('joins the feature and exclusion positions', () => {
+    expect(airspaceExclusionKey(2, 0)).toBe('2:0');
   });
 });

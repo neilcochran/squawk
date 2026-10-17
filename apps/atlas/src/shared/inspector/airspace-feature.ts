@@ -1,6 +1,6 @@
 import type { GeoJsonProperties } from 'geojson';
 
-import type { AirspaceFeature, AltitudeBound } from '@squawk/types';
+import type { AirspaceFeature, AirspaceVolume, AltitudeBound } from '@squawk/types';
 
 /**
  * Synthetic per-feature property added at airspace source-projection
@@ -273,6 +273,65 @@ export function formatAltitudeBoundCompact(bound: AltitudeBound, role: AltitudeB
     return role === 'ceiling' ? `<${value}` : `>${value}`;
   }
   return value;
+}
+
+/**
+ * Renders a floor / ceiling pair as one band for a row that has no room
+ * for two, such as an excluded volume: `"SFC to 1500 ft AGL"`. Each end
+ * reads as {@link formatAltitudeBoundVerbose} renders it, lower-cased
+ * after "to" so an exclusive or unlimited ceiling stays a phrase
+ * (`"SFC to below 10000 ft MSL"`, `"18000 ft MSL to unlimited"`).
+ */
+export function formatAltitudeBand(floor: AltitudeBound, ceiling: AltitudeBound): string {
+  const ceilingText = formatAltitudeBoundVerbose(ceiling, 'ceiling');
+  const ceilingPhrase =
+    ceilingText === 'SFC'
+      ? ceilingText
+      : ceilingText.charAt(0).toLowerCase() + ceilingText.slice(1);
+  return `${formatAltitudeBoundVerbose(floor, 'floor')} to ${ceilingPhrase}`;
+}
+
+/**
+ * Feet above the surface-or-sea datum a bound sits at, for comparing two
+ * bounds on the same reference: SFC reads as 0.
+ */
+function boundHeightFt(bound: AltitudeBound): number {
+  return bound.reference === 'SFC' ? 0 : bound.valueFt;
+}
+
+/**
+ * Whether an excluded volume spans its airspace feature's whole height,
+ * so the airspace does not apply anywhere above the volume's footprint.
+ * The floor is covered when the volume starts at the surface or at or
+ * below the feature's floor on the same datum; the ceiling when the
+ * volume reaches at or above the feature's ceiling on the same datum.
+ * Bounds on different datums (MSL against AGL) cannot be compared
+ * without terrain, so they read as not covered.
+ */
+export function exclusionSpansFullHeight(
+  exclusion: Pick<AirspaceVolume, 'floor' | 'ceiling'>,
+  feature: Pick<AirspaceFeature, 'floor' | 'ceiling'>,
+): boolean {
+  const floorCovered =
+    exclusion.floor.reference === 'SFC' ||
+    (exclusion.floor.reference === feature.floor.reference &&
+      boundHeightFt(exclusion.floor) <= boundHeightFt(feature.floor));
+  const ceilingCovered =
+    exclusion.ceiling.reference === feature.ceiling.reference &&
+    exclusion.ceiling.valueFt >= feature.ceiling.valueFt;
+  return floorCovered && ceilingCovered;
+}
+
+/**
+ * Key naming one excluded volume of the selected airspace grouping: the
+ * feature's position in presentation order (the panel's "Feature N" and
+ * the map badge, see {@link orderAirspaceFeatures}) and the volume's
+ * position in that feature's `exclusions`. The inspector writes it on
+ * row hover and the exclusion layer reads it to focus the matching
+ * outline, so both build it here.
+ */
+export function airspaceExclusionKey(featureIndex: number, exclusionIndex: number): string {
+  return `${featureIndex}:${exclusionIndex}`;
 }
 
 /**

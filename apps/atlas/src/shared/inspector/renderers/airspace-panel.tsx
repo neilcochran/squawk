@@ -3,9 +3,13 @@ import type { ReactElement } from 'react';
 
 import type { AirspaceFeature } from '@squawk/types';
 
-import { useSetHoveredFeatureIndex } from '../../../modes/chart/highlight-context.ts';
+import {
+  useSetHoveredAirspaceExclusionKey,
+  useSetHoveredFeatureIndex,
+} from '../../../modes/chart/highlight-context.ts';
 import { formatAltitudeBoundVerbose } from '../airspace-feature.ts';
 
+import { AirspaceExclusionRows } from './airspace-exclusion-rows.tsx';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
 /**
@@ -44,9 +48,14 @@ export interface AirspacePanelProps {
  * airspace layer's feature-focus filter to brighten the matching
  * polygon on the map, mirroring the inspector "Feature N" / "Stratum:
  * X" badges.
+ *
+ * A feature with volumes carved out of it (Special Use Airspace only)
+ * lists them at the end of its section, one "Excludes" row per volume
+ * with its altitude band; hovering a row focuses that volume on the map.
  */
 export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
   const setHoveredFeatureIndex = useSetHoveredFeatureIndex();
+  const setHoveredExclusionKey = useSetHoveredAirspaceExclusionKey();
   // Defensive cleanup: when the panel unmounts (e.g. the user clicks
   // away or switches to a non-airspace selection) any in-flight hover
   // index would otherwise stick and leave a phantom polygon brightened.
@@ -55,8 +64,9 @@ export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
   useEffect(
     () => (): void => {
       setHoveredFeatureIndex(undefined);
+      setHoveredExclusionKey(undefined);
     },
-    [setHoveredFeatureIndex],
+    [setHoveredFeatureIndex, setHoveredExclusionKey],
   );
   if (features.length === 1) {
     const feature = features[0];
@@ -76,6 +86,7 @@ export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
         <InspectorRow label="Controlling">{feature.controllingFacility}</InspectorRow>
         <InspectorRow label="Stratum">{feature.artccStratum}</InspectorRow>
         <InspectorRow label="Schedule">{feature.scheduleDescription}</InspectorRow>
+        <AirspaceExclusionRows feature={feature} featureIndex={0} />
       </InspectorSection>
     );
   }
@@ -110,6 +121,7 @@ export function AirspacePanel({ features }: AirspacePanelProps): ReactElement {
             {formatAltitudeBoundVerbose(feature.ceiling, 'ceiling')}
           </InspectorRow>
           <InspectorRow label="Stratum">{feature.artccStratum}</InspectorRow>
+          <AirspaceExclusionRows feature={feature} featureIndex={idx} />
         </InspectorSection>
       ))}
     </>

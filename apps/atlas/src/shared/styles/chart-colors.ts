@@ -109,6 +109,14 @@ export interface ChartAirspaceBadgeColors {
  * underlying chart layers), so these are tuned for legibility on the basemap
  * on their own rather than against the other chart symbology.
  */
+/** Colors for the excluded volumes drawn over a selected airspace. */
+export interface ChartAirspaceExclusionColors {
+  /** Neutral wash over an excluded footprint, near the basemap's own tone so the area reads as knocked out. */
+  wash: string;
+  /** Dashed outline of an excluded footprint. */
+  line: string;
+}
+
 export interface ChartRouteColors {
   /** Planned route line stroke. */
   line: string;
@@ -148,6 +156,8 @@ export interface ChartColorPalette {
   airspaceBadge: ChartAirspaceBadgeColors;
   /** Planned-route colors for plan mode (line, waypoint dots, labels). */
   route: ChartRouteColors;
+  /** Excluded volumes of the selected airspace: a wash that knocks them out of the selection hatch, and their outline. */
+  airspaceExclusion: ChartAirspaceExclusionColors;
 }
 
 /**
@@ -201,6 +211,10 @@ const LIGHT_PALETTE: ChartColorPalette = {
     waypointStroke: '#ffffff',
     labelText: '#701a75',
     labelHalo: '#ffffff',
+  },
+  airspaceExclusion: {
+    wash: '#ffffff',
+    line: '#334155',
   },
 };
 
@@ -256,6 +270,10 @@ const DARK_PALETTE: ChartColorPalette = {
     waypointStroke: '#ffffff',
     labelText: '#f5d0fe',
     labelHalo: '#0f172a',
+  },
+  airspaceExclusion: {
+    wash: '#0f172a',
+    line: '#cbd5e1',
   },
 };
 

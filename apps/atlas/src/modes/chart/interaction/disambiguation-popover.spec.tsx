@@ -69,6 +69,8 @@ function withProvider(
         setHoveredFeatureIndex={vi.fn()}
         hoveredAirwayWaypointIndex={undefined}
         setHoveredAirwayWaypointIndex={vi.fn()}
+        hoveredAirspaceExclusionKey={undefined}
+        setHoveredAirspaceExclusionKey={vi.fn()}
       >
         {children}
       </HighlightProvider>

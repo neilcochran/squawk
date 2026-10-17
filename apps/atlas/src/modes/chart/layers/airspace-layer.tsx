@@ -22,6 +22,11 @@ import { AIRSPACE_CLASS_TYPES, CHART_ROUTE_PATH } from '../url-state.ts';
 
 import { AIRPORTS_HIGHLIGHT_LAYER_ID } from './airports-layer.tsx';
 import {
+  AIRSPACE_EXCLUSION_FILL_LAYER_ID,
+  AIRSPACE_EXCLUSION_FOCUS_LAYER_ID,
+  AIRSPACE_EXCLUSION_LINE_LAYER_ID,
+} from './airspace-exclusion-features.ts';
+import {
   GROUND_ANCHORED_ALTITUDE_REFS,
   buildExtrusionBaseExpression,
   buildExtrusionHeightExpression,
@@ -165,6 +170,12 @@ const TOP_OF_STACK_LAYER_IDS = [
   AIRSPACE_HIGHLIGHT_FILL_LAYER_ID,
   AIRSPACE_HIGHLIGHT_LAYER_ID,
   AIRSPACE_FEATURE_FOCUS_LAYER_ID,
+  // Excluded volumes of the selected airspace, above its hatch and ring
+  // so they read as knocked out of the selection; ground marks like the
+  // ring, so below the 3D boxes for the same reason.
+  AIRSPACE_EXCLUSION_FILL_LAYER_ID,
+  AIRSPACE_EXCLUSION_LINE_LAYER_ID,
+  AIRSPACE_EXCLUSION_FOCUS_LAYER_ID,
   // Selection-highlight 3D extrusion, pinned beneath the regular one
   // so overlapping boxes blend over the selection instead of hiding it.
   AIRSPACE_HIGHLIGHT_EXTRUSION_LAYER_ID,
