@@ -12,10 +12,14 @@ export interface TerminalSize {
   rows: number | undefined;
 }
 
-function readSize(stdout: NodeJS.WriteStream): TerminalSize {
+/** Ink types stdout as a generic stream, so the TTY-only dimensions are read only where the stream actually carries them. */
+function readSize(stdout: NodeJS.WritableStream): TerminalSize {
   return {
-    columns: typeof stdout.columns === 'number' ? stdout.columns : FALLBACK_TERMINAL_COLUMNS,
-    rows: typeof stdout.rows === 'number' ? stdout.rows : undefined,
+    columns:
+      'columns' in stdout && typeof stdout.columns === 'number'
+        ? stdout.columns
+        : FALLBACK_TERMINAL_COLUMNS,
+    rows: 'rows' in stdout && typeof stdout.rows === 'number' ? stdout.rows : undefined,
   };
 }
 
