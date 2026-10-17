@@ -112,6 +112,8 @@ export interface ChartAirspaceBadgeColors {
 export interface ChartRouteColors {
   /** Planned route line stroke. */
   line: string;
+  /** Dashed stroke for a leg that makes the route invalid as filed (an airway gap or unusable segment). */
+  invalidLine: string;
   /** Waypoint dot fill. */
   waypointFill: string;
   /** Waypoint dot stroke. */
@@ -194,6 +196,7 @@ const LIGHT_PALETTE: ChartColorPalette = {
   },
   route: {
     line: '#c026d3',
+    invalidLine: '#d97706',
     waypointFill: '#a21caf',
     waypointStroke: '#ffffff',
     labelText: '#701a75',
@@ -248,6 +251,7 @@ const DARK_PALETTE: ChartColorPalette = {
   },
   route: {
     line: '#e879f9',
+    invalidLine: '#fbbf24',
     waypointFill: '#f0abfc',
     waypointStroke: '#ffffff',
     labelText: '#f5d0fe',

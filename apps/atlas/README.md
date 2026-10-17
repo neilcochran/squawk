@@ -39,9 +39,9 @@ Enter an ICAO / FAA flight-plan route string and see it resolved against the bun
 
 **Route input** - a floating box (top-left) takes a route string like `KLAX DCT LAX J60 SAX DCT KJFK`. The string is parsed by `@squawk/flightplan`, composing the airport, navaid, fix, airway, and procedure resolvers, so airports, fixes, navaids, airway segments (expanded to their underlying waypoints), and SID / STAR procedure legs all resolve to coordinates. The normalized route round-trips through the URL, so a plan is shareable.
 
-**Route overlay** - the resolved route draws as a single line through the ordered points, with a dot and identifier label at each waypoint. Labels appear from zoom 6 so a CONUS overview of a long route stays readable.
+**Route overlay** - the resolved route draws as a line through the ordered points, with a dot and identifier label at each waypoint. A leg that makes the route invalid as filed - one that crosses a published gap in an airway, or an airway segment the FAA marks unusable - draws dashed in a warning color. Labels appear from zoom 6 so a CONUS overview of a long route stays readable.
 
-**Summary panel** - a right-side panel on desktop, bottom sheet on mobile. Shows the total great-circle distance, a per-leg breakdown (from / to, leg distance, cumulative), and an estimated time enroute computed from an optional ground-speed field. Any route tokens that could not be resolved are listed, so a typo or unknown identifier is visible rather than silently dropped.
+**Summary panel** - a right-side panel on desktop, bottom sheet on mobile. Shows the total great-circle distance, a per-leg breakdown (from / to, leg distance, cumulative), and an estimated time enroute computed from an optional ground-speed field. Any route tokens that could not be resolved are listed, so a typo or unknown identifier is visible rather than silently dropped. A route that files an airway across a published gap or an unusable segment gets a "not valid as filed" warning naming the airway and the waypoints on either side, and the offending legs are tagged in the breakdown.
 
 **URL-driven state** - the route string, ground speed, and map view all live in the URL; stale or invalid values fall back to defaults rather than erroring.
 

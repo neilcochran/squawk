@@ -1,22 +1,34 @@
+import type { ExpressionSpecification } from '@maplibre/maplibre-gl-style-spec';
 import { Source, Layer } from '@vis.gl/react-maplibre';
 import type { LayerProps } from '@vis.gl/react-maplibre';
-import type { LineString } from 'geojson';
 import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 
-import type { RoutePoint } from '@squawk/flightplan/browser';
+import type { RouteLeg, RoutePoint } from '@squawk/flightplan/browser';
 
 import { useChartColors } from '../../../shared/styles/chart-colors.ts';
 
 import {
+  PLAN_ROUTE_INVALID_LINE_LAYER_ID,
   PLAN_ROUTE_LINE_LAYER_ID,
   PLAN_ROUTE_SOURCE_ID,
   PLAN_WAYPOINTS_LABEL_LAYER_ID,
   PLAN_WAYPOINTS_LAYER_ID,
   PLAN_WAYPOINTS_SOURCE_ID,
-  toRouteLineCollection,
+  toLegCollection,
   toWaypointCollection,
 } from './plan-route-features.ts';
+
+/** Route stroke width in pixels by zoom, shared by the valid and invalid leg layers. */
+const ROUTE_LINE_WIDTH: ExpressionSpecification = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  4,
+  2,
+  10,
+  3.5,
+];
 
 /**
  * Props for {@link PlanRouteLayer}.
@@ -24,26 +36,31 @@ import {
 export interface PlanRouteLayerProps {
   /** Ordered drawable route points, rendered as waypoint dots + labels. */
   points: readonly RoutePoint[];
-  /** Route line geometry, or `undefined` when the route has fewer than two points. */
-  line: LineString | undefined;
+  /** The route's legs, drawn one line each; empty when the route has fewer than two points. */
+  legs: readonly RouteLeg[];
 }
 
 /**
- * Plan-mode overlay that draws the resolved route: a single line through the
- * ordered points, a circle at each waypoint, and an identifier label beside
- * each. Mirrors the chart layers' `Source` + `Layer` pattern and themes its
- * paint via {@link useChartColors}, rebuilding the `LayerProps` on a theme
- * switch so the new palette flows through MapLibre's declarative paint props.
+ * Plan-mode overlay that draws the resolved route: a line per leg, a circle
+ * at each waypoint, and an identifier label beside each. Mirrors the chart
+ * layers' `Source` + `Layer` pattern and themes its paint via
+ * {@link useChartColors}, rebuilding the `LayerProps` on a theme switch so the
+ * new palette flows through MapLibre's declarative paint props.
  *
- * The line and waypoints use separate sources so the waypoint dots and labels
- * always stack above the line in MapLibre's draw order. Labels appear from
- * zoom 6 so a CONUS-level overview of a long route is not buried under
- * overlapping identifiers.
+ * A leg that makes the route invalid as filed - one that spans a published
+ * airway gap or an airway segment the FAA marks unusable - draws dashed in
+ * the warning color on its own layer, since MapLibre cannot vary a line's
+ * dash pattern per feature; the rest of the route draws solid.
+ *
+ * The leg layers mount before the waypoint layers, so the dots and labels
+ * draw above the lines: MapLibre stacks by layer order, not by source. Labels
+ * appear from zoom 6 so a CONUS-level overview of a long route is not buried
+ * under overlapping identifiers.
  */
-export function PlanRouteLayer({ points, line }: PlanRouteLayerProps): ReactElement {
+export function PlanRouteLayer({ points, legs }: PlanRouteLayerProps): ReactElement {
   const colors = useChartColors();
 
-  const lineData = useMemo(() => toRouteLineCollection(line), [line]);
+  const lineData = useMemo(() => toLegCollection(legs), [legs]);
   const waypointData = useMemo(() => toWaypointCollection(points), [points]);
 
   const lineLayerProps = useMemo<LayerProps>(
@@ -51,14 +68,35 @@ export function PlanRouteLayer({ points, line }: PlanRouteLayerProps): ReactElem
       id: PLAN_ROUTE_LINE_LAYER_ID,
       source: PLAN_ROUTE_SOURCE_ID,
       type: 'line',
+      filter: ['==', ['get', 'status'], 'valid'],
       layout: {
         'line-cap': 'round',
         'line-join': 'round',
       },
       paint: {
         'line-color': colors.route.line,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 3.5],
+        'line-width': ROUTE_LINE_WIDTH,
         'line-opacity': 0.9,
+      },
+    }),
+    [colors],
+  );
+
+  const invalidLineLayerProps = useMemo<LayerProps>(
+    () => ({
+      id: PLAN_ROUTE_INVALID_LINE_LAYER_ID,
+      source: PLAN_ROUTE_SOURCE_ID,
+      type: 'line',
+      filter: ['!=', ['get', 'status'], 'valid'],
+      layout: {
+        'line-cap': 'butt',
+        'line-join': 'round',
+      },
+      paint: {
+        'line-color': colors.route.invalidLine,
+        'line-width': ROUTE_LINE_WIDTH,
+        'line-opacity': 0.95,
+        'line-dasharray': [2, 1.5],
       },
     }),
     [colors],
@@ -107,6 +145,7 @@ export function PlanRouteLayer({ points, line }: PlanRouteLayerProps): ReactElem
     <>
       <Source id={PLAN_ROUTE_SOURCE_ID} type="geojson" data={lineData}>
         <Layer {...lineLayerProps} />
+        <Layer {...invalidLineLayerProps} />
       </Source>
       <Source id={PLAN_WAYPOINTS_SOURCE_ID} type="geojson" data={waypointData}>
         <Layer {...waypointLayerProps} />
