@@ -37,7 +37,7 @@ export interface HighlightProviderProps {
    * Index of the currently-hovered airway waypoint row within the
    * active airway's `waypoints` array, or `undefined` when no
    * inspector row is hovered. Drives the airway focus layer (waypoint
-   * dot + incoming leg) and the row-hover-pan hook.
+   * dot + outgoing leg) and the row-hover-pan hook.
    */
   hoveredAirwayWaypointIndex: number | undefined;
   /**

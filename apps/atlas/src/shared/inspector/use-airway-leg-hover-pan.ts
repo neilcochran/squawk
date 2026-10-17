@@ -47,10 +47,12 @@ export interface UseAirwayLegHoverPanArgs {
  * only restoring once the cursor leaves the panel entirely.
  *
  * Pan target by row:
- * - Row 0 (the route's start waypoint): the waypoint's own coords. No
- *   incoming leg exists, so panning to the waypoint puts it center.
- * - Rows 1+: the midpoint of the leg ending at that waypoint, so
- *   both endpoints sit in view.
+ * - Every row but the last: the midpoint of the leg from that waypoint
+ *   to the next, the segment the row's altitudes describe, so both
+ *   endpoints sit in view.
+ * - The last row (the route's end waypoint): the waypoint's own
+ *   coords. No outgoing leg exists, so panning to the waypoint puts it
+ *   center.
  *
  * Does nothing when the target is already comfortably onscreen - the
  * user's request was specifically "if the leg is out of view, pan to
@@ -120,22 +122,15 @@ export function useAirwayLegHoverPan(args: UseAirwayLegHoverPanArgs): void {
     if (current === undefined) {
       return;
     }
-    // Row 0 has no incoming leg - pan to the start waypoint itself
-    // so the user can see "this is where the route begins". Rows 1+
-    // pan to the leg midpoint so both endpoints stay in view.
+    // The last row has no outgoing leg - pan to the end waypoint
+    // itself so the user can see "this is where the route ends". Every
+    // other row pans to its outgoing leg's midpoint so both endpoints
+    // stay in view.
+    const next = waypoints[hoveredWaypointIndex + 1];
     const target =
-      hoveredWaypointIndex === 0
+      next === undefined
         ? { lng: current.lon, lat: current.lat }
-        : (() => {
-            const previous = waypoints[hoveredWaypointIndex - 1];
-            if (previous === undefined) {
-              return { lng: current.lon, lat: current.lat };
-            }
-            return {
-              lng: (previous.lon + current.lon) / 2,
-              lat: (previous.lat + current.lat) / 2,
-            };
-          })();
+        : { lng: (current.lon + next.lon) / 2, lat: (current.lat + next.lat) / 2 };
     if (!isPointOutsideComfortableArea(target, map)) {
       return;
     }

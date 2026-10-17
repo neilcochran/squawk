@@ -106,7 +106,7 @@ export function ChartMode(): ReactElement {
   const [hoveredFeatureIndex, setHoveredFeatureIndex] = useState<number | undefined>(undefined);
   // Index of the airway waypoint row that's currently hovered in the
   // inspector, used by the airway focus layer to brighten the
-  // matching waypoint dot (and, when index > 0, its incoming leg) and
+  // matching waypoint dot (and, unless it is the last, its outgoing leg) and
   // by the row-hover-pan hook to ease the camera if that area is
   // offscreen. Cleared on mouseLeave; component-local for the same
   // reasons as `hoveredFeatureIndex`.

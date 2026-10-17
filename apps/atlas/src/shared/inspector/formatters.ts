@@ -1,6 +1,7 @@
 import type {
   Airport,
   Airway,
+  AirwayDirection,
   AirwayWaypoint,
   Fix,
   FixNavaidAssociation,
@@ -197,22 +198,79 @@ export function formatAirwayRegion(region: Airway['region']): string {
 }
 
 /**
- * Builds the right-hand cell for a waypoint row. Prefers `MEA / MAA`
- * when both are present, falls back to MEA alone, then MOCA, then a
- * placeholder hyphen so empty rows still show a visible value column.
+ * Builds the altitude lines for a waypoint row, one labeled line per
+ * altitude the FAA publishes, in the order a pilot reads them: the
+ * conventional MEA, the GNSS MEA, the DME/DME/IRU MEA, the MOCA and the
+ * MAA for the segment to the next waypoint, then the MCA at the waypoint
+ * itself. An altitude that applies to one direction of travel carries
+ * the FAA's bound notation, with the opposite direction's value after a
+ * slash (`MEA 2100 NE BND / 5000 SW BND`). Returns an empty array when
+ * nothing is published, as on an airway's last waypoint.
  */
-export function formatAirwayWaypointAltitude(waypoint: AirwayWaypoint): string {
-  const mea = waypoint.minimumEnrouteAltitudeFt;
-  const maa = waypoint.maximumAuthorizedAltitudeFt;
-  const moca = waypoint.minimumObstructionClearanceAltitudeFt;
-  if (mea !== undefined && maa !== undefined) {
-    return `${mea} - ${maa}`;
+export function formatAirwayWaypointAltitudes(waypoint: AirwayWaypoint): string[] {
+  const labeled: ReadonlyArray<readonly [label: string, value: string | undefined]> = [
+    [
+      'MEA',
+      formatDirectionalAltitude(
+        waypoint.minimumEnrouteAltitudeFt,
+        waypoint.minimumEnrouteAltitudeDirection,
+        waypoint.minimumEnrouteAltitudeOppositeFt,
+        waypoint.minimumEnrouteAltitudeOppositeDirection,
+      ),
+    ],
+    [
+      'GNSS MEA',
+      formatDirectionalAltitude(
+        waypoint.gnssMinimumEnrouteAltitudeFt,
+        waypoint.gnssMinimumEnrouteAltitudeDirection,
+        waypoint.gnssMinimumEnrouteAltitudeOppositeFt,
+        waypoint.gnssMinimumEnrouteAltitudeOppositeDirection,
+      ),
+    ],
+    [
+      'DME/DME/IRU MEA',
+      formatDirectionalAltitude(
+        waypoint.dmeDmeIruMinimumEnrouteAltitudeFt,
+        waypoint.dmeDmeIruMinimumEnrouteAltitudeDirection,
+        undefined,
+        undefined,
+      ),
+    ],
+    ['MOCA', waypoint.minimumObstructionClearanceAltitudeFt?.toString()],
+    ['MAA', waypoint.maximumAuthorizedAltitudeFt?.toString()],
+    [
+      'MCA',
+      formatDirectionalAltitude(
+        waypoint.minimumCrossingAltitudeFt,
+        waypoint.minimumCrossingAltitudeDirection,
+        waypoint.minimumCrossingAltitudeOppositeFt,
+        waypoint.minimumCrossingAltitudeOppositeDirection,
+      ),
+    ],
+  ];
+  return labeled.flatMap(([label, value]) => (value === undefined ? [] : [`${label} ${value}`]));
+}
+
+/**
+ * Joins an altitude and its opposite-direction twin into one value,
+ * each with its bound direction when published (`2100 NE BND / 5000 SW
+ * BND`), or the bare altitude when it applies both ways. Returns
+ * `undefined` when neither altitude is published.
+ */
+function formatDirectionalAltitude(
+  altitudeFt: number | undefined,
+  direction: AirwayDirection | undefined,
+  oppositeFt: number | undefined,
+  oppositeDirection: AirwayDirection | undefined,
+): string | undefined {
+  const parts: string[] = [];
+  if (altitudeFt !== undefined) {
+    parts.push(direction === undefined ? `${altitudeFt}` : `${altitudeFt} ${direction}`);
   }
-  if (mea !== undefined) {
-    return `MEA ${mea}`;
+  if (oppositeFt !== undefined) {
+    parts.push(
+      oppositeDirection === undefined ? `${oppositeFt}` : `${oppositeFt} ${oppositeDirection}`,
+    );
   }
-  if (moca !== undefined) {
-    return `MOCA ${moca}`;
-  }
-  return '-';
+  return parts.length === 0 ? undefined : parts.join(' / ');
 }

@@ -8,7 +8,7 @@ import { useCanHover } from '../../styles/use-can-hover.ts';
 import {
   formatAirwayRegion,
   formatAirwayType,
-  formatAirwayWaypointAltitude,
+  formatAirwayWaypointAltitudes,
 } from '../formatters.ts';
 
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
@@ -22,18 +22,23 @@ export interface AirwayPanelProps {
 }
 
 /**
- * Per-type renderer for an `airway` entity. Shows the route classification
- * plus the ordered waypoint list. Each waypoint row carries the segment MEA
- * when the dataset has it (most enroute segments do; some oceanic routes
- * leave it null), so the user can scan the altitude profile at a glance.
+ * Per-type renderer for an `airway` entity. Shows the route classification,
+ * any route-wide FAA remarks, and the ordered waypoint list. Each waypoint
+ * row lists every altitude the FAA publishes for it, one labeled line each
+ * (conventional, GNSS and DME/DME/IRU MEA, MOCA, MAA and MCA, with the
+ * bound direction where an altitude applies one way only), so the user can
+ * scan the altitude profile at a glance. A segment the FAA marks unusable
+ * is flagged on its row, and the waypoint's own remarks follow its
+ * altitudes.
  *
  * On hover-capable devices, every waypoint row wires into the highlight
  * context's `hoveredAirwayWaypointIndex` so a complementary map layer
  * can brighten the matching waypoint dot AND, when the row is not the
- * first, the incoming leg ending at that waypoint. The first row is
- * still hoverable - the user gets a "where on the map is this
- * fix/navaid/airport?" affordance for the route's starting point even
- * though it has no incoming leg.
+ * last, the outgoing leg to the next waypoint - the segment the row's
+ * altitudes and unusable flag describe. The last row is still
+ * hoverable - the user gets a "where on the map is this
+ * fix/navaid/airport?" affordance for the route's end point even
+ * though it has no outgoing leg.
  */
 export function AirwayPanel({ record }: AirwayPanelProps): ReactElement {
   const setHoveredAirwayWaypointIndex = useSetHoveredAirwayWaypointIndex();
@@ -55,20 +60,57 @@ export function AirwayPanel({ record }: AirwayPanelProps): ReactElement {
         <InspectorRow label="Region">{formatAirwayRegion(record.region)}</InspectorRow>
         <InspectorRow label="Waypoints">{record.waypoints.length}</InspectorRow>
       </InspectorSection>
+      {record.remarks !== undefined && record.remarks.length > 0 ? (
+        <InspectorSection title="Remarks">
+          {record.remarks.map((remark, idx) => (
+            <p key={idx} className="text-sm text-slate-700 dark:text-slate-300">
+              {remark}
+            </p>
+          ))}
+        </InspectorSection>
+      ) : null}
       {record.waypoints.length > 0 ? (
         <InspectorSection title="Route">
-          {record.waypoints.map((waypoint, idx) => (
-            <InspectorRow
-              key={`${waypoint.identifier ?? waypoint.name}-${idx}`}
-              label={waypoint.identifier ?? waypoint.name}
-              {...(canHover && {
-                onPointerEnter: (): void => setHoveredAirwayWaypointIndex(idx),
-                onPointerLeave: (): void => setHoveredAirwayWaypointIndex(undefined),
-              })}
-            >
-              {formatAirwayWaypointAltitude(waypoint)}
-            </InspectorRow>
-          ))}
+          {record.waypoints.map((waypoint, idx) => {
+            const altitudes = formatAirwayWaypointAltitudes(waypoint);
+            const remarks = waypoint.remarks ?? [];
+            const unusable = waypoint.unusable === true;
+            return (
+              <InspectorRow
+                key={`${waypoint.identifier ?? waypoint.name}-${idx}`}
+                label={waypoint.identifier ?? waypoint.name}
+                {...(canHover && {
+                  onPointerEnter: (): void => setHoveredAirwayWaypointIndex(idx),
+                  onPointerLeave: (): void => setHoveredAirwayWaypointIndex(undefined),
+                })}
+              >
+                {altitudes.length === 0 && !unusable && remarks.length === 0 ? (
+                  '-'
+                ) : (
+                  <>
+                    {unusable ? (
+                      <span className="block font-medium text-amber-600 dark:text-amber-500">
+                        Unusable
+                      </span>
+                    ) : null}
+                    {altitudes.map((line) => (
+                      <span key={line} className="block tabular-nums">
+                        {line}
+                      </span>
+                    ))}
+                    {remarks.map((remark, remarkIdx) => (
+                      <span
+                        key={remarkIdx}
+                        className="block text-xs text-slate-500 dark:text-slate-400"
+                      >
+                        {remark}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </InspectorRow>
+            );
+          })}
         </InspectorSection>
       ) : null}
     </>

@@ -8,7 +8,7 @@ import {
   formatAirportStatus,
   formatAirwayRegion,
   formatAirwayType,
-  formatAirwayWaypointAltitude,
+  formatAirwayWaypointAltitudes,
   formatFixNavaidAssociation,
   formatFixUseCode,
   formatNavaidFrequency,
@@ -217,34 +217,87 @@ describe('formatAirwayRegion', () => {
 
 function buildWaypoint(overrides: Partial<AirwayWaypoint>): AirwayWaypoint {
   return {
+    name: 'WPT',
     identifier: 'WPT',
-    location: { latitude: 0, longitude: 0 },
+    waypointType: 'FIX',
+    lat: 0,
+    lon: 0,
     ...overrides,
-  } as AirwayWaypoint;
+  };
 }
 
-describe('formatAirwayWaypointAltitude', () => {
-  it('renders MEA - MAA when both are present', () => {
+describe('formatAirwayWaypointAltitudes', () => {
+  it('lists every published altitude as its own labeled line, in reading order', () => {
     expect(
-      formatAirwayWaypointAltitude(
-        buildWaypoint({ minimumEnrouteAltitudeFt: 6000, maximumAuthorizedAltitudeFt: 18000 }),
+      formatAirwayWaypointAltitudes(
+        buildWaypoint({
+          maximumAuthorizedAltitudeFt: 17500,
+          minimumObstructionClearanceAltitudeFt: 3400,
+          gnssMinimumEnrouteAltitudeFt: 3000,
+          minimumEnrouteAltitudeFt: 6000,
+          dmeDmeIruMinimumEnrouteAltitudeFt: 5000,
+          minimumCrossingAltitudeFt: 6000,
+          minimumCrossingAltitudeDirection: 'S BND',
+        }),
       ),
-    ).toBe('6000 - 18000');
-  });
-
-  it('renders MEA only when MAA is missing', () => {
-    expect(formatAirwayWaypointAltitude(buildWaypoint({ minimumEnrouteAltitudeFt: 6000 }))).toBe(
+    ).toEqual([
       'MEA 6000',
-    );
+      'GNSS MEA 3000',
+      'DME/DME/IRU MEA 5000',
+      'MOCA 3400',
+      'MAA 17500',
+      'MCA 6000 S BND',
+    ]);
   });
 
-  it('falls back to MOCA when MEA is missing', () => {
+  it('shows a directional MEA with its bound and the opposite direction after a slash', () => {
     expect(
-      formatAirwayWaypointAltitude(buildWaypoint({ minimumObstructionClearanceAltitudeFt: 4500 })),
-    ).toBe('MOCA 4500');
+      formatAirwayWaypointAltitudes(
+        buildWaypoint({
+          minimumEnrouteAltitudeFt: 2100,
+          minimumEnrouteAltitudeDirection: 'NE BND',
+          minimumEnrouteAltitudeOppositeFt: 5000,
+          minimumEnrouteAltitudeOppositeDirection: 'SW BND',
+        }),
+      ),
+    ).toEqual(['MEA 2100 NE BND / 5000 SW BND']);
   });
 
-  it('returns "-" when no altitudes are set', () => {
-    expect(formatAirwayWaypointAltitude(buildWaypoint({}))).toBe('-');
+  it('shows a directional GNSS MEA and an opposite-direction MCA the same way', () => {
+    expect(
+      formatAirwayWaypointAltitudes(
+        buildWaypoint({
+          gnssMinimumEnrouteAltitudeFt: 3000,
+          gnssMinimumEnrouteAltitudeDirection: 'SW BND',
+          gnssMinimumEnrouteAltitudeOppositeFt: 3500,
+          gnssMinimumEnrouteAltitudeOppositeDirection: 'NE BND',
+          minimumCrossingAltitudeFt: 6000,
+          minimumCrossingAltitudeDirection: 'S BND',
+          minimumCrossingAltitudeOppositeFt: 2600,
+          minimumCrossingAltitudeOppositeDirection: 'N BND',
+        }),
+      ),
+    ).toEqual(['GNSS MEA 3000 SW BND / 3500 NE BND', 'MCA 6000 S BND / 2600 N BND']);
+  });
+
+  it('shows the GNSS MEA alone when it is the only published altitude', () => {
+    expect(
+      formatAirwayWaypointAltitudes(buildWaypoint({ gnssMinimumEnrouteAltitudeFt: 4000 })),
+    ).toEqual(['GNSS MEA 4000']);
+  });
+
+  it('keeps an opposite-direction value whose primary is missing', () => {
+    expect(
+      formatAirwayWaypointAltitudes(
+        buildWaypoint({
+          minimumEnrouteAltitudeOppositeFt: 5000,
+          minimumEnrouteAltitudeOppositeDirection: 'SW BND',
+        }),
+      ),
+    ).toEqual(['MEA 5000 SW BND']);
+  });
+
+  it('returns no lines when nothing is published', () => {
+    expect(formatAirwayWaypointAltitudes(buildWaypoint({}))).toEqual([]);
   });
 });

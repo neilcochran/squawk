@@ -41,9 +41,10 @@ export interface HighlightContextValue {
    * Index of the currently-hovered airway waypoint row within the
    * active entity's `waypoints` array, or `undefined` when no row is
    * hovered. The airway focus layer reads this to brighten the
-   * waypoint dot at `waypoints[i]` AND, when `i > 0`, the incoming
-   * leg from `waypoints[i - 1]` to `waypoints[i]`. Index `0` is the
-   * route's starting waypoint (no incoming leg, just the dot).
+   * waypoint dot at `waypoints[i]` AND, unless `i` is the last index,
+   * the outgoing leg from `waypoints[i]` to `waypoints[i + 1]`. The
+   * last index is the route's end waypoint (no outgoing leg, just the
+   * dot).
    *
    * Only meaningful for airway selections; ignored for other entity
    * types.
@@ -112,7 +113,7 @@ export function useSetHoveredFeatureIndex(): (index: number | undefined) => void
  * Returns the index of the currently-hovered airway waypoint row
  * within the active airway's `waypoints` array, or `undefined`.
  * Consumed by the airway focus layer (which brightens the waypoint
- * dot AND its incoming leg when index > 0) and by the row-hover-pan
+ * dot AND its outgoing leg when one exists) and by the row-hover-pan
  * hook (which eases the camera if that area is offscreen).
  */
 export function useHoveredAirwayWaypointIndex(): number | undefined {

@@ -64,9 +64,9 @@ describe('AirwayPanel', () => {
   });
 
   it('reports the row position as the waypoint index for any row', () => {
-    // The row at waypoint index N fires N (not N-1) so the focus
-    // layer can light up the dot AND the leg ending at that
-    // waypoint.
+    // The row at waypoint index N fires N so the focus layer can
+    // light up the dot AND the leg starting at that waypoint, the
+    // segment the row's altitudes describe.
     render(<AirwayPanel record={buildAirway(5)} />);
     const lastRow = screen.getByText('WP4').closest('div');
     expect(lastRow).not.toBeNull();
@@ -78,12 +78,9 @@ describe('AirwayPanel', () => {
   });
 
   it('fires the hover handler for the first waypoint row (waypoint index 0)', () => {
-    // The first waypoint is the route's starting point - it has no
-    // incoming leg, but it IS a fix / navaid / airport in its own
-    // right and the user wants the same hover-highlight affordance
-    // as every other row. Setting waypoint index 0 lights up just
-    // the dot (no leg) since the focus-layer's leg filter excludes
-    // index 0.
+    // The first waypoint is the route's starting point and fires
+    // index 0 like any other row, so the focus layer lights up its
+    // dot and the first leg of the route.
     render(<AirwayPanel record={buildAirway(3)} />);
     const firstRow = screen.getByText('WP0').closest('div');
     expect(firstRow).not.toBeNull();
@@ -122,6 +119,59 @@ describe('AirwayPanel', () => {
   it('does not render the Route section when the airway has no waypoints', () => {
     render(<AirwayPanel record={buildAirway(0)} />);
     expect(screen.queryByText('Route')).toBeNull();
+  });
+
+  it('stacks every published altitude, the unusable flag and the remarks in the waypoint row', () => {
+    const record: Airway = {
+      designation: 'V1',
+      type: 'VICTOR',
+      region: 'US',
+      waypoints: [
+        {
+          name: 'INLET',
+          identifier: 'INLET',
+          waypointType: 'FIX',
+          lat: 40,
+          lon: -74,
+          minimumEnrouteAltitudeFt: 2100,
+          minimumEnrouteAltitudeDirection: 'NE BND',
+          minimumEnrouteAltitudeOppositeFt: 5000,
+          minimumEnrouteAltitudeOppositeDirection: 'SW BND',
+          gnssMinimumEnrouteAltitudeFt: 2100,
+          maximumAuthorizedAltitudeFt: 17500,
+        },
+        {
+          name: 'WINK',
+          identifier: 'INK',
+          waypointType: 'NAVAID',
+          lat: 31.9,
+          lon: -103.2,
+          unusable: true,
+          remarks: ['WINK R-311 UNUSABLE, USE CHISUM R-129'],
+        },
+        { name: 'END', identifier: 'END', waypointType: 'FIX', lat: 32, lon: -104 },
+      ],
+    };
+    render(<AirwayPanel record={record} />);
+    const inlet = screen.getByText('INLET').closest('div');
+    expect(inlet).toHaveTextContent('MEA 2100 NE BND / 5000 SW BND');
+    expect(inlet).toHaveTextContent('GNSS MEA 2100');
+    expect(inlet).toHaveTextContent('MAA 17500');
+    const wink = screen.getByText('INK').closest('div');
+    expect(wink).toHaveTextContent('Unusable');
+    expect(wink).toHaveTextContent('WINK R-311 UNUSABLE, USE CHISUM R-129');
+    expect(screen.getByText('END').closest('div')).toHaveTextContent(/^END-$/);
+  });
+
+  it('shows route-wide remarks in their own section only when the airway has them', () => {
+    const { unmount } = render(
+      <AirwayPanel record={{ ...buildAirway(2), remarks: ['HF COMM REQUIRED'] }} />,
+    );
+    expect(screen.getByText('Remarks')).toBeInTheDocument();
+    expect(screen.getByText('HF COMM REQUIRED')).toBeInTheDocument();
+    unmount();
+    render(<AirwayPanel record={buildAirway(2)} />);
+    expect(screen.queryByText('Remarks')).toBeNull();
   });
 
   it('falls back to the waypoint name when the identifier is undefined', () => {
