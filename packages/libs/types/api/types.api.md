@@ -110,11 +110,13 @@ export interface AircraftRegistration {
     model?: string;
     operator?: string;
     registration: string;
+    registrationExpirationDate?: string;
+    registrationStatus?: RegistrationStatus;
     yearManufactured?: number;
 }
 
 // @public
-export type AircraftType = 'glider' | 'balloon' | 'blimpOrDirigible' | 'fixedWingSingleEngine' | 'fixedWingMultiEngine' | 'rotorcraft' | 'weightShiftControl' | 'poweredParachute' | 'gyroplane' | 'hybridLift';
+export type AircraftType = 'glider' | 'balloon' | 'blimpOrDirigible' | 'fixedWingSingleEngine' | 'fixedWingMultiEngine' | 'rotorcraft' | 'weightShiftControl' | 'poweredParachute' | 'gyroplane' | 'hybridLift' | 'other';
 
 // @public
 export interface Airport {
@@ -388,8 +390,8 @@ export type FixCompulsory = 'HIGH' | 'LOW' | 'LOW/HIGH';
 
 // @public
 export interface FixNavaidAssociation {
-    bearingDeg: number;
-    distanceNm: number;
+    distanceNm?: number;
+    magneticBearingDeg?: number;
     navaidId: string;
     navaidType: string;
 }
@@ -452,11 +454,13 @@ export interface MissedApproachSequence {
 
 // @public
 export interface Navaid {
+    checkpoints?: NavaidCheckpoint[];
     city?: string;
     country: string;
     dmeLat?: number;
     dmeLon?: number;
     dmeServiceVolume?: string;
+    dmeStatus?: NavaidStatus;
     elevationFt?: number;
     frequencyKhz?: number;
     frequencyMhz?: number;
@@ -478,12 +482,16 @@ export interface Navaid {
     operatingHours?: string;
     powerOutputWatts?: number;
     publicUse?: boolean;
+    remarks?: string[];
     simultaneousVoice?: boolean;
     state?: string;
     status: NavaidStatus;
     tacanChannel?: string;
     type: NavaidType;
 }
+
+// @public
+export const NAVAID_CHECKPOINT_TYPE_MAP: Record<string, NavaidCheckpointType>;
 
 // @public
 export const NAVAID_STATUS_MAP: Record<string, NavaidStatus>;
@@ -493,6 +501,18 @@ export const NAVAID_TYPE_MAP: Record<string, NavaidType>;
 
 // @public
 export const NAVAID_TYPES: readonly ["VOR", "VORTAC", "VOR/DME", "TACAN", "DME", "NDB", "NDB/DME", "FAN_MARKER", "MARINE_NDB", "VOT"];
+
+// @public
+export interface NavaidCheckpoint {
+    airportId?: string;
+    altitudeFt?: number;
+    description: string;
+    magneticBearingDeg: number;
+    type: NavaidCheckpointType;
+}
+
+// @public
+export type NavaidCheckpointType = 'GROUND' | 'AIRBORNE';
 
 // @public
 export type NavaidStatus = 'OPERATIONAL_IFR' | 'OPERATIONAL_RESTRICTED' | 'OPERATIONAL_VFR' | 'SHUTDOWN';
@@ -599,6 +619,9 @@ export interface ProcedureTransition {
 
 // @public
 export type ProcedureType = 'SID' | 'STAR' | 'IAP';
+
+// @public
+export type RegistrationStatus = 'valid' | 'validManufacturerDealer' | 'validTrainee' | 'registrationPending' | 'registrationPendingPendingCancellation' | 'registrationPendingCanceled' | 'assignedNotRegistered' | 'assignedNotRegisteredNonTypeCertificated' | 'assignedNotRegisteredImport' | 'assignedNotRegisteredPendingCancellation' | 'assignedNotRegisteredNonTypeCertificatedPendingCancellation' | 'assignedNotRegisteredImportPendingCancellation' | 'reserved' | 'permanentReserved' | 'saleReported' | 'saleReportedPendingCancellation' | 'saleReportedCanceled' | 'nonCitizenFlightHoursNotReported' | 'triennialFormMailed' | 'triennialSecondFormMailed' | 'triennialFormUndeliverable' | 'triennialNoResponse' | 'renewalFirstNotice' | 'renewalSecondNotice' | 'renewalThirdNotice' | 'expired' | 'expiredPendingCancellation' | 'expiredDealer' | 'expiredDealerPendingCancellation' | 'administrativelyCanceled' | 'ineffectiveOrInvalid' | 'enforcementLetter' | 'revoked' | 'revokedByEnforcement' | 'revokedPendingCancellation' | 'revokedCanceled';
 
 // @public
 export type ResolutionAdvisoryType = 'climb' | 'descend' | 'crossingClimb' | 'crossingDescend' | 'increaseClimb' | 'increaseDescent' | 'reduceClimb' | 'reduceDescent' | 'doNotClimb' | 'doNotDescend' | 'reversalToClimb' | 'reversalToDescend';

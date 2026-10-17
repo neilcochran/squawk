@@ -7,6 +7,7 @@
 import { AircraftRegistration } from '@squawk/types';
 import { AircraftType } from '@squawk/types';
 import { EngineType } from '@squawk/types';
+import { RegistrationStatus } from '@squawk/types';
 
 export { AircraftRegistration }
 
@@ -27,5 +28,7 @@ export interface IcaoRegistry {
 export interface IcaoRegistryOptions {
     data: AircraftRegistration[];
 }
+
+export { RegistrationStatus }
 
 ```

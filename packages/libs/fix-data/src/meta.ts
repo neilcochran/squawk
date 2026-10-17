@@ -11,7 +11,7 @@ import type { FixDatasetProperties } from './node.js';
 
 /** Build metadata for the bundled fix snapshot. */
 export const usBundledFixesProperties: FixDatasetProperties = {
-  generatedAt: '2026-10-09T22:25:12.405Z',
+  generatedAt: '2026-10-13T22:17:19.856Z',
   nasrCycleDate: '2026-10-29',
   recordCount: 67583,
 };

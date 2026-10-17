@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 
 import type { Fix } from '@squawk/types';
 
-import { formatFixUseCode } from '../formatters.ts';
+import { formatFixNavaidAssociation, formatFixUseCode } from '../formatters.ts';
 
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
@@ -45,7 +45,7 @@ export function FixPanel({ record }: FixPanelProps): ReactElement {
         <InspectorSection title={`Navaid associations (${record.navaidAssociations.length})`}>
           {record.navaidAssociations.map((association, idx) => (
             <InspectorRow key={`${association.navaidId}-${idx}`} label={association.navaidId}>
-              {`${association.bearingDeg.toFixed(0)} deg / ${association.distanceNm.toFixed(1)} nm`}
+              {formatFixNavaidAssociation(association)}
             </InspectorRow>
           ))}
         </InspectorSection>

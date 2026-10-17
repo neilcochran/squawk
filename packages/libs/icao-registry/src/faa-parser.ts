@@ -1,6 +1,11 @@
 import type { AircraftRegistration } from '@squawk/types';
 
-import { AIRCRAFT_TYPE_MAP, ENGINE_TYPE_MAP } from './code-maps.js';
+import {
+  AIRCRAFT_TYPE_MAP,
+  ENGINE_TYPE_MAP,
+  PLACEHOLDER_REGISTRANT_NAMES,
+  REGISTRATION_STATUS_MAP,
+} from './code-maps.js';
 
 /**
  * Raw record extracted from MASTER.txt before joining with ACFTREF.
@@ -10,9 +15,9 @@ export interface MasterRecord {
   registration: string;
   /** 24-bit ICAO hex address, uppercase (e.g. "A00001"). */
   icaoHex: string;
-  /** Registrant or operator name. */
+  /** Registrant or operator name, as published. */
   name: string;
-  /** Year of manufacture, or undefined if not present. */
+  /** Year of manufacture, or undefined when the registry publishes none or 0. */
   yearMfr: number | undefined;
   /** FAA manufacturer/model code used to join with ACFTREF.txt. */
   mfrMdlCode: string;
@@ -20,6 +25,10 @@ export interface MasterRecord {
   typeAircraft: string;
   /** FAA engine type code (e.g. "1" for reciprocating). */
   typeEngine: string;
+  /** FAA registration status code (e.g. "V" for a valid registration). */
+  statusCode: string;
+  /** Registration expiration date as YYYY-MM-DD, or undefined if not present. */
+  expirationDate: string | undefined;
 }
 
 /**
@@ -70,6 +79,39 @@ function getField(fields: string[], columns: Map<string, number>, name: string):
   return fields[idx]?.trim() ?? '';
 }
 
+/** Matches the registry's compact YYYYMMDD date form. */
+const COMPACT_DATE_PATTERN = /^(\d{4})(\d{2})(\d{2})$/;
+
+/**
+ * Parses a year of manufacture. The registry publishes 0 where the year is
+ * unknown, which is treated the same as a blank.
+ *
+ * @param value - Trimmed YEAR MFR field.
+ * @returns The year, or undefined when blank, non-numeric or 0.
+ */
+function parseYear(value: string): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const year = parseInt(value, 10);
+  return Number.isNaN(year) || year === 0 ? undefined : year;
+}
+
+/**
+ * Converts a registry date in compact YYYYMMDD form to an ISO 8601 calendar
+ * date.
+ *
+ * @param value - Trimmed date field.
+ * @returns The date as YYYY-MM-DD, or undefined when blank or malformed.
+ */
+function parseCompactDate(value: string): string | undefined {
+  const match = COMPACT_DATE_PATTERN.exec(value);
+  if (!match) {
+    return undefined;
+  }
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
 /**
  * Parses the raw text content of FAA MASTER.txt into an array of MasterRecord
  * objects. Skips records that have no MODE S CODE HEX (unregistered or
@@ -105,17 +147,16 @@ export function parseMasterCsv(content: string): MasterRecord[] {
       continue;
     }
 
-    const yearStr = getField(fields, columns, 'YEAR MFR');
-    const yearMfr = yearStr ? parseInt(yearStr, 10) : undefined;
-
     records.push({
       registration: `N${nNumber}`,
       icaoHex,
       name: getField(fields, columns, 'NAME'),
-      yearMfr: yearMfr !== undefined && !Number.isNaN(yearMfr) ? yearMfr : undefined,
+      yearMfr: parseYear(getField(fields, columns, 'YEAR MFR')),
       mfrMdlCode: getField(fields, columns, 'MFR MDL CODE'),
       typeAircraft: getField(fields, columns, 'TYPE AIRCRAFT'),
       typeEngine: getField(fields, columns, 'TYPE ENGINE'),
+      statusCode: getField(fields, columns, 'STATUS CODE'),
+      expirationDate: parseCompactDate(getField(fields, columns, 'EXPIRATION DATE')),
     });
   }
 
@@ -162,8 +203,10 @@ export function parseAcftRefCsv(content: string): Map<string, AcftRefRecord> {
 }
 
 /**
- * Joins MASTER records with ACFTREF reference data and maps FAA numeric
- * codes to typed AircraftRegistration values.
+ * Joins MASTER records with ACFTREF reference data and maps FAA codes to
+ * typed AircraftRegistration values. A registrant name that is one of the
+ * FAA's placeholders for a registration with no current registrant leaves
+ * the operator unset.
  *
  * @param masterRecords - Parsed MASTER.txt records.
  * @param acftRef - Parsed ACFTREF.txt lookup map.
@@ -182,13 +225,20 @@ export function joinRegistryRecords(
       icaoHex: master.icaoHex,
       registration: master.registration,
     };
+    const registrationStatus = REGISTRATION_STATUS_MAP[master.statusCode];
+    if (registrationStatus !== undefined) {
+      record.registrationStatus = registrationStatus;
+    }
+    if (master.expirationDate !== undefined) {
+      record.registrationExpirationDate = master.expirationDate;
+    }
     if (ref?.mfr) {
       record.make = ref.mfr;
     }
     if (ref?.model) {
       record.model = ref.model;
     }
-    if (master.name) {
+    if (master.name && !PLACEHOLDER_REGISTRANT_NAMES.has(master.name)) {
       record.operator = master.name;
     }
     const aircraftType = AIRCRAFT_TYPE_MAP[master.typeAircraft];

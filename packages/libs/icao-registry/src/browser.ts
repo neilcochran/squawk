@@ -11,4 +11,9 @@
  */
 export { createIcaoRegistry } from './registry.js';
 export type { IcaoRegistry, IcaoRegistryOptions } from './registry.js';
-export type { AircraftRegistration, AircraftType, EngineType } from '@squawk/types';
+export type {
+  AircraftRegistration,
+  AircraftType,
+  EngineType,
+  RegistrationStatus,
+} from '@squawk/types';

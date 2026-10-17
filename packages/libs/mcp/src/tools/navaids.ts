@@ -39,7 +39,7 @@ export function registerNavaidTools(server: McpServer): void {
     {
       title: 'Get navaids by identifier',
       description:
-        'Looks up US navaids by identifier (e.g. "BOS", "JFK"). Multiple navaids can share the same identifier (for example a co-located NDB and VOR), so the result is always an array. Returns an empty array when no match is found.',
+        'Looks up US navaids by identifier (e.g. "BOS", "JFK"). Multiple navaids can share the same identifier (for example a co-located NDB and VOR), so the result is always an array. Returns an empty array when no match is found. Each record carries the FAA remarks in `remarks`, most of them the radials, distances and altitudes where the signal is unusable (e.g. "VOR UNUSBL 163-236 BYD 40 NM BLW 18000 FT"), the status of the DME component in `dmeStatus` where it is published separately, and any VOR receiver checkpoints in `checkpoints`. The magnetic variation is the one the station is aligned to, which is what its radials are measured against.',
       inputSchema: {
         ident: z.string().min(1).describe('Navaid identifier (case-insensitive).'),
       },

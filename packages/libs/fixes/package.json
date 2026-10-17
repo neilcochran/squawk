@@ -1,6 +1,6 @@
 {
   "name": "@squawk/fixes",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "type": "module",
   "description": "Fix/waypoint queries by identifier, location, or name search",
   "author": "Neil Cochran",
@@ -41,12 +41,12 @@
     "api:report": "api-extractor run --local --verbose"
   },
   "dependencies": {
-    "@squawk/geo": "^0.5.5",
+    "@squawk/geo": "^0.5.6",
     "@squawk/search": "^0.1.0",
-    "@squawk/types": "^0.15.0"
+    "@squawk/types": "^0.16.0"
   },
   "devDependencies": {
-    "@squawk/fix-data": "^0.7.7",
+    "@squawk/fix-data": "^0.8.0",
     "@types/node": "^26.6.4"
   },
   "keywords": [

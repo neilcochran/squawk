@@ -123,6 +123,34 @@ describe('buildNavaid', () => {
       expect(nav?.magneticVariationYear).toBe(2020);
     });
 
+    it('omits magnetic variation for DME, VOT and fan marker records', () => {
+      for (const navType of ['DME', 'VOT', 'FAN MARKER']) {
+        const nav = buildNavaid(
+          baseRec({
+            NAV_TYPE: navType,
+            MAG_VARN: '11',
+            MAG_VARN_HEMIS: 'E',
+            MAG_VARN_YEAR: '1965',
+          }),
+        );
+        assert(nav, navType);
+        expect(nav.magneticVariationDeg, navType).toBe(undefined);
+        expect(nav.magneticVariationDirection, navType).toBe(undefined);
+        expect(nav.magneticVariationYear, navType).toBe(undefined);
+      }
+    });
+
+    it('keeps magnetic variation for the types that have one', () => {
+      for (const navType of ['VOR', 'VORTAC', 'VOR/DME', 'TACAN', 'NDB', 'NDB/DME', 'MARINE NDB']) {
+        const nav = buildNavaid(
+          baseRec({ NAV_TYPE: navType, MAG_VARN: '9', MAG_VARN_HEMIS: 'E', MAG_VARN_YEAR: '1985' }),
+        );
+        expect(nav?.magneticVariationDeg, navType).toBe(9);
+        expect(nav?.magneticVariationDirection, navType).toBe('E');
+        expect(nav?.magneticVariationYear, navType).toBe(1985);
+      }
+    });
+
     it('sets simultaneousVoice and publicUse from Y flags only', () => {
       const yes = buildNavaid(baseRec({ SIMUL_VOICE_FLAG: 'Y', PUBLIC_USE_FLAG: 'Y' }));
       const no = buildNavaid(baseRec({ SIMUL_VOICE_FLAG: 'N', PUBLIC_USE_FLAG: 'N' }));

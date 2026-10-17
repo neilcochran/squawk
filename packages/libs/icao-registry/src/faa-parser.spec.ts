@@ -8,6 +8,32 @@ const MASTER_HEADER =
 const ACFTREF_HEADER =
   'CODE,MFR,MODEL,TYPE-ACFT,TYPE-ENG,AC-CAT,BUILD-CERT-IND,NO-ENG,NO-SEATS,AC-WEIGHT,SPEED,TC-DATA-SHEET,TC-DATA-HOLDER';
 
+/**
+ * Builds a MASTER.txt data row from named column values, leaving every other
+ * column blank.
+ *
+ * @param values - Column values keyed by MASTER.txt column name.
+ * @returns A comma-delimited data row in header order.
+ */
+function masterRow(values: Record<string, string>): string {
+  return MASTER_HEADER.split(',')
+    .map((column) => values[column] ?? '')
+    .join(',');
+}
+
+/** Column values of a complete, valid registration. */
+const VALID_ROW: Record<string, string> = {
+  'N-NUMBER': '12345',
+  'MFR MDL CODE': '7100510',
+  'YEAR MFR': '2005',
+  NAME: 'ACME LLC',
+  'TYPE AIRCRAFT': '4',
+  'TYPE ENGINE': '1',
+  'STATUS CODE': 'V',
+  'EXPIRATION DATE': '20290630',
+  'MODE S CODE HEX': 'A004B3',
+};
+
 describe('parseMasterCsv', () => {
   it('parses a valid master record', () => {
     const content =
@@ -23,6 +49,33 @@ describe('parseMasterCsv', () => {
     expect(records[0]?.mfrMdlCode).toBe('7100510');
     expect(records[0]?.typeAircraft).toBe('4');
     expect(records[0]?.typeEngine).toBe('1');
+    expect(records[0]?.statusCode).toBe('A');
+    expect(records[0]?.expirationDate).toBe('2026-06-01');
+  });
+
+  it('treats a YEAR MFR of 0 as no year', () => {
+    const records = parseMasterCsv(
+      MASTER_HEADER + '\n' + masterRow({ ...VALID_ROW, 'YEAR MFR': '0' }),
+    );
+    expect(records[0]?.yearMfr).toBe(undefined);
+  });
+
+  it('leaves the year undefined when it is not a number', () => {
+    const records = parseMasterCsv(
+      MASTER_HEADER + '\n' + masterRow({ ...VALID_ROW, 'YEAR MFR': 'UNKN' }),
+    );
+    expect(records[0]?.yearMfr).toBe(undefined);
+  });
+
+  it('leaves the expiration date undefined when blank or malformed', () => {
+    const blank = parseMasterCsv(
+      MASTER_HEADER + '\n' + masterRow({ ...VALID_ROW, 'EXPIRATION DATE': '' }),
+    );
+    const malformed = parseMasterCsv(
+      MASTER_HEADER + '\n' + masterRow({ ...VALID_ROW, 'EXPIRATION DATE': '2029/06/30' }),
+    );
+    expect(blank[0]?.expirationDate).toBe(undefined);
+    expect(malformed[0]?.expirationDate).toBe(undefined);
   });
 
   it('skips records with empty MODE S CODE HEX', () => {
@@ -87,6 +140,8 @@ describe('parseMasterCsv', () => {
 
     const records = parseMasterCsv(content);
     expect(records[0]?.name).toBe('');
+    expect(records[0]?.statusCode).toBe('');
+    expect(records[0]?.expirationDate).toBe(undefined);
     expect(records[0]?.icaoHex).toBe('A004B3');
   });
 });
@@ -145,6 +200,71 @@ describe('joinRegistryRecords', () => {
     expect(joined[0]?.aircraftType).toBe('fixedWingSingleEngine');
     expect(joined[0]?.engineType).toBe('reciprocating');
     expect(joined[0]?.yearManufactured).toBe(2005);
+  });
+
+  it('maps the status code and carries the expiration date', () => {
+    const master = parseMasterCsv(MASTER_HEADER + '\n' + masterRow(VALID_ROW));
+
+    const joined = joinRegistryRecords(master, new Map());
+    expect(joined[0]?.registrationStatus).toBe('valid');
+    expect(joined[0]?.registrationExpirationDate).toBe('2029-06-30');
+  });
+
+  it('keeps a registration that is not valid, with its status', () => {
+    const master = parseMasterCsv(
+      MASTER_HEADER +
+        '\n' +
+        masterRow({ ...VALID_ROW, 'STATUS CODE': '22', 'EXPIRATION DATE': '' }),
+    );
+
+    const joined = joinRegistryRecords(master, new Map());
+    expect(joined.length).toBe(1);
+    expect(joined[0]?.registrationStatus).toBe('revokedCanceled');
+    expect(joined[0]?.registrationExpirationDate).toBe(undefined);
+  });
+
+  it('leaves the status unset for a blank or unknown status code', () => {
+    const master = parseMasterCsv(
+      MASTER_HEADER +
+        '\n' +
+        masterRow({ ...VALID_ROW, 'STATUS CODE': '' }) +
+        '\n' +
+        masterRow({ ...VALID_ROW, 'STATUS CODE': '99', 'MODE S CODE HEX': 'A004B4' }),
+    );
+
+    const joined = joinRegistryRecords(master, new Map());
+    expect(joined[0]?.registrationStatus).toBe(undefined);
+    expect(joined[1]?.registrationStatus).toBe(undefined);
+  });
+
+  it('leaves the operator unset for the FAA placeholder registrant names', () => {
+    const master = parseMasterCsv(
+      MASTER_HEADER +
+        '\n' +
+        masterRow({ ...VALID_ROW, NAME: 'REGISTRATION PENDING', 'STATUS CODE': 'R' }) +
+        '\n' +
+        masterRow({
+          ...VALID_ROW,
+          NAME: 'SALE REPORTED',
+          'STATUS CODE': '7',
+          'MODE S CODE HEX': 'A004B4',
+        }),
+    );
+
+    const joined = joinRegistryRecords(master, new Map());
+    expect(joined[0]?.operator).toBe(undefined);
+    expect(joined[0]?.registrationStatus).toBe('registrationPending');
+    expect(joined[1]?.operator).toBe(undefined);
+    expect(joined[1]?.registrationStatus).toBe('saleReported');
+  });
+
+  it('maps TYPE AIRCRAFT O to other', () => {
+    const master = parseMasterCsv(
+      MASTER_HEADER + '\n' + masterRow({ ...VALID_ROW, 'TYPE AIRCRAFT': 'O' }),
+    );
+
+    const joined = joinRegistryRecords(master, new Map());
+    expect(joined[0]?.aircraftType).toBe('other');
   });
 
   it('handles missing ACFTREF match', () => {

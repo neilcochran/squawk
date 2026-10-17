@@ -11,7 +11,7 @@ import type { NavaidDatasetProperties } from './node.js';
 
 /** Build metadata for the bundled navaid snapshot. */
 export const usBundledNavaidsProperties: NavaidDatasetProperties = {
-  generatedAt: '2026-10-09T22:25:11.102Z',
+  generatedAt: '2026-10-13T22:23:51.337Z',
   nasrCycleDate: '2026-10-29',
   recordCount: 1604,
 };
