@@ -9,6 +9,7 @@ import {
   formatNavaidStatus,
 } from '../formatters.ts';
 
+import { InspectorDetailLine } from './inspector-detail-line.tsx';
 import { InspectorRemarks } from './inspector-remarks.tsx';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
@@ -66,9 +67,7 @@ export function NavaidPanel({ record }: NavaidPanelProps): ReactElement {
               label={checkpoint.airportId ?? (checkpoint.type === 'GROUND' ? 'Ground' : 'Airborne')}
             >
               <span className="block tabular-nums">{formatNavaidCheckpoint(checkpoint)}</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400">
-                {checkpoint.description}
-              </span>
+              <InspectorDetailLine>{checkpoint.description}</InspectorDetailLine>
             </InspectorRow>
           ))}
         </InspectorSection>

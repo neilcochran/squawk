@@ -49,8 +49,8 @@ describe('AirportPanel', () => {
       <AirportPanel
         record={buildAirport({
           runways: [
-            { id: '04L/22R', lengthFt: 7000, widthFt: 150, surfaceType: 'ASPH' } as never,
-            { id: '15R/33L', lengthFt: 10005, widthFt: 150, surfaceType: 'CONC' } as never,
+            { id: '04L/22R', lengthFt: 7000, widthFt: 150, surfaceType: 'ASPH', ends: [] },
+            { id: '15R/33L', lengthFt: 10005, widthFt: 150, surfaceType: 'CONC', ends: [] },
           ],
         })}
       />,
@@ -69,14 +69,106 @@ describe('AirportPanel', () => {
       <AirportPanel
         record={buildAirport({
           frequencies: [
-            { use: 'TWR', frequencyMhz: 119.1 } as never,
-            { use: 'GND', frequencyMhz: 121.9 } as never,
+            { use: 'TWR', frequencyMhz: 119.1 },
+            { use: 'GND', frequencyMhz: 121.9 },
           ],
         })}
       />,
     );
     expect(screen.getByText('Frequencies (2)')).toBeInTheDocument();
     expect(screen.getByText('119.10 MHz')).toBeInTheDocument();
+  });
+
+  it('stacks the pavement rating and the RVR sites under the runway dimensions', () => {
+    render(
+      <AirportPanel
+        record={buildAirport({
+          runways: [
+            {
+              id: '04L/22R',
+              lengthFt: 12079,
+              widthFt: 200,
+              surfaceType: 'ASPH-CONC',
+              pavementClassification: {
+                system: 'PCR',
+                value: 1260,
+                pavementType: 'RIGID',
+                subgradeStrength: 'B',
+                tirePressure: 'W',
+                evaluationMethod: 'TECHNICAL',
+              },
+              ends: [
+                { id: '04L', rvrLocations: ['TOUCHDOWN', 'ROLLOUT'] },
+                { id: '22R', rvrLocations: ['TOUCHDOWN', 'MIDPOINT', 'ROLLOUT'] },
+              ],
+            },
+          ],
+        })}
+      />,
+    );
+    const row = screen.getByText('04L/22R').closest('div');
+    expect(row).toHaveTextContent('12079 x 200 ft, ASPH-CONC');
+    expect(row).toHaveTextContent('PCR 1260 R/B/W/T');
+    expect(row).toHaveTextContent('04L RVR-TR, 22R RVR-TMR');
+  });
+
+  it('details a frequency with its qualifier, sectorization, outside provider and remark', () => {
+    render(
+      <AirportPanel
+        record={buildAirport({
+          frequencies: [
+            {
+              use: 'CD/P',
+              frequencyMhz: 121.725,
+              sectorization: 'RWY 04R/22L',
+              provider: 'BHM',
+              providerType: 'ATCT-TRACON',
+              remark: 'GCO AVBL ON FREQ 121.725.',
+            },
+            {
+              use: 'BOS RCO',
+              frequencyMhz: 122.1,
+              receiveOnly: true,
+              provider: 'BOS',
+              providerType: 'RCO',
+              callSign: 'BOSTON',
+            },
+          ],
+        })}
+      />,
+    );
+    const clearance = screen.getByText('CD/P').closest('div');
+    expect(clearance).toHaveTextContent('121.725 MHz');
+    expect(clearance).toHaveTextContent('RWY 04R/22L');
+    expect(clearance).toHaveTextContent('via BHM tower & TRACON');
+    expect(clearance).toHaveTextContent('GCO AVBL ON FREQ 121.725.');
+    // The airport's own facility is not repeated as a provider line.
+    const rco = screen.getByText('BOS RCO').closest('div');
+    expect(rco).toHaveTextContent('122.10 MHz, receive only');
+    expect(rco).not.toHaveTextContent('via');
+  });
+
+  it('shows the tower and approach call signs and the pattern altitude in the facility section', () => {
+    render(
+      <AirportPanel
+        record={buildAirport({
+          trafficPatternAltitudeFtAgl: 1000,
+          frequencies: [
+            {
+              use: 'LCL/P',
+              frequencyMhz: 119.1,
+              provider: 'BOS',
+              providerType: 'ATCT-TRACON',
+              callSign: 'BOSTON',
+              approachCallSign: 'BOSTON',
+            },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText('Tower call sign').closest('div')).toHaveTextContent('BOSTON');
+    expect(screen.getByText('Approach').closest('div')).toHaveTextContent('BOSTON');
+    expect(screen.getByText('Pattern altitude').closest('div')).toHaveTextContent('1000 ft AGL');
   });
 
   it('omits the Frequencies section when none are present', () => {

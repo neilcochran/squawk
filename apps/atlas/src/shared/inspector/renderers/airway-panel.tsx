@@ -11,6 +11,7 @@ import {
   formatAirwayWaypointAltitudes,
 } from '../formatters.ts';
 
+import { InspectorDetailLine } from './inspector-detail-line.tsx';
 import { InspectorRemarks } from './inspector-remarks.tsx';
 import { InspectorRow, InspectorSection } from './inspector-row.tsx';
 
@@ -92,12 +93,7 @@ export function AirwayPanel({ record }: AirwayPanelProps): ReactElement {
                       </span>
                     ))}
                     {remarks.map((remark, remarkIdx) => (
-                      <span
-                        key={remarkIdx}
-                        className="block text-xs text-slate-500 dark:text-slate-400"
-                      >
-                        {remark}
-                      </span>
+                      <InspectorDetailLine key={remarkIdx}>{remark}</InspectorDetailLine>
                     ))}
                   </>
                 )}

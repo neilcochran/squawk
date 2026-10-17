@@ -1,5 +1,6 @@
 import type {
   Airport,
+  AirportFrequency,
   Airway,
   AirwayDirection,
   AirwayWaypoint,
@@ -7,6 +8,9 @@ import type {
   FixNavaidAssociation,
   Navaid,
   NavaidCheckpoint,
+  PavementClassification,
+  Runway,
+  RvrLocation,
 } from '@squawk/types';
 
 /**
@@ -72,6 +76,125 @@ export function formatAirportRunway(
     parts.push(surface);
   }
   return parts.length === 0 ? '-' : parts.join(', ');
+}
+
+/** Chart Supplement letter for each RVR site. */
+const RVR_LOCATION_CODES: Record<RvrLocation, string> = {
+  TOUCHDOWN: 'T',
+  MIDPOINT: 'M',
+  ROLLOUT: 'R',
+};
+
+/** The FAA's frequency provider type codes in words. */
+const FREQUENCY_PROVIDER_TYPE_LABELS: Readonly<Record<string, string>> = {
+  ATCT: 'tower',
+  'ATCT-TRACON': 'tower & TRACON',
+  'ATCT-RAPCON': 'tower & RAPCON',
+  'ATCT-RATCF': 'tower & RATCF',
+  'ATCT-A/C': 'tower & approach control',
+  TRACON: 'TRACON',
+  RCAG: 'RCAG',
+  'NON-ATCT': 'airport',
+  ASOS_AWOS: 'ASOS/AWOS',
+  RCO: 'RCO',
+  FSS: 'FSS',
+};
+
+/**
+ * Formats a runway's published pavement strength rating in the FAA's own
+ * form: the system and value, then the pavement type, subgrade strength,
+ * tire pressure and evaluation method codes (`"PCN 10 F/C/X/T"`,
+ * `"PCR 1260 R/B/W/T"`).
+ */
+export function formatPavementClassification(classification: PavementClassification): string {
+  const pavementType = classification.pavementType === 'RIGID' ? 'R' : 'F';
+  const evaluation = classification.evaluationMethod === 'TECHNICAL' ? 'T' : 'U';
+  return `${classification.system} ${classification.value} ${pavementType}/${classification.subgradeStrength}/${classification.tirePressure}/${evaluation}`;
+}
+
+/**
+ * Lists the runway ends that measure runway visual range, each with its
+ * sites in the Chart Supplement's notation: `RVR-` followed by `T`
+ * (touchdown), `M` (midpoint) and `R` (rollout), as in
+ * `"04L RVR-TR, 22R RVR-TMR"`. Returns `null` when no end publishes an RVR
+ * site, so the line hides.
+ */
+export function formatRunwayRvr(runway: Runway): string | null {
+  const ends = runway.ends.flatMap((end) => {
+    const locations = end.rvrLocations ?? [];
+    if (locations.length === 0) {
+      return [];
+    }
+    const sites = locations.map((location) => RVR_LOCATION_CODES[location]).join('');
+    return [`${end.id} RVR-${sites}`];
+  });
+  return ends.length === 0 ? null : ends.join(', ');
+}
+
+/**
+ * Formats an airport frequency with the precision its channel needs: HF
+ * (below 30 MHz, published by the FAA in kHz) to three decimals, VHF and
+ * UHF to two unless the channel uses a third (`"119.10 MHz"`,
+ * `"121.725 MHz"`, `"5.696 MHz"`). The FAA's qualifiers follow in words:
+ * `"122.10 MHz, receive only"` for its `R`, `"8.903 MHz, on request"` for
+ * its `X`.
+ */
+export function formatAirportFrequency(frequency: AirportFrequency): string {
+  const mhz = frequency.frequencyMhz;
+  const thousandths = Math.round(mhz * 1000);
+  const decimals = mhz < 30 || thousandths % 10 !== 0 ? 3 : 2;
+  const qualifiers: string[] = [];
+  if (frequency.receiveOnly === true) {
+    qualifiers.push('receive only');
+  }
+  if (frequency.onRequest === true) {
+    qualifiers.push('on request');
+  }
+  return [`${(thousandths / 1000).toFixed(decimals)} MHz`, ...qualifiers].join(', ');
+}
+
+/**
+ * Names the facility that answers on a frequency: its call sign when
+ * published (the identifier or name otherwise), then the FAA's facility
+ * type in words (`"BHM tower & TRACON"`, `"COLUMBUS RCAG"`,
+ * `"PRESCOTT FSS"`). Returns `null` when no provider is published.
+ */
+export function formatFrequencyProvider(frequency: AirportFrequency): string | null {
+  const name = frequency.callSign ?? frequency.provider;
+  if (name === undefined) {
+    return null;
+  }
+  if (frequency.providerType === undefined) {
+    return name;
+  }
+  return `${name} ${FREQUENCY_PROVIDER_TYPE_LABELS[frequency.providerType] ?? frequency.providerType}`;
+}
+
+/**
+ * The call sign of an airport's own control tower, read from the first of
+ * its frequencies that the airport's tower provides. Returns `null` for
+ * an airport without one.
+ */
+export function airportTowerCallSign(record: Airport): string | null {
+  const tower = record.frequencies.find(
+    (frequency) =>
+      frequency.provider === record.faaId &&
+      frequency.providerType?.startsWith('ATCT') === true &&
+      frequency.callSign !== undefined,
+  );
+  return tower?.callSign ?? null;
+}
+
+/**
+ * The call sign of an airport's primary approach control, which the FAA
+ * repeats on each of the airport's frequencies; the first published one
+ * wins. Returns `null` when none is published.
+ */
+export function airportApproachCallSign(record: Airport): string | null {
+  return (
+    record.frequencies.find((frequency) => frequency.approachCallSign !== undefined)
+      ?.approachCallSign ?? null
+  );
 }
 
 /**
