@@ -1,5 +1,12 @@
 # @squawk/procedures
 
+## 0.8.4
+
+### Patch Changes
+
+- Updated dependencies [90bbcd5]
+  - @squawk/types@0.16.0
+
 ## 0.8.3
 
 ### Patch Changes

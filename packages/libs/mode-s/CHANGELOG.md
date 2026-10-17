@@ -1,5 +1,12 @@
 # @squawk/mode-s
 
+## 0.4.7
+
+### Patch Changes
+
+- Updated dependencies [90bbcd5]
+  - @squawk/types@0.16.0
+
 ## 0.4.6
 
 ### Patch Changes

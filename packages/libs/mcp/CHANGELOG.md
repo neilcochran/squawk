@@ -1,5 +1,39 @@
 # @squawk/mcp
 
+## 0.14.9
+
+### Patch Changes
+
+- 90bbcd5: ### Changed
+
+  - `lookup_aircraft_by_icao_hex` describes the registration status and expiration date it returns, and says that a record is not necessarily a current registration.
+  - `get_fix_by_ident` describes a fix's navaid associations, whose bearing and distance are each optional.
+  - `get_navaid_by_ident` describes the remarks, DME status and VOR receiver checkpoints a navaid carries.
+
+- Updated dependencies [90bbcd5]
+- Updated dependencies [90bbcd5]
+- Updated dependencies [90bbcd5]
+- Updated dependencies [90bbcd5]
+- Updated dependencies [90bbcd5]
+  - @squawk/fix-data@0.8.0
+  - @squawk/icao-registry-data@0.9.0
+  - @squawk/icao-registry@0.6.0
+  - @squawk/navaid-data@0.8.0
+  - @squawk/types@0.16.0
+  - @squawk/fixes@0.5.9
+  - @squawk/flightplan@0.9.2
+  - @squawk/navaids@0.6.9
+  - @squawk/airport-data@0.9.1
+  - @squawk/airports@0.7.9
+  - @squawk/airspace@0.10.3
+  - @squawk/airway-data@0.7.2
+  - @squawk/airways@0.7.2
+  - @squawk/geo@0.5.6
+  - @squawk/notams@0.3.19
+  - @squawk/procedure-data@0.9.4
+  - @squawk/procedures@0.8.4
+  - @squawk/weather@0.6.8
+
 ## 0.14.8
 
 ### Patch Changes
