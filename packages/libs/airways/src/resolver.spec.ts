@@ -61,6 +61,7 @@ describe('expand', () => {
     if (firstWp.identifier && lastWp.identifier) {
       const result = resolver.expand('V16', firstWp.identifier, lastWp.identifier);
       assert(result, 'expected expand result');
+      expect(result.reversed).toBe(false);
       expect(result.waypoints[0]!.identifier).toBe(firstWp.identifier);
       expect(result.waypoints[result.waypoints.length - 1]!.identifier).toBe(lastWp.identifier);
       expect(result.waypoints.length).toBe(v16.waypoints.length);
@@ -117,6 +118,7 @@ describe('expand', () => {
     // Expand in reverse: last -> first
     const result = resolver.expand('V16', lastId.identifier!, firstId.identifier!);
     assert(result, 'expected reverse expansion to succeed');
+    expect(result.reversed).toBe(true);
     // First waypoint in result should be the entry fix (last in stored order)
     expect(result.waypoints[0]!.identifier).toBe(lastId.identifier);
     // Last waypoint in result should be the exit fix (first in stored order)

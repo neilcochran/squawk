@@ -102,6 +102,23 @@ The result contains:
 - `waypoints` - the ordered slice of waypoints between the two fixes
 - `gaps` - any published discontinuity inside the slice, each with the `index` of the waypoint before the gap and the `from` and `to` waypoint identifiers. The FAA discontinues some airways partway (J60 between JOT and DJB, for example); the waypoints on both sides are still returned, but a non-empty `gaps` means the airway is not defined between them and a route filing it across the gap is not valid as filed
 - `unusable` - any segment inside the slice the FAA marks unusable, in the same `index` / `from` / `to` shape. An unusable segment (J34 between DRYER and GAABE, for example) is still published with its waypoints and distance but has no MEA and may not be flown, so a route filing the airway across it is not valid as filed
+- `reversed` - whether the slice runs against the airway's published waypoint order
+
+#### Reading the waypoint fields
+
+Each waypoint's segment fields (`distanceToNextNm`, the MEA, MAA, MOCA, GNSS
+and DME/DME/IRU MEAs, the magnetic courses, the changeover point, and the
+signal-gap, US-airspace-only and dogleg flags) describe the segment from that
+waypoint to the next one in the airway's published order. In a `reversed`
+expansion they therefore describe the segment between a waypoint and the one
+before it in `waypoints`. `gaps` and `unusable` are already given in
+traversal order.
+
+The resolver returns every waypoint field as the FAA publishes it and does not
+interpret any of them. It does not pick the MEA for the direction of flight: a
+directional MEA, GNSS MEA or minimum crossing altitude carries its compass
+direction (`NE`, `SW`, and so on) beside the value, and a route's direction
+of flight has to be compared with it by the caller.
 
 ### `resolver.byFix(ident)`
 

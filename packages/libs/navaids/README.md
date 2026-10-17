@@ -105,11 +105,13 @@ const navaid = resolver.byIdentAtPosition('AA', 47.45, -122.31);
 Finds navaids operating on a given frequency. For VOR-family navaids the
 frequency is in MHz; for NDB-family navaids it is in kHz.
 
-| Property    | Type                     | Description                                                       |
-| ----------- | ------------------------ | ----------------------------------------------------------------- |
-| `frequency` | number                   | Frequency value to match (MHz for VOR-family, kHz for NDB-family) |
-| `types`     | ReadonlySet\<NavaidType> | Optional. When provided, only navaids of these types are returned |
-| `limit`     | number                   | Optional. Maximum number of results. Defaults to 20               |
+| Property        | Type                       | Description                                                            |
+| --------------- | -------------------------- | ---------------------------------------------------------------------- |
+| `frequency`     | number                     | Frequency value to match (MHz for VOR-family, kHz for NDB-family)      |
+| `types`         | ReadonlySet\<NavaidType>   | Optional. When provided, only navaids of these types are returned      |
+| `statuses`      | ReadonlySet\<NavaidStatus> | Optional. When provided, only navaids with these statuses are returned |
+| `publicUseOnly` | boolean                    | Optional. When true, only navaids open to public use are returned      |
+| `limit`         | number                     | Optional. Maximum number of results. Defaults to 20                    |
 
 Returns `Navaid[]`, sorted alphabetically by identifier.
 
@@ -117,13 +119,15 @@ Returns `Navaid[]`, sorted alphabetically by identifier.
 
 Finds navaids nearest to a geographic position, sorted by distance ascending.
 
-| Property        | Type                     | Description                                                       |
-| --------------- | ------------------------ | ----------------------------------------------------------------- |
-| `lat`           | number                   | Latitude in decimal degrees (WGS84)                               |
-| `lon`           | number                   | Longitude in decimal degrees (WGS84)                              |
-| `maxDistanceNm` | number                   | Optional. Maximum distance in nautical miles. Defaults to 30      |
-| `limit`         | number                   | Optional. Maximum number of results. Defaults to 10               |
-| `types`         | ReadonlySet\<NavaidType> | Optional. When provided, only navaids of these types are returned |
+| Property        | Type                       | Description                                                            |
+| --------------- | -------------------------- | ---------------------------------------------------------------------- |
+| `lat`           | number                     | Latitude in decimal degrees (WGS84)                                    |
+| `lon`           | number                     | Longitude in decimal degrees (WGS84)                                   |
+| `maxDistanceNm` | number                     | Optional. Maximum distance in nautical miles. Defaults to 30           |
+| `limit`         | number                     | Optional. Maximum number of results. Defaults to 10                    |
+| `types`         | ReadonlySet\<NavaidType>   | Optional. When provided, only navaids of these types are returned      |
+| `statuses`      | ReadonlySet\<NavaidStatus> | Optional. When provided, only navaids with these statuses are returned |
+| `publicUseOnly` | boolean                    | Optional. When true, only navaids open to public use are returned      |
 
 Returns `NearestNavaidResult[]`, each containing:
 
@@ -139,7 +143,21 @@ const nearby = resolver.nearest({
   limit: 5,
   types: new Set(['VORTAC']),
 });
+
+// Navaids usable for IFR without a published restriction, open to public use
+const ifr = resolver.nearest({
+  lat: 42.3656,
+  lon: -71.0096,
+  statuses: new Set(['OPERATIONAL_IFR']),
+  publicUseOnly: true,
+});
 ```
+
+A navaid's `status` is `OPERATIONAL_IFR`, `OPERATIONAL_RESTRICTED` (usable,
+with published restrictions such as unusable radials, which its `remarks`
+describe) or `OPERATIONAL_VFR`; the bundled data never contains a `SHUTDOWN`
+navaid. `byIdent`, `byIdentAtPosition` and `byType` return every match
+without a limit, so filter their results directly.
 
 ### `resolver.byType(types)`
 
@@ -155,12 +173,14 @@ Fuzzy-searches navaids across identifier and name. Matching is case-insensitive 
 tolerant of prefixes, substrings, subsequences, and small typos. Results are scored
 and returned best-match first.
 
-| Property   | Type                     | Description                                                                              |
-| ---------- | ------------------------ | ---------------------------------------------------------------------------------------- |
-| `text`     | string                   | Search text, matched fuzzily against each navaid's identifier and name                   |
-| `limit`    | number                   | Optional. Maximum number of results. Defaults to 20                                      |
-| `types`    | ReadonlySet\<NavaidType> | Optional. When provided, only navaids of these types are returned                        |
-| `minScore` | number                   | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
+| Property        | Type                       | Description                                                                              |
+| --------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| `text`          | string                     | Search text, matched fuzzily against each navaid's identifier and name                   |
+| `limit`         | number                     | Optional. Maximum number of results. Defaults to 20                                      |
+| `types`         | ReadonlySet\<NavaidType>   | Optional. When provided, only navaids of these types are returned                        |
+| `statuses`      | ReadonlySet\<NavaidStatus> | Optional. When provided, only navaids with these statuses are returned                   |
+| `publicUseOnly` | boolean                    | Optional. When true, only navaids open to public use are returned                        |
+| `minScore`      | number                     | Optional. Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0 |
 
 Returns `NavaidSearchResult[]`, sorted by descending score, each containing:
 

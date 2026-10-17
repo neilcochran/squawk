@@ -38,6 +38,16 @@ export interface AirwayExpansionResult {
    * be flown, so a route filing the airway across it is not valid as filed.
    */
   unusable: AirwaySegmentReference[];
+  /**
+   * Whether the waypoints run against the airway's published order: true
+   * when the entry fix comes after the exit fix on the airway. Each
+   * waypoint's segment fields (`distanceToNextNm`, the MEAs, the course, the
+   * gap and unusable flags) describe the segment to the next waypoint in
+   * published order, so in a reversed expansion they describe the segment
+   * between the waypoint and the one before it. `gaps` and `unusable` are
+   * already given in traversal order.
+   */
+  reversed: boolean;
 }
 
 /**
@@ -172,7 +182,7 @@ function collectFlaggedSegments(
  * @param airway - The airway that was expanded.
  * @param waypoints - The slice in traversal order.
  * @param reversed - Whether the slice runs against the stored waypoint order.
- * @returns The expansion with its gaps and unusable segments.
+ * @returns The expansion with its gaps, unusable segments and direction.
  */
 function expansionResult(
   airway: Airway,
@@ -184,6 +194,7 @@ function expansionResult(
     waypoints,
     gaps: collectFlaggedSegments(waypoints, reversed, (wp) => wp.discontinued === true),
     unusable: collectFlaggedSegments(waypoints, reversed, (wp) => wp.unusable === true),
+    reversed,
   };
 }
 

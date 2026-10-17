@@ -1,7 +1,7 @@
 import { greatCircle } from '@squawk/geo';
 import { fuzzySearch } from '@squawk/search';
 import type { FuzzySearchOptions, MatchRange } from '@squawk/search';
-import type { Navaid, NavaidType } from '@squawk/types';
+import type { Navaid, NavaidStatus, NavaidType } from '@squawk/types';
 
 /**
  * Options for creating a navaid resolver.
@@ -25,6 +25,10 @@ export interface NearestNavaidQuery {
   limit?: number;
   /** Optional set of navaid types to include. When omitted, all types are included. */
   types?: ReadonlySet<NavaidType>;
+  /** Optional set of operational statuses to include. When omitted, every status is included. */
+  statuses?: ReadonlySet<NavaidStatus>;
+  /** When true, only navaids open to public use (`publicUse` is true) are included. */
+  publicUseOnly?: boolean;
 }
 
 /**
@@ -45,6 +49,10 @@ export interface NavaidFrequencyQuery {
   frequency: number;
   /** Optional set of navaid types to include. When omitted, all types are included. */
   types?: ReadonlySet<NavaidType>;
+  /** Optional set of operational statuses to include. When omitted, every status is included. */
+  statuses?: ReadonlySet<NavaidStatus>;
+  /** When true, only navaids open to public use (`publicUse` is true) are included. */
+  publicUseOnly?: boolean;
   /** Maximum number of results to return. Defaults to 20. */
   limit?: number;
 }
@@ -64,6 +72,10 @@ export interface NavaidSearchQuery {
   limit?: number;
   /** Optional set of navaid types to include. When omitted, all types are included. */
   types?: ReadonlySet<NavaidType>;
+  /** Optional set of operational statuses to include. When omitted, every status is included. */
+  statuses?: ReadonlySet<NavaidStatus>;
+  /** When true, only navaids open to public use (`publicUse` is true) are included. */
+  publicUseOnly?: boolean;
   /** Minimum match score (exclusive) in `[0, 1]` a result must reach. Defaults to 0, which keeps every match. Raise it to drop weak fuzzy matches. */
   minScore?: number;
 }
@@ -161,6 +173,40 @@ const DEFAULT_NEAREST_LIMIT = 10;
  */
 const DEFAULT_SEARCH_LIMIT = 20;
 
+/**
+ * The type, status and public-use filters shared by the limited navaid
+ * queries ({@link NavaidResolver.nearest}, {@link NavaidResolver.search} and
+ * {@link NavaidResolver.byFrequency}).
+ */
+interface NavaidQueryFilters {
+  /** Navaid types to include, or every type when absent. */
+  types?: ReadonlySet<NavaidType>;
+  /** Operational statuses to include, or every status when absent. */
+  statuses?: ReadonlySet<NavaidStatus>;
+  /** Whether to include only navaids open to public use. */
+  publicUseOnly?: boolean;
+}
+
+/**
+ * Tests a navaid against a query's type, status and public-use filters.
+ *
+ * @param navaid - The navaid to test.
+ * @param filters - The query's filters.
+ * @returns Whether the navaid passes every filter the query sets.
+ */
+function matchesFilters(navaid: Navaid, filters: NavaidQueryFilters): boolean {
+  if (filters.types && !filters.types.has(navaid.type)) {
+    return false;
+  }
+  if (filters.statuses && !filters.statuses.has(navaid.status)) {
+    return false;
+  }
+  if (filters.publicUseOnly === true && navaid.publicUse !== true) {
+    return false;
+  }
+  return true;
+}
+
 /** Navaid types that use MHz frequencies. */
 const MHZ_TYPES: ReadonlySet<NavaidType> = new Set([
   'VOR',
@@ -244,7 +290,7 @@ export function createNavaidResolver(options: NavaidResolverOptions): NavaidReso
       const results: Navaid[] = [];
 
       for (const navaid of navaids) {
-        if (query.types && !query.types.has(navaid.type)) {
+        if (!matchesFilters(navaid, query)) {
           continue;
         }
 
@@ -264,7 +310,7 @@ export function createNavaidResolver(options: NavaidResolverOptions): NavaidReso
       const results: NearestNavaidResult[] = [];
 
       for (const navaid of navaids) {
-        if (query.types && !query.types.has(navaid.type)) {
+        if (!matchesFilters(navaid, query)) {
           continue;
         }
 
@@ -301,9 +347,8 @@ export function createNavaidResolver(options: NavaidResolverOptions): NavaidReso
         minScore: query.minScore ?? 0,
       };
 
-      const types = query.types;
-      if (types) {
-        options.filter = (navaid) => types.has(navaid.type);
+      if (query.types || query.statuses || query.publicUseOnly === true) {
+        options.filter = (navaid) => matchesFilters(navaid, query);
       }
 
       return fuzzySearch(navaids, query.text, options).map((match) => ({

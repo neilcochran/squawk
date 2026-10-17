@@ -125,6 +125,7 @@ Each record is a full `Navaid` object from `@squawk/types`. Key fields:
 | `dmeServiceVolume`           | string or undefined             | DME service volume class                                    |
 | `powerOutputWatts`           | number or undefined             | Transmitter power in watts                                  |
 | `simultaneousVoice`          | boolean or undefined            | Whether voice is carried on the frequency                   |
+| `publicUse`                  | boolean                         | Whether the navaid is open to public use                    |
 | `ndbClass`                   | string or undefined             | NDB classification (e.g. "HH", "MHW", "LOM")                |
 | `remarks`                    | string[] or undefined           | FAA remarks, mostly unusable radials and altitudes          |
 | `checkpoints`                | NavaidCheckpoint[] or undefined | VOR receiver checkpoints (see below)                        |

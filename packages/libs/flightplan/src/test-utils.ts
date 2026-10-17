@@ -108,7 +108,8 @@ export function makeUnresolved(raw: string): UnresolvedRouteElement {
  * @param waypoints - Ordered waypoints, each with optional name/identifier,
  *   coordinates, an optional precomputed distance to the next waypoint, and an
  *   optional gap flag marking the airway as discontinued after the waypoint.
- * @returns An airway route element whose `gaps` follow the gap flags.
+ * @returns An airway route element whose `gaps` follow the gap flags, flown in
+ *   the waypoints' published order.
  */
 export function makeAirway(
   raw: string,
@@ -169,6 +170,7 @@ export function makeAirway(
     waypoints: built,
     gaps,
     unusable,
+    reversed: false,
   };
 }
 

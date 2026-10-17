@@ -6,6 +6,7 @@
 
 import { MatchRange } from '@squawk/search';
 import type { Navaid } from '@squawk/types';
+import type { NavaidStatus } from '@squawk/types';
 import type { NavaidType } from '@squawk/types';
 
 // @public
@@ -17,6 +18,8 @@ export { MatchRange }
 export interface NavaidFrequencyQuery {
     frequency: number;
     limit?: number;
+    publicUseOnly?: boolean;
+    statuses?: ReadonlySet<NavaidStatus>;
     types?: ReadonlySet<NavaidType>;
 }
 
@@ -42,6 +45,8 @@ export type NavaidSearchField = 'identifier' | 'name';
 export interface NavaidSearchQuery {
     limit?: number;
     minScore?: number;
+    publicUseOnly?: boolean;
+    statuses?: ReadonlySet<NavaidStatus>;
     text: string;
     types?: ReadonlySet<NavaidType>;
 }
@@ -60,6 +65,8 @@ export interface NearestNavaidQuery {
     limit?: number;
     lon: number;
     maxDistanceNm?: number;
+    publicUseOnly?: boolean;
+    statuses?: ReadonlySet<NavaidStatus>;
     types?: ReadonlySet<NavaidType>;
 }
 

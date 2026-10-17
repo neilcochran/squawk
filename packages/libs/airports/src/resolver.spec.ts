@@ -298,3 +298,42 @@ describe('createAirportResolver with empty dataset', () => {
     expect(empty.search({ text: 'test' }).length).toBe(0);
   });
 });
+
+describe('use-type filter', () => {
+  it('limits nearest results to public-use facilities', () => {
+    const query = { lat: 40.6413, lon: -73.7781, maxDistanceNm: 40, limit: 500 };
+    const all = resolver.nearest(query);
+    const publicUse = resolver.nearest({ ...query, useTypes: new Set(['PUBLIC'] as const) });
+    assert(publicUse.length > 0);
+    assert(publicUse.length < all.length, 'expected private-use facilities in range');
+    for (const { airport } of publicUse) {
+      expect(airport.useType).toBe('PUBLIC');
+    }
+  });
+
+  it('limits search results to private-use facilities and combines with a type filter', () => {
+    const results = resolver.search({
+      text: 'hospital',
+      limit: 50,
+      types: new Set<FacilityType>(['HELIPORT']),
+      useTypes: new Set(['PRIVATE'] as const),
+    });
+    assert(results.length > 0, 'expected private hospital heliports');
+    for (const { airport } of results) {
+      expect(airport.useType).toBe('PRIVATE');
+      expect(airport.facilityType).toBe('HELIPORT');
+    }
+  });
+
+  it('applies a use-type filter alone to search', () => {
+    const results = resolver.search({
+      text: 'county',
+      limit: 50,
+      useTypes: new Set(['PUBLIC'] as const),
+    });
+    assert(results.length > 0);
+    for (const { airport } of results) {
+      expect(airport.useType).toBe('PUBLIC');
+    }
+  });
+});

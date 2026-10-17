@@ -78,7 +78,11 @@ export interface FlightplanAirwayLookup {
    * Expands an airway between entry and exit fixes, returning ordered
    * waypoints. `gaps` lists any published discontinuity the expansion crosses
    * and `unusable` any segment the FAA marks unusable; a lookup that cannot
-   * report either may omit it, and the route then reports none.
+   * report either may omit it, and the route then reports none. `reversed`
+   * says whether the waypoints run against the airway's published order; a
+   * lookup that cannot report it may omit it, and the route then measures
+   * that airway's legs as great-circle distances instead of reading the
+   * published segment distances.
    */
   expand(
     designation: string,
@@ -90,6 +94,7 @@ export interface FlightplanAirwayLookup {
         waypoints: AirwayWaypoint[];
         gaps?: AirwayGap[];
         unusable?: AirwaySegmentReference[];
+        reversed?: boolean;
       }
     | undefined;
 }
@@ -188,6 +193,14 @@ export interface AirwayRouteElement {
    * an unusable segment is not valid as filed.
    */
   unusable: AirwaySegmentReference[];
+  /**
+   * Whether the airway is flown against its published waypoint order. Each
+   * waypoint's segment fields (`distanceToNextNm`, the MEAs, the course)
+   * describe the segment to the next waypoint in published order, so in a
+   * reversed element they describe the segment between the waypoint and the
+   * one before it. Absent when the airway lookup does not report it.
+   */
+  reversed?: boolean;
 }
 
 /**
@@ -691,7 +704,7 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
             const exitFix = tokens[i + 1]!.toUpperCase();
             const expansion = airways.expand(token, lastWaypointIdent, exitFix);
             if (expansion) {
-              elements.push({
+              const airwayElement: AirwayRouteElement = {
                 type: 'airway',
                 raw: token,
                 airway: expansion.airway,
@@ -700,7 +713,11 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
                 waypoints: expansion.waypoints,
                 gaps: expansion.gaps ?? [],
                 unusable: expansion.unusable ?? [],
-              });
+              };
+              if (expansion.reversed !== undefined) {
+                airwayElement.reversed = expansion.reversed;
+              }
+              elements.push(airwayElement);
               // The exit fix is consumed as part of the airway; update last waypoint
               lastWaypointIdent = exitFix;
               const exitWaypoint = expansion.waypoints[expansion.waypoints.length - 1];

@@ -206,6 +206,35 @@ describe('computeRouteDistance', () => {
       assert.equal(result.totalDistanceNm, 150);
     });
 
+    it('reads the published distance from the next waypoint when the airway is flown in reverse', () => {
+      // Published order A -> B -> C with A-B 100 nm and B-C 50 nm, flown C -> B -> A.
+      // C carries the distance of the segment beyond the slice, which must not be used.
+      const awp = {
+        ...makeAirway('J60', [
+          { identifier: 'C', lat: 42.0, lon: -74.0, distanceToNextNm: 999 },
+          { identifier: 'B', lat: 41.0, lon: -74.0, distanceToNextNm: 50 },
+          { identifier: 'A', lat: 40.0, lon: -74.0, distanceToNextNm: 100 },
+        ]),
+        reversed: true,
+      };
+
+      const result = computeRouteDistance(route([awp]));
+      assert.equal(result.legs[0]!.distanceNm, 50);
+      assert.equal(result.legs[1]!.distanceNm, 100);
+      assert.equal(result.totalDistanceNm, 150);
+    });
+
+    it('measures great circles when the airway lookup does not report the direction', () => {
+      const { reversed: _reversed, ...awp } = makeAirway('J60', [
+        { identifier: 'A', lat: 40.0, lon: -74.0, distanceToNextNm: 100 },
+        { identifier: 'B', lat: 41.0, lon: -74.0 },
+      ]);
+      const expected = greatCircle.distanceNm(40.0, -74.0, 41.0, -74.0);
+
+      const result = computeRouteDistance(route([awp]));
+      assert.ok(close(result.totalDistanceNm, expected));
+    });
+
     it('falls back to great-circle when distanceToNextNm is absent', () => {
       const awp = makeAirway('J60', [
         { identifier: 'A', lat: 40.0, lon: -74.0 },

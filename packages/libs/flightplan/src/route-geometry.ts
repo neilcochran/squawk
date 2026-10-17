@@ -156,11 +156,22 @@ export function extractGeoPoints(elements: RouteElement[]): {
             lat: wp.lat,
             lon: wp.lon,
           };
-          // Only carry a published distance for non-last waypoints (the last
-          // waypoint's distanceToNextNm points beyond this segment), and only
-          // a positive one: a zero means the source published no distance.
-          if (!isLast && wp.distanceToNextNm !== undefined && wp.distanceToNextNm > 0) {
-            point.precomputedDistanceToNextNm = wp.distanceToNextNm;
+          // The published distance of the leg to the next waypoint sits on
+          // whichever of the two starts the segment in the airway's published
+          // order: this waypoint when the airway is flown forward, the next one
+          // when it is flown in reverse. When the direction is unknown the leg
+          // is measured as a great circle. Only a positive distance is used: a
+          // zero means the source published none.
+          const segmentStart = isLast
+            ? undefined
+            : el.reversed === false
+              ? wp
+              : el.reversed === true
+                ? el.waypoints[i + 1]
+                : undefined;
+          const published = segmentStart?.distanceToNextNm;
+          if (published !== undefined && published > 0) {
+            point.precomputedDistanceToNextNm = published;
           }
           if (!isLast && gapIndexes.has(i)) {
             point.gapToNext = true;
