@@ -120,8 +120,8 @@ Each element has a `type` discriminant and a `raw` field with the original token
 | Type            | Description                               | Key fields                                                                   |
 | --------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
 | `airport`       | Resolved airport (ICAO or FAA ID)         | `airport`                                                                    |
-| `sid`           | Standard Instrument Departure             | `procedure`, `legs`, `transition`                                            |
-| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`, `transition`                                            |
+| `sid`           | Standard Instrument Departure             | `procedure`, `legs`, `transition`, `airportMismatch`                         |
+| `star`          | Standard Terminal Arrival Route           | `procedure`, `legs`, `transition`, `airportMismatch`                         |
 | `airway`        | Airway segment between entry and exit fix | `airway`, `entryFix`, `exitFix`, `waypoints`, `gaps`, `unusable`, `reversed` |
 | `direct`        | DCT (direct) indicator                    | -                                                                            |
 | `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                                          |
@@ -192,6 +192,17 @@ which is how routes are usually filed (`KJFK DEEZZ6 CANDR`). Otherwise the
 common route alone is expanded. The `sid` or `star` element records the merged
 transition in `transition`.
 
+Many procedure identifiers are published as a separate adaptation at each of
+several airports, and the adaptations' legs differ (PANGG7 has seven common
+legs at 05C and five at KMDW). A SID is matched to the route's departure
+airport, the last airport before it, and a STAR to the arrival airport, the
+first airport after it. When no adaptation serves that airport the first one
+published is expanded, so the route still draws, and the element carries the
+airport in `airportMismatch`: the route files the procedure at an airport it
+does not serve, so it is not valid as filed. A STAR with no airport after it,
+or a SID with none before it, is expanded from the first adaptation without a
+flag.
+
 A procedure that cannot be expanded is marked `unresolved`: either the dotted
 transition is not one of its transitions, or the procedure has no common route
 (some SIDs and STARs are published as transitions only) and no adjacent fix
@@ -203,10 +214,18 @@ When a token could match multiple entity types (e.g. a 3-letter code matching
 both an airport and a navaid), the resolver uses this priority order:
 
 1. Airway (if previous waypoint context exists and next token available)
-2. Airport (ICAO or FAA ID)
-3. Procedure (SID/STAR)
-4. Fix
-5. Navaid
+2. Navaid, when the token is an airport's FAA ID, names a navaid, and is
+   directly followed by an airway that lists it as a waypoint
+3. Airport (ICAO or FAA ID)
+4. Procedure (SID/STAR)
+5. Fix
+6. Navaid
+
+Rule 2 covers the hundreds of airports that share their FAA ID with a navaid,
+sometimes miles apart: ahead of an airway, `SAT` in `SAT Q24 LSU` is the SAT
+VORTAC the airway is joined at, 6.6 nm from San Antonio's airport. Anywhere
+else the token is the airport, and an ICAO code (`KSAT`) always names the
+airport.
 
 The same fix or navaid identifier is sometimes published in more than one
 region. When the `fixes` or `navaids` provider exposes `byIdentAtPosition`, the

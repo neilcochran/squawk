@@ -179,6 +179,42 @@ describe('parse', () => {
       kdfwSid.procedure.airports.some((a) => a.toUpperCase() === 'KDFW'),
       'expected KDFW DALL4 to resolve to the KDFW adaptation',
     );
+    expect(kdalSid.airportMismatch).toBeUndefined();
+    expect(kdfwSid.airportMismatch).toBeUndefined();
+  });
+
+  it('picks the STAR adaptation serving the arrival airport that follows it', () => {
+    // LUCIT3 is published as a separate adaptation at 05C, 3HO, KGYY and KIGQ.
+    // The departure airport precedes it, but the arrival airport after it is
+    // the one the STAR must serve.
+    const star = resolver.parse('KJFK LUCIT3 KIGQ').elements.find((e) => e.type === 'star');
+    assert(star && star.type === 'star');
+    expect(star.procedure.airports).toContain('KIGQ');
+    expect(star.airportMismatch).toBeUndefined();
+  });
+
+  it('flags a STAR that no adaptation of serves the arrival airport, still expanding it', () => {
+    const star = resolver
+      .parse('KJFK DCT BBOTL AALLE4 KBOS')
+      .elements.find((e) => e.type === 'star');
+    assert(star && star.type === 'star');
+    expect(star.procedure.identifier).toBe('AALLE4');
+    expect(star.airportMismatch).toBe('KBOS');
+    assert(star.legs.length > 0, 'expected the STAR to be expanded so the route still draws');
+  });
+
+  it('flags a SID that no adaptation of serves the departure airport', () => {
+    const sid = resolver.parse('KBOS DEEZZ6').elements.find((e) => e.type === 'sid');
+    assert(sid && sid.type === 'sid');
+    expect(sid.procedure.identifier).toBe('DEEZZ6');
+    expect(sid.airportMismatch).toBe('KBOS');
+  });
+
+  it('does not flag a STAR when the route names no arrival airport after it', () => {
+    // The departure airport is never one a STAR serves, so it is not used.
+    const star = resolver.parse('KJFK DCT BBOTL AALLE4').elements.find((e) => e.type === 'star');
+    assert(star && star.type === 'star');
+    expect(star.airportMismatch).toBeUndefined();
   });
 
   it('resolves a STAR procedure with legs', () => {
@@ -400,14 +436,18 @@ describe('parse', () => {
     assert(dctIdx >= 0, 'expected a DCT element');
   });
 
-  it('uses an airport identifier as airway entry fix', () => {
-    // LAX resolves as an airport but is also a waypoint on J60
+  it('resolves an FAA airport identifier ahead of an airway that lists it as the navaid', () => {
+    // LAX is both the Los Angeles airport and the LAX VORTAC on J60; directly
+    // ahead of J60 it names the point the airway is joined at.
     const result = resolver.parse('LAX J60 CIVET');
     expect(result.elements.length).toBe(2);
 
-    const airportEl = result.elements[0]!;
-    expect(airportEl.type).toBe('airport');
-    expect(airportEl.raw).toBe('LAX');
+    const entryEl = result.elements[0]!;
+    expect(entryEl.type).toBe('waypoint');
+    expect(entryEl.raw).toBe('LAX');
+    if (entryEl.type === 'waypoint') {
+      expect(entryEl.navaid?.identifier).toBe('LAX');
+    }
 
     const airwayEl = result.elements[1]!;
     expect(airwayEl.type).toBe('airway');
@@ -417,6 +457,46 @@ describe('parse', () => {
       expect(airwayEl.exitFix).toBe('CIVET');
       assert(airwayEl.waypoints.length >= 2);
     }
+  });
+});
+
+describe('airport and navaid identifiers', () => {
+  it('starts a route at the navaid where the airway is joined, not at the same-named airport', () => {
+    // SJN is St Johns Industrial Air Park and the SJN VORTAC, 13 nm apart. As
+    // the airport, the route drew a 13 nm SJN -> SJN leg before J108.
+    const result = resolver.parse('SJN J108 INK');
+    const entryEl = result.elements[0]!;
+    expect(entryEl.type).toBe('waypoint');
+    if (entryEl.type === 'waypoint') {
+      expect(entryEl.navaid?.type).toBe('VORTAC');
+    }
+    const firstLeg = computeRouteDistance(result).legs[0];
+    assert(firstLeg !== undefined, 'expected the route to have legs');
+    expect(firstLeg.from).toBe('SJN');
+    expect(firstLeg.to).not.toBe('SJN');
+  });
+
+  it('keeps an FAA airport identifier as the airport when no airway follows it', () => {
+    const result = resolver.parse('KJFK DCT SAT DCT KDEN');
+    const sat = result.elements[2]!;
+    expect(sat.type).toBe('airport');
+    expect(sat.raw).toBe('SAT');
+  });
+
+  it('keeps an ICAO airport identifier as the airport ahead of an airway', () => {
+    const result = resolver.parse('KSAT Q24 LSU');
+    expect(result.elements[0]!.type).toBe('airport');
+  });
+
+  it('does not take an airway-entry navaid for the arrival airport of a STAR', () => {
+    // SAT after the STAR is joined to Q24, so it is the SAT VORTAC rather than
+    // San Antonio's airport; with no airport after the STAR there is nothing
+    // to check it against, so no mismatch is reported.
+    const star = resolver
+      .parse('KJFK DCT BBOTL AALLE4 SAT Q24 LSU')
+      .elements.find((e) => e.type === 'star');
+    assert(star && star.type === 'star');
+    expect(star.airportMismatch).toBeUndefined();
   });
 });
 
@@ -677,9 +757,13 @@ describe('FAA Coded Departure Routes', () => {
     const el3 = result.elements[3]!;
     expect(el3.type).toBe('waypoint');
 
-    // SAT - San Antonio (resolves as airport since it has both airport and navaid)
+    // SAT - San Antonio VORTAC: the airport shares the identifier, but ahead of
+    // Q24 the token names the navaid the airway is joined at
     const el4 = result.elements[4]!;
-    expect(el4.type).toBe('airport');
+    expect(el4.type).toBe('waypoint');
+    if (el4.type === 'waypoint') {
+      expect(el4.navaid?.identifier).toBe('SAT');
+    }
 
     // Q24 SAT->LSU
     const el5 = result.elements[5]!;
@@ -725,9 +809,13 @@ describe('FAA Coded Departure Routes', () => {
     // KABQ - departure
     expect(result.elements[0]!.type).toBe('airport');
 
-    // ALS - Alamosa airport (also on J13 as a waypoint)
+    // ALS - Alamosa VORTAC: the airport shares the identifier, but ahead of
+    // J13 the token names the navaid the airway is joined at
     const el1 = result.elements[1]!;
-    expect(el1.type).toBe('airport');
+    expect(el1.type).toBe('waypoint');
+    if (el1.type === 'waypoint') {
+      expect(el1.navaid?.identifier).toBe('ALS');
+    }
 
     // J13 ALS->FQF - first airway in chain
     const el2 = result.elements[2]!;

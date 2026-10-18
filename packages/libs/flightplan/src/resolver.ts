@@ -142,6 +142,14 @@ export interface SidRouteElement {
   procedure: Procedure;
   /** Name of the transition merged into `legs`: the one named in a dotted token (`DEEZZ6.CANDR`), or the fix following the SID when it names one of the procedure's transitions. Absent when only the common route was expanded. */
   transition?: string;
+  /**
+   * Identifier of the route's departure airport (the last airport before the
+   * SID) when no published adaptation of the procedure serves it. The SID is
+   * still expanded, from the first adaptation published, so the route can be
+   * drawn and measured, but it is not valid as filed. Absent when an
+   * adaptation serves the departure airport or the route names none.
+   */
+  airportMismatch?: string;
   /** Ordered legs for the procedure expansion. */
   legs: ProcedureLeg[];
 }
@@ -158,6 +166,14 @@ export interface StarRouteElement {
   procedure: Procedure;
   /** Name of the transition merged into `legs`: the one named in a dotted token (`AALLE4.BBOTL`), or the waypoint preceding the STAR when it names one of the procedure's transitions. Absent when only the common route was expanded. */
   transition?: string;
+  /**
+   * Identifier of the route's arrival airport (the first airport after the
+   * STAR) when no published adaptation of the procedure serves it. The STAR
+   * is still expanded, from the first adaptation published, so the route can
+   * be drawn and measured, but it is not valid as filed. Absent when an
+   * adaptation serves the arrival airport or the route names none.
+   */
+  airportMismatch?: string;
   /** Ordered legs for the procedure expansion. */
   legs: ProcedureLeg[];
 }
@@ -471,9 +487,13 @@ function tryAirport(
 /**
  * Attempts to resolve a token as a SID or STAR procedure at a given
  * airport context. The airport context is the identifier of the most
- * recently seen airport (for SIDs, the departure airport; for STARs,
- * the arrival airport - but since the route is parsed left-to-right,
- * the most recent airport is the best available hint).
+ * route's departure airport for a SID (the last airport before the token)
+ * and its arrival airport for a STAR (the first airport after it), since
+ * one identifier is often published as a separate adaptation at each of
+ * several airports, and the adaptations' legs differ. When no adaptation
+ * serves that airport, the first one published is expanded and the element
+ * carries `airportMismatch`; when the route names no such airport, the
+ * first one is expanded without a flag.
  *
  * Accepts both the bare CIFP identifier (e.g. `DEEZZ6`) and the dotted
  * identifier-with-transition form (e.g. `DEEZZ6.CANDR`). A dotted
@@ -492,7 +512,8 @@ function tryAirport(
 function tryProcedure(
   token: string,
   procedures: FlightplanProcedureLookup | undefined,
-  airportContext: string | undefined,
+  previousAirport: string | undefined,
+  resolveNextAirport: () => string | undefined,
   previousWaypoint: string | undefined,
   nextToken: string | undefined,
 ): SidRouteElement | StarRouteElement | UnresolvedRouteElement | undefined {
@@ -513,14 +534,21 @@ function tryProcedure(
     return undefined;
   }
 
-  let proc: Procedure | undefined;
-  if (airportContext !== undefined) {
-    const upperAirport = airportContext.toUpperCase();
-    proc = candidates.find((c) => c.airports.some((a) => a.toUpperCase() === upperAirport));
+  // The arrival airport is only looked up when a STAR candidate needs it.
+  let nextAirport: string | undefined;
+  let nextAirportResolved = false;
+  function routeAirportFor(candidate: Procedure): string | undefined {
+    if (candidate.type !== 'STAR') {
+      return previousAirport;
+    }
+    if (!nextAirportResolved) {
+      nextAirport = resolveNextAirport();
+      nextAirportResolved = true;
+    }
+    return nextAirport;
   }
-  if (proc === undefined) {
-    proc = candidates[0];
-  }
+
+  const proc = candidates.find((c) => servesAirport(c, routeAirportFor(c))) ?? candidates[0];
   if (proc === undefined || proc.type === 'IAP') {
     return undefined;
   }
@@ -544,7 +572,23 @@ function tryProcedure(
   if (transitionName !== undefined) {
     element.transition = transitionName;
   }
+  const routeAirport = routeAirportFor(proc);
+  if (routeAirport !== undefined && !servesAirport(proc, routeAirport)) {
+    element.airportMismatch = routeAirport;
+  }
   return element;
+}
+
+/**
+ * Whether a procedure adaptation is published for the given airport
+ * identifier. An undefined airport is served by nothing.
+ */
+function servesAirport(procedure: Procedure, airport: string | undefined): boolean {
+  if (airport === undefined) {
+    return false;
+  }
+  const upper = airport.toUpperCase();
+  return procedure.airports.some((a) => a.toUpperCase() === upper);
 }
 
 /**
@@ -607,6 +651,69 @@ function tryNavaid(
       : navaids.byIdent(token)[0];
   if (navaid) {
     return { type: 'waypoint', raw: token, navaid, lat: navaid.lat, lon: navaid.lon };
+  }
+  return undefined;
+}
+
+/**
+ * Resolves a token as the navaid where the following airway is entered, when
+ * the token matches an airport by its FAA identifier and also names a navaid
+ * that is a waypoint of that airway (`SAT Q24 LSU`, `SJN J108 INK`). Hundreds
+ * of airports share their FAA identifier with a navaid, sometimes miles away
+ * (San Antonio's airport is 6.6 nm from the SAT VORTAC), and a token directly
+ * ahead of an airway names the point the airway is joined at. The navaid is
+ * chosen by proximity to that airway waypoint.
+ *
+ * Returns `undefined`, leaving the token to resolve as the airport, when it
+ * matches an airport by ICAO code (an ICAO code always names the airport),
+ * matches no airport, is not followed by an airway that lists it, or names no
+ * navaid there.
+ */
+function tryAirwayEntryNavaid(
+  token: string,
+  nextToken: string | undefined,
+  airports: FlightplanAirportLookup | undefined,
+  navaids: FlightplanNavaidLookup | undefined,
+  airways: FlightplanAirwayLookup | undefined,
+): WaypointRouteElement | undefined {
+  if (!airports || !navaids || !airways || nextToken === undefined) {
+    return undefined;
+  }
+  if (airports.byIcao(token) !== undefined || airports.byFaaId(token) === undefined) {
+    return undefined;
+  }
+  for (const airway of airways.byDesignation(nextToken)) {
+    const entry = airway.waypoints.find((w) => w.identifier?.toUpperCase() === token);
+    if (entry !== undefined) {
+      return tryNavaid(token, navaids, { lat: entry.lat, lon: entry.lon });
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Identifier of the first airport among the tokens from `start` on, by the
+ * same rules the parse applies (a token that resolves as an airway-entry
+ * navaid is not an airport), as the airport's ICAO code when it has one and
+ * its FAA identifier otherwise. Returns `undefined` when none follows. Used
+ * as the arrival airport of a STAR.
+ */
+function findNextAirport(
+  tokens: readonly string[],
+  start: number,
+  airports: FlightplanAirportLookup | undefined,
+  navaids: FlightplanNavaidLookup | undefined,
+  airways: FlightplanAirwayLookup | undefined,
+): string | undefined {
+  for (let j = start; j < tokens.length; j++) {
+    const token = tokens[j]!.toUpperCase();
+    if (tryAirwayEntryNavaid(token, tokens[j + 1]?.toUpperCase(), airports, navaids, airways)) {
+      continue;
+    }
+    const airportElement = tryAirport(token, airports);
+    if (airportElement) {
+      return airportElement.airport.icao ?? airportElement.airport.faaId;
+    }
   }
   return undefined;
 }
@@ -748,13 +855,30 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
           continue;
         }
 
+        // An FAA airport identifier that also names a navaid on the airway
+        // that follows is where the airway is joined, not the airport.
+        const entryNavaid = tryAirwayEntryNavaid(
+          token,
+          tokens[i + 1]?.toUpperCase(),
+          airports,
+          navaids,
+          airways,
+        );
+        if (entryNavaid) {
+          elements.push(entryNavaid);
+          lastWaypointIdent = token;
+          lastPosition = { lat: entryNavaid.lat, lon: entryNavaid.lon };
+          i++;
+          continue;
+        }
+
         // Try airport
         const airportElement = tryAirport(token, airports);
         if (airportElement) {
           elements.push(airportElement);
           // Preserve the token as lastWaypointIdent so a following airway can
-          // use it as the entry fix (e.g. "BOS V16 CCC" where BOS is both an
-          // airport and a navaid on V16).
+          // still use it as the entry fix when no navaid lookup resolved it
+          // above.
           lastWaypointIdent = token;
           lastAirportIdent = airportElement.airport.icao ?? airportElement.airport.faaId;
           lastPosition = { lat: airportElement.airport.lat, lon: airportElement.airport.lon };
@@ -764,10 +888,12 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
 
         // Try procedure (SID/STAR). The fix after a SID or before a STAR may
         // name the transition when the token itself does not.
+        const nextIndex = i + 1;
         const procElement = tryProcedure(
           token,
           procedures,
           lastAirportIdent,
+          () => findNextAirport(tokens, nextIndex, airports, navaids, airways),
           lastWaypointIdent,
           tokens[i + 1]?.toUpperCase(),
         );

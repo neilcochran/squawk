@@ -202,6 +202,7 @@ export function routeToLineString(route: ParsedRoute): LineString | undefined;
 
 // @public
 export interface SidRouteElement {
+    airportMismatch?: string;
     legs: ProcedureLeg[];
     procedure: Procedure;
     raw: string;
@@ -222,6 +223,7 @@ export interface SpeedAltitudeRouteElement {
 
 // @public
 export interface StarRouteElement {
+    airportMismatch?: string;
     legs: ProcedureLeg[];
     procedure: Procedure;
     raw: string;
