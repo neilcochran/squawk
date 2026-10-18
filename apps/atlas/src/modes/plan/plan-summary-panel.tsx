@@ -4,7 +4,13 @@ import type { ChangeEvent, ReactElement } from 'react';
 import { FOCUS_RING_CLASSES } from '../../shared/styles/style-tokens.ts';
 
 import { planLegStatus } from './layers/plan-route-features.ts';
-import { formatDistanceNm, formatEteHrs, formatRouteIssue } from './plan-format.ts';
+import {
+  formatDistanceNm,
+  formatEteHrs,
+  describeLegStatus,
+  formatLegStatus,
+  formatRouteIssue,
+} from './plan-format.ts';
 import type { PlanRoute } from './plan-route.ts';
 
 /**
@@ -29,13 +35,13 @@ const PANEL_CLASSES =
 
 /**
  * Plan-mode panel summarizing the resolved route: a warning when the route is
- * not valid as filed (it crosses an airway gap or an unusable airway segment),
- * total distance and ETE, a ground-speed field that drives the ETE, the
- * per-leg distance breakdown with the offending legs tagged, and any route
- * tokens that did not resolve. Renders a hint when no route has been entered
- * yet. Publishes its rendered height as the sheet-occlusion custom
- * property so the map's zoom / tilt controls lift clear of the bottom sheet
- * on phones.
+ * not valid as filed (it crosses an airway gap or an unusable airway segment,
+ * or files a SID or STAR at an airport it does not serve), total distance and
+ * ETE, a ground-speed field that drives the ETE, the per-leg distance
+ * breakdown with the offending legs tagged, and any route tokens that did not
+ * resolve. Renders a hint when no route has been entered yet. Publishes its
+ * rendered height as the sheet-occlusion custom property so the map's zoom /
+ * tilt controls lift clear of the bottom sheet on phones.
  */
 export function PlanSummaryPanel({
   route,
@@ -111,9 +117,7 @@ export function PlanSummaryPanel({
               </h3>
               <ul className="mt-1 space-y-0.5 text-sm text-amber-900 dark:text-amber-200">
                 {route.issues.map((issue, index) => (
-                  <li key={`${issue.airway}-${issue.from}-${issue.to}-${index}`}>
-                    {formatRouteIssue(issue)}
-                  </li>
+                  <li key={`${issue.kind}-${index}`}>{formatRouteIssue(issue)}</li>
                 ))}
               </ul>
             </div>
@@ -173,13 +177,17 @@ export function PlanSummaryPanel({
                     >
                       <span className="flex min-w-0 items-baseline gap-1.5">
                         <span
+                          title={`${leg.from} -> ${leg.to}`}
                           className={`truncate ${status === 'valid' ? 'text-slate-700 dark:text-slate-200' : 'text-amber-700 dark:text-amber-400'}`}
                         >
                           {`${leg.from} -> ${leg.to}`}
                         </span>
                         {status !== 'valid' ? (
-                          <span className="shrink-0 rounded bg-amber-100 px-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                            {status}
+                          <span
+                            title={describeLegStatus(status)}
+                            className="shrink-0 rounded bg-amber-100 px-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                          >
+                            {formatLegStatus(status)}
                           </span>
                         ) : null}
                       </span>

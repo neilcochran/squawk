@@ -259,7 +259,7 @@ console.log(result.totalDistanceNm, result.estimatedTimeEnrouteHrs);
 
 **Returns:** `RouteDistanceResult` with:
 
-- `legs` - ordered `RouteLeg` values, each with `from`/`to` point labels, their `fromLat`/`fromLon`/`toLat`/`toLon` coordinates in decimal degrees, `distanceNm`, `cumulativeDistanceNm`, `crossesGap`, which is true when the leg spans a published gap in the airway it came from (the leg is a straight line that counts toward the total but is not a flyable airway segment), and `unusable`, which is true when the leg is an airway segment the FAA marks unusable (counted toward the total but not to be flown)
+- `legs` - ordered `RouteLeg` values, each with `from`/`to` point labels, their `fromLat`/`fromLon`/`toLat`/`toLon` coordinates in decimal degrees, `distanceNm`, `cumulativeDistanceNm`, `crossesGap`, which is true when the leg spans a published gap in the airway it came from (the leg is a straight line that counts toward the total but is not a flyable airway segment), `unusable`, which is true when the leg is an airway segment the FAA marks unusable (counted toward the total but not to be flown), and `procedureAirportMismatch`, which is true when the leg runs along a SID or STAR filed at an airport it does not serve (the element's `airportMismatch`), or joins the route to that airport: the leg in from the departure airport for a SID, the leg out to the arrival airport for a STAR
 - `totalDistanceNm` - total great-circle distance in nautical miles
 - `estimatedTimeEnrouteHrs` - ETE in hours, or `undefined` when no ground speed was given
 - `unresolvedElements` - route elements that could not contribute coordinates

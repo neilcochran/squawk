@@ -8,7 +8,7 @@ export const PLAN_ROUTE_SOURCE_ID = 'atlas-plan-route';
 /** MapLibre layer id for the legs that may be flown as filed. */
 export const PLAN_ROUTE_LINE_LAYER_ID = 'atlas-plan-route-line';
 
-/** MapLibre layer id for the legs that make the route invalid as filed (airway gaps, unusable segments). */
+/** MapLibre layer id for the legs that make the route invalid as filed (airway gaps, unusable segments, mismatched procedures). */
 export const PLAN_ROUTE_INVALID_LINE_LAYER_ID = 'atlas-plan-route-invalid-line';
 
 /** MapLibre source id for the plan route waypoints. */
@@ -22,10 +22,12 @@ export const PLAN_WAYPOINTS_LABEL_LAYER_ID = 'atlas-plan-waypoints-label';
 
 /**
  * Whether a leg may be flown as filed: `'valid'`, or `'gap'` when it spans a
- * published discontinuity in the airway it was expanded from, or
- * `'unusable'` when it is an airway segment the FAA marks unusable.
+ * published discontinuity in the airway it was expanded from, `'unusable'`
+ * when it is an airway segment the FAA marks unusable, or
+ * `'airportMismatch'` when it runs along, or joins the route to, a SID or
+ * STAR filed at an airport the procedure does not serve.
  */
-export type PlanLegStatus = 'valid' | 'gap' | 'unusable';
+export type PlanLegStatus = 'valid' | 'gap' | 'unusable' | 'airportMismatch';
 
 /**
  * Properties carried on each leg line feature in the GeoJSON source.
@@ -46,14 +48,20 @@ export interface PlanWaypointFeatureProperties {
 }
 
 /**
- * The {@link PlanLegStatus} of one leg. A leg flagged both ways reads as a
- * gap, since the airway does not exist there at all.
+ * The {@link PlanLegStatus} of one leg. A leg flagged more than one way reads
+ * as the most specific problem: a gap first, since the airway does not exist
+ * there at all, then an unusable segment, then a mismatched procedure.
  */
-export function planLegStatus(leg: Pick<RouteLeg, 'crossesGap' | 'unusable'>): PlanLegStatus {
+export function planLegStatus(
+  leg: Pick<RouteLeg, 'crossesGap' | 'unusable' | 'procedureAirportMismatch'>,
+): PlanLegStatus {
   if (leg.crossesGap) {
     return 'gap';
   }
-  return leg.unusable ? 'unusable' : 'valid';
+  if (leg.unusable) {
+    return 'unusable';
+  }
+  return leg.procedureAirportMismatch ? 'airportMismatch' : 'valid';
 }
 
 /**

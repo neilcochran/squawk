@@ -84,6 +84,8 @@ export interface RouteTimingLeg {
   crossesGap: boolean;
   /** Whether this leg is an airway segment the FAA marks unusable, as on `RouteLeg`. */
   unusable: boolean;
+  /** Whether this leg runs along or into a procedure filed at an airport it does not serve, as on `RouteLeg`. */
+  procedureAirportMismatch: boolean;
   /** Initial great-circle true course for the leg in degrees (0-360). */
   trueCourseDeg: number;
   /** True heading to fly to hold the course given the wind, in degrees (0-360). */
@@ -249,6 +251,7 @@ export function computeRouteTiming(
       cumulativeDistanceNm: leg.cumulativeDistanceNm,
       crossesGap: leg.crossesGap,
       unusable: leg.unusable,
+      procedureAirportMismatch: leg.procedureAirportMismatch,
       trueCourseDeg,
       trueHeadingDeg: triangle.trueHeadingDeg,
       windCorrectionAngleDeg: triangle.windCorrectionAngleDeg,

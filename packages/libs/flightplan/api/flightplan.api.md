@@ -143,6 +143,7 @@ export interface RouteLeg {
     from: string;
     fromLat: number;
     fromLon: number;
+    procedureAirportMismatch: boolean;
     to: string;
     toLat: number;
     toLon: number;
@@ -168,6 +169,7 @@ export interface RouteTimingLeg {
     fromLon: number;
     fuelRequired: number | undefined;
     groundSpeedKt: number;
+    procedureAirportMismatch: boolean;
     to: string;
     toLat: number;
     toLon: number;

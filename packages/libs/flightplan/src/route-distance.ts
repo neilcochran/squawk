@@ -46,6 +46,15 @@ export interface RouteLeg {
    * not be flown, so the route is not valid as filed.
    */
   unusable: boolean;
+  /**
+   * Whether this leg runs along, or joins the route to, a SID or STAR the
+   * route files at an airport no adaptation of it serves (the procedure
+   * element's `airportMismatch`): the procedure's own legs, plus the leg in
+   * from the departure airport for a SID or out to the arrival airport for a
+   * STAR. The leg is measured like any other, but the route is not valid as
+   * filed.
+   */
+  procedureAirportMismatch: boolean;
 }
 
 /**
@@ -86,9 +95,11 @@ export interface RouteDistanceResult {
  * Airway segments use the FAA-published segment distance where the source
  * publishes a positive one and the airway element says which direction it is
  * flown in, falling back to great-circle computation otherwise. A leg that spans a published gap in its airway is still measured
- * as a straight line and counted, but is flagged with `crossesGap`, and a leg
- * on an airway segment the FAA marks unusable is flagged with `unusable`, so
- * the caller can see that the route is not valid as filed.
+ * as a straight line and counted, but is flagged with `crossesGap`, a leg
+ * on an airway segment the FAA marks unusable is flagged with `unusable`, and
+ * a leg along or into a procedure filed at an airport it does not serve is
+ * flagged with `procedureAirportMismatch`, so the caller can see that the
+ * route is not valid as filed.
  *
  * ```typescript
  * import { createFlightplanResolver, computeRouteDistance } from '@squawk/flightplan';
@@ -135,6 +146,7 @@ export function computeRouteDistance(
       cumulativeDistanceNm: totalDistanceNm,
       crossesGap: from.gapToNext === true,
       unusable: from.unusableToNext === true,
+      procedureAirportMismatch: from.procedureMismatchToNext === true,
     });
   }
 

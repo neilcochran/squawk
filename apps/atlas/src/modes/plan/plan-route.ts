@@ -9,10 +9,9 @@ import type {
 /**
  * A place where the route files an airway somewhere it may not be flown as
  * filed: across a published gap, where the airway is not defined, or across
- * a segment the FAA marks unusable. Either makes the route invalid as filed,
- * although it is still drawn and measured.
+ * a segment the FAA marks unusable.
  */
-export interface PlanRouteIssue {
+export interface PlanAirwayIssue {
   /** `'gap'` for a published discontinuity, `'unusable'` for a segment the FAA marks unusable. */
   kind: 'gap' | 'unusable';
   /** Designation of the airway the route files (e.g. "J60"). */
@@ -22,6 +21,31 @@ export interface PlanRouteIssue {
   /** Waypoint where the segment ends, in route order. */
   to: string;
 }
+
+/**
+ * A SID or STAR the route files at an airport that no published adaptation
+ * of the procedure serves: a SID that does not depart the route's departure
+ * airport, or a STAR that does not arrive at its arrival airport. The
+ * procedure is still expanded from its first published adaptation, so the
+ * route draws.
+ */
+export interface PlanProcedureIssue {
+  /** Discriminator for a procedure filed at an airport it does not serve. */
+  kind: 'airportMismatch';
+  /** The procedure's CIFP identifier (e.g. "AALLE4"). */
+  procedure: string;
+  /** Whether the procedure is a departure (`'SID'`) or an arrival (`'STAR'`). */
+  procedureType: 'SID' | 'STAR';
+  /** The route's departure (SID) or arrival (STAR) airport the procedure does not serve. */
+  airport: string;
+}
+
+/**
+ * Something that makes the route invalid as filed, although it is still drawn
+ * and measured: an airway filed across a gap or an unusable segment, or a
+ * procedure filed at an airport it does not serve.
+ */
+export type PlanRouteIssue = PlanAirwayIssue | PlanProcedureIssue;
 
 /**
  * Everything plan mode needs to render a resolved route string: the parsed
@@ -35,19 +59,33 @@ export interface PlanRoute {
   points: RoutePoint[];
   /** Per-leg and total distance plus the optional ETE; each leg is also what the map draws. */
   distance: RouteDistanceResult;
-  /** Airway gaps and unusable segments the route files across, in route order. */
+  /** Airway gaps, unusable segments and mismatched procedures the route files, in route order. */
   issues: PlanRouteIssue[];
 }
 
 /**
- * Lists the airway gaps and unusable segments a parsed route files across, in
- * route order: element by element, and by segment position within an airway.
+ * Lists what makes a parsed route invalid as filed, in route order: element
+ * by element, and by segment position within an airway. That is each airway
+ * gap and unusable segment it files across, and each SID or STAR it files at
+ * an airport the procedure does not serve (the element's `airportMismatch`).
  *
  * @param parsed - The parsed route.
- * @returns One issue per gap or unusable segment; empty when the route is valid as filed.
+ * @returns One issue per problem; empty when the route is valid as filed.
  */
 export function findRouteIssues(parsed: ParsedRoute): PlanRouteIssue[] {
-  return parsed.elements.flatMap((element) => {
+  return parsed.elements.flatMap((element): PlanRouteIssue[] => {
+    if (element.type === 'sid' || element.type === 'star') {
+      return element.airportMismatch === undefined
+        ? []
+        : [
+            {
+              kind: 'airportMismatch',
+              procedure: element.procedure.identifier,
+              procedureType: element.type === 'sid' ? 'SID' : 'STAR',
+              airport: element.airportMismatch,
+            },
+          ];
+    }
     if (element.type !== 'airway') {
       return [];
     }
