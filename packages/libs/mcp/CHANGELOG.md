@@ -1,5 +1,16 @@
 # @squawk/mcp
 
+## 0.15.3
+
+### Patch Changes
+
+- 4223366: ### Changed
+
+  - `compute_route_distance` and `get_route_timing` report `procedureAirportMismatch` on each leg that runs along or into a SID or STAR filed at an airport it does not serve, and their descriptions explain it.
+
+- Updated dependencies [4223366]
+  - @squawk/flightplan@0.12.0
+
 ## 0.15.2
 
 ### Patch Changes
