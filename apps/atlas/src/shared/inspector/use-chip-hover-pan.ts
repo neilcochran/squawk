@@ -3,23 +3,12 @@ import type { Map as MaplibreMap } from 'maplibre-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.ts';
+import { readPublishedSidePanelWidthPx } from '../ui/side-panel-width.ts';
 
 import { resolveSelectionFromState } from './entity-resolver.ts';
 import type { ChartDatasetStates, ResolvedEntity, ResolvedEntityState } from './entity-resolver.ts';
 import { bboxFromWaypoints, combinedBboxFromAirspaceFeatures } from './geometry.ts';
 import type { BoundingBox } from './geometry.ts';
-
-/**
- * Width in pixels of the inspector overlay when it renders as the
- * desktop right-edge panel. Mirrors the `--spacing-inspector` token
- * (22.5rem = 360px @ 16px root) declared in `src/index.css` and
- * consumed via `w-inspector` on the inspector aside in
- * `inspector.tsx`; keep both in sync. Stays as a plain pixel constant
- * rather than a rem value because every consumer feeds it to a
- * MapLibre canvas-pixel API (`map.easeTo({ offset })`,
- * `map.project()`).
- */
-export const INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX = 360;
 
 /**
  * Tailwind `md:` breakpoint in pixels. The inspector renders as a
@@ -41,11 +30,12 @@ const INSPECTOR_MOBILE_HEIGHT_FRACTION = 0.6;
 /**
  * Returns the inspector's chart-occlusion footprint for the current
  * viewport in canvas pixels. On desktop (>= the `md:` breakpoint) the
- * inspector occupies the right edge so the camera offset shifts the
- * focal point leftward (`x` non-zero). Below the breakpoint the
- * inspector is a bottom sheet so the offset shifts upward (`y`
- * non-zero) instead. Read at the time of pan so the camera follows
- * resize / orientation changes without cached stale geometry.
+ * inspector occupies the right edge, as wide as the user has dragged
+ * it, so the camera offset shifts the focal point leftward (`x`
+ * non-zero). Below the breakpoint the inspector is a bottom sheet so
+ * the offset shifts upward (`y` non-zero) instead. Read at the time of
+ * pan so the camera follows resizes of the window and the panel
+ * without cached stale geometry.
  *
  * When the inspector is minimized it collapses to a header-only bar
  * (a small top-right box on desktop, a thin bottom strip on mobile)
@@ -58,7 +48,7 @@ function getInspectorOcclusionPx(minimized = false): { x: number; y: number } {
     return { x: 0, y: 0 };
   }
   if (window.innerWidth >= INSPECTOR_DESKTOP_BREAKPOINT_PX) {
-    return { x: INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX, y: 0 };
+    return { x: readPublishedSidePanelWidthPx(), y: 0 };
   }
   return { x: 0, y: Math.round(window.innerHeight * INSPECTOR_MOBILE_HEIGHT_FRACTION) };
 }

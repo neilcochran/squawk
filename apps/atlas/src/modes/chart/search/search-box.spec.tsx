@@ -160,6 +160,15 @@ describe('SearchBox', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
+  it('narrows to stay clear of an open side panel, down to a floor', () => {
+    render(<SearchBox onSelectResult={vi.fn()} />);
+    // jsdom does no layout, so assert the desktop cap the box carries: the
+    // room left of the open panel, minus the gaps, but never under 16rem.
+    expect(screen.getByRole('combobox').closest('.absolute')).toHaveClass(
+      'md:max-w-[max(16rem,calc(100%_-_var(--atlas-side-panel-open-width)_-_1.5rem))]',
+    );
+  });
+
   it('runs the live search with the typed query', () => {
     render(<SearchBox onSelectResult={vi.fn()} />);
     typeQuery('bos');

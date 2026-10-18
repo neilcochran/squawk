@@ -56,12 +56,13 @@ export function PlanRouteInput({ value, onCommit }: PlanRouteInputProps): ReactE
   };
 
   // At `md:` the summary panel is always open on the right, so the width is
-  // capped against it (the panel width plus the 0.5rem inset on each side)
-  // rather than letting a fixed 34rem run underneath it on a narrow desktop.
+  // capped against its live (user-resizable) width plus the 0.5rem inset on
+  // each side, rather than letting a fixed 34rem run underneath it, down to a
+  // 16rem floor that keeps the field usable.
   return (
     <form
       onSubmit={handleSubmit}
-      className="absolute top-2 right-2 left-2 z-10 md:right-auto md:w-[34rem] md:max-w-[calc(100%_-_var(--spacing-inspector)_-_1rem)]"
+      className="absolute top-2 right-2 left-2 z-10 md:right-auto md:w-[34rem] md:max-w-[max(16rem,calc(100%_-_var(--atlas-side-panel-open-width)_-_1rem))]"
     >
       <FloatingPanel className="rounded-md p-1 shadow-lg">
         <input

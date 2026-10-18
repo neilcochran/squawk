@@ -219,6 +219,23 @@ describe('PlanSummaryPanel', () => {
     expect(screen.getByText('KJFK -> MERIT')).toHaveAttribute('title', 'KJFK -> MERIT');
   });
 
+  it('offers a separator that resizes the desktop panel', () => {
+    render(
+      <PlanSummaryPanel
+        route={undefined}
+        groundSpeedKt={undefined}
+        onGroundSpeedChange={vi.fn()}
+      />,
+    );
+    const separator = screen.getByRole('separator', { name: 'Resize flight plan panel' });
+    fireEvent.keyDown(separator, { key: 'ArrowLeft' });
+    expect(document.documentElement.style.getPropertyValue('--atlas-side-panel-width')).toBe(
+      '376px',
+    );
+    expect(window.localStorage.getItem('atlas:plan:summary-width:v1')).toBe('376');
+    window.localStorage.removeItem('atlas:plan:summary-width:v1');
+  });
+
   it('handles a route that resolved to no drawable legs', () => {
     render(
       <PlanSummaryPanel

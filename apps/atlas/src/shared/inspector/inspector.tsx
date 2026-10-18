@@ -6,6 +6,8 @@ import type { CSSProperties, ReactElement } from 'react';
 import { useHoveredAirwayWaypointIndex } from '../../modes/chart/highlight-context.ts';
 import type { InspectableFeature } from '../../modes/chart/interaction/click-to-select.ts';
 import { CHART_ROUTE_PATH } from '../../modes/chart/url-state.ts';
+import { SidePanelResizeHandle } from '../ui/side-panel-resize-handle.tsx';
+import { useSidePanelWidth } from '../ui/use-side-panel-width.ts';
 
 import { buildInspectorChipList } from './chip-builders.ts';
 import type { Chip } from './chip-builders.ts';
@@ -25,6 +27,9 @@ import { useChipHoverPan } from './use-chip-hover-pan.ts';
 import { useSheetMinimizeDrag } from './use-sheet-minimize-drag.ts';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
+
+/** localStorage key for the desktop inspector's user-chosen width. */
+const INSPECTOR_WIDTH_STORAGE_KEY = 'atlas:inspector:width:v1';
 
 /**
  * Props for {@link EntityInspector}.
@@ -60,8 +65,9 @@ interface SheetStyle extends CSSProperties {
  *
  * Layout is responsive: at the Tailwind `md:` breakpoint (>= 768px)
  * the panel sits `absolute` along the right edge of the chart area
- * (`top-0 right-0 bottom-0 w-inspector`, with the `inspector` spacing
- * token declared in `src/index.css`). Below that breakpoint it
+ * (`top-0 right-0 bottom-0`), as wide as `--atlas-side-panel-width`; the
+ * user can drag its left edge to resize it, and the width is kept per
+ * browser (see `useSidePanelWidth`). Below that breakpoint it
  * collapses into a bottom sheet (`right-0 bottom-0 left-0
  * max-h-[60vh]`) so the map stays visible above on phones. The
  * chip-hover pan and recenter offset in `use-chip-hover-pan.ts` follow
@@ -181,6 +187,8 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
   const handleToggleMinimized = useCallback((): void => {
     setMinimized((prev) => !prev);
   }, []);
+
+  const panelWidth = useSidePanelWidth(INSPECTOR_WIDTH_STORAGE_KEY, state.status !== 'idle');
 
   // All chip-hover panning, recenter, and viewport-freeze state lives
   // in `useChipHoverPan`. The hook owns the pre-pan capture, the
@@ -310,35 +318,39 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
   const desktopMinimizedClasses = minimized ? 'md:bottom-auto' : '';
 
   return (
-    <aside
-      ref={asideRef}
-      style={sheetStyle}
-      className={`absolute right-0 bottom-0 left-0 z-20 max-h-[60vh] translate-y-[var(--sheet-ty)] overflow-y-auto rounded-t-xl border-t border-slate-200 bg-white shadow-lg md:top-0 md:left-auto md:max-h-none md:w-inspector md:translate-y-0 md:rounded-none md:border-t-0 md:border-l dark:border-slate-700 dark:bg-slate-900 ${sheetTransitionClasses} ${desktopMinimizedClasses}`}
-      aria-label="Entity inspector"
-    >
-      <div ref={peekRef} className="sticky top-0 z-10 bg-white dark:bg-slate-900">
-        <InspectorGrabHandle
-          minimized={minimized}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
-          onClick={handleGrabHandleClick}
-        />
-        <InspectorHeader
-          state={state}
-          onClose={handleClose}
-          minimized={minimized}
-          onToggleMinimized={handleToggleMinimized}
-          {...(state.status === 'resolved' && { onRecenter: handleRecenter })}
-        />
-      </div>
-      <div className={minimized ? 'md:hidden' : undefined} inert={minimized}>
-        {chips.length === 0 ? null : (
-          <SiblingChips chips={chips} onSelect={handleSwitchSelected} onHover={handleChipHover} />
-        )}
-        <InspectorBody state={state} onSelectEntity={handleSwitchSelected} />
-      </div>
-    </aside>
+    <>
+      <aside
+        ref={asideRef}
+        style={sheetStyle}
+        className={`absolute right-0 bottom-0 left-0 z-20 max-h-[60vh] translate-y-[var(--sheet-ty)] overflow-y-auto rounded-t-xl border-t border-slate-200 bg-white shadow-lg md:top-0 md:left-auto md:max-h-none md:w-(--atlas-side-panel-width) md:translate-y-0 md:rounded-none md:border-t-0 md:border-l dark:border-slate-700 dark:bg-slate-900 ${sheetTransitionClasses} ${desktopMinimizedClasses}`}
+        aria-label="Entity inspector"
+      >
+        <div ref={peekRef} className="sticky top-0 z-10 bg-white dark:bg-slate-900">
+          <InspectorGrabHandle
+            minimized={minimized}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
+            onClick={handleGrabHandleClick}
+          />
+          <InspectorHeader
+            state={state}
+            onClose={handleClose}
+            minimized={minimized}
+            onToggleMinimized={handleToggleMinimized}
+            {...(state.status === 'resolved' && { onRecenter: handleRecenter })}
+          />
+        </div>
+        <div className={minimized ? 'md:hidden' : undefined} inert={minimized}>
+          {chips.length === 0 ? null : (
+            <SiblingChips chips={chips} onSelect={handleSwitchSelected} onHover={handleChipHover} />
+          )}
+          <InspectorBody state={state} onSelectEntity={handleSwitchSelected} />
+        </div>
+      </aside>
+      {/* The minimized desktop panel is a header-height box, so there is no edge to drag. */}
+      {minimized ? null : <SidePanelResizeHandle width={panelWidth} label="Resize inspector" />}
+    </>
   );
 }
