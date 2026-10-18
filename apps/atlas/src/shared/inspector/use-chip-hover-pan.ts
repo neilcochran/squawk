@@ -3,6 +3,7 @@ import type { Map as MaplibreMap } from 'maplibre-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useSetHoveredChipSelection } from '../../modes/chart/highlight-context.ts';
+import { readPublishedMapControlsInsetPx } from '../map/map-controls-inset.ts';
 import { readPublishedSidePanelWidthPx } from '../ui/side-panel-width.ts';
 
 import { resolveSelectionFromState } from './entity-resolver.ts';
@@ -462,8 +463,9 @@ export function panToFeatureWithInspectorOffset(
  * fixed zoom, this derives the zoom from the box so the whole feature is
  * visible. The inspector's footprint is reserved with asymmetric padding (the
  * right edge on desktop, the bottom edge on mobile) so the fitted feature stays
- * clear of the overlay, and {@link FIT_BOUNDS_MAX_ZOOM} caps how far in a small
- * box pulls the camera.
+ * clear of the overlay, the left edge clears the zoom / tilt controls at their
+ * published reach, and {@link FIT_BOUNDS_MAX_ZOOM} caps how far in a small box
+ * pulls the camera.
  */
 export function fitFeatureBoundsWithInspectorOffset(bbox: BoundingBox, map: MaplibreMap): void {
   const occlusion = getInspectorOcclusionPx();
@@ -476,7 +478,7 @@ export function fitFeatureBoundsWithInspectorOffset(bbox: BoundingBox, map: Mapl
       padding: {
         top: FIT_BOUNDS_BASE_PADDING_PX,
         bottom: FIT_BOUNDS_BASE_PADDING_PX + occlusion.y,
-        left: FIT_BOUNDS_BASE_PADDING_PX,
+        left: FIT_BOUNDS_BASE_PADDING_PX + readPublishedMapControlsInsetPx(),
         right: FIT_BOUNDS_BASE_PADDING_PX + occlusion.x,
       },
       maxZoom: FIT_BOUNDS_MAX_ZOOM,

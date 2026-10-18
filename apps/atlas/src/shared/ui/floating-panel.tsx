@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactElement } from 'react';
+import type { HTMLAttributes, ReactElement, Ref } from 'react';
 
 import { FLOATING_SURFACE_CLASSES } from '../styles/style-tokens.ts';
 
@@ -12,6 +12,8 @@ export interface FloatingPanelProps extends HTMLAttributes<HTMLDivElement> {
    * positioning utilities the call site needs.
    */
   className?: string;
+  /** Ref to the rendered `<div>`, for a consumer that measures its own surface. */
+  ref?: Ref<HTMLDivElement>;
 }
 
 /**

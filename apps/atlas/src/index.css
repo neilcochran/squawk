@@ -30,12 +30,16 @@
  * the mobile bottom sheet covers up from the viewport bottom;
  * `--atlas-inspector-anim` is the bottom-transition duration (0ms while
  * the sheet is dragged so controls track the finger, 200ms for the snap).
+ * `--atlas-map-controls-inset` is how far the zoom / tilt stack reaches in
+ * from the map's left edge, which ZoomControls publishes and the camera's
+ * framing reads to keep a fitted route or feature clear of the stack.
  */
 :root {
   --atlas-side-panel-width: 22.5rem;
   --atlas-side-panel-open-width: 0px;
   --atlas-inspector-occlusion: 0px;
   --atlas-inspector-anim: 200ms;
+  --atlas-map-controls-inset: 0px;
 }
 
 html,

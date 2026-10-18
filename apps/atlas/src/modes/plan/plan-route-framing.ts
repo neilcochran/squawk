@@ -41,6 +41,8 @@ export interface RouteFramePaddingParams {
   sidePanelWidthPx: number;
   /** The bottom sheet's height on a phone, expanded, in pixels. */
   sheetHeightPx: number;
+  /** How far the zoom / tilt controls reach in from the left edge of the map, in pixels. */
+  controlsInsetPx: number;
   /** How far down the route input bar reaches from the top of the map, in pixels. */
   topInsetPx: number;
 }
@@ -80,20 +82,23 @@ export function routeBounds(points: readonly RoutePoint[]): RouteBounds | undefi
 
 /**
  * Padding that fits a route into the part of the map left visible by the
- * chrome: below the route input bar, left of the side panel on desktop, and
- * above the bottom sheet on a phone, plus {@link ROUTE_FRAME_BASE_PADDING_PX}
- * on every side so the route never touches an edge.
+ * chrome: below the route input bar, right of the zoom / tilt controls, left
+ * of the side panel on desktop, and above the bottom sheet on a phone, plus
+ * {@link ROUTE_FRAME_BASE_PADDING_PX} on every side so the route never
+ * touches an edge. The controls only fill the lower-left corner, but
+ * `fitBounds` takes one padding per edge, so the whole left edge clears them;
+ * a strip as wide as the controls is cheaper than reserving their height.
  *
- * @param params - The layout, the side panel width, the sheet height, and the input bar's reach.
+ * @param params - The layout, the side panel width, the sheet height, the controls' reach, and the input bar's reach.
  * @returns The `fitBounds` padding for each edge, in pixels.
  */
 export function routeFramePadding(params: RouteFramePaddingParams): RouteFramePadding {
-  const { desktop, sidePanelWidthPx, sheetHeightPx, topInsetPx } = params;
+  const { desktop, sidePanelWidthPx, sheetHeightPx, controlsInsetPx, topInsetPx } = params;
   const base = ROUTE_FRAME_BASE_PADDING_PX;
   return {
     top: topInsetPx + base,
     right: desktop ? sidePanelWidthPx + base : base,
     bottom: desktop ? base : sheetHeightPx + base,
-    left: base,
+    left: controlsInsetPx + base,
   };
 }

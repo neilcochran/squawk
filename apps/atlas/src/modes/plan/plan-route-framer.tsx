@@ -2,6 +2,7 @@ import { useMap } from '@vis.gl/react-maplibre';
 import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 
+import { readPublishedMapControlsInsetPx } from '../../shared/map/map-controls-inset.ts';
 import { useIsDesktopLayout } from '../../shared/styles/use-is-desktop-layout.ts';
 import { readPublishedSidePanelWidthPx } from '../../shared/ui/side-panel-width.ts';
 
@@ -52,8 +53,9 @@ export interface PlanRouteFramerProps {
  * a ground-speed edit or a theme switch never re-frames.
  *
  * The padding reads the chrome's live geometry at the moment of framing: the
- * route input's bottom edge, on desktop the side panel's user-resizable
- * width, and on a phone the bottom sheet's height. The effect runs after the
+ * route input's bottom edge, the zoom / tilt controls' published reach from
+ * the left, on desktop the side panel's user-resizable width, and on a phone
+ * the bottom sheet's height. The effect runs after the
  * DOM holds the resolved route's summary, so the sheet's layout height is
  * already the one it settles at - including on the first commit, where the
  * sheet appears in the same render - even before its own resize observer has
@@ -95,6 +97,7 @@ export function PlanRouteFramer({
         desktop,
         sidePanelWidthPx: readPublishedSidePanelWidthPx(),
         sheetHeightPx: sheetRef.current?.offsetHeight ?? 0,
+        controlsInsetPx: readPublishedMapControlsInsetPx(),
         topInsetPx: inputBottomPx === undefined ? 0 : Math.max(inputBottomPx - containerTopPx, 0),
       }),
       maxZoom: FRAME_MAX_ZOOM,

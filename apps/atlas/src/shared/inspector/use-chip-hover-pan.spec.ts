@@ -5,6 +5,8 @@ import type { MapRef } from '@vis.gl/react-maplibre';
 import type { Map as MaplibreMap } from 'maplibre-gl';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+import { MAP_CONTROLS_INSET_CSS_VAR } from '../map/map-controls-inset.ts';
+
 import {
   fitFeatureBoundsWithInspectorOffset,
   isPointOutsideComfortableArea,
@@ -263,6 +265,21 @@ describe('fitFeatureBoundsWithInspectorOffset', () => {
     // right edge falls back to the base margin.
     expect(options.padding.bottom).toBeGreaterThan(options.padding.top);
     expect(options.padding.right).toBe(options.padding.top);
+  });
+
+  it('keeps the left edge clear of the zoom controls at their published reach', () => {
+    document.documentElement.style.setProperty(MAP_CONTROLS_INSET_CSS_VAR, '56px');
+    try {
+      const map = buildFakeMap(1024, 768);
+      fitFeatureBoundsWithInspectorOffset(
+        { minLon: -73, maxLon: -71, minLat: 42, maxLat: 44 },
+        map as unknown as MaplibreMap,
+      );
+      const options = map.fitBounds.mock.calls[0]?.[1];
+      expect(options.padding.left).toBe(options.padding.top + 56);
+    } finally {
+      document.documentElement.style.removeProperty(MAP_CONTROLS_INSET_CSS_VAR);
+    }
   });
 });
 

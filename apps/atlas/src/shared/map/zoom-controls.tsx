@@ -1,11 +1,12 @@
 import { useMap } from '@vis.gl/react-maplibre';
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
 
 import { FOCUS_RING_INSET_CLASSES } from '../styles/style-tokens.ts';
 import { FloatingPanel } from '../ui/floating-panel.tsx';
 
 import { MAP_MAX_PITCH } from './map-canvas.tsx';
+import { MAP_CONTROLS_INSET_CSS_VAR } from './map-controls-inset.ts';
 
 /** Animation duration for the +/- zoom transitions, in milliseconds. */
 const ZOOM_ANIMATION_MS = 300;
@@ -61,6 +62,9 @@ const BOUND_EPSILON = 0.001;
  * to animate; the `moveend` event triggers the mode's view-state callback,
  * which writes both the zoom and the pitch to the URL (bearing is the one
  * camera field left out, as map-canvas.tsx's `ViewStateChange` explains).
+ * The stack publishes how far it reaches in from the map's left edge as
+ * `--atlas-map-controls-inset`, which the route and search framing read to
+ * keep what they fit clear of it.
  *
  * Each button reflects whether it can act: zoom-in disables at the map's
  * `getMaxZoom()`, zoom-out at `getMinZoom()`, tilt-up at `TILT_MAX_DEG`, and
@@ -149,8 +153,39 @@ export function ZoomControls(): ReactElement {
     m.easeTo({ pitch: next, duration: TILT_ANIMATION_MS });
   }, [mapRef]);
 
+  // Publish how far the stack reaches in from the map's left edge so the
+  // camera's framing can keep a fitted route or feature clear of it. The
+  // stack is positioned against the same container the map fills, so its
+  // offset box is in map coordinates. Re-measured when its size changes
+  // (the buttons shrink at the md breakpoint); jsdom has no ResizeObserver,
+  // so specs only see the mount-time measurement. useLayoutEffect writes
+  // before paint, so a framing in the first commit already reads it.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (panel === null) {
+      return undefined;
+    }
+    const root = document.documentElement;
+    const publish = (): void => {
+      root.style.setProperty(
+        MAP_CONTROLS_INSET_CSS_VAR,
+        `${panel.offsetLeft + panel.offsetWidth}px`,
+      );
+    };
+    publish();
+    const observer =
+      typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(publish);
+    observer?.observe(panel);
+    return (): void => {
+      observer?.disconnect();
+      root.style.removeProperty(MAP_CONTROLS_INSET_CSS_VAR);
+    };
+  }, []);
+
   return (
     <FloatingPanel
+      ref={panelRef}
       className="absolute bottom-[max(2.5rem,var(--atlas-inspector-occlusion)_+_0.5rem)] left-3 z-10 flex flex-col overflow-hidden rounded-md shadow-md transition-[bottom] ease-out motion-reduce:transition-none md:bottom-10"
       style={{ transitionDuration: 'var(--atlas-inspector-anim, 200ms)' }}
     >

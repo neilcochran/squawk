@@ -3,6 +3,8 @@ import type { RenderResult } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MAP_CONTROLS_INSET_CSS_VAR } from '../../shared/map/map-controls-inset.ts';
+
 import { PlanRouteFramer } from './plan-route-framer.tsx';
 import type { PlanFrameRequest, PlanRouteFramerProps } from './plan-route-framer.tsx';
 import { ROUTE_FRAME_BASE_PADDING_PX } from './plan-route-framing.ts';
@@ -100,6 +102,7 @@ describe('PlanRouteFramer', () => {
 
   afterEach(() => {
     document.documentElement.style.removeProperty('--atlas-side-panel-width');
+    document.documentElement.style.removeProperty(MAP_CONTROLS_INSET_CSS_VAR);
     vi.unstubAllGlobals();
   });
 
@@ -116,6 +119,12 @@ describe('PlanRouteFramer', () => {
   it('keeps the route below the input bar, measured from the top of the map', () => {
     renderFramer();
     expect(lastFitOptions().padding.top).toBe(104 - 48 + ROUTE_FRAME_BASE_PADDING_PX);
+  });
+
+  it('keeps the route clear of the zoom / tilt controls at their published reach', () => {
+    document.documentElement.style.setProperty(MAP_CONTROLS_INSET_CSS_VAR, '56px');
+    renderFramer();
+    expect(lastFitOptions().padding.left).toBe(56 + ROUTE_FRAME_BASE_PADDING_PX);
   });
 
   it('clears the side panel at its published width on the desktop layout', () => {

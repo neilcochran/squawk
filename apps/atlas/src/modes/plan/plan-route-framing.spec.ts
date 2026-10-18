@@ -53,6 +53,7 @@ describe('routeFramePadding', () => {
         desktop: true,
         sidePanelWidthPx: 400,
         sheetHeightPx: 280,
+        controlsInsetPx: 0,
         topInsetPx: 56,
       }),
     ).toEqual({ top: 56 + base, right: 400 + base, bottom: base, left: base });
@@ -64,9 +65,21 @@ describe('routeFramePadding', () => {
         desktop: false,
         sidePanelWidthPx: 400,
         sheetHeightPx: 280,
+        controlsInsetPx: 0,
         topInsetPx: 64,
       }),
     ).toEqual({ top: 64 + base, right: base, bottom: 280 + base, left: base });
+  });
+
+  it('clears the zoom / tilt controls on the left at either layout', () => {
+    const params = {
+      sidePanelWidthPx: 400,
+      sheetHeightPx: 280,
+      controlsInsetPx: 56,
+      topInsetPx: 0,
+    };
+    expect(routeFramePadding({ ...params, desktop: true }).left).toBe(56 + base);
+    expect(routeFramePadding({ ...params, desktop: false }).left).toBe(56 + base);
   });
 });
 
