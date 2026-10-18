@@ -1,5 +1,16 @@
 # @squawk/flightplan
 
+## 0.12.1
+
+### Patch Changes
+
+- e8907ab: ### Changed
+
+  - The README and TSDoc examples use `KSEA DCT SEA J70 GEP DCT KJFK`, which is valid as filed. The previous `KLAX DCT LAX J60 SAX DCT KJFK` files J60 across its published gap between JOT and DJB, so the example route came back flagged as not valid as filed.
+
+- Updated dependencies [d766aaf]
+  - @squawk/geo@0.6.0
+
 ## 0.12.0
 
 ### Minor Changes

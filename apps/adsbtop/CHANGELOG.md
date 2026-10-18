@@ -1,5 +1,12 @@
 # @squawk/adsbtop
 
+## 0.7.16
+
+### Patch Changes
+
+- Updated dependencies [d766aaf]
+  - @squawk/geo@0.6.0
+
 ## 0.7.15
 
 ### Patch Changes

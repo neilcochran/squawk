@@ -1,5 +1,24 @@
 # @squawk/mcp
 
+## 0.15.4
+
+### Patch Changes
+
+- e8907ab: ### Changed
+
+  - The `parse_flightplan_route` tool description and the README's example prompt use `KSEA DCT SEA J70 GEP DCT KJFK`, which is valid as filed, in place of `KLAX DCT LAX J60 SAX DCT KJFK`, which files J60 across its published gap between JOT and DJB.
+
+- Updated dependencies [fbfe85a]
+- Updated dependencies [e8907ab]
+- Updated dependencies [d766aaf]
+  - @squawk/airways@0.8.2
+  - @squawk/flightplan@0.12.1
+  - @squawk/geo@0.6.0
+  - @squawk/airports@0.8.2
+  - @squawk/airspace@0.10.5
+  - @squawk/fixes@0.5.11
+  - @squawk/navaids@0.7.2
+
 ## 0.15.3
 
 ### Patch Changes
