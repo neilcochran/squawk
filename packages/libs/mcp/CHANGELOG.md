@@ -1,5 +1,16 @@
 # @squawk/mcp
 
+## 0.15.2
+
+### Patch Changes
+
+- 6cd7669: ### Changed
+
+  - `parse_flightplan_route` matches a STAR to the route's arrival airport and a SID to its departure airport, reports `airportMismatch` on a procedure filed at an airport none of its adaptations serves, and resolves an airport identifier that is also a navaid as the navaid when an airway that lists it follows. The tool description explains the behaviour.
+
+- Updated dependencies [6cd7669]
+  - @squawk/flightplan@0.11.0
+
 ## 0.15.1
 
 ### Patch Changes
