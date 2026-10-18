@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { formatDistanceNm, formatEteHrs } from './plan-format.ts';
+import { formatDistanceNm, formatEteHrs, formatRouteIssue } from './plan-format.ts';
 
 describe('formatDistanceNm', () => {
   it('rounds to the nearest whole mile with a unit suffix', () => {
@@ -32,5 +32,19 @@ describe('formatEteHrs', () => {
 
   it('rolls a full 60 minutes up into the hour', () => {
     expect(formatEteHrs(0.999)).toBe('1:00');
+  });
+});
+
+describe('formatRouteIssue', () => {
+  it('names the airway and the waypoints either side of a gap', () => {
+    expect(formatRouteIssue({ kind: 'gap', airway: 'J60', from: 'JOT', to: 'DJB' })).toBe(
+      'J60 is not defined between JOT and DJB',
+    );
+  });
+
+  it('names the airway and the ends of an unusable segment', () => {
+    expect(formatRouteIssue({ kind: 'unusable', airway: 'J108', from: 'TCS', to: 'GINGR' })).toBe(
+      'J108 from TCS to GINGR is unusable',
+    );
   });
 });

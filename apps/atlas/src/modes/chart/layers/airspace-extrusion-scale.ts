@@ -21,9 +21,9 @@ export const FT_TO_METERS = 0.3048;
 /**
  * Upper clamp applied to the raw ceiling feet value before
  * exaggeration. The bundled airspace dataset uses `99999` as a
- * sentinel for "no upper limit" (every Class E5/E6/E7 ceiling, plus
- * many Class E2/E3/E4 surface areas, plus a smaller subset of Warning,
- * Restricted, and ARTCC features). Multiplying that sentinel through
+ * sentinel for "no upper limit" (the upper ARTCC strata, some Warning
+ * and Restricted areas, and the Class E areas that lie beyond the
+ * lateral extent of Class A). Multiplying that sentinel through
  * the zoom-driven exaggeration produces extrusions on the order of
  * thousands of kilometres at low zoom - the side walls extend above
  * the camera and clip at the top of the screen, the top face covers
@@ -54,9 +54,10 @@ export const GROUND_ANCHORED_ALTITUDE_REFS = ['SFC', 'AGL'] as const;
  * Airspace types from least to most specific; a type's index in this
  * list is its depth rank. Many boxes of different types end at the same
  * altitude - every "unlimited" ceiling caps to FL600 alongside Class A,
- * Class E areas end at 17,999 ft where MOAs and restricted areas end at
- * FL180 - and two translucent top faces on the same plane both pass the
- * depth test and blend into a muddy mix. The ceiling expression lifts a
+ * and Class E areas, most MOAs and many restricted areas all end at
+ * 18,000 ft, whether the ceiling is published as inclusive or not - and
+ * two translucent top faces on the same plane both pass the depth test
+ * and blend into a muddy mix. The ceiling expression lifts a
  * box by {@link CEILING_DEPTH_BIAS_METERS_PER_RANK} per rank, so where
  * tops coincide the more specific airspace sits a few meters higher,
  * wins the depth test, and reads as a crisp box poking through the

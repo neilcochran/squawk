@@ -170,6 +170,8 @@ export function AirwaysLayer(): ReactElement | null {
           colors.airway.low,
           ['JET', 'RNAV_Q'],
           colors.airway.high,
+          ['SPECIAL'],
+          colors.airway.special,
           colors.airway.regional,
         ],
         'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1, 7, 1.6, 10, 2.6],
@@ -234,7 +236,7 @@ const AIRWAY_FOCUS_SOURCE_ID = 'atlas-airway-focus';
 /** MapLibre layer id for the focused waypoint dot. */
 const AIRWAY_WAYPOINT_FOCUS_LAYER_ID = 'atlas-airway-focus-waypoint';
 
-/** MapLibre layer id for the focused incoming-leg stroke. */
+/** MapLibre layer id for the focused outgoing-leg stroke. */
 const AIRWAY_LEG_FOCUS_LAYER_ID = 'atlas-airway-focus-leg';
 
 /**
@@ -253,11 +255,14 @@ type AirwayFocusFeatureKind = 'leg' | 'waypoint';
  *
  * - For a `kind: 'waypoint'` feature, the index is its own position
  *   in the active airway's `waypoints` array.
- * - For a `kind: 'leg'` feature, the index is the END waypoint of the
- *   leg (so leg index 1 connects waypoint 0 to waypoint 1, and is
- *   tagged with `waypointIndex: 1`). This way both layers filter on
- *   the same index value the inspector hover writes - no separate
- *   `legIndex` arithmetic at the consumer.
+ * - For a `kind: 'leg'` feature, the index is the START waypoint of
+ *   the leg (so the leg from waypoint 1 to waypoint 2 is tagged with
+ *   `waypointIndex: 1`). A waypoint's segment fields (MEA, MOCA, MAA,
+ *   the unusable flag) describe the segment to the next waypoint, so
+ *   keying the leg on its start lights up the segment the hovered row
+ *   describes, and both layers filter on the same index value the
+ *   inspector hover writes - no separate `legIndex` arithmetic at the
+ *   consumer.
  */
 interface AirwayFocusProperties {
   /** Discriminator: leg LineString vs. waypoint Point. */
@@ -275,16 +280,17 @@ const FOCUS_MATCH_NONE_FILTER: ExpressionSpecification = ['==', ['get', 'waypoin
 
 /**
  * Top-of-stack overlay that brightens the hovered waypoint and (when
- * the row has an incoming leg) the leg ending at that waypoint. The
- * inspector airway panel writes a context-stored waypoint index; this
- * layer reads it and filters two layers off a shared geojson source -
- * a circle layer for the waypoint dot, a line layer for the incoming
- * leg.
+ * the row has an outgoing leg) the leg from that waypoint to the next,
+ * which is the segment the row's altitudes and unusable flag describe.
+ * The inspector airway panel writes a context-stored waypoint index;
+ * this layer reads it and filters two layers off a shared geojson
+ * source - a circle layer for the waypoint dot, a line layer for the
+ * outgoing leg.
  *
- * Hovering the first waypoint row (`waypointIndex === 0`) lights up
- * just the dot - there is no incoming leg, and the line filter
- * naturally excludes leg index 0 since legs are tagged with the END
- * waypoint's index (which starts at 1). Hovering any other row lights
+ * Hovering the last waypoint row lights up just the dot - there is no
+ * outgoing leg, and the line filter naturally finds no leg for that
+ * index since legs are tagged with their START waypoint's index (which
+ * ends one short of the last waypoint). Hovering any other row lights
  * up both the dot and the leg.
  *
  * The source rebuilds whenever the active airway changes - one Point
@@ -325,7 +331,7 @@ export function AirwayLegFocusLayer(): ReactElement | null {
       };
       features.push(point);
     });
-    // Leg LineStrings (one per consecutive pair, keyed on the END
+    // Leg LineStrings (one per consecutive pair, keyed on the START
     // waypoint's index so the line filter matches the same index the
     // inspector hover writes).
     for (let i = 0; i < airway.waypoints.length - 1; i += 1) {
@@ -343,7 +349,7 @@ export function AirwayLegFocusLayer(): ReactElement | null {
             [end.lon, end.lat],
           ],
         },
-        properties: { kind: 'leg', waypointIndex: i + 1 },
+        properties: { kind: 'leg', waypointIndex: i },
       };
       features.push(line);
     }
@@ -407,9 +413,9 @@ export function AirwayLegFocusLayer(): ReactElement | null {
   return (
     <Source id={AIRWAY_FOCUS_SOURCE_ID} type="geojson" data={data}>
       {/*
-        Leg first, waypoint second so the dot draws on top of the leg
-        terminus - otherwise the wider line would mask the dot when
-        the user hovers the leg's destination row.
+        Leg first, waypoint second so the dot draws on top of the leg's
+        start - otherwise the wider line would mask the dot of the row
+        the user is hovering.
       */}
       <Layer {...legLayerProps} />
       <Layer {...waypointLayerProps} />

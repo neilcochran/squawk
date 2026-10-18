@@ -337,7 +337,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
         {chips.length === 0 ? null : (
           <SiblingChips chips={chips} onSelect={handleSwitchSelected} onHover={handleChipHover} />
         )}
-        <InspectorBody state={state} />
+        <InspectorBody state={state} onSelectEntity={handleSwitchSelected} />
       </div>
     </aside>
   );

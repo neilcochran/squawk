@@ -1,3 +1,5 @@
+import type { PlanRouteIssue } from './plan-route.ts';
+
 /**
  * Pure display formatters for the plan-mode summary panel. Kept in a `.ts`
  * sibling so they unit-test without a render harness.
@@ -21,4 +23,15 @@ export function formatEteHrs(eteHrs: number): string {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${hours}:${String(minutes).padStart(2, '0')}`;
+}
+
+/**
+ * One line naming where the route files an airway it may not be flown along
+ * as filed: `"J60 is not defined between JOT and DJB"` for a published gap,
+ * `"J108 from TCS to GINGR is unusable"` for a segment the FAA marks unusable.
+ */
+export function formatRouteIssue(issue: PlanRouteIssue): string {
+  return issue.kind === 'gap'
+    ? `${issue.airway} is not defined between ${issue.from} and ${issue.to}`
+    : `${issue.airway} from ${issue.from} to ${issue.to} is unusable`;
 }

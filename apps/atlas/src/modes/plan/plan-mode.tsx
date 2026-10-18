@@ -80,7 +80,7 @@ export function PlanMode(): ReactElement {
         onViewStateChange={handleViewStateChange}
       >
         {planRoute !== undefined ? (
-          <PlanRouteLayer points={planRoute.points} line={planRoute.line} />
+          <PlanRouteLayer points={planRoute.points} legs={planRoute.distance.legs} />
         ) : null}
       </MapCanvas>
       <PlanRouteInput value={routeString} onCommit={handleRouteCommit} />

@@ -37,7 +37,7 @@ export interface HighlightProviderProps {
    * Index of the currently-hovered airway waypoint row within the
    * active airway's `waypoints` array, or `undefined` when no
    * inspector row is hovered. Drives the airway focus layer (waypoint
-   * dot + incoming leg) and the row-hover-pan hook.
+   * dot + outgoing leg) and the row-hover-pan hook.
    */
   hoveredAirwayWaypointIndex: number | undefined;
   /**
@@ -45,6 +45,17 @@ export interface HighlightProviderProps {
    * mouseEnter / mouseLeave (hover-capable devices only).
    */
   setHoveredAirwayWaypointIndex: (index: number | undefined) => void;
+  /**
+   * Key of the currently-hovered excluded volume of the selected airspace,
+   * or `undefined` when no exclusion row is hovered. Drives the exclusion
+   * layer's focus outline.
+   */
+  hoveredAirspaceExclusionKey: string | undefined;
+  /**
+   * Callback the airspace inspector panel calls on exclusion-row
+   * mouseEnter / mouseLeave (hover-capable devices only).
+   */
+  setHoveredAirspaceExclusionKey: (key: string | undefined) => void;
   /** Children that may consume the context via the exported hooks. */
   children: ReactNode;
 }
@@ -65,6 +76,8 @@ export function HighlightProvider({
   setHoveredFeatureIndex,
   hoveredAirwayWaypointIndex,
   setHoveredAirwayWaypointIndex,
+  hoveredAirspaceExclusionKey,
+  setHoveredAirspaceExclusionKey,
   children,
 }: HighlightProviderProps): ReactElement {
   const value = useMemo<HighlightContextValue>(
@@ -75,6 +88,8 @@ export function HighlightProvider({
       setHoveredFeatureIndex,
       hoveredAirwayWaypointIndex,
       setHoveredAirwayWaypointIndex,
+      hoveredAirspaceExclusionKey,
+      setHoveredAirspaceExclusionKey,
     }),
     [
       activeHighlight,
@@ -83,6 +98,8 @@ export function HighlightProvider({
       setHoveredFeatureIndex,
       hoveredAirwayWaypointIndex,
       setHoveredAirwayWaypointIndex,
+      hoveredAirspaceExclusionKey,
+      setHoveredAirspaceExclusionKey,
     ],
   );
   return <HighlightContext.Provider value={value}>{children}</HighlightContext.Provider>;

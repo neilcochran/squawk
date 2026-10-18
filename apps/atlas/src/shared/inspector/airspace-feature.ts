@@ -1,6 +1,6 @@
 import type { GeoJsonProperties } from 'geojson';
 
-import type { AirspaceFeature, AltitudeBound } from '@squawk/types';
+import type { AirspaceFeature, AirspaceVolume, AltitudeBound } from '@squawk/types';
 
 /**
  * Synthetic per-feature property added at airspace source-projection
@@ -26,17 +26,40 @@ export const AIRSPACE_MATCH_KEY_PROPERTY = '__atlasMatchKey';
  * GeoJSON worker pipeline does not reliably round-trip nested object
  * properties through `queryRenderedFeatures` - downstream consumers
  * (e.g. the disambiguation popover) only see strings, numbers, and
- * booleans. The primitive split (Ft + Ref) preserves enough fidelity
- * to format an "11k-18k" or "700ft AGL" subtitle without re-fetching
- * the source dataset.
+ * booleans. The primitive split (Ft + Ref, plus Inclusive on an
+ * exclusive bound) preserves enough fidelity to format an "11k-<18k" or
+ * "700ft AGL" subtitle without re-fetching the source dataset.
  */
 export const AIRSPACE_FLOOR_FT_PROPERTY = '__atlasFloorFt';
 /** Reference datum for the floor altitude. One of `'MSL'`, `'AGL'`, `'SFC'`. */
 export const AIRSPACE_FLOOR_REF_PROPERTY = '__atlasFloorRef';
+/**
+ * `false` when the floor excludes its own altitude (an area "above 5,000
+ * ft MSL"). Written only for an exclusive bound, so an absent property
+ * reads as inclusive, matching the dataset's own `inclusive` field.
+ */
+export const AIRSPACE_FLOOR_INCLUSIVE_PROPERTY = '__atlasFloorInclusive';
 /** Ceiling altitude in feet. See {@link AIRSPACE_FLOOR_FT_PROPERTY}. */
 export const AIRSPACE_CEILING_FT_PROPERTY = '__atlasCeilingFt';
 /** Reference datum for the ceiling altitude. */
 export const AIRSPACE_CEILING_REF_PROPERTY = '__atlasCeilingRef';
+/**
+ * `false` when the ceiling excludes its own altitude (a MOA "to but not
+ * including FL 180", or a Class E area ending where Class A begins). See
+ * {@link AIRSPACE_FLOOR_INCLUSIVE_PROPERTY}.
+ */
+export const AIRSPACE_CEILING_INCLUSIVE_PROPERTY = '__atlasCeilingInclusive';
+
+/**
+ * The dataset's sentinel for an upper limit the FAA leaves undefined or
+ * unlimited, always carried as an MSL ceiling. The one published ceiling
+ * above it (R-2535B's 100,000 ft MSL) is a real value, not the sentinel,
+ * so only an exact match reads as unlimited.
+ */
+export const UNLIMITED_CEILING_FT = 99999;
+
+/** Which end of an airspace volume a bound is, which decides how an exclusive bound reads. */
+export type AltitudeBoundRole = 'floor' | 'ceiling';
 
 /**
  * Minimal shape consumed by {@link compareAirspaceByAltitudeDesc}. Two
@@ -109,7 +132,7 @@ export function altitudeKeyOfAirspaceFeature(feature: AirspaceFeature): Airspace
 }
 
 /**
- * Validates a `(valueFt, reference)` primitive pair into an
+ * Validates a `(valueFt, reference, inclusive)` primitive triple into an
  * {@link AltitudeBound} shape. Used by the airspace source projection
  * (to flatten the source dataset's nested `floor` / `ceiling` objects
  * into MapLibre-roundtrip-safe primitives) and by the disambiguation
@@ -118,11 +141,14 @@ export function altitudeKeyOfAirspaceFeature(feature: AirspaceFeature): Airspace
  *
  * Returns `undefined` for any malformed input - non-numeric value, an
  * unknown reference datum, or missing primitives. Callers swallow that
- * by hiding the corresponding row.
+ * by hiding the corresponding row. Only an explicit `false` marks the
+ * bound exclusive; anything else leaves `inclusive` unset, which the
+ * dataset reads as inclusive.
  */
 export function readAltitudeBoundPrimitives(
   valueFt: unknown,
   reference: unknown,
+  inclusive?: unknown,
 ): AltitudeBound | undefined {
   if (typeof valueFt !== 'number' || typeof reference !== 'string') {
     return undefined;
@@ -130,7 +156,7 @@ export function readAltitudeBoundPrimitives(
   if (reference !== 'MSL' && reference !== 'AGL' && reference !== 'SFC') {
     return undefined;
   }
-  return { valueFt, reference };
+  return inclusive === false ? { valueFt, reference, inclusive } : { valueFt, reference };
 }
 
 /**
@@ -174,10 +200,12 @@ export function readAirspaceAltitudeBounds(
   const floor = readAltitudeBoundPrimitives(
     properties[AIRSPACE_FLOOR_FT_PROPERTY],
     properties[AIRSPACE_FLOOR_REF_PROPERTY],
+    properties[AIRSPACE_FLOOR_INCLUSIVE_PROPERTY],
   );
   const ceiling = readAltitudeBoundPrimitives(
     properties[AIRSPACE_CEILING_FT_PROPERTY],
     properties[AIRSPACE_CEILING_REF_PROPERTY],
+    properties[AIRSPACE_CEILING_INCLUSIVE_PROPERTY],
   );
   if (floor === undefined || ceiling === undefined) {
     return undefined;
@@ -185,48 +213,138 @@ export function readAirspaceAltitudeBounds(
   return { floor, ceiling };
 }
 
+/** Whether a bound is the dataset's unlimited sentinel ({@link UNLIMITED_CEILING_FT} MSL). */
+function isUnlimitedAltitudeBound(bound: AltitudeBound): boolean {
+  return bound.reference === 'MSL' && bound.valueFt === UNLIMITED_CEILING_FT;
+}
+
 /**
  * Verbose altitude-bound formatter for the inspector's airspace panel.
- * Renders SFC floors as the literal `"SFC"`; everything else renders
- * as `"{N} ft {ref}"` (e.g. `"3000 ft MSL"`, `"700 ft AGL"`). Pilots
- * read the panel for full detail, so the verbose form is the right
- * default here.
+ * Renders SFC as the literal `"SFC"`, the unlimited sentinel as
+ * `"Unlimited"`, and everything else as `"{N} ft {ref}"` (e.g.
+ * `"3000 ft MSL"`, `"700 ft AGL"`). A bound that excludes its own value
+ * reads from the inside of the volume: an exclusive ceiling as
+ * `"Below 18000 ft MSL"`, an exclusive floor as `"Above 5000 ft MSL"`.
+ * An exclusive SFC floor stays `"SFC"`, since the qualifier adds nothing
+ * there. Pilots read the panel for full detail, so the verbose form is
+ * the right default here.
+ *
+ * @param bound - The floor or ceiling to format.
+ * @param role - Which end of the volume the bound is.
  */
-export function formatAltitudeBoundVerbose(bound: AltitudeBound): string {
+export function formatAltitudeBoundVerbose(bound: AltitudeBound, role: AltitudeBoundRole): string {
   if (bound.reference === 'SFC') {
     return 'SFC';
   }
-  return `${bound.valueFt} ft ${bound.reference}`;
+  if (isUnlimitedAltitudeBound(bound)) {
+    return 'Unlimited';
+  }
+  const value = `${bound.valueFt} ft ${bound.reference}`;
+  if (bound.inclusive === false) {
+    return role === 'ceiling' ? `Below ${value}` : `Above ${value}`;
+  }
+  return value;
 }
 
 /**
  * Compact altitude-bound formatter for the disambiguation popover's
- * altitude subtitle. SFC reference renders as the literal `"SFC"`;
- * MSL / AGL values that land on a clean thousand render as `"{N}k"`
- * (e.g. `"11k"`); other values render as `"{N}ft"` so an oddball
- * `"200 AGL"` floor is not silently rounded. AGL values append the
- * suffix; MSL is the implied default and stays bare to keep popover
- * rows narrow.
+ * altitude subtitle. SFC reference renders as the literal `"SFC"` and
+ * the unlimited sentinel as `"UNL"`, the charted abbreviation; MSL /
+ * AGL values that land on a clean thousand render as `"{N}k"` (e.g.
+ * `"11k"`); other values render as `"{N}ft"` so an oddball `"200 AGL"`
+ * floor is not silently rounded. AGL values append the suffix; MSL is
+ * the implied default and stays bare to keep popover rows narrow. An
+ * exclusive bound takes a `<` (ceiling) or `>` (floor) prefix, so a MOA
+ * up to but not including FL180 reads `"<18k"`.
+ *
+ * @param bound - The floor or ceiling to format.
+ * @param role - Which end of the volume the bound is.
  */
-export function formatAltitudeBoundCompact(bound: AltitudeBound): string {
+export function formatAltitudeBoundCompact(bound: AltitudeBound, role: AltitudeBoundRole): string {
   if (bound.reference === 'SFC') {
     return 'SFC';
   }
+  if (isUnlimitedAltitudeBound(bound)) {
+    return 'UNL';
+  }
   const formatted = bound.valueFt % 1000 === 0 ? `${bound.valueFt / 1000}k` : `${bound.valueFt}ft`;
-  return bound.reference === 'AGL' ? `${formatted} AGL` : formatted;
+  const value = bound.reference === 'AGL' ? `${formatted} AGL` : formatted;
+  if (bound.inclusive === false) {
+    return role === 'ceiling' ? `<${value}` : `>${value}`;
+  }
+  return value;
+}
+
+/**
+ * Renders a floor / ceiling pair as one band for a row that has no room
+ * for two, such as an excluded volume: `"SFC to 1500 ft AGL"`. Each end
+ * reads as {@link formatAltitudeBoundVerbose} renders it, lower-cased
+ * after "to" so an exclusive or unlimited ceiling stays a phrase
+ * (`"SFC to below 10000 ft MSL"`, `"18000 ft MSL to unlimited"`).
+ */
+export function formatAltitudeBand(floor: AltitudeBound, ceiling: AltitudeBound): string {
+  const ceilingText = formatAltitudeBoundVerbose(ceiling, 'ceiling');
+  const ceilingPhrase =
+    ceilingText === 'SFC'
+      ? ceilingText
+      : ceilingText.charAt(0).toLowerCase() + ceilingText.slice(1);
+  return `${formatAltitudeBoundVerbose(floor, 'floor')} to ${ceilingPhrase}`;
+}
+
+/**
+ * Feet above the surface-or-sea datum a bound sits at, for comparing two
+ * bounds on the same reference: SFC reads as 0.
+ */
+function boundHeightFt(bound: AltitudeBound): number {
+  return bound.reference === 'SFC' ? 0 : bound.valueFt;
+}
+
+/**
+ * Whether an excluded volume spans its airspace feature's whole height,
+ * so the airspace does not apply anywhere above the volume's footprint.
+ * The floor is covered when the volume starts at the surface or at or
+ * below the feature's floor on the same datum; the ceiling when the
+ * volume reaches at or above the feature's ceiling on the same datum.
+ * Bounds on different datums (MSL against AGL) cannot be compared
+ * without terrain, so they read as not covered.
+ */
+export function exclusionSpansFullHeight(
+  exclusion: Pick<AirspaceVolume, 'floor' | 'ceiling'>,
+  feature: Pick<AirspaceFeature, 'floor' | 'ceiling'>,
+): boolean {
+  const floorCovered =
+    exclusion.floor.reference === 'SFC' ||
+    (exclusion.floor.reference === feature.floor.reference &&
+      boundHeightFt(exclusion.floor) <= boundHeightFt(feature.floor));
+  const ceilingCovered =
+    exclusion.ceiling.reference === feature.ceiling.reference &&
+    exclusion.ceiling.valueFt >= feature.ceiling.valueFt;
+  return floorCovered && ceilingCovered;
+}
+
+/**
+ * Key naming one excluded volume of the selected airspace grouping: the
+ * feature's position in presentation order (the panel's "Feature N" and
+ * the map badge, see {@link orderAirspaceFeatures}) and the volume's
+ * position in that feature's `exclusions`. The inspector writes it on
+ * row hover and the exclusion layer reads it to focus the matching
+ * outline, so both build it here.
+ */
+export function airspaceExclusionKey(featureIndex: number, exclusionIndex: number): string {
+  return `${featureIndex}:${exclusionIndex}`;
 }
 
 /**
  * Reads the floor / ceiling altitude primitives off a GeoJSON property
- * bag and renders them as a compact range like `"11k-18k"` or
- * `"SFC-10k"`. Returns `undefined` if either bound is missing or
- * malformed - the consumer (the disambiguation popover) hides the
- * subtitle in that case.
+ * bag and renders them as a compact range like `"11k-18k"`,
+ * `"SFC-<18k"` or `"SFC-UNL"`. Returns `undefined` if either bound is
+ * missing or malformed - the consumer (the disambiguation popover) hides
+ * the subtitle in that case.
  */
 export function formatAirspaceAltitudeRange(properties: GeoJsonProperties): string | undefined {
   const bounds = readAirspaceAltitudeBounds(properties);
   if (bounds === undefined) {
     return undefined;
   }
-  return `${formatAltitudeBoundCompact(bounds.floor)}-${formatAltitudeBoundCompact(bounds.ceiling)}`;
+  return `${formatAltitudeBoundCompact(bounds.floor, 'floor')}-${formatAltitudeBoundCompact(bounds.ceiling, 'ceiling')}`;
 }

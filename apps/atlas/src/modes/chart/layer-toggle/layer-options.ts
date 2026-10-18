@@ -80,9 +80,10 @@ export interface AirwayCategoryOption {
   label: string;
 }
 
-/** Airway-category rows in display order, low to high to oceanic-and-regional. */
+/** Airway-category rows in display order, low to high to oceanic-and-regional to special. */
 export const AIRWAY_CATEGORY_OPTIONS: readonly AirwayCategoryOption[] = [
   { id: 'LOW', label: 'Low altitude' },
   { id: 'HIGH', label: 'High altitude' },
   { id: 'OCEANIC', label: 'Oceanic & regional' },
+  { id: 'SPECIAL', label: 'Special (non-regulatory)' },
 ];

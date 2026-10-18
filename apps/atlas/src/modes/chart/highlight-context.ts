@@ -41,9 +41,10 @@ export interface HighlightContextValue {
    * Index of the currently-hovered airway waypoint row within the
    * active entity's `waypoints` array, or `undefined` when no row is
    * hovered. The airway focus layer reads this to brighten the
-   * waypoint dot at `waypoints[i]` AND, when `i > 0`, the incoming
-   * leg from `waypoints[i - 1]` to `waypoints[i]`. Index `0` is the
-   * route's starting waypoint (no incoming leg, just the dot).
+   * waypoint dot at `waypoints[i]` AND, unless `i` is the last index,
+   * the outgoing leg from `waypoints[i]` to `waypoints[i + 1]`. The
+   * last index is the route's end waypoint (no outgoing leg, just the
+   * dot).
    *
    * Only meaningful for airway selections; ignored for other entity
    * types.
@@ -57,6 +58,19 @@ export interface HighlightContextValue {
    * devices never fire it.
    */
   setHoveredAirwayWaypointIndex: (index: number | undefined) => void;
+  /**
+   * Key of the currently-hovered excluded volume of the selected airspace
+   * (see `airspaceExclusionKey`), or `undefined` when no exclusion row is
+   * hovered. The exclusion layer reads it to focus that volume's outline.
+   * Only meaningful for airspace selections.
+   */
+  hoveredAirspaceExclusionKey: string | undefined;
+  /**
+   * Sets the currently-hovered exclusion key. The airspace inspector panel
+   * calls this on exclusion-row mouseEnter / mouseLeave (with `undefined`
+   * to clear), on hover-capable devices only.
+   */
+  setHoveredAirspaceExclusionKey: (key: string | undefined) => void;
 }
 
 /**
@@ -112,7 +126,7 @@ export function useSetHoveredFeatureIndex(): (index: number | undefined) => void
  * Returns the index of the currently-hovered airway waypoint row
  * within the active airway's `waypoints` array, or `undefined`.
  * Consumed by the airway focus layer (which brightens the waypoint
- * dot AND its incoming leg when index > 0) and by the row-hover-pan
+ * dot AND its outgoing leg when one exists) and by the row-hover-pan
  * hook (which eases the camera if that area is offscreen).
  */
 export function useHoveredAirwayWaypointIndex(): number | undefined {
@@ -128,6 +142,23 @@ export function useSetHoveredAirwayWaypointIndex(): (index: number | undefined) 
   return ctx?.setHoveredAirwayWaypointIndex ?? noopWaypointIndexSetter;
 }
 
+/**
+ * Returns the key of the currently-hovered excluded volume of the selected
+ * airspace, or `undefined`. Consumed by the exclusion layer's focus outline.
+ */
+export function useHoveredAirspaceExclusionKey(): string | undefined {
+  return useContext(HighlightContext)?.hoveredAirspaceExclusionKey;
+}
+
+/**
+ * Returns the setter the airspace inspector panel calls on exclusion-row
+ * mouseEnter / mouseLeave. No-op when no provider is mounted.
+ */
+export function useSetHoveredAirspaceExclusionKey(): (key: string | undefined) => void {
+  const ctx = useContext(HighlightContext);
+  return ctx?.setHoveredAirspaceExclusionKey ?? noopExclusionKeySetter;
+}
+
 /** Stable no-op setter used when the inspector renders without a provider. */
 function noopChipSelectionSetter(): void {
   // intentionally empty
@@ -140,5 +171,10 @@ function noopFeatureIndexSetter(): void {
 
 /** Stable no-op waypoint-index setter used when no provider is mounted. */
 function noopWaypointIndexSetter(): void {
+  // intentionally empty
+}
+
+/** Stable no-op exclusion-key setter used when no provider is mounted. */
+function noopExclusionKeySetter(): void {
   // intentionally empty
 }

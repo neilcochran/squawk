@@ -14,7 +14,7 @@ const routeInputRef: { current: { value: string; onCommit: (route: string) => vo
 const summaryRef: {
   current: { onGroundSpeedChange: (gs: number | undefined) => void } | undefined;
 } = { current: undefined };
-const layerRef: { current: { points: unknown; line: unknown } | undefined } = {
+const layerRef: { current: { points: unknown; legs: unknown } | undefined } = {
   current: undefined,
 };
 
@@ -56,7 +56,7 @@ vi.mock('../../shared/map/map-canvas.tsx', async (importOriginal) => {
 vi.mock('../../shared/map/zoom-controls.tsx', () => ({ ZoomControls: () => null }));
 
 vi.mock('./layers/plan-route-layer.tsx', () => ({
-  PlanRouteLayer: (props: { points: unknown; line: unknown }): ReactElement => {
+  PlanRouteLayer: (props: { points: unknown; legs: unknown }): ReactElement => {
     layerRef.current = props;
     return <div data-testid="plan-route-layer" />;
   },
@@ -90,17 +90,17 @@ const DEFAULT_SEARCH: PlanSearch = {
   gs: undefined,
 };
 
-const SAMPLE_ROUTE = {
+const SAMPLE_ROUTE: PlanRoute = {
   parsed: { raw: 'A B', elements: [] },
   points: [{ label: 'A', lat: 0, lon: 0 }],
-  line: undefined,
   distance: {
     legs: [],
     totalDistanceNm: 0,
     estimatedTimeEnrouteHrs: undefined,
     unresolvedElements: [],
   },
-} as unknown as PlanRoute;
+  issues: [],
+};
 
 describe('PlanMode', () => {
   beforeEach(() => {
@@ -142,6 +142,7 @@ describe('PlanMode', () => {
     render(<PlanMode />);
     expect(screen.getByTestId('plan-route-layer')).toBeInTheDocument();
     expect(layerRef.current?.points).toEqual(SAMPLE_ROUTE.points);
+    expect(layerRef.current?.legs).toBe(SAMPLE_ROUTE.distance.legs);
   });
 
   it('does not draw the route layer when no route is resolved', () => {

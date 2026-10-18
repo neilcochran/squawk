@@ -3,14 +3,17 @@ import { describe, it, expect, vi } from 'vitest';
 
 import type { RouteDistanceResult } from '@squawk/flightplan/browser';
 
-import type { PlanRoute } from './plan-route.ts';
+import type { PlanRoute, PlanRouteIssue } from './plan-route.ts';
 import { PlanSummaryPanel } from './plan-summary-panel.tsx';
 
-function makeRoute(distance?: Partial<RouteDistanceResult>): PlanRoute {
+function makeRoute(
+  distance?: Partial<RouteDistanceResult>,
+  issues: PlanRouteIssue[] = [],
+): PlanRoute {
   return {
     parsed: { raw: '', elements: [] },
     points: [],
-    line: undefined,
+    issues,
     distance: {
       legs: [
         {
@@ -117,6 +120,60 @@ describe('PlanSummaryPanel', () => {
     );
     fireEvent.change(screen.getByLabelText('Ground speed (kt)'), { target: { value: '' } });
     expect(onGroundSpeedChange).toHaveBeenCalledWith(undefined);
+  });
+
+  it('warns that the route is not valid as filed, naming each airway problem', () => {
+    render(
+      <PlanSummaryPanel
+        route={makeRoute(undefined, [
+          { kind: 'gap', airway: 'J60', from: 'JOT', to: 'DJB' },
+          { kind: 'unusable', airway: 'J108', from: 'TCS', to: 'GINGR' },
+        ])}
+        groundSpeedKt={undefined}
+        onGroundSpeedChange={vi.fn()}
+      />,
+    );
+    const warning = screen.getByRole('status');
+    expect(warning).toHaveTextContent('Not valid as filed');
+    expect(warning).toHaveTextContent('J60 is not defined between JOT and DJB');
+    expect(warning).toHaveTextContent('J108 from TCS to GINGR is unusable');
+  });
+
+  it('shows no filing warning for a valid route', () => {
+    render(
+      <PlanSummaryPanel
+        route={makeRoute()}
+        groundSpeedKt={undefined}
+        onGroundSpeedChange={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Not valid as filed')).toBeNull();
+  });
+
+  it('tags the legs that cross a gap or an unusable segment', () => {
+    const route = makeRoute();
+    const [first, second] = route.distance.legs;
+    if (first === undefined || second === undefined) {
+      throw new Error('fixture has two legs');
+    }
+    render(
+      <PlanSummaryPanel
+        route={{
+          ...route,
+          distance: {
+            ...route.distance,
+            legs: [
+              { ...first, crossesGap: true },
+              { ...second, unusable: true },
+            ],
+          },
+        }}
+        groundSpeedKt={undefined}
+        onGroundSpeedChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('KJFK -> MERIT').closest('li')).toHaveTextContent('gap');
+    expect(screen.getByText('MERIT -> KLAX').closest('li')).toHaveTextContent('unusable');
   });
 
   it('handles a route that resolved to no drawable legs', () => {

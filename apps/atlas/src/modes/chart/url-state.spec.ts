@@ -22,7 +22,7 @@ describe('chartSearchSchema', () => {
       pitch: CHART_DEFAULTS.pitch,
       layers: [...LAYER_IDS],
       airspaceClasses: [...CHART_DEFAULTS.airspaceClasses],
-      airwayCategories: [...AIRWAY_CATEGORIES],
+      airwayCategories: [...CHART_DEFAULTS.airwayCategories],
       searchLayers: [...CHART_DEFAULTS.searchLayers],
       searchAirspaceClasses: [...CHART_DEFAULTS.searchAirspaceClasses],
       searchAirwayCategories: [...CHART_DEFAULTS.searchAirwayCategories],
@@ -149,16 +149,27 @@ describe('chartSearchSchema', () => {
     expect(result.airwayCategories).toEqual([]);
   });
 
-  it('falls back to all airway categories when an unknown category appears', () => {
+  it('leaves special routes off the map by default while keeping them searchable', () => {
+    const result = chartSearchSchema.parse({});
+    expect(result.airwayCategories).toEqual(['LOW', 'HIGH', 'OCEANIC']);
+    expect(result.searchAirwayCategories).toEqual([...AIRWAY_CATEGORIES]);
+  });
+
+  it('preserves special routes when a share link turns them on', () => {
+    const result = chartSearchSchema.parse({ airwayCategories: ['LOW', 'SPECIAL'] });
+    expect(result.airwayCategories).toEqual(['LOW', 'SPECIAL']);
+  });
+
+  it('falls back to the default airway categories when an unknown category appears', () => {
     const result = chartSearchSchema.parse({ airwayCategories: ['LOW', 'VICTOR'] });
     // VICTOR is an underlying AirwayType but not a user-facing category id;
     // the schema treats it as unknown and falls back to the default.
-    expect(result.airwayCategories).toEqual([...AIRWAY_CATEGORIES]);
+    expect(result.airwayCategories).toEqual([...CHART_DEFAULTS.airwayCategories]);
   });
 
-  it('falls back to all airway categories when airwayCategories is not an array', () => {
+  it('falls back to the default airway categories when airwayCategories is not an array', () => {
     const result = chartSearchSchema.parse({ airwayCategories: 'LOW' });
-    expect(result.airwayCategories).toEqual([...AIRWAY_CATEGORIES]);
+    expect(result.airwayCategories).toEqual([...CHART_DEFAULTS.airwayCategories]);
   });
 
   it('returns selected as undefined when absent', () => {

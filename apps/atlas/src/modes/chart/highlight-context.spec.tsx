@@ -7,6 +7,8 @@ import {
   useHoveredAirwayWaypointIndex,
   useHoveredFeatureIndex,
   useSetHoveredAirwayWaypointIndex,
+  useHoveredAirspaceExclusionKey,
+  useSetHoveredAirspaceExclusionKey,
   useSetHoveredChipSelection,
   useSetHoveredFeatureIndex,
 } from './highlight-context.ts';
@@ -19,6 +21,8 @@ function wrap(
   setHoveredFeatureIndex: (index: number | undefined) => void = vi.fn(),
   hoveredAirwayWaypointIndex: number | undefined = undefined,
   setHoveredAirwayWaypointIndex: (index: number | undefined) => void = vi.fn(),
+  hoveredAirspaceExclusionKey: string | undefined = undefined,
+  setHoveredAirspaceExclusionKey: (key: string | undefined) => void = vi.fn(),
 ): (props: { children: ReactNode }) => ReactElement {
   function Wrapper({ children }: { children: ReactNode }): ReactElement {
     return (
@@ -29,6 +33,8 @@ function wrap(
         setHoveredFeatureIndex={setHoveredFeatureIndex}
         hoveredAirwayWaypointIndex={hoveredAirwayWaypointIndex}
         setHoveredAirwayWaypointIndex={setHoveredAirwayWaypointIndex}
+        hoveredAirspaceExclusionKey={hoveredAirspaceExclusionKey}
+        setHoveredAirspaceExclusionKey={setHoveredAirspaceExclusionKey}
       >
         {children}
       </HighlightProvider>
@@ -104,6 +110,8 @@ describe('HighlightProvider rendering', () => {
         setHoveredFeatureIndex={() => {}}
         hoveredAirwayWaypointIndex={undefined}
         setHoveredAirwayWaypointIndex={() => {}}
+        hoveredAirspaceExclusionKey={undefined}
+        setHoveredAirspaceExclusionKey={() => {}}
       >
         <span>child content</span>
       </HighlightProvider>,
@@ -175,5 +183,28 @@ describe('useSetHoveredFeatureIndex', () => {
     const { result } = renderHook(() => useSetHoveredFeatureIndex());
     expect(() => result.current(0)).not.toThrow();
     expect(() => result.current(undefined)).not.toThrow();
+  });
+});
+
+describe('airspace exclusion hover', () => {
+  it('exposes the hovered exclusion key and forwards the setter', () => {
+    const setter = vi.fn<(key: string | undefined) => void>();
+    const wrapper = wrap(undefined, vi.fn(), undefined, vi.fn(), undefined, vi.fn(), '0:2', setter);
+    const { result } = renderHook(
+      () => ({ key: useHoveredAirspaceExclusionKey(), set: useSetHoveredAirspaceExclusionKey() }),
+      { wrapper },
+    );
+    expect(result.current.key).toBe('0:2');
+    result.current.set('1:0');
+    expect(setter).toHaveBeenCalledWith('1:0');
+  });
+
+  it('falls back to no key and a no-op setter without a provider', () => {
+    const { result } = renderHook(() => ({
+      key: useHoveredAirspaceExclusionKey(),
+      set: useSetHoveredAirspaceExclusionKey(),
+    }));
+    expect(result.current.key).toBeUndefined();
+    expect(() => result.current.set('0:0')).not.toThrow();
   });
 });

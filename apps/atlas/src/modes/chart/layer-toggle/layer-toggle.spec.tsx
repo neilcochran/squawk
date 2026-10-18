@@ -313,8 +313,8 @@ describe('LayerToggle', () => {
     render(<LayerToggle />);
 
     const airwaysRow = getParentRow('airways');
-    expect(within(airwaysRow).getByText('1/3')).toBeInTheDocument();
-    expect(within(airwaysRow).getByLabelText('1 of 3 enabled')).toBeInTheDocument();
+    expect(within(airwaysRow).getByText('1/4')).toBeInTheDocument();
+    expect(within(airwaysRow).getByLabelText('1 of 4 enabled')).toBeInTheDocument();
 
     const airspaceRow = getParentRow('airspace');
     expect(within(airspaceRow).getByText('2/12')).toBeInTheDocument();
@@ -412,7 +412,7 @@ describe('LayerToggle', () => {
 
     expect(navigateMock).toHaveBeenCalledTimes(1);
     const next = applyLatestSearchUpdate(makePrev());
-    expect(next.airwayCategories).toEqual(['LOW', 'HIGH']);
+    expect(next.airwayCategories).toEqual(['LOW', 'HIGH', 'SPECIAL']);
     expect(next.airspaceClasses).toEqual([...AIRSPACE_CLASSES]);
     expect(next.layers).toEqual([...LAYER_IDS]);
   });
@@ -619,10 +619,14 @@ describe('LayerToggle', () => {
     }
 
     it('disables the reset row and ignores clicks when the menu is already at defaults', () => {
-      // The Layers default omits ARTCC, so the all-on `makeSearch()` default is
-      // NOT at the menu default - pass the exact default airspace set instead.
+      // The Layers default omits ARTCC and special routes, so the all-on
+      // `makeSearch()` default is NOT at the menu default - pass the exact
+      // default airspace and airway sets instead.
       useSearchMock.mockReturnValue(
-        makeSearch({ airspaceClasses: [...CHART_DEFAULTS.airspaceClasses] }),
+        makeSearch({
+          airspaceClasses: [...CHART_DEFAULTS.airspaceClasses],
+          airwayCategories: [...CHART_DEFAULTS.airwayCategories],
+        }),
       );
       render(<LayerToggle />);
 

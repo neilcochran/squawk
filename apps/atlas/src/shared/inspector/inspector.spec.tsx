@@ -70,6 +70,9 @@ vi.mock('../../modes/chart/highlight-context.ts', () => ({
   // undefined and the setter is a stable no-op stub.
   useHoveredAirwayWaypointIndex: () => undefined,
   useSetHoveredAirwayWaypointIndex: () => () => {},
+  // The airspace panel's exclusion rows register this setter; the
+  // fixtures carry no exclusions, so it is a stable no-op stub.
+  useSetHoveredAirspaceExclusionKey: () => () => {},
 }));
 
 vi.mock('@vis.gl/react-maplibre', () => ({

@@ -65,11 +65,12 @@ describe('useAirwayLegHoverPan', () => {
     restoreCenterMock.mockReset();
   });
 
-  it('eases the camera to the leg midpoint when a non-first waypoint row is hovered', () => {
+  it('eases the camera to the outgoing leg midpoint when a non-last waypoint row is hovered', () => {
     // Hovering waypoint index 1 (the second row) targets the leg
-    // ending at WP1 - midpoint of WP0 [-100, 40] and WP1 [-99, 41]
-    // = (-99.5, 40.5). The comfort gate reports "outside" so the
-    // pre-pan center is captured for later restore.
+    // starting at WP1, the segment that row's altitudes describe -
+    // midpoint of WP1 [-99, 41] and WP2 [-98, 42] = (-98.5, 41.5). The
+    // comfort gate reports "outside" so the pre-pan center is captured
+    // for later restore.
     const { ref, map } = makeMapRef();
     getMapInstanceMock.mockReturnValue(map);
     isPointOutsideComfortableAreaMock.mockReturnValue(true);
@@ -83,16 +84,15 @@ describe('useAirwayLegHoverPan', () => {
     );
     expect(panToFeatureWithInspectorOffsetMock).toHaveBeenCalledTimes(1);
     expect(panToFeatureWithInspectorOffsetMock).toHaveBeenCalledWith(
-      { lng: -99.5, lat: 40.5 },
+      { lng: -98.5, lat: 41.5 },
       map,
     );
     expect(map.getCenter).toHaveBeenCalled();
   });
 
-  it('eases the camera to the start waypoint itself when row 0 is hovered', () => {
-    // Hovering the first row (waypoint index 0) has no incoming leg,
-    // so the pan target is the waypoint's own coordinates - WP0 sits
-    // at [-100, 40], and that's exactly where the camera lands.
+  it('eases the camera to the first leg midpoint when row 0 is hovered', () => {
+    // The route's start waypoint has an outgoing leg like any other
+    // non-last row: midpoint of WP0 [-100, 40] and WP1 [-99, 41].
     const { ref, map } = makeMapRef();
     getMapInstanceMock.mockReturnValue(map);
     isPointOutsideComfortableAreaMock.mockReturnValue(true);
@@ -104,8 +104,29 @@ describe('useAirwayLegHoverPan', () => {
         mapRef: ref,
       }),
     );
+    expect(panToFeatureWithInspectorOffsetMock).toHaveBeenCalledWith(
+      { lng: -99.5, lat: 40.5 },
+      map,
+    );
+  });
+
+  it('eases the camera to the end waypoint itself when the last row is hovered', () => {
+    // The last row has no outgoing leg, so the pan target is the
+    // waypoint's own coordinates - WP2 sits at [-98, 42], and that's
+    // exactly where the camera lands.
+    const { ref, map } = makeMapRef();
+    getMapInstanceMock.mockReturnValue(map);
+    isPointOutsideComfortableAreaMock.mockReturnValue(true);
+    renderHook(() =>
+      useAirwayLegHoverPan({
+        selected: 'airway:V16',
+        hoveredWaypointIndex: 2,
+        state: airwayState(3),
+        mapRef: ref,
+      }),
+    );
     expect(panToFeatureWithInspectorOffsetMock).toHaveBeenCalledTimes(1);
-    expect(panToFeatureWithInspectorOffsetMock).toHaveBeenCalledWith({ lng: -100, lat: 40 }, map);
+    expect(panToFeatureWithInspectorOffsetMock).toHaveBeenCalledWith({ lng: -98, lat: 42 }, map);
   });
 
   it('skips the pan when the target is already comfortably onscreen', () => {

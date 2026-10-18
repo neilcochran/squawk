@@ -24,6 +24,7 @@ import { DisambiguationPopover } from './interaction/disambiguation-popover.tsx'
 import { InspectableHoverCursor } from './interaction/inspectable-cursor.tsx';
 import { LayerToggle } from './layer-toggle/layer-toggle.tsx';
 import { AirportsLayer } from './layers/airports-layer.tsx';
+import { AirspaceExclusionLayer } from './layers/airspace-exclusion-layer.tsx';
 import { AirspaceFeatureBadges } from './layers/airspace-feature-badges.tsx';
 import {
   AirspaceExtrusionLayer,
@@ -106,13 +107,20 @@ export function ChartMode(): ReactElement {
   const [hoveredFeatureIndex, setHoveredFeatureIndex] = useState<number | undefined>(undefined);
   // Index of the airway waypoint row that's currently hovered in the
   // inspector, used by the airway focus layer to brighten the
-  // matching waypoint dot (and, when index > 0, its incoming leg) and
+  // matching waypoint dot (and, unless it is the last, its outgoing leg) and
   // by the row-hover-pan hook to ease the camera if that area is
   // offscreen. Cleared on mouseLeave; component-local for the same
   // reasons as `hoveredFeatureIndex`.
   const [hoveredAirwayWaypointIndex, setHoveredAirwayWaypointIndex] = useState<number | undefined>(
     undefined,
   );
+  // Key of the excluded volume whose inspector row is currently hovered,
+  // used by the exclusion layer to focus that volume's outline inside the
+  // selected airspace. Component-local for the same reasons as
+  // `hoveredFeatureIndex`.
+  const [hoveredAirspaceExclusionKey, setHoveredAirspaceExclusionKey] = useState<
+    string | undefined
+  >(undefined);
   // Snapshot of the most recent click that the click classifier ruled
   // ambiguous (e.g. an airway intersection or two close VORs at the
   // same pixel). Drives the disambiguation popover - when set, the
@@ -317,6 +325,8 @@ export function ChartMode(): ReactElement {
         setHoveredFeatureIndex={setHoveredFeatureIndex}
         hoveredAirwayWaypointIndex={hoveredAirwayWaypointIndex}
         setHoveredAirwayWaypointIndex={setHoveredAirwayWaypointIndex}
+        hoveredAirspaceExclusionKey={hoveredAirspaceExclusionKey}
+        setHoveredAirspaceExclusionKey={setHoveredAirspaceExclusionKey}
       >
         <MapCanvas
           lat={lat}
@@ -328,6 +338,7 @@ export function ChartMode(): ReactElement {
           interactiveLayerIds={INSPECTABLE_LAYER_IDS}
         >
           {layers.includes('airspace') ? <AirspaceLayer /> : null}
+          {layers.includes('airspace') ? <AirspaceExclusionLayer /> : null}
           {layers.includes('airways') ? <AirwaysLayer /> : null}
           {layers.includes('fixes') ? <FixesLayer /> : null}
           {layers.includes('navaids') ? <NavaidsLayer /> : null}

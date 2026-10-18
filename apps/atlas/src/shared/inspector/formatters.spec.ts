@@ -3,17 +3,24 @@ import { describe, it, expect } from 'vitest';
 import type { Airport, Airway, AirwayWaypoint, Fix, Navaid } from '@squawk/types';
 
 import {
+  airportApproachCallSign,
+  airportTowerCallSign,
   formatAirportFacilityType,
+  formatAirportFrequency,
   formatAirportRunway,
   formatAirportStatus,
   formatAirwayRegion,
   formatAirwayType,
-  formatAirwayWaypointAltitude,
+  formatAirwayWaypointAltitudes,
   formatFixNavaidAssociation,
   formatFixUseCode,
+  formatFrequencyProvider,
+  formatNavaidCheckpoint,
   formatNavaidFrequency,
   formatNavaidMagVariation,
   formatNavaidStatus,
+  formatPavementClassification,
+  formatRunwayRvr,
 } from './formatters.ts';
 
 describe('formatAirportFacilityType', () => {
@@ -117,6 +124,167 @@ describe('formatNavaidMagVariation', () => {
   });
 });
 
+describe('formatAirportFrequency', () => {
+  it('keeps the third decimal a 25 kHz channel needs and drops it otherwise', () => {
+    expect(formatAirportFrequency({ use: 'CD/P', frequencyMhz: 121.725 })).toBe('121.725 MHz');
+    expect(formatAirportFrequency({ use: 'LCL/P', frequencyMhz: 119.1 })).toBe('119.10 MHz');
+  });
+
+  it('prints an HF frequency to three decimals', () => {
+    expect(formatAirportFrequency({ use: 'HNL RADIO', frequencyMhz: 5.68 })).toBe('5.680 MHz');
+  });
+
+  it('spells out the receive-only and on-request qualifiers', () => {
+    expect(formatAirportFrequency({ use: 'RCO', frequencyMhz: 122.1, receiveOnly: true })).toBe(
+      '122.10 MHz, receive only',
+    );
+    expect(formatAirportFrequency({ use: 'HF', frequencyMhz: 8.903, onRequest: true })).toBe(
+      '8.903 MHz, on request',
+    );
+  });
+});
+
+describe('formatFrequencyProvider', () => {
+  it('names the facility by call sign when published, then its type in words', () => {
+    expect(
+      formatFrequencyProvider({
+        use: 'PRC RADIO',
+        frequencyMhz: 125.3,
+        provider: 'PRC',
+        providerType: 'FSS',
+        callSign: 'PRESCOTT',
+      }),
+    ).toBe('PRESCOTT FSS');
+    expect(
+      formatFrequencyProvider({
+        use: 'CD/P',
+        frequencyMhz: 121.725,
+        provider: 'BHM',
+        providerType: 'ATCT-TRACON',
+      }),
+    ).toBe('BHM tower & TRACON');
+  });
+
+  it('falls back to the raw type code it does not know, and to the name alone without one', () => {
+    expect(
+      formatFrequencyProvider({ use: 'X', frequencyMhz: 1, provider: 'ABC', providerType: 'NEW' }),
+    ).toBe('ABC NEW');
+    expect(formatFrequencyProvider({ use: 'X', frequencyMhz: 1, provider: 'ABC' })).toBe('ABC');
+  });
+
+  it('returns null when no provider is published', () => {
+    expect(formatFrequencyProvider({ use: 'CTAF', frequencyMhz: 122.8 })).toBeNull();
+  });
+});
+
+describe('airportTowerCallSign and airportApproachCallSign', () => {
+  const airport: Airport = {
+    faaId: 'EET',
+    name: 'SHELBY COUNTY',
+    facilityType: 'AIRPORT',
+    ownershipType: 'PUBLIC',
+    useType: 'PUBLIC',
+    status: 'OPEN',
+    city: 'ALABASTER',
+    state: 'AL',
+    country: 'US',
+    lat: 33.18,
+    lon: -86.78,
+    timezone: 'America/Chicago',
+    elevationFt: 586,
+    runways: [],
+    frequencies: [
+      { use: 'CTAF', frequencyMhz: 123.0, provider: 'EET', providerType: 'NON-ATCT' },
+      {
+        use: 'CD/P',
+        frequencyMhz: 121.725,
+        provider: 'BHM',
+        providerType: 'ATCT-TRACON',
+        callSign: 'BIRMINGHAM',
+        approachCallSign: 'BIRMINGHAM',
+      },
+    ],
+  };
+
+  it('takes the tower call sign only from the airport own tower', () => {
+    expect(airportTowerCallSign(airport)).toBeNull();
+    expect(
+      airportTowerCallSign({
+        ...airport,
+        frequencies: [
+          ...airport.frequencies,
+          {
+            use: 'LCL/P',
+            frequencyMhz: 118.3,
+            provider: 'EET',
+            providerType: 'ATCT',
+            callSign: 'SHELBY',
+          },
+        ],
+      }),
+    ).toBe('SHELBY');
+  });
+
+  it('takes the first published approach call sign', () => {
+    expect(airportApproachCallSign(airport)).toBe('BIRMINGHAM');
+    expect(airportApproachCallSign({ ...airport, frequencies: [] })).toBeNull();
+  });
+});
+
+describe('formatPavementClassification', () => {
+  it('writes the rating in the FAA form with its four codes', () => {
+    expect(
+      formatPavementClassification({
+        system: 'PCN',
+        value: 10,
+        pavementType: 'FLEXIBLE',
+        subgradeStrength: 'C',
+        tirePressure: 'X',
+        evaluationMethod: 'USING_AIRCRAFT',
+      }),
+    ).toBe('PCN 10 F/C/X/U');
+  });
+});
+
+describe('formatRunwayRvr', () => {
+  it('lists each end that measures RVR with its sites', () => {
+    expect(
+      formatRunwayRvr({
+        id: '04L/22R',
+        ends: [{ id: '04L', rvrLocations: ['TOUCHDOWN', 'ROLLOUT'] }, { id: '22R' }],
+      }),
+    ).toBe('04L RVR-TR');
+  });
+
+  it('returns null when no end measures RVR', () => {
+    expect(
+      formatRunwayRvr({ id: '09/27', ends: [{ id: '09', rvrLocations: [] }, { id: '27' }] }),
+    ).toBeNull();
+  });
+});
+
+describe('formatNavaidCheckpoint', () => {
+  it('reads a ground checkpoint as its three-digit radial', () => {
+    expect(
+      formatNavaidCheckpoint({ type: 'GROUND', magneticBearingDeg: 5, description: 'RUNUP' }),
+    ).toBe('R-005, ground');
+  });
+
+  it('adds the altitude to an airborne checkpoint when one is published', () => {
+    expect(
+      formatNavaidCheckpoint({
+        type: 'AIRBORNE',
+        magneticBearingDeg: 270,
+        altitudeFt: 2500,
+        description: 'OVER BRIDGE',
+      }),
+    ).toBe('R-270, airborne at 2500 ft MSL');
+    expect(
+      formatNavaidCheckpoint({ type: 'AIRBORNE', magneticBearingDeg: 270, description: 'X' }),
+    ).toBe('R-270, airborne');
+  });
+});
+
 describe('formatNavaidStatus', () => {
   it('returns sentence-cased labels for every variant', () => {
     expect(formatNavaidStatus('OPERATIONAL_IFR')).toBe('Operational (IFR)');
@@ -135,13 +303,13 @@ describe('formatFixNavaidAssociation', () => {
         magneticBearingDeg: 270.4,
         distanceNm: 14.62,
       }),
-    ).toBe('270 deg / 14.6 nm');
+    ).toBe('270 deg M / 14.6 nm');
   });
 
   it('prints the bearing alone for a radial or localizer course without a distance', () => {
     expect(
       formatFixNavaidAssociation({ navaidId: 'PDK', navaidType: 'LOC', magneticBearingDeg: 25.51 }),
-    ).toBe('26 deg');
+    ).toBe('26 deg M');
   });
 
   it('prints the distance alone for a DME arc', () => {
@@ -150,8 +318,8 @@ describe('formatFixNavaidAssociation', () => {
     ).toBe('1.8 nm');
   });
 
-  it('prints the facility type when neither is published', () => {
-    expect(formatFixNavaidAssociation({ navaidId: 'CPS', navaidType: 'OM' })).toBe('OM');
+  it('prints a hyphen when neither is published, since the row label carries the type', () => {
+    expect(formatFixNavaidAssociation({ navaidId: 'CPS', navaidType: 'OM' })).toBe('-');
   });
 
   it('prints a published bearing or distance of zero', () => {
@@ -162,7 +330,7 @@ describe('formatFixNavaidAssociation', () => {
         magneticBearingDeg: 0,
         distanceNm: 0,
       }),
-    ).toBe('0 deg / 0.0 nm');
+    ).toBe('0 deg M / 0.0 nm');
   });
 });
 
@@ -217,34 +385,87 @@ describe('formatAirwayRegion', () => {
 
 function buildWaypoint(overrides: Partial<AirwayWaypoint>): AirwayWaypoint {
   return {
+    name: 'WPT',
     identifier: 'WPT',
-    location: { latitude: 0, longitude: 0 },
+    waypointType: 'FIX',
+    lat: 0,
+    lon: 0,
     ...overrides,
-  } as AirwayWaypoint;
+  };
 }
 
-describe('formatAirwayWaypointAltitude', () => {
-  it('renders MEA - MAA when both are present', () => {
+describe('formatAirwayWaypointAltitudes', () => {
+  it('lists every published altitude as its own labeled line, in reading order', () => {
     expect(
-      formatAirwayWaypointAltitude(
-        buildWaypoint({ minimumEnrouteAltitudeFt: 6000, maximumAuthorizedAltitudeFt: 18000 }),
+      formatAirwayWaypointAltitudes(
+        buildWaypoint({
+          maximumAuthorizedAltitudeFt: 17500,
+          minimumObstructionClearanceAltitudeFt: 3400,
+          gnssMinimumEnrouteAltitudeFt: 3000,
+          minimumEnrouteAltitudeFt: 6000,
+          dmeDmeIruMinimumEnrouteAltitudeFt: 5000,
+          minimumCrossingAltitudeFt: 6000,
+          minimumCrossingAltitudeDirection: 'S BND',
+        }),
       ),
-    ).toBe('6000 - 18000');
-  });
-
-  it('renders MEA only when MAA is missing', () => {
-    expect(formatAirwayWaypointAltitude(buildWaypoint({ minimumEnrouteAltitudeFt: 6000 }))).toBe(
+    ).toEqual([
       'MEA 6000',
-    );
+      'GNSS MEA 3000',
+      'DME/DME/IRU MEA 5000',
+      'MOCA 3400',
+      'MAA 17500',
+      'MCA 6000 S BND',
+    ]);
   });
 
-  it('falls back to MOCA when MEA is missing', () => {
+  it('shows a directional MEA with its bound and the opposite direction after a slash', () => {
     expect(
-      formatAirwayWaypointAltitude(buildWaypoint({ minimumObstructionClearanceAltitudeFt: 4500 })),
-    ).toBe('MOCA 4500');
+      formatAirwayWaypointAltitudes(
+        buildWaypoint({
+          minimumEnrouteAltitudeFt: 2100,
+          minimumEnrouteAltitudeDirection: 'NE BND',
+          minimumEnrouteAltitudeOppositeFt: 5000,
+          minimumEnrouteAltitudeOppositeDirection: 'SW BND',
+        }),
+      ),
+    ).toEqual(['MEA 2100 NE BND / 5000 SW BND']);
   });
 
-  it('returns "-" when no altitudes are set', () => {
-    expect(formatAirwayWaypointAltitude(buildWaypoint({}))).toBe('-');
+  it('shows a directional GNSS MEA and an opposite-direction MCA the same way', () => {
+    expect(
+      formatAirwayWaypointAltitudes(
+        buildWaypoint({
+          gnssMinimumEnrouteAltitudeFt: 3000,
+          gnssMinimumEnrouteAltitudeDirection: 'SW BND',
+          gnssMinimumEnrouteAltitudeOppositeFt: 3500,
+          gnssMinimumEnrouteAltitudeOppositeDirection: 'NE BND',
+          minimumCrossingAltitudeFt: 6000,
+          minimumCrossingAltitudeDirection: 'S BND',
+          minimumCrossingAltitudeOppositeFt: 2600,
+          minimumCrossingAltitudeOppositeDirection: 'N BND',
+        }),
+      ),
+    ).toEqual(['GNSS MEA 3000 SW BND / 3500 NE BND', 'MCA 6000 S BND / 2600 N BND']);
+  });
+
+  it('shows the GNSS MEA alone when it is the only published altitude', () => {
+    expect(
+      formatAirwayWaypointAltitudes(buildWaypoint({ gnssMinimumEnrouteAltitudeFt: 4000 })),
+    ).toEqual(['GNSS MEA 4000']);
+  });
+
+  it('keeps an opposite-direction value whose primary is missing', () => {
+    expect(
+      formatAirwayWaypointAltitudes(
+        buildWaypoint({
+          minimumEnrouteAltitudeOppositeFt: 5000,
+          minimumEnrouteAltitudeOppositeDirection: 'SW BND',
+        }),
+      ),
+    ).toEqual(['MEA 5000 SW BND']);
+  });
+
+  it('returns no lines when nothing is published', () => {
+    expect(formatAirwayWaypointAltitudes(buildWaypoint({}))).toEqual([]);
   });
 });

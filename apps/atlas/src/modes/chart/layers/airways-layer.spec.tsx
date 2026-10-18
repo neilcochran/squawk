@@ -16,11 +16,13 @@ const {
   useSearchMock,
   useActiveHighlightRefMock,
   useHoveredAirwayWaypointIndexMock,
+  sourceDataMock,
 } = vi.hoisted(() => ({
   useAirwayDatasetMock: vi.fn(),
   useSearchMock: vi.fn(),
   useActiveHighlightRefMock: vi.fn(),
   useHoveredAirwayWaypointIndexMock: vi.fn(),
+  sourceDataMock: vi.fn<(data: unknown) => void>(),
 }));
 
 vi.mock(import('../../../shared/data/airway-dataset.ts'), async (importOriginal) => {
@@ -42,13 +44,15 @@ vi.mock('@tanstack/react-router', () => ({
   getRouteApi: (): { useSearch: typeof useSearchMock } => ({ useSearch: useSearchMock }),
 }));
 
-// Stub MapLibre primitives. `Source` renders its children inside a
-// findable container so the test can assert the layer mounted; `Layer`
-// is a no-op since real MapLibre paint props need a live map context.
+// Stub MapLibre primitives. `Source` reports its `data` and renders its
+// children inside a findable container so the test can assert the layer
+// mounted and what it feeds the map; `Layer` is a no-op since real
+// MapLibre paint props need a live map context.
 vi.mock('@vis.gl/react-maplibre', () => ({
-  Source: ({ children }: { children?: ReactNode }): ReactElement => (
-    <div data-testid="maplibre-source">{children}</div>
-  ),
+  Source: ({ children, data }: { children?: ReactNode; data?: unknown }): ReactElement => {
+    sourceDataMock(data);
+    return <div data-testid="maplibre-source">{children}</div>;
+  },
   Layer: (): null => null,
 }));
 
@@ -201,6 +205,51 @@ describe('AirwayLegFocusLayer', () => {
     });
     const { getByTestId } = render(<AirwayLegFocusLayer />);
     expect(getByTestId('maplibre-source')).toBeInTheDocument();
+  });
+
+  it('keys each leg on its start waypoint, the row whose altitudes describe it', () => {
+    useActiveHighlightRefMock.mockReturnValue({ type: 'airway', id: 'V16' });
+    useSearchMock.mockReturnValue({ airwayCategories: ['LOW', 'HIGH', 'OCEANIC'] });
+    useAirwayDatasetMock.mockReturnValue({
+      status: 'loaded',
+      dataset: {
+        properties: EMPTY_DATASET.properties,
+        records: [buildAirway({ designation: 'V16' })],
+      },
+    });
+    sourceDataMock.mockClear();
+    render(<AirwayLegFocusLayer />);
+    const data = sourceDataMock.mock.lastCall?.[0];
+    if (typeof data !== 'object' || data === null || !('features' in data)) {
+      throw new Error('focus source received no feature collection');
+    }
+    expect(data.features).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          properties: { kind: 'leg', waypointIndex: 0 },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [0, 0],
+              [1, 1],
+            ],
+          },
+        }),
+        expect.objectContaining({
+          properties: { kind: 'leg', waypointIndex: 1 },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [1, 1],
+              [2, 2],
+            ],
+          },
+        }),
+      ]),
+    );
+    expect(data.features).not.toContainEqual(
+      expect.objectContaining({ properties: { kind: 'leg', waypointIndex: 2 } }),
+    );
   });
 
   it('uses the index filter when a waypoint row is hovered', () => {
