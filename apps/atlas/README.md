@@ -7,9 +7,13 @@ The official Squawk viewer - a chart-first web app for browsing aeronautical dat
 > [!NOTE]
 > Atlas is functional but not polished. Chart and Plan are the two shipped modes. Rough edges remain (some camera artifacts are unsmoothed at high pitch, mobile copy is still being tuned).
 
+![Chart mode at its default view: airports, navaids, airways, and airspace drawn across the continental US](assets/conus.png)
+
 ## Chart mode
 
 An interactive aeronautical map of the US. The data comes from the bundled `@squawk/*-data` packages via their `/browser` async loaders.
+
+![Chart mode zoomed in on New York with navaids and fixes turned off, showing the Class B rings, airways, and airports, with JFK selected and its runways and frequencies in the inspector](assets/chart.png)
 
 **Layers** (each independently toggleable):
 
@@ -22,6 +26,8 @@ An interactive aeronautical map of the US. The data comes from the bundled `@squ
 A **Reset to defaults** row at the foot of the menu returns every layer, airspace class, and airway category to its default state in one click, and stays inert while the menu already matches the defaults.
 
 **3D airspace** extrusion paints when the camera is tilted. In the tilted view the flat footprint, selection ring, and hatch are drawn only where an airspace volume meets the ground, so airspace that begins above the surface reads as a floating box rather than a box with a shadow outline beneath it, and hovering a feature section in the inspector brightens that feature's box. The selected airspace stays visible through the boxes that overlap it, tinted by each one in front so the overlap still reads, and where two different kinds of airspace end at the same altitude the more specific one draws on top. An auto-hide dialog prompts to drop tilt-incompatible airspace classes back to 2D when the user pitches up, since the blanket classes (Class A, Class E, Warning, ARTCC) extrude into a visually-noisy stack.
+
+![The tilted view over Las Vegas: the selected Class B drawn as stacked 3D volumes with a numbered badge on each feature, beside the restricted areas and MOAs around it, and the inspector listing each feature's floor and ceiling](assets/chart-3d.png)
 
 **Click-to-inspect** any feature. When a click lands on multiple stacked features (e.g. an airway intersection or two close VORs at the same pixel), a disambiguation popover lets the user pick. The bbox query radius scales with zoom so dense fix / navaid clusters near the cursor surface in the popover at high zoom, while CONUS-zoom clicks stay near-strict.
 
@@ -37,7 +43,9 @@ A **Reset to defaults** row at the foot of the menu returns every layer, airspac
 
 Enter an ICAO / FAA flight-plan route string and see it resolved against the bundled data and drawn on the map.
 
-**Route input** - a floating box (top-left) takes a route string like `KLAX DCT LAX J60 SAX DCT KJFK`. The string is parsed by `@squawk/flightplan`, composing the airport, navaid, fix, airway, and procedure resolvers, so airports, fixes, navaids, airway segments (expanded to their underlying waypoints), and SID / STAR procedure legs all resolve to coordinates. The normalized route round-trips through the URL, so a plan is shareable. Committing a route frames it on the map, clear of the input, the summary panel and the zoom controls, so a short route entered at the national view is not a speck; a shared link that carries a route but no camera position of its own is framed the same way, while one with its own camera keeps it.
+![Plan mode with the route KSEA DCT SEA J70 GEP DCT KJFK: J70 across the northern states to Minneapolis, then a direct leg to New York curving along its great-circle arc, with the total distance, the ETE at 450 kt, and the leg breakdown in the summary panel](assets/plan.png)
+
+**Route input** - a floating box (top-left) takes a route string like `KSEA DCT SEA J70 GEP DCT KJFK`. The string is parsed by `@squawk/flightplan`, composing the airport, navaid, fix, airway, and procedure resolvers, so airports, fixes, navaids, airway segments (expanded to their underlying waypoints), and SID / STAR procedure legs all resolve to coordinates. The normalized route round-trips through the URL, so a plan is shareable. Committing a route frames it on the map, clear of the input, the summary panel and the zoom controls, so a short route entered at the national view is not a speck; a shared link that carries a route but no camera position of its own is framed the same way, while one with its own camera keeps it.
 
 **Route overlay** - the resolved route draws through the ordered points, each leg following its great-circle arc so a long leg curves the way its distance is measured instead of running straight across the map, with a dot and identifier label at each waypoint. A leg that makes the route invalid as filed - one that crosses a published gap in an airway, an airway segment the FAA marks unusable, or a leg along or into a SID or STAR filed at an airport it does not serve - draws dashed in a warning color. Labels appear from zoom 6 so a CONUS overview of a long route stays readable.
 

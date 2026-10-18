@@ -105,7 +105,7 @@ export interface RouteDistanceResult {
  * import { createFlightplanResolver, computeRouteDistance } from '@squawk/flightplan';
  *
  * const resolver = createFlightplanResolver({ airports, navaids, fixes, airways });
- * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+ * const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
  * const result = computeRouteDistance(route, 450);
  * console.log(result.totalDistanceNm, result.estimatedTimeEnrouteHrs);
  * ```

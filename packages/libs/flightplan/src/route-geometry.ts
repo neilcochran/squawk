@@ -250,7 +250,7 @@ export function extractGeoPoints(elements: RouteElement[]): {
  * import { createFlightplanResolver, extractRoutePoints } from '@squawk/flightplan';
  *
  * const resolver = createFlightplanResolver({ airports, navaids, fixes, airways });
- * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+ * const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
  * const points = extractRoutePoints(route);
  * ```
  *
@@ -274,7 +274,7 @@ export function extractRoutePoints(route: ParsedRoute): RoutePoint[] {
  * import { createFlightplanResolver, routeToLineString } from '@squawk/flightplan';
  *
  * const resolver = createFlightplanResolver({ airports, navaids, fixes, airways });
- * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+ * const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
  * const line = routeToLineString(route);
  * if (line) {
  *   map.addSource('route', { type: 'geojson', data: line });

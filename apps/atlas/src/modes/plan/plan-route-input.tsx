@@ -73,7 +73,7 @@ export function PlanRouteInput({ value, onCommit, ref }: PlanRouteInputProps): R
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={commit}
-          placeholder="Enter a route, e.g. KLAX DCT LAX J60 SAX DCT KJFK"
+          placeholder="Enter a route, e.g. KSEA DCT SEA J70 GEP DCT KJFK"
           aria-label="Flight plan route"
           autoComplete="off"
           autoCapitalize="characters"

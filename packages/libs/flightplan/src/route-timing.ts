@@ -176,7 +176,7 @@ export interface RouteTimingResult {
  * import { createFlightplanResolver, computeRouteTiming } from '@squawk/flightplan';
  *
  * const resolver = createFlightplanResolver({ airports, navaids, fixes, airways });
- * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+ * const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
  * const result = computeRouteTiming(route, {
  *   trueAirspeedKt: 450,
  *   windProvider: (lat, lon) => ({ directionDeg: 270, speedKt: 80 }),

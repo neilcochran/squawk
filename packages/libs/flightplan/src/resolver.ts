@@ -753,7 +753,7 @@ function findNextAirport(
  *   procedures: createProcedureResolver({ data: usBundledProcedures.records }),
  * });
  *
- * const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+ * const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
  * for (const element of route.elements) {
  *   console.log(element.type, element.raw);
  * }

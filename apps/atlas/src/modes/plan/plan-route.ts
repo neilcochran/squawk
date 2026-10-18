@@ -114,7 +114,7 @@ export function findRouteIssues(parsed: ParsedRoute): PlanRouteIssue[] {
  * render the empty state without forcing a parse.
  *
  * @param resolver - Composed flightplan resolver from {@link usePlanResolver}.
- * @param routeString - Raw route string, e.g. `KLAX DCT LAX J60 SAX DCT KJFK`.
+ * @param routeString - Raw route string, e.g. `KSEA DCT SEA J70 GEP DCT KJFK`.
  * @param groundSpeedKt - Optional ground speed in knots for the ETE estimate.
  * @returns The resolved route, or `undefined` when the route string is empty.
  */

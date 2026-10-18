@@ -36,7 +36,7 @@ export const PLAN_MAX_GROUND_SPEED_KT = 2000;
 export const planSearchSchema = z.object({
   ...mapViewSearchFields,
   /**
-   * Raw flight-plan route string, e.g. `KLAX DCT LAX J60 SAX DCT KJFK`.
+   * Raw flight-plan route string, e.g. `KSEA DCT SEA J70 GEP DCT KJFK`.
    * Default empty. Round-tripped through the URL so a planned route is
    * shareable; resolution happens at render time against the bundled data.
    */
