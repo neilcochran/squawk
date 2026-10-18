@@ -1,6 +1,6 @@
 {
   "name": "@squawk/mcp",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "type": "module",
   "description": "Model Context Protocol server exposing squawk's aviation libraries as tools for LLM clients",
   "author": "Neil Cochran",
@@ -50,7 +50,7 @@
     "@squawk/fix-data": "^0.8.1",
     "@squawk/fixes": "^0.5.10",
     "@squawk/flight-math": "^0.5.3",
-    "@squawk/flightplan": "^0.10.1",
+    "@squawk/flightplan": "^0.11.0",
     "@squawk/geo": "^0.5.7",
     "@squawk/icao-registry": "^0.6.1",
     "@squawk/navaid-data": "^0.8.2",
