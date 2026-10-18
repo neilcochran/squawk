@@ -215,7 +215,7 @@ function expansionResult(
  * const resolver = createAirwayResolver({ data: usBundledAirways.records });
  *
  * const v16 = resolver.byDesignation('V16');
- * const segment = resolver.expand('J60', 'LAX', 'SAX');
+ * const segment = resolver.expand('J70', 'SEA', 'GEP');
  * const throughBos = resolver.byFix('BOS');
  * const results = resolver.search({ text: 'V1' });
  * ```
