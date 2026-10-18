@@ -1,6 +1,13 @@
 import { describe, it, expect, assert } from 'vitest';
 
-import { distanceNm, bearing, bearingAndDistance, midpoint, destination } from './great-circle.js';
+import {
+  distanceNm,
+  bearing,
+  bearingAndDistance,
+  midpoint,
+  destination,
+  densify,
+} from './great-circle.js';
 import { close } from './test-utils.js';
 
 describe('distanceNm', () => {
@@ -220,5 +227,82 @@ describe('destination', () => {
     const d2 = destination(0, 0, 270, 60);
     assert(close(d1.lat, d2.lat, 0.0001), `expected same lat, got ${d1.lat} vs ${d2.lat}`);
     assert(close(d1.lon, d2.lon, 0.0001), `expected same lon, got ${d1.lon} vs ${d2.lon}`);
+  });
+});
+
+describe('densify', () => {
+  it('returns just the endpoints for an arc shorter than the limit', () => {
+    // JFK to LGA is ~9.7 NM.
+    expect(densify(40.6413, -73.7781, 40.7769, -73.874, 25)).toEqual([
+      { lat: 40.6413, lon: -73.7781 },
+      { lat: 40.7769, lon: -73.874 },
+    ]);
+  });
+
+  it('returns the endpoints exactly as given', () => {
+    const points = densify(40.6413, -73.7781, 33.9425, -118.4081, 25);
+    expect(points[0]).toEqual({ lat: 40.6413, lon: -73.7781 });
+    expect(points.at(-1)).toEqual({ lat: 33.9425, lon: -118.4081 });
+  });
+
+  it('uses the fewest equal segments that keep each within the limit', () => {
+    // 1 degree of longitude along the equator is ~60 NM: three segments at a
+    // 25 NM limit, so four points.
+    const points = densify(0, 0, 0, 1, 25);
+    expect(points).toHaveLength(4);
+    for (let i = 1; i < points.length; i++) {
+      const previous = points[i - 1];
+      const current = points[i];
+      assert(previous !== undefined && current !== undefined);
+      const step = distanceNm(previous.lat, previous.lon, current.lat, current.lon);
+      assert(close(step, 20, 0.05), `expected ~20 NM steps, got ${step}`);
+    }
+  });
+
+  it('lays every point on the great circle between the endpoints', () => {
+    // JFK to LAX: each point's distance from both ends sums to the total.
+    const total = distanceNm(40.6413, -73.7781, 33.9425, -118.4081);
+    for (const point of densify(40.6413, -73.7781, 33.9425, -118.4081, 50)) {
+      const fromStart = distanceNm(40.6413, -73.7781, point.lat, point.lon);
+      const toEnd = distanceNm(point.lat, point.lon, 33.9425, -118.4081);
+      assert(close(fromStart + toEnd, total, 0.01), `expected point on the arc, got ${point.lat}`);
+    }
+  });
+
+  it('bows poleward of the straight line on a long east-west leg', () => {
+    // The great circle between two points at 40N peaks north of 40N.
+    const points = densify(40, -120, 40, -75, 100);
+    const peak = Math.max(...points.map((point) => point.lat));
+    assert(peak > 42, `expected the arc to rise above 42N, got ${peak}`);
+  });
+
+  it('normalizes longitudes across the antimeridian', () => {
+    const points = densify(52, 175, 52, -175, 25);
+    for (const point of points) {
+      assert(point.lon >= -180 && point.lon <= 180, `expected [-180, 180], got ${point.lon}`);
+    }
+    expect(points.some((point) => point.lon > 175)).toBe(true);
+    expect(points.some((point) => point.lon < -175)).toBe(true);
+  });
+
+  it('returns both endpoints for coincident points', () => {
+    expect(densify(40, -75, 40, -75, 25)).toEqual([
+      { lat: 40, lon: -75 },
+      { lat: 40, lon: -75 },
+    ]);
+  });
+
+  it('returns finite points for antipodal inputs', () => {
+    const points = densify(0, 0, 0, 180, 1000);
+    for (const point of points) {
+      assert(Number.isFinite(point.lat) && Number.isFinite(point.lon), 'expected finite result');
+    }
+  });
+
+  it('rejects a limit that is not a positive finite number', () => {
+    expect(() => densify(0, 0, 0, 1, 0)).toThrow(RangeError);
+    expect(() => densify(0, 0, 0, 1, -5)).toThrow(RangeError);
+    expect(() => densify(0, 0, 0, 1, Number.NaN)).toThrow(RangeError);
+    expect(() => densify(0, 0, 0, 1, Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 });

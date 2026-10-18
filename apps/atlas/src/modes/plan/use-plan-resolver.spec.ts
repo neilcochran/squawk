@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { assert, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { usePlanResolver } from './use-plan-resolver.ts';
 
@@ -67,22 +67,39 @@ describe('usePlanResolver', () => {
     createFlightplanResolverMock.mockClear();
   });
 
-  it('returns undefined while any dataset is still loading', () => {
+  it('reports loading while any dataset is still loading', () => {
     useProcedureDatasetMock.mockReturnValue({ status: 'loading' });
     const { result } = renderHook(() => usePlanResolver());
-    expect(result.current).toBeUndefined();
+    expect(result.current).toEqual({ status: 'loading' });
     expect(createFlightplanResolverMock).not.toHaveBeenCalled();
   });
 
-  it('returns undefined when a dataset load errored', () => {
+  it('keeps reporting loading while another dataset is still loading after one failed', () => {
     useFixDatasetMock.mockReturnValue({ status: 'error', error: new Error('boom') });
+    useAirwayDatasetMock.mockReturnValue({ status: 'loading' });
     const { result } = renderHook(() => usePlanResolver());
-    expect(result.current).toBeUndefined();
+    expect(result.current).toEqual({ status: 'loading' });
+    expect(createFlightplanResolverMock).not.toHaveBeenCalled();
+  });
+
+  it('composes from the datasets that loaded and lists the ones that failed', () => {
+    useFixDatasetMock.mockReturnValue({ status: 'error', error: new Error('boom') });
+    useProcedureDatasetMock.mockReturnValue({ status: 'error', error: new Error('boom') });
+    const { result } = renderHook(() => usePlanResolver());
+    assert(result.current.status === 'ready');
+    expect(result.current.failed).toEqual(['fixes', 'procedures']);
+    expect(createFlightplanResolverMock).toHaveBeenCalledWith({
+      airports: { tag: 'airport' },
+      navaids: { tag: 'navaid' },
+      airways: { tag: 'airway' },
+    });
   });
 
   it('composes a flightplan resolver from all five resolvers once loaded', () => {
     const { result } = renderHook(() => usePlanResolver());
-    expect(result.current).toBeDefined();
+    assert(result.current.status === 'ready');
+    expect(result.current.failed).toEqual([]);
+    expect(result.current.resolver).toBeDefined();
     expect(createFlightplanResolverMock).toHaveBeenCalledWith({
       airports: { tag: 'airport' },
       navaids: { tag: 'navaid' },

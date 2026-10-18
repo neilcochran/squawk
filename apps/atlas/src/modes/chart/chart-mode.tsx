@@ -7,7 +7,8 @@ import { useCallback, useState } from 'react';
 import { useAmbiguousPointIdentifiers } from '../../shared/inspector/entity-resolver.ts';
 import { EntityInspector } from '../../shared/inspector/inspector.tsx';
 import { MapCanvas } from '../../shared/map/map-canvas.tsx';
-import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
+import { useViewStateWriteBack } from '../../shared/map/use-view-state-write-back.ts';
+import { ViewResetListener } from '../../shared/map/view-reset-listener.tsx';
 import { ZoomControls } from '../../shared/map/zoom-controls.tsx';
 
 import { Airspace3DAutoHideDialog } from './airspace-3d/airspace-3d-dialog.tsx';
@@ -39,7 +40,6 @@ import { SearchBox } from './search/search-box.tsx';
 import type { ChartSearchResult } from './search/search-features.ts';
 import type { AirspaceClass, LayerId } from './url-state.ts';
 import { CHART_ROUTE_PATH } from './url-state.ts';
-import { ChartViewResetListener } from './view-reset-listener.tsx';
 
 const route = getRouteApi(CHART_ROUTE_PATH);
 
@@ -160,21 +160,7 @@ export function ChartMode(): ReactElement {
       applyAirspaceState,
     });
 
-  const handleViewStateChange = useCallback(
-    (view: ViewStateChange): void => {
-      void navigate({
-        search: (prev) => ({
-          ...prev,
-          lat: view.lat,
-          lon: view.lon,
-          zoom: view.zoom,
-          pitch: view.pitch,
-        }),
-        replace: true,
-      });
-    },
-    [navigate],
-  );
+  const handleViewStateChange = useViewStateWriteBack();
 
   const handleMapClick = useCallback(
     (event: MapLayerMouseEvent): void => {
@@ -380,7 +366,7 @@ export function ChartMode(): ReactElement {
         */}
         {layers.includes('airspace') ? <AirspaceFeatureBadges /> : null}
         <InspectableHoverCursor />
-        <ChartViewResetListener />
+        <ViewResetListener />
         <SearchBox onSelectResult={handleSearchSelect} />
         <LayerToggle />
         <ZoomControls />

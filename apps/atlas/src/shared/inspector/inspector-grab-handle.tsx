@@ -8,6 +8,8 @@ import { FOCUS_RING_INSET_CLASSES } from '../styles/style-tokens.ts';
 export interface InspectorGrabHandleProps {
   /** Whether the sheet is currently minimized; drives the accessible label. */
   minimized: boolean;
+  /** Name of the sheet in the accessible label, e.g. `inspector` reads "Minimize inspector". */
+  label: string;
   /** Pointer-down handler that opens a drag session. */
   onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
   /** Pointer-move handler that tracks the drag. */
@@ -21,21 +23,22 @@ export interface InspectorGrabHandleProps {
 }
 
 /**
- * Mobile-only grab handle at the top of the inspector bottom sheet. Shows
- * a pill bar the user drags down to minimize the sheet or up to restore
- * it; tapping it (or activating it with the keyboard) toggles the same
- * state. Hidden at the `md` breakpoint and up, where the sheet becomes a
- * right-edge panel with a header chevron instead.
+ * Mobile-only grab handle at the top of a bottom sheet: the entity
+ * inspector and the plan-mode summary panel. Shows a pill bar the user drags
+ * down to minimize the sheet or up to restore it; tapping it (or activating
+ * it with the keyboard) toggles the same state. Hidden at the `md`
+ * breakpoint and up, where the sheet becomes a right-edge panel.
  *
  * The handler props come straight from `useSheetMinimizeDrag`; this
  * component owns only the markup, the `touch-action` reset that lets the
  * gesture own vertical movement, and the accessible labelling.
  *
- * @param props - The minimized flag and the pointer and click handlers.
+ * @param props - The minimized flag, the sheet's name, and the pointer and click handlers.
  * @returns The grab-handle button.
  */
 export function InspectorGrabHandle({
   minimized,
+  label,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -46,7 +49,7 @@ export function InspectorGrabHandle({
     <button
       type="button"
       className={`flex w-full touch-none items-center justify-center py-2.5 md:hidden ${FOCUS_RING_INSET_CLASSES}`}
-      aria-label={minimized ? 'Expand inspector' : 'Minimize inspector'}
+      aria-label={`${minimized ? 'Expand' : 'Minimize'} ${label}`}
       aria-expanded={!minimized}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

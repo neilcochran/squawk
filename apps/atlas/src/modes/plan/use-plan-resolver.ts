@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import { createFlightplanResolver } from '@squawk/flightplan/browser';
-import type { FlightplanResolver } from '@squawk/flightplan/browser';
+import type { FlightplanResolver, FlightplanResolverOptions } from '@squawk/flightplan/browser';
 
 import { getAirportResolver, useAirportDataset } from '../../shared/data/airport-dataset.ts';
 import { getAirwayResolver, useAirwayDataset } from '../../shared/data/airway-dataset.ts';
@@ -10,39 +10,74 @@ import { getNavaidResolver, useNavaidDataset } from '../../shared/data/navaid-da
 import { getProcedureResolver, useProcedureDataset } from '../../shared/data/procedure-dataset.ts';
 
 /**
- * Composes a {@link FlightplanResolver} from the five datasets a route string
- * can reference: airports, navaids, fixes, airways, and procedures. Returns
- * `undefined` until every dataset has loaded, so a route is never parsed
- * against a partial resolver set (which would surface spurious `unresolved`
- * tokens mid-load). The underlying `useXDataset()` fetches are shared at
- * module scope, so mounting this hook triggers one request per dataset no
- * matter how many components subscribe.
- *
- * @returns A ready flightplan resolver, or `undefined` while data loads.
+ * One of the five datasets a route string can reference, named for display
+ * (`"Couldn't load procedures"`).
  */
-export function usePlanResolver(): FlightplanResolver | undefined {
+export type PlanDatasetName = 'airports' | 'navaids' | 'fixes' | 'airways' | 'procedures';
+
+/**
+ * State of the composed plan resolver, discriminated by `status`.
+ */
+export type PlanResolverState =
+  | {
+      /** At least one dataset fetch is still in flight. */
+      status: 'loading';
+    }
+  | {
+      /** Every dataset fetch has settled; the resolver is composed from the ones that loaded. */
+      status: 'ready';
+      /** Flightplan resolver over every dataset that loaded. */
+      resolver: FlightplanResolver;
+      /** Datasets whose fetch failed, so tokens that reference them do not resolve. Empty when all loaded. */
+      failed: readonly PlanDatasetName[];
+    };
+
+/**
+ * Composes a {@link FlightplanResolver} from the five datasets a route string
+ * can reference: airports, navaids, fixes, airways, and procedures. Reports
+ * `loading` until every fetch has settled, so a route is never parsed against
+ * a partial resolver set mid-load (which would surface spurious `unresolved`
+ * tokens that clear a moment later). Once nothing is loading, the resolver is
+ * built from whichever datasets loaded and the rest are listed as `failed`:
+ * a failed procedure fetch should not stop a direct route from drawing, and
+ * the caller can say why a token that needed the missing data did not
+ * resolve. The underlying `useXDataset()` fetches are shared at module scope,
+ * so mounting this hook triggers one request per dataset no matter how many
+ * components subscribe.
+ *
+ * @returns The resolver state.
+ */
+export function usePlanResolver(): PlanResolverState {
   const airports = useAirportDataset();
   const navaids = useNavaidDataset();
   const fixes = useFixDataset();
   const airways = useAirwayDataset();
   const procedures = useProcedureDataset();
 
-  return useMemo<FlightplanResolver | undefined>(() => {
-    if (
-      airports.status !== 'loaded' ||
-      navaids.status !== 'loaded' ||
-      fixes.status !== 'loaded' ||
-      airways.status !== 'loaded' ||
-      procedures.status !== 'loaded'
-    ) {
-      return undefined;
+  return useMemo<PlanResolverState>(() => {
+    const statuses: ReadonlyArray<[PlanDatasetName, 'loading' | 'loaded' | 'error']> = [
+      ['airports', airports.status],
+      ['navaids', navaids.status],
+      ['fixes', fixes.status],
+      ['airways', airways.status],
+      ['procedures', procedures.status],
+    ];
+    if (statuses.some(([, status]) => status === 'loading')) {
+      return { status: 'loading' };
     }
-    return createFlightplanResolver({
-      airports: getAirportResolver(airports.dataset),
-      navaids: getNavaidResolver(navaids.dataset),
-      fixes: getFixResolver(fixes.dataset),
-      airways: getAirwayResolver(airways.dataset),
-      procedures: getProcedureResolver(procedures.dataset),
-    });
+    const options: FlightplanResolverOptions = {
+      ...(airports.status === 'loaded' && { airports: getAirportResolver(airports.dataset) }),
+      ...(navaids.status === 'loaded' && { navaids: getNavaidResolver(navaids.dataset) }),
+      ...(fixes.status === 'loaded' && { fixes: getFixResolver(fixes.dataset) }),
+      ...(airways.status === 'loaded' && { airways: getAirwayResolver(airways.dataset) }),
+      ...(procedures.status === 'loaded' && {
+        procedures: getProcedureResolver(procedures.dataset),
+      }),
+    };
+    return {
+      status: 'ready',
+      resolver: createFlightplanResolver(options),
+      failed: statuses.filter(([, status]) => status === 'error').map(([name]) => name),
+    };
   }, [airports, navaids, fixes, airways, procedures]);
 }

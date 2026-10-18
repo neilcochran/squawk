@@ -103,7 +103,7 @@ vi.mock('./highlight-provider.tsx', () => ({
   HighlightProvider: ({ children }: { children: ReactNode }): ReactElement => <>{children}</>,
 }));
 vi.mock('./interaction/inspectable-cursor.tsx', () => ({ InspectableHoverCursor: () => null }));
-vi.mock('./view-reset-listener.tsx', () => ({ ChartViewResetListener: () => null }));
+vi.mock('../../shared/map/view-reset-listener.tsx', () => ({ ViewResetListener: () => null }));
 vi.mock('./layer-toggle/layer-toggle.tsx', () => ({ LayerToggle: () => null }));
 vi.mock('./search/search-box.tsx', () => ({
   SearchBox: (props: SearchBoxMockProps): ReactElement => {

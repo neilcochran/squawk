@@ -3,8 +3,8 @@ import { useCallback } from 'react';
 import type { MouseEvent, ReactElement, ReactNode } from 'react';
 
 import { CHART_ROUTE_PATH } from '../modes/chart/url-state.ts';
-import { dispatchChartViewReset } from '../modes/chart/view-reset-bus.ts';
 import { PLAN_ROUTE_PATH } from '../modes/plan/url-state.ts';
+import { dispatchViewReset } from '../shared/map/view-reset-bus.ts';
 
 /**
  * Top-level mode switcher rendered in the shell header. Each mode declares its
@@ -14,11 +14,11 @@ import { PLAN_ROUTE_PATH } from '../modes/plan/url-state.ts';
  * new path.
  *
  * Clicking the active link is treated as a "reset to defaults" gesture - the
- * default Link navigation is suppressed and a per-mode reset is dispatched
- * (e.g. the chart link fires `dispatchChartViewReset` to re-center on
- * CONUS at default zoom and pitch 0). The dispatch is decoupled from the
- * mode component via a small module-level pub/sub so the shell does not
- * need to reach into the mode's React tree.
+ * default Link navigation is suppressed and `dispatchViewReset` fires, which
+ * the mounted mode answers by easing the camera back to the default CONUS
+ * view. The dispatch is decoupled from the mode component via a small
+ * module-level pub/sub so the shell does not need to reach into the mode's
+ * React tree.
  */
 export function ModeSwitcher(): ReactElement {
   return (
@@ -42,8 +42,9 @@ interface ModeLinkProps {
 /**
  * Single mode link. Visually marks itself as active when the current pathname
  * matches the link's `to` (or any nested path under it). Clicks on an active
- * link suppress the default navigation and instead dispatch the matching
- * reset signal so users have a "click my mode tab to recenter" affordance.
+ * link suppress the default navigation - a plain navigation would drop the
+ * mode's search params, wiping its state - and dispatch a view reset instead,
+ * so users have a "click my mode tab to recenter" affordance.
  */
 function ModeLink({ to, children }: ModeLinkProps): ReactElement {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -58,11 +59,9 @@ function ModeLink({ to, children }: ModeLinkProps): ReactElement {
         return;
       }
       event.preventDefault();
-      if (to === CHART_ROUTE_PATH) {
-        dispatchChartViewReset();
-      }
+      dispatchViewReset();
     },
-    [active, to],
+    [active],
   );
 
   return (

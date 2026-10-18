@@ -44,10 +44,10 @@ const BOUND_EPSILON = 0.001;
  * `+`, `-`, tilt-up, and tilt-down buttons in the bottom-left corner of the
  * map area, raised enough that the MapLibre / OSM / Protomaps attribution
  * can sit underneath without overlap. On desktop the bottom-left position
- * keeps the controls clear of the right-side entity inspector overlay.
- * Below the `md` breakpoint the inspector becomes a bottom sheet that
- * would cover this corner, so the controls lift to sit just above the
- * sheet's live top edge: the inspector publishes its occlusion height as
+ * keeps the controls clear of the right-side panel (the entity inspector or
+ * the flight plan summary). Below the `md` breakpoint that panel becomes a
+ * bottom sheet that would cover this corner, so the controls lift to sit just
+ * above the sheet's live top edge: the sheet publishes its occlusion height as
  * the `--atlas-inspector-occlusion` custom property (plus a companion
  * `--atlas-inspector-anim` transition duration that drops to 0ms while the
  * sheet is dragged so the controls track the finger 1:1), and this stack
@@ -56,12 +56,11 @@ const BOUND_EPSILON = 0.001;
  * attribution clearance the desktop offset uses, so when no sheet is open
  * (occlusion 0) the controls stay clear of the attribution rather than
  * dropping onto it. Resets to the fixed desktop offset at `md`. Either way
- * the user can zoom or tilt without the inspector hiding the controls.
+ * the user can zoom or tilt without the panel hiding the controls.
  * Uses MapLibre's `easeTo({ zoom })` and `easeTo({ pitch })`
- * to animate; the `moveend` event triggers the existing view-state
- * callback for the URL (zoom only - pitch is intentionally not
- * URL-persisted yet, mirroring map-canvas.tsx's deliberate omission of
- * bearing/pitch).
+ * to animate; the `moveend` event triggers the mode's view-state callback,
+ * which writes both the zoom and the pitch to the URL (bearing is the one
+ * camera field left out, as map-canvas.tsx's `ViewStateChange` explains).
  *
  * Each button reflects whether it can act: zoom-in disables at the map's
  * `getMaxZoom()`, zoom-out at `getMinZoom()`, tilt-up at `TILT_MAX_DEG`, and

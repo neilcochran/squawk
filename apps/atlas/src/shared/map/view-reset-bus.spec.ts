@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { dispatchChartViewReset, subscribeChartViewReset } from './view-reset-bus.ts';
+import { dispatchViewReset, subscribeViewReset } from './view-reset-bus.ts';
 
-describe('chart-view reset bus', () => {
+describe('view reset bus', () => {
   it('invokes a registered listener on dispatch', () => {
     const listener = vi.fn();
-    const unsubscribe = subscribeChartViewReset(listener);
-    dispatchChartViewReset();
+    const unsubscribe = subscribeViewReset(listener);
+    dispatchViewReset();
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
@@ -14,9 +14,9 @@ describe('chart-view reset bus', () => {
   it('invokes every registered listener on a single dispatch', () => {
     const a = vi.fn();
     const b = vi.fn();
-    const unsubA = subscribeChartViewReset(a);
-    const unsubB = subscribeChartViewReset(b);
-    dispatchChartViewReset();
+    const unsubA = subscribeViewReset(a);
+    const unsubB = subscribeViewReset(b);
+    dispatchViewReset();
     expect(a).toHaveBeenCalledTimes(1);
     expect(b).toHaveBeenCalledTimes(1);
     unsubA();
@@ -25,9 +25,9 @@ describe('chart-view reset bus', () => {
 
   it('stops invoking a listener after its unsubscribe is called', () => {
     const listener = vi.fn();
-    const unsubscribe = subscribeChartViewReset(listener);
+    const unsubscribe = subscribeViewReset(listener);
     unsubscribe();
-    dispatchChartViewReset();
+    dispatchViewReset();
     expect(listener).not.toHaveBeenCalled();
   });
 
@@ -42,10 +42,10 @@ describe('chart-view reset bus', () => {
     const wrapper = vi.fn(() => {
       unsubA();
     });
-    const unsubW = subscribeChartViewReset(wrapper);
-    unsubA = subscribeChartViewReset(a);
-    const unsubB = subscribeChartViewReset(b);
-    dispatchChartViewReset();
+    const unsubW = subscribeViewReset(wrapper);
+    unsubA = subscribeViewReset(a);
+    const unsubB = subscribeViewReset(b);
+    dispatchViewReset();
     expect(wrapper).toHaveBeenCalledTimes(1);
     expect(a).toHaveBeenCalledTimes(1);
     expect(b).toHaveBeenCalledTimes(1);

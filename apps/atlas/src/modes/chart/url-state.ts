@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { AirspaceType, AirwayType } from '@squawk/types';
 
-import { MAP_MAX_PITCH } from '../../shared/map/map-canvas.tsx';
+import { MAP_VIEW_DEFAULTS, mapViewSearchFields } from '../../shared/map/view-state-schema.ts';
 
 /**
  * Router path that the chart mode mounts at. Single source of truth for any
@@ -193,8 +193,8 @@ export const AIRWAY_CATEGORY_FOR_TYPE: Record<AirwayType, AirwayCategory> = (() 
 })();
 
 /**
- * Default chart-mode map view: continental US center at a zoom that shows the
- * full CONUS area, with every data layer enabled and most airspace classes
+ * Default chart-mode state: the shared CONUS map view from
+ * `MAP_VIEW_DEFAULTS`, with every data layer enabled and most airspace classes
  * enabled. Class A and ARTCC are opted out by default because each blankets
  * essentially the entire chart - Class A as the 18,000 ft MSL to FL600 slab
  * over every ARTCC high stratum, ARTCC as the sector boundaries themselves -
@@ -202,14 +202,7 @@ export const AIRWAY_CATEGORY_FOR_TYPE: Record<AirwayType, AirwayCategory> = (() 
  * users who want either can flip it on from the layer toggle.
  */
 export const CHART_DEFAULTS = {
-  /** Default map center latitude in decimal degrees, positive north. */
-  lat: 39.5,
-  /** Default map center longitude in decimal degrees, positive east. */
-  lon: -98.5,
-  /** Default map zoom level. */
-  zoom: 4,
-  /** Default map pitch in degrees. 0 is the flat / plan view. */
-  pitch: 0,
+  ...MAP_VIEW_DEFAULTS,
   /** Default active layer set: every layer visible. */
   layers: LAYER_IDS,
   /**
@@ -262,24 +255,7 @@ export const CHART_DEFAULTS = {
  * fall back to the matching default so stale share links keep working.
  */
 export const chartSearchSchema = z.object({
-  /** Map center latitude in decimal degrees, positive north. Range: [-90, 90]. */
-  lat: z.number().min(-90).max(90).default(CHART_DEFAULTS.lat).catch(CHART_DEFAULTS.lat),
-  /** Map center longitude in decimal degrees, positive east. Range: [-180, 180]. */
-  lon: z.number().min(-180).max(180).default(CHART_DEFAULTS.lon).catch(CHART_DEFAULTS.lon),
-  /** Map zoom level. Range: [0, 22] (MapLibre's supported zoom range). */
-  zoom: z.number().min(0).max(22).default(CHART_DEFAULTS.zoom).catch(CHART_DEFAULTS.zoom),
-  /**
-   * Map pitch in degrees. Range: [0, MAP_MAX_PITCH] - matches the map
-   * primitive's `maxPitch` so a stale URL with a value above the cap clamps
-   * to the default rather than landing somewhere the camera will then
-   * clip on next interaction.
-   */
-  pitch: z
-    .number()
-    .min(0)
-    .max(MAP_MAX_PITCH)
-    .default(CHART_DEFAULTS.pitch)
-    .catch(CHART_DEFAULTS.pitch),
+  ...mapViewSearchFields,
   /**
    * Active layer set. Default is every layer enabled; an empty array is a
    * legitimate "basemap only" state and is preserved. Unknown ids or
