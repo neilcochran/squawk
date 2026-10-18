@@ -24,6 +24,7 @@ function buildLeg(overrides: Partial<RouteLeg> = {}): RouteLeg {
     cumulativeDistanceNm: 70,
     crossesGap: false,
     unusable: false,
+    procedureAirportMismatch: false,
     ...overrides,
   };
 }
@@ -33,6 +34,16 @@ describe('planLegStatus', () => {
     expect(planLegStatus(buildLeg())).toBe('valid');
     expect(planLegStatus(buildLeg({ crossesGap: true }))).toBe('gap');
     expect(planLegStatus(buildLeg({ unusable: true }))).toBe('unusable');
+  });
+
+  it('reads a leg along or into a mismatched procedure as airportMismatch', () => {
+    expect(planLegStatus(buildLeg({ procedureAirportMismatch: true }))).toBe('airportMismatch');
+  });
+
+  it('prefers an unusable segment over a mismatched procedure on the same leg', () => {
+    expect(planLegStatus(buildLeg({ unusable: true, procedureAirportMismatch: true }))).toBe(
+      'unusable',
+    );
   });
 
   it('reads a leg flagged both ways as a gap', () => {

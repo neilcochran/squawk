@@ -7,7 +7,7 @@ import { greatCircle } from '@squawk/geo';
 
 import type { FlightplanResolver } from './resolver.js';
 import { computeRouteTiming } from './route-timing.js';
-import { close, makeAirway, makeUnresolved, makeWaypoint, route } from './test-utils.js';
+import { close, makeAirway, makeStar, makeUnresolved, makeWaypoint, route } from './test-utils.js';
 
 // ---------------------------------------------------------------------------
 // Unit tests (synthetic data)
@@ -83,6 +83,23 @@ describe('computeRouteTiming', () => {
       assert.deepEqual(
         result.legs.map((leg) => leg.crossesGap),
         [false, false],
+      );
+    });
+
+    it('carries the procedure airport mismatch flag onto each timing leg', () => {
+      const star = {
+        ...makeStar('AALLE4', [
+          { fixIdentifier: 'AALLE', lat: 40.0, lon: -104.2 },
+          { fixIdentifier: 'HEDDD', lat: 39.9, lon: -104.4 },
+        ]),
+        airportMismatch: 'KBOS',
+      };
+      const before = makeWaypoint('BBOTL', 40.5, -103.0);
+
+      const result = computeRouteTiming(route([before, star]), { trueAirspeedKt: 120 });
+      assert.deepEqual(
+        result.legs.map((leg) => leg.procedureAirportMismatch),
+        [false, true],
       );
     });
 

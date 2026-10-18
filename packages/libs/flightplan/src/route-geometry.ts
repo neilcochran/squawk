@@ -62,6 +62,11 @@ export interface GeoPoint {
    * marks unusable.
    */
   unusableToNext?: true;
+  /**
+   * Set when the leg from this point to the next runs along, or joins the
+   * route to, a SID or STAR filed at an airport no adaptation of it serves.
+   */
+  procedureMismatchToNext?: true;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,13 +123,16 @@ export function extractGeoPoints(elements: RouteElement[]): {
       ) {
         last.precomputedDistanceToNextNm = point.precomputedDistanceToNextNm;
       }
-      // Likewise carry a gap or unusable marker, so the leg out of the merged
-      // point is still reported as crossing the gap or as unusable.
+      // Likewise carry a gap, unusable or procedure-mismatch marker, so the
+      // leg out of the merged point is still reported.
       if (point.gapToNext) {
         last.gapToNext = true;
       }
       if (point.unusableToNext) {
         last.unusableToNext = true;
+      }
+      if (point.procedureMismatchToNext) {
+        last.procedureMismatchToNext = true;
       }
       return;
     }
@@ -185,14 +193,27 @@ export function extractGeoPoints(elements: RouteElement[]): {
       }
 
       case 'sid':
-      case 'star':
-        for (const leg of el.legs) {
-          if (leg.fixIdentifier === undefined || leg.lat === undefined || leg.lon === undefined) {
-            continue;
-          }
-          emit({ label: leg.fixIdentifier, lat: leg.lat, lon: leg.lon });
+      case 'star': {
+        // A procedure filed at an airport it does not serve flags its own legs
+        // and the leg joining it to that airport: the leg in from the
+        // departure for a SID, the leg out to the arrival for a STAR.
+        const mismatched = el.airportMismatch !== undefined;
+        if (mismatched && el.type === 'sid' && points.length > 0) {
+          points[points.length - 1]!.procedureMismatchToNext = true;
         }
+        const drawable = el.legs.flatMap((leg): GeoPoint[] =>
+          leg.fixIdentifier !== undefined && leg.lat !== undefined && leg.lon !== undefined
+            ? [{ label: leg.fixIdentifier, lat: leg.lat, lon: leg.lon }]
+            : [],
+        );
+        drawable.forEach((point, index) => {
+          if (mismatched && (el.type === 'star' || index < drawable.length - 1)) {
+            point.procedureMismatchToNext = true;
+          }
+          emit(point);
+        });
         break;
+      }
 
       case 'unresolved':
         unresolvedElements.push(el);

@@ -27,6 +27,7 @@ function makeRoute(
           cumulativeDistanceNm: 30,
           crossesGap: false,
           unusable: false,
+          procedureAirportMismatch: false,
         },
         {
           from: 'MERIT',
@@ -39,6 +40,7 @@ function makeRoute(
           cumulativeDistanceNm: 2030,
           crossesGap: false,
           unusable: false,
+          procedureAirportMismatch: false,
         },
       ],
       totalDistanceNm: 2030,
@@ -122,12 +124,13 @@ describe('PlanSummaryPanel', () => {
     expect(onGroundSpeedChange).toHaveBeenCalledWith(undefined);
   });
 
-  it('warns that the route is not valid as filed, naming each airway problem', () => {
+  it('warns that the route is not valid as filed, naming each airway and procedure problem', () => {
     render(
       <PlanSummaryPanel
         route={makeRoute(undefined, [
           { kind: 'gap', airway: 'J60', from: 'JOT', to: 'DJB' },
           { kind: 'unusable', airway: 'J108', from: 'TCS', to: 'GINGR' },
+          { kind: 'airportMismatch', procedure: 'AALLE4', procedureType: 'STAR', airport: 'KBOS' },
         ])}
         groundSpeedKt={undefined}
         onGroundSpeedChange={vi.fn()}
@@ -137,6 +140,7 @@ describe('PlanSummaryPanel', () => {
     expect(warning).toHaveTextContent('Not valid as filed');
     expect(warning).toHaveTextContent('J60 is not defined between JOT and DJB');
     expect(warning).toHaveTextContent('J108 from TCS to GINGR is unusable');
+    expect(warning).toHaveTextContent('STAR AALLE4 does not serve the arrival airport KBOS');
   });
 
   it('shows no filing warning for a valid route', () => {
@@ -174,6 +178,62 @@ describe('PlanSummaryPanel', () => {
     );
     expect(screen.getByText('KJFK -> MERIT').closest('li')).toHaveTextContent('gap');
     expect(screen.getByText('MERIT -> KLAX').closest('li')).toHaveTextContent('unusable');
+  });
+
+  it('tags a leg along or into a procedure filed at the wrong airport', () => {
+    const route = makeRoute();
+    const [first, second] = route.distance.legs;
+    if (first === undefined || second === undefined) {
+      throw new Error('fixture has two legs');
+    }
+    render(
+      <PlanSummaryPanel
+        route={{
+          ...route,
+          distance: {
+            ...route.distance,
+            legs: [first, { ...second, procedureAirportMismatch: true }],
+          },
+        }}
+        groundSpeedKt={undefined}
+        onGroundSpeedChange={vi.fn()}
+      />,
+    );
+    const tag = screen.getByText('wrong airport');
+    expect(tag).toHaveAttribute(
+      'title',
+      'This SID or STAR does not serve the airport it is filed at.',
+    );
+    expect(screen.getByText('MERIT -> KLAX').closest('li')).toContainElement(tag);
+    expect(screen.getByText('KJFK -> MERIT').closest('li')).not.toHaveTextContent('wrong airport');
+  });
+
+  it('titles each leg label with its full text, for when it truncates', () => {
+    render(
+      <PlanSummaryPanel
+        route={makeRoute()}
+        groundSpeedKt={undefined}
+        onGroundSpeedChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('KJFK -> MERIT')).toHaveAttribute('title', 'KJFK -> MERIT');
+  });
+
+  it('offers a separator that resizes the desktop panel', () => {
+    render(
+      <PlanSummaryPanel
+        route={undefined}
+        groundSpeedKt={undefined}
+        onGroundSpeedChange={vi.fn()}
+      />,
+    );
+    const separator = screen.getByRole('separator', { name: 'Resize flight plan panel' });
+    fireEvent.keyDown(separator, { key: 'ArrowLeft' });
+    expect(document.documentElement.style.getPropertyValue('--atlas-side-panel-width')).toBe(
+      '376px',
+    );
+    expect(window.localStorage.getItem('atlas:plan:summary-width:v1')).toBe('376');
+    window.localStorage.removeItem('atlas:plan:summary-width:v1');
   });
 
   it('handles a route that resolved to no drawable legs', () => {

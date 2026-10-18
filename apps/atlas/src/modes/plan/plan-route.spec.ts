@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 import type { FlightplanResolver, ParsedRoute } from '@squawk/flightplan/browser';
+import type { Procedure } from '@squawk/types';
 
 import { buildPlanRoute, findRouteIssues } from './plan-route.ts';
 
@@ -40,7 +41,71 @@ describe('buildPlanRoute', () => {
   });
 });
 
+/** A minimal SID or STAR record published at one airport. */
+function buildProcedure(type: 'SID' | 'STAR', identifier: string, airport: string): Procedure {
+  return {
+    name: identifier,
+    identifier,
+    type,
+    airports: [airport],
+    commonRoutes: [],
+    transitions: [],
+  };
+}
+
 describe('findRouteIssues', () => {
+  it('lists a procedure filed at an airport it does not serve, in route order with airway issues', () => {
+    const parsed: ParsedRoute = {
+      raw: 'KBOS DEEZZ6 CANDR J60 DJB BBOTL AALLE4 KBOS',
+      elements: [
+        {
+          type: 'sid',
+          raw: 'DEEZZ6',
+          procedure: buildProcedure('SID', 'DEEZZ6', 'KJFK'),
+          legs: [],
+          airportMismatch: 'KBOS',
+        },
+        {
+          type: 'airway',
+          raw: 'J60',
+          airway: { designation: 'J60', type: 'JET', region: 'US', waypoints: [] },
+          entryFix: 'CANDR',
+          exitFix: 'DJB',
+          waypoints: [],
+          gaps: [{ index: 3, from: 'JOT', to: 'DJB' }],
+          unusable: [],
+        },
+        {
+          type: 'star',
+          raw: 'AALLE4',
+          procedure: buildProcedure('STAR', 'AALLE4', 'KDEN'),
+          legs: [],
+          airportMismatch: 'KBOS',
+        },
+      ],
+    };
+    expect(findRouteIssues(parsed)).toEqual([
+      { kind: 'airportMismatch', procedure: 'DEEZZ6', procedureType: 'SID', airport: 'KBOS' },
+      { kind: 'gap', airway: 'J60', from: 'JOT', to: 'DJB' },
+      { kind: 'airportMismatch', procedure: 'AALLE4', procedureType: 'STAR', airport: 'KBOS' },
+    ]);
+  });
+
+  it('lists nothing for a procedure that serves its airport', () => {
+    const parsed: ParsedRoute = {
+      raw: 'KJFK LUCIT3 KIGQ',
+      elements: [
+        {
+          type: 'star',
+          raw: 'LUCIT3',
+          procedure: buildProcedure('STAR', 'LUCIT3', 'KIGQ'),
+          legs: [],
+        },
+      ],
+    };
+    expect(findRouteIssues(parsed)).toEqual([]);
+  });
+
   it('lists the gaps and unusable segments of each airway in traversal order', () => {
     const parsed: ParsedRoute = {
       raw: 'LAX J60 SAX',

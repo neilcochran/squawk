@@ -263,6 +263,21 @@ describe('EntityInspector', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('publishes its width for the overlays beside it only while it is open', () => {
+    const rootStyle = document.documentElement.style;
+    useSearchMock.mockReturnValue(search({ selected: undefined }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    const { rerender } = render(<EntityInspector />);
+    // The camera still reads the width while the panel is closed, to frame a
+    // search result for the panel about to open; the search box does not.
+    expect(rootStyle.getPropertyValue('--atlas-side-panel-width')).toBe('360px');
+    expect(rootStyle.getPropertyValue('--atlas-side-panel-open-width')).toBe('');
+
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    rerender(<EntityInspector />);
+    expect(rootStyle.getPropertyValue('--atlas-side-panel-open-width')).toBe('360px');
+  });
+
   it('renders a loading header when the relevant dataset is still streaming', () => {
     useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
     setupResolutions({
@@ -956,6 +971,20 @@ describe('EntityInspector', () => {
     expect(aside).toHaveClass('md:bottom-auto');
     expect(screen.queryByRole('button', { name: /minimize inspector/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /expand inspector/i }).length).toBeGreaterThan(0);
+  });
+
+  it('offers a resize separator only while the panel is expanded', () => {
+    useSearchMock.mockReturnValue(search({ selected: 'airport:BOS' }));
+    setupResolutions({ 'airport:BOS': airportResolution });
+    render(<EntityInspector />);
+    expect(screen.getByRole('separator', { name: 'Resize inspector' })).toBeInTheDocument();
+
+    const [minimizeButton] = screen.getAllByRole('button', { name: /minimize inspector/i });
+    if (minimizeButton === undefined) {
+      throw new Error('expected a minimize control to be rendered');
+    }
+    fireEvent.click(minimizeButton);
+    expect(screen.queryByRole('separator', { name: 'Resize inspector' })).not.toBeInTheDocument();
   });
 
   it('re-expands when the expand control is clicked', () => {

@@ -6,7 +6,6 @@ import type { Map as MaplibreMap } from 'maplibre-gl';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import {
-  INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX,
   fitFeatureBoundsWithInspectorOffset,
   isPointOutsideComfortableArea,
   panToFeatureWithInspectorOffset,
@@ -56,12 +55,26 @@ afterEach(() => {
     writable: true,
     value: originalInnerWidth,
   });
+  document.documentElement.style.removeProperty('--atlas-side-panel-width');
   vi.restoreAllMocks();
 });
 
-describe('INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX', () => {
-  it('matches the documented 360 px width', () => {
-    expect(INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX).toBe(360);
+describe('inspector occlusion width (desktop)', () => {
+  it('reserves the default 360 px when no panel has published a width', () => {
+    // x=500 clears the default strip: usable right edge 1024-360-50=614.
+    const map = buildFakeMap(1024, 768, () => ({ x: 500, y: 100 }));
+    expect(isPointOutsideComfortableArea({ lng: 0, lat: 0 }, map as unknown as MaplibreMap)).toBe(
+      false,
+    );
+  });
+
+  it('reserves the width the user dragged the panel to', () => {
+    // A 600 px panel pulls the usable right edge in to 1024-600-50=374.
+    document.documentElement.style.setProperty('--atlas-side-panel-width', '600px');
+    const map = buildFakeMap(1024, 768, () => ({ x: 500, y: 100 }));
+    expect(isPointOutsideComfortableArea({ lng: 0, lat: 0 }, map as unknown as MaplibreMap)).toBe(
+      true,
+    );
   });
 });
 

@@ -43,6 +43,7 @@ const LEGS: RouteLeg[] = [
     cumulativeDistanceNm: 2150,
     crossesGap: false,
     unusable: false,
+    procedureAirportMismatch: false,
   },
 ];
 

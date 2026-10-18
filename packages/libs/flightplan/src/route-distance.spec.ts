@@ -316,6 +316,55 @@ describe('computeRouteDistance', () => {
   });
 
   describe('procedure elements', () => {
+    it('flags the legs along a mismatched STAR and the leg out to the arrival airport', () => {
+      const departure = makeAirport('KJFK', 40.64, -73.78);
+      const entry = makeWaypoint('BBOTL', 40.1, -104.0);
+      const star = {
+        ...makeStar('AALLE4', [
+          { fixIdentifier: 'BBOTL', lat: 40.1, lon: -104.0 },
+          { fixIdentifier: 'AALLE', lat: 40.0, lon: -104.2 },
+          { fixIdentifier: 'HEDDD', lat: 39.9, lon: -104.4 },
+        ]),
+        airportMismatch: 'KBOS',
+      };
+      const arrival = makeAirport('KBOS', 42.36, -71.0);
+
+      const result = computeRouteDistance(route([departure, entry, star, arrival]));
+      assert.deepEqual(
+        result.legs.map((leg) => `${leg.from}-${leg.to}:${leg.procedureAirportMismatch}`),
+        ['KJFK-BBOTL:false', 'BBOTL-AALLE:true', 'AALLE-HEDDD:true', 'HEDDD-KBOS:true'],
+      );
+    });
+
+    it('flags the leg in from the departure airport and the legs along a mismatched SID', () => {
+      const departure = makeAirport('KBOS', 42.36, -71.0);
+      const sid = {
+        ...makeSid('DEEZZ6', [
+          { fixIdentifier: 'DEEZZ', lat: 40.8, lon: -73.6 },
+          { fixIdentifier: 'CANDR', lat: 40.9, lon: -74.5 },
+        ]),
+        airportMismatch: 'KBOS',
+      };
+      const enroute = makeWaypoint('MERIT', 41.4, -73.1);
+
+      const result = computeRouteDistance(route([departure, sid, enroute]));
+      assert.deepEqual(
+        result.legs.map((leg) => `${leg.from}-${leg.to}:${leg.procedureAirportMismatch}`),
+        ['KBOS-DEEZZ:true', 'DEEZZ-CANDR:true', 'CANDR-MERIT:false'],
+      );
+    });
+
+    it('flags no leg of a procedure that serves its airport', () => {
+      const star = makeStar('ARRIV3', [
+        { fixIdentifier: 'ENTER', lat: 41.0, lon: -74.0 },
+        { fixIdentifier: 'FINAL', lat: 40.0, lon: -74.0 },
+      ]);
+      const arrival = makeAirport('KXYZ', 39.9, -74.0);
+
+      const result = computeRouteDistance(route([star, arrival]));
+      assert.ok(result.legs.every((leg) => !leg.procedureAirportMismatch));
+    });
+
     it('produces legs for SID internal waypoints', () => {
       const sid = makeSid('DEEZZ5', [
         { fixIdentifier: 'RWY', lat: 40.0, lon: -74.0 },

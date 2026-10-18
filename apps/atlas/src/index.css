@@ -16,29 +16,24 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Atlas-specific Tailwind theme extensions. Each `--spacing-*` entry
- * extends Tailwind's spacing scale and is reachable via every spacing
- * utility (`w-*`, `h-*`, `p-*`, `m-*`, `min-w-*`, etc.). Add a token
- * here when a fixed dimension is referenced from more than one place
- * or needs a semantic name; one-off dimensions stay inline as rem
- * arbitrary values (e.g. `min-w-[12.5rem]`).
- */
-@theme {
-  /* Width of the desktop entity inspector overlay (360px @ 16px root). Mirrored by INSPECTOR_OVERLAY_DESKTOP_WIDTH_PX in use-chip-hover-pan.ts for MapLibre canvas math. */
-  --spacing-inspector: 22.5rem;
-}
-
-/*
- * Live geometry the mobile bottom-sheet inspector publishes for overlay
- * map controls to react to. The inspector overwrites these on
- * documentElement while it is open (see EntityInspector); the defaults
- * here keep the controls correctly placed before it mounts and after it
- * closes. `--atlas-inspector-occlusion` is how many pixels the sheet
- * covers up from the viewport bottom; `--atlas-inspector-anim` is the
- * bottom-transition duration (0ms while the sheet is dragged so controls
- * track the finger, 200ms for the snap).
+ * Live geometry the side panels publish for the chrome and camera that
+ * sit beside them. A panel overwrites these on documentElement while it
+ * is mounted (see EntityInspector and PlanSummaryPanel); the defaults
+ * here keep everything correctly placed before one mounts and after it
+ * unmounts. `--atlas-side-panel-width` is the desktop right-edge panel's
+ * width, which the user can drag (22.5rem = 360px @ 16px root, mirrored
+ * by SIDE_PANEL_DEFAULT_WIDTH_PX in shared/ui/side-panel-width.ts for
+ * MapLibre canvas math). `--atlas-side-panel-open-width` is that width
+ * while the panel is on screen and 0px while it is not, so the overlays
+ * beside it narrow only when there is a panel to clear.
+ * `--atlas-inspector-occlusion` is how many pixels
+ * the mobile bottom sheet covers up from the viewport bottom;
+ * `--atlas-inspector-anim` is the bottom-transition duration (0ms while
+ * the sheet is dragged so controls track the finger, 200ms for the snap).
  */
 :root {
+  --atlas-side-panel-width: 22.5rem;
+  --atlas-side-panel-open-width: 0px;
   --atlas-inspector-occlusion: 0px;
   --atlas-inspector-anim: 200ms;
 }

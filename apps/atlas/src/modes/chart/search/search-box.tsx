@@ -193,8 +193,12 @@ export function SearchBox({ onSelectResult }: SearchBoxProps): ReactElement {
     }
   }
 
+  // At `md:` an open inspector sits on the right edge and can be dragged
+  // wide, so the box narrows to stay 0.75rem clear of it (matching its own
+  // left inset), down to a 16rem floor that keeps the field and result rows
+  // usable.
   return (
-    <div className="absolute top-3 left-3 z-10 w-96 max-w-[calc(100vw-6rem)]">
+    <div className="absolute top-3 left-3 z-10 w-96 max-w-[calc(100vw-6rem)] md:max-w-[max(16rem,calc(100%_-_var(--atlas-side-panel-open-width)_-_1.5rem))]">
       <div className="relative">
         <span
           aria-hidden="true"
