@@ -328,6 +328,7 @@ export function EntityInspector({ siblings = [] }: EntityInspectorProps): ReactE
         <div ref={peekRef} className="sticky top-0 z-10 bg-white dark:bg-slate-900">
           <InspectorGrabHandle
             minimized={minimized}
+            label="inspector"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

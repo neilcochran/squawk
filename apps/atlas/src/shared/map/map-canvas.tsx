@@ -139,8 +139,8 @@ export interface MapCanvasProps {
   /**
    * Initial map pitch in degrees, clamped to `[0, MAP_MAX_PITCH]`. Consumed
    * once at mount via `initialViewState`; subsequent URL changes do not
-   * auto-move the camera (chart-mode's view-reset bus handles the explicit
-   * "snap to defaults" path that needs URL-to-map sync).
+   * auto-move the camera (the shared view-reset bus handles the explicit
+   * "snap to defaults" path, moving the map and letting the URL follow).
    */
   pitch: number;
   /** Called when the user finishes interacting with the map (fires on `moveend`). */

@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.15.3"]
+      "args": ["-y", "@squawk/mcp@0.15.4"]
     }
   }
 }
@@ -172,7 +172,7 @@ Pinning works the same way:
         "-p",
         "@squawk/icao-registry-data@0.8.12",
         "-p",
-        "@squawk/mcp@0.15.3",
+        "@squawk/mcp@0.15.4",
         "squawk-mcp"
       ]
     }
@@ -209,7 +209,7 @@ registered to stderr on every startup so you can verify the right runtime is bei
 ### Example prompts
 
 Once connected, the model can answer things like "what airspace is over KJFK at 4500 feet?",
-"give me the live METAR for KSFO and KOAK", "parse this route: KLAX DCT LAX J60 SAX DCT KJFK",
+"give me the live METAR for KSFO and KOAK", "parse this route: KSEA DCT SEA J70 GEP DCT KJFK",
 or "look up the aircraft with ICAO hex AC82EC".
 
 ## Standalone CLI

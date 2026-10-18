@@ -1,17 +1,20 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import type { RenderResult } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { RouteDistanceResult } from '@squawk/flightplan/browser';
 
 import type { PlanRoute, PlanRouteIssue } from './plan-route.ts';
 import { PlanSummaryPanel } from './plan-summary-panel.tsx';
+import type { PlanSummaryPanelProps } from './plan-summary-panel.tsx';
 
 function makeRoute(
   distance?: Partial<RouteDistanceResult>,
   issues: PlanRouteIssue[] = [],
+  raw = 'KJFK DCT MERIT DCT KLAX',
 ): PlanRoute {
   return {
-    parsed: { raw: '', elements: [] },
+    parsed: { raw, elements: [] },
     points: [],
     issues,
     distance: {
@@ -51,91 +54,126 @@ function makeRoute(
   };
 }
 
+const DEFAULT_PROPS: PlanSummaryPanelProps = {
+  route: undefined,
+  loading: false,
+  groundSpeedKt: undefined,
+  onGroundSpeedChange: () => {},
+};
+
+function renderPanel(props: Partial<PlanSummaryPanelProps> = {}): RenderResult {
+  return render(<PlanSummaryPanel {...DEFAULT_PROPS} {...props} />);
+}
+
+/** Answers the desktop-layout query `false`, as a phone below `md:` would. */
+function stubPhoneLayout(): void {
+  vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
+    matches: query !== '(min-width: 48rem)' && query !== '(prefers-color-scheme: dark)',
+    media: query,
+    onchange: null,
+    addListener: (): void => {},
+    removeListener: (): void => {},
+    addEventListener: (): void => {},
+    removeEventListener: (): void => {},
+    dispatchEvent: (): boolean => false,
+  }));
+}
+
+/**
+ * Installs a ResizeObserver stub that hands its callback back to the test so
+ * a layout change can be simulated; jsdom has none and reports every element
+ * as zero-height.
+ */
+function stubResizeObserver(): {
+  observe: ReturnType<typeof vi.fn>;
+  disconnect: ReturnType<typeof vi.fn>;
+  notify: () => void;
+} {
+  let callback: (() => void) | undefined;
+  const observe = vi.fn();
+  const disconnect = vi.fn();
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe = observe;
+      disconnect = disconnect;
+      constructor(next: () => void) {
+        callback = next;
+      }
+    },
+  );
+  return { observe, disconnect, notify: () => callback?.() };
+}
+
+function setHeights(asidePx: number, peekPx: number): void {
+  const aside = screen.getByRole('complementary', { name: 'Flight plan summary' });
+  Object.defineProperty(aside, 'offsetHeight', { configurable: true, value: asidePx });
+  const peek = screen.getByRole('heading', { name: 'Flight plan' }).closest('.sticky');
+  if (!(peek instanceof HTMLElement)) {
+    throw new Error('peek region not found');
+  }
+  Object.defineProperty(peek, 'offsetHeight', { configurable: true, value: peekPx });
+}
+
+function occlusion(): string {
+  return document.documentElement.style.getPropertyValue('--atlas-inspector-occlusion');
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('PlanSummaryPanel', () => {
   it('shows a hint when there is no route', () => {
-    render(
-      <PlanSummaryPanel
-        route={undefined}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel();
     expect(screen.getByText(/enter a route/i)).toBeInTheDocument();
   });
 
+  it('shows a loading line instead of the hint when a route is waiting on the data', () => {
+    renderPanel({ loading: true });
+    expect(
+      screen.getByText(/loading aeronautical data to resolve this route/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/enter a route/i)).not.toBeInTheDocument();
+  });
+
   it('renders the total distance and the leg breakdown', () => {
-    render(
-      <PlanSummaryPanel
-        route={makeRoute()}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({ route: makeRoute() });
     expect(screen.getAllByText('2,030 nm').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('KJFK -> MERIT')).toBeInTheDocument();
     expect(screen.getByText('2,000 nm')).toBeInTheDocument();
   });
 
   it('shows the ETE when present', () => {
-    render(
-      <PlanSummaryPanel
-        route={makeRoute({ estimatedTimeEnrouteHrs: 1.5 })}
-        groundSpeedKt={450}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({ route: makeRoute({ estimatedTimeEnrouteHrs: 1.5 }), groundSpeedKt: 450 });
     expect(screen.getByText('1:30')).toBeInTheDocument();
   });
 
   it('lists unresolved tokens', () => {
-    render(
-      <PlanSummaryPanel
-        route={makeRoute({ unresolvedElements: [{ type: 'unresolved', raw: 'ZZZZ' }] })}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({
+      route: makeRoute({ unresolvedElements: [{ type: 'unresolved', raw: 'ZZZZ' }] }),
+    });
     expect(screen.getByText('ZZZZ')).toBeInTheDocument();
   });
 
-  it('reports a numeric ground speed', () => {
+  it('commits the ground speed through the field', () => {
     const onGroundSpeedChange = vi.fn();
-    render(
-      <PlanSummaryPanel
-        route={makeRoute()}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={onGroundSpeedChange}
-      />,
-    );
-    fireEvent.change(screen.getByLabelText('Ground speed (kt)'), { target: { value: '450' } });
+    renderPanel({ route: makeRoute(), onGroundSpeedChange });
+    const field = screen.getByLabelText('Ground speed (kt)');
+    fireEvent.change(field, { target: { value: '450' } });
+    expect(onGroundSpeedChange).not.toHaveBeenCalled();
+    fireEvent.blur(field);
     expect(onGroundSpeedChange).toHaveBeenCalledWith(450);
   });
 
-  it('reports a cleared ground speed as undefined', () => {
-    const onGroundSpeedChange = vi.fn();
-    render(
-      <PlanSummaryPanel
-        route={makeRoute()}
-        groundSpeedKt={450}
-        onGroundSpeedChange={onGroundSpeedChange}
-      />,
-    );
-    fireEvent.change(screen.getByLabelText('Ground speed (kt)'), { target: { value: '' } });
-    expect(onGroundSpeedChange).toHaveBeenCalledWith(undefined);
-  });
-
   it('warns that the route is not valid as filed, naming each airway and procedure problem', () => {
-    render(
-      <PlanSummaryPanel
-        route={makeRoute(undefined, [
-          { kind: 'gap', airway: 'J60', from: 'JOT', to: 'DJB' },
-          { kind: 'unusable', airway: 'J108', from: 'TCS', to: 'GINGR' },
-          { kind: 'airportMismatch', procedure: 'AALLE4', procedureType: 'STAR', airport: 'KBOS' },
-        ])}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({
+      route: makeRoute(undefined, [
+        { kind: 'gap', airway: 'J60', from: 'JOT', to: 'DJB' },
+        { kind: 'unusable', airway: 'J108', from: 'TCS', to: 'GINGR' },
+        { kind: 'airportMismatch', procedure: 'AALLE4', procedureType: 'STAR', airport: 'KBOS' },
+      ]),
+    });
     const warning = screen.getByRole('status');
     expect(warning).toHaveTextContent('Not valid as filed');
     expect(warning).toHaveTextContent('J60 is not defined between JOT and DJB');
@@ -144,13 +182,7 @@ describe('PlanSummaryPanel', () => {
   });
 
   it('shows no filing warning for a valid route', () => {
-    render(
-      <PlanSummaryPanel
-        route={makeRoute()}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({ route: makeRoute() });
     expect(screen.queryByText('Not valid as filed')).toBeNull();
   });
 
@@ -160,22 +192,18 @@ describe('PlanSummaryPanel', () => {
     if (first === undefined || second === undefined) {
       throw new Error('fixture has two legs');
     }
-    render(
-      <PlanSummaryPanel
-        route={{
-          ...route,
-          distance: {
-            ...route.distance,
-            legs: [
-              { ...first, crossesGap: true },
-              { ...second, unusable: true },
-            ],
-          },
-        }}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({
+      route: {
+        ...route,
+        distance: {
+          ...route.distance,
+          legs: [
+            { ...first, crossesGap: true },
+            { ...second, unusable: true },
+          ],
+        },
+      },
+    });
     expect(screen.getByText('KJFK -> MERIT').closest('li')).toHaveTextContent('gap');
     expect(screen.getByText('MERIT -> KLAX').closest('li')).toHaveTextContent('unusable');
   });
@@ -186,19 +214,15 @@ describe('PlanSummaryPanel', () => {
     if (first === undefined || second === undefined) {
       throw new Error('fixture has two legs');
     }
-    render(
-      <PlanSummaryPanel
-        route={{
-          ...route,
-          distance: {
-            ...route.distance,
-            legs: [first, { ...second, procedureAirportMismatch: true }],
-          },
-        }}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({
+      route: {
+        ...route,
+        distance: {
+          ...route.distance,
+          legs: [first, { ...second, procedureAirportMismatch: true }],
+        },
+      },
+    });
     const tag = screen.getByText('wrong airport');
     expect(tag).toHaveAttribute(
       'title',
@@ -209,24 +233,12 @@ describe('PlanSummaryPanel', () => {
   });
 
   it('titles each leg label with its full text, for when it truncates', () => {
-    render(
-      <PlanSummaryPanel
-        route={makeRoute()}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({ route: makeRoute() });
     expect(screen.getByText('KJFK -> MERIT')).toHaveAttribute('title', 'KJFK -> MERIT');
   });
 
   it('offers a separator that resizes the desktop panel', () => {
-    render(
-      <PlanSummaryPanel
-        route={undefined}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel();
     const separator = screen.getByRole('separator', { name: 'Resize flight plan panel' });
     fireEvent.keyDown(separator, { key: 'ArrowLeft' });
     expect(document.documentElement.style.getPropertyValue('--atlas-side-panel-width')).toBe(
@@ -237,82 +249,111 @@ describe('PlanSummaryPanel', () => {
   });
 
   it('handles a route that resolved to no drawable legs', () => {
-    render(
-      <PlanSummaryPanel
-        route={makeRoute({ legs: [], totalDistanceNm: 0 })}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
+    renderPanel({ route: makeRoute({ legs: [], totalDistanceNm: 0 }) });
     expect(screen.getByText(/no drawable legs/i)).toBeInTheDocument();
   });
 
-  it('publishes the sheet occlusion as a custom property for the map controls', () => {
-    render(
-      <PlanSummaryPanel
-        route={undefined}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
-    // The zoom / tilt controls read this off documentElement to lift above
-    // the mobile bottom sheet. jsdom has no layout, so the measured height
-    // is zero.
-    expect(document.documentElement.style.getPropertyValue('--atlas-inspector-occlusion')).toBe(
-      '0px',
-    );
+  describe('bottom sheet visibility', () => {
+    it('hides the sheet below md until there is a route, keeping the desktop panel', () => {
+      renderPanel();
+      const aside = screen.getByRole('complementary', { name: 'Flight plan summary' });
+      expect(aside).toHaveClass('hidden', 'md:block');
+    });
+
+    it('shows the sheet once a route resolves', () => {
+      renderPanel({ route: makeRoute() });
+      const aside = screen.getByRole('complementary', { name: 'Flight plan summary' });
+      expect(aside).not.toHaveClass('hidden');
+    });
+
+    it('shows the sheet while a route in the URL waits on the data', () => {
+      renderPanel({ loading: true });
+      const aside = screen.getByRole('complementary', { name: 'Flight plan summary' });
+      expect(aside).not.toHaveClass('hidden');
+    });
   });
 
-  it('removes the occlusion property on unmount', () => {
-    const { unmount } = render(
-      <PlanSummaryPanel
-        route={undefined}
-        groundSpeedKt={undefined}
-        onGroundSpeedChange={vi.fn()}
-      />,
-    );
-    unmount();
-    expect(document.documentElement.style.getPropertyValue('--atlas-inspector-occlusion')).toBe('');
+  describe('occlusion', () => {
+    it('publishes zero occlusion with no route, whatever the measured height', () => {
+      const observer = stubResizeObserver();
+      renderPanel();
+      setHeights(320, 60);
+      act(() => observer.notify());
+      expect(occlusion()).toBe('0px');
+    });
+
+    it('publishes the measured sheet height while a route is shown', () => {
+      const observer = stubResizeObserver();
+      const { unmount } = renderPanel({ route: makeRoute() });
+      const aside = screen.getByRole('complementary', { name: 'Flight plan summary' });
+      expect(observer.observe).toHaveBeenCalledWith(aside);
+      setHeights(320, 60);
+      act(() => observer.notify());
+      expect(occlusion()).toBe('320px');
+      unmount();
+      expect(observer.disconnect).toHaveBeenCalled();
+    });
+
+    it('removes the occlusion properties on unmount', () => {
+      const { unmount } = renderPanel({ route: makeRoute() });
+      unmount();
+      expect(occlusion()).toBe('');
+      expect(document.documentElement.style.getPropertyValue('--atlas-inspector-anim')).toBe('');
+    });
   });
 
-  it('republishes the occlusion when the measured sheet height changes', () => {
-    // jsdom has no ResizeObserver. Stub one that hands its callback back to
-    // the test so a layout change can be simulated, and give the aside a
-    // measurable height, since jsdom reports every element as zero-height.
-    let notify: (() => void) | undefined;
-    const observe = vi.fn();
-    const disconnect = vi.fn();
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        observe = observe;
-        disconnect = disconnect;
-        constructor(callback: () => void) {
-          notify = callback;
-        }
-      },
-    );
-    try {
-      const { unmount } = render(
+  describe('minimizing the bottom sheet', () => {
+    it('collapses to the header from the grab handle and publishes the peek height', () => {
+      stubPhoneLayout();
+      const observer = stubResizeObserver();
+      renderPanel({ route: makeRoute() });
+      setHeights(320, 60);
+      act(() => observer.notify());
+      fireEvent.click(screen.getByRole('button', { name: 'Minimize flight plan' }));
+      const handle = screen.getByRole('button', { name: 'Expand flight plan' });
+      expect(handle).toHaveAttribute('aria-expanded', 'false');
+      expect(occlusion()).toBe('60px');
+      expect(screen.getByLabelText('Ground speed (kt)').closest('[inert]')).not.toBeNull();
+    });
+
+    it('restores from the grab handle', () => {
+      stubPhoneLayout();
+      renderPanel({ route: makeRoute() });
+      fireEvent.click(screen.getByRole('button', { name: 'Minimize flight plan' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Expand flight plan' }));
+      expect(screen.getByRole('button', { name: 'Minimize flight plan' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Ground speed (kt)').closest('[inert]')).toBeNull();
+    });
+
+    it('restores when a different route is committed', () => {
+      stubPhoneLayout();
+      const { rerender } = renderPanel({ route: makeRoute() });
+      fireEvent.click(screen.getByRole('button', { name: 'Minimize flight plan' }));
+      rerender(
+        <PlanSummaryPanel {...DEFAULT_PROPS} route={makeRoute(undefined, [], 'KBOS DCT KJFK')} />,
+      );
+      expect(screen.getByRole('button', { name: 'Minimize flight plan' })).toBeInTheDocument();
+    });
+
+    it('stays minimized when only the ground speed changes', () => {
+      stubPhoneLayout();
+      const { rerender } = renderPanel({ route: makeRoute() });
+      fireEvent.click(screen.getByRole('button', { name: 'Minimize flight plan' }));
+      rerender(
         <PlanSummaryPanel
-          route={undefined}
-          groundSpeedKt={undefined}
-          onGroundSpeedChange={vi.fn()}
+          {...DEFAULT_PROPS}
+          route={makeRoute({ estimatedTimeEnrouteHrs: 4.5 })}
+          groundSpeedKt={450}
         />,
       );
-      const aside = screen.getByRole('complementary', { name: 'Flight plan summary' });
-      expect(observe).toHaveBeenCalledWith(aside);
+      expect(screen.getByRole('button', { name: 'Expand flight plan' })).toBeInTheDocument();
+    });
 
-      Object.defineProperty(aside, 'offsetHeight', { configurable: true, value: 320 });
-      act(() => notify?.());
-      expect(document.documentElement.style.getPropertyValue('--atlas-inspector-occlusion')).toBe(
-        '320px',
-      );
-
-      unmount();
-      expect(disconnect).toHaveBeenCalled();
-    } finally {
-      vi.unstubAllGlobals();
-    }
+    it('never minimizes the desktop panel, which has no control to restore it', () => {
+      renderPanel({ route: makeRoute() });
+      fireEvent.click(screen.getByRole('button', { name: 'Minimize flight plan' }));
+      expect(screen.getByRole('button', { name: 'Minimize flight plan' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Ground speed (kt)').closest('[inert]')).toBeNull();
+    });
   });
 });

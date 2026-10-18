@@ -1,6 +1,7 @@
 /**
- * Great-circle geometry: distance, initial bearing, midpoint, and destination
- * point on a spherical Earth model using the Haversine and related formulas.
+ * Great-circle geometry: distance, initial bearing, midpoint, destination
+ * point, and points along an arc on a spherical Earth model using the
+ * Haversine and related formulas.
  *
  * All latitude and longitude inputs are in decimal degrees (WGS84, positive
  * north and east). Bearings are degrees true in the range [0, 360).
@@ -183,4 +184,49 @@ export function destination(
     lat: angle.radiansToDegrees(destLatRad),
     lon: ((angle.radiansToDegrees(destLonRad) + 540) % 360) - 180,
   };
+}
+
+/**
+ * Computes evenly spaced points along the great-circle arc between two
+ * geographic positions, no more than `maxSegmentNm` apart, starting at the
+ * first position and ending at the second. Useful for drawing a long leg on a
+ * flat map projection, where a straight line between the endpoints visibly
+ * departs from the arc the distance describes.
+ *
+ * The arc is split into the fewest equal segments that keep each one within
+ * `maxSegmentNm`, so a 100 NM leg at a 25 NM limit yields 5 points and a leg
+ * shorter than the limit yields just its 2 endpoints. The endpoints are
+ * returned exactly as given; intermediate longitudes are normalized to the
+ * range `[-180, 180]`, so an arc crossing the antimeridian changes sign
+ * partway, and a consumer drawing it on a map unwraps the longitudes first.
+ * For antipodal inputs the arc is underdetermined; the points follow the
+ * initial bearing {@link bearing} returns, so the result is still finite and
+ * deterministic.
+ *
+ * @param lat1 - Latitude of the start point in decimal degrees.
+ * @param lon1 - Longitude of the start point in decimal degrees.
+ * @param lat2 - Latitude of the end point in decimal degrees.
+ * @param lon2 - Longitude of the end point in decimal degrees.
+ * @param maxSegmentNm - Longest allowed distance between consecutive points in nautical miles. Must be a positive finite number.
+ * @returns The points along the arc in order, including both endpoints.
+ * @throws RangeError when `maxSegmentNm` is not a positive finite number.
+ */
+export function densify(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+  maxSegmentNm: number,
+): Coordinates[] {
+  if (!Number.isFinite(maxSegmentNm) || maxSegmentNm <= 0) {
+    throw new RangeError(`maxSegmentNm must be a positive finite number, got ${maxSegmentNm}`);
+  }
+  const { bearingDeg, distanceNm: totalNm } = bearingAndDistance(lat1, lon1, lat2, lon2);
+  const segments = Math.max(1, Math.ceil(totalNm / maxSegmentNm));
+  const points: Coordinates[] = [{ lat: lat1, lon: lon1 }];
+  for (let i = 1; i < segments; i++) {
+    points.push(destination(lat1, lon1, bearingDeg, (totalNm * i) / segments));
+  }
+  points.push({ lat: lat2, lon: lon2 });
+  return points;
 }

@@ -2,6 +2,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { MAP_MAX_PITCH } from './map-canvas.tsx';
+import { MAP_CONTROLS_INSET_CSS_VAR } from './map-controls-inset.ts';
 import { ZoomControls } from './zoom-controls.tsx';
 
 const {
@@ -90,6 +91,55 @@ describe('ZoomControls', () => {
     const panel = screen.getByRole('status').parentElement;
     expect(panel).toHaveClass('bottom-[max(2.5rem,var(--atlas-inspector-occlusion)_+_0.5rem)]');
     expect(panel).toHaveClass('md:bottom-10');
+  });
+
+  it('publishes how far the stack reaches in from the left edge, and clears it on unmount', () => {
+    // jsdom lays nothing out, so give the stack the 12px inset and 44px
+    // width it has on a phone.
+    const offsetLeft = vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockReturnValue(12);
+    const offsetWidth = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(44);
+    try {
+      const { unmount } = render(<ZoomControls />);
+      expect(document.documentElement.style.getPropertyValue(MAP_CONTROLS_INSET_CSS_VAR)).toBe(
+        '56px',
+      );
+      unmount();
+      expect(document.documentElement.style.getPropertyValue(MAP_CONTROLS_INSET_CSS_VAR)).toBe('');
+    } finally {
+      offsetLeft.mockRestore();
+      offsetWidth.mockRestore();
+    }
+  });
+
+  it('republishes its reach when its size changes', () => {
+    // jsdom has no ResizeObserver; stub one that hands its callback back.
+    let notify: (() => void) | undefined;
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        disconnect = disconnect;
+        constructor(callback: () => void) {
+          notify = callback;
+        }
+      },
+    );
+    const offsetWidth = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(44);
+    try {
+      const { unmount } = render(<ZoomControls />);
+      // The md breakpoint shrinks the buttons to 32px.
+      offsetWidth.mockReturnValue(32);
+      act(() => notify?.());
+      expect(document.documentElement.style.getPropertyValue(MAP_CONTROLS_INSET_CSS_VAR)).toBe(
+        '32px',
+      );
+      unmount();
+      expect(disconnect).toHaveBeenCalled();
+    } finally {
+      offsetWidth.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 
   it('renders the current zoom as a readout chip with an aria-label', () => {

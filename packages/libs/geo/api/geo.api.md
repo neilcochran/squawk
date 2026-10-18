@@ -40,6 +40,11 @@ function boundingBox(ring: number[][]): BoundingBox;
 // @public
 function boundingBoxesOverlap(a: BoundingBox, b: BoundingBox): boolean;
 
+// Warning: (ae-unresolved-link) The @link reference could not be resolved: The package "@squawk/geo" does not have an export "bearing"
+//
+// @public
+function densify(lat1: number, lon1: number, lat2: number, lon2: number, maxSegmentNm: number): Coordinates[];
+
 // @public
 function destination(lat: number, lon: number, bearingDeg: number, travelDistanceNm: number): Coordinates;
 
@@ -53,6 +58,7 @@ declare namespace greatCircle {
         bearingAndDistance,
         midpoint,
         destination,
+        densify,
         BearingAndDistance
     }
 }

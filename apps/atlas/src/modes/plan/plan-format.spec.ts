@@ -2,11 +2,30 @@ import { describe, it, expect } from 'vitest';
 
 import {
   describeLegStatus,
+  formatDatasetFailure,
   formatDistanceNm,
   formatEteHrs,
   formatLegStatus,
   formatRouteIssue,
 } from './plan-format.ts';
+
+describe('formatDatasetFailure', () => {
+  it('names a single failed dataset', () => {
+    expect(formatDatasetFailure(['procedures'])).toBe("Couldn't load procedures.");
+  });
+
+  it('joins two failed datasets with "and"', () => {
+    expect(formatDatasetFailure(['navaids', 'procedures'])).toBe(
+      "Couldn't load navaids and procedures.",
+    );
+  });
+
+  it('lists three or more failed datasets with a serial comma', () => {
+    expect(formatDatasetFailure(['airports', 'fixes', 'procedures'])).toBe(
+      "Couldn't load airports, fixes, and procedures.",
+    );
+  });
+});
 
 describe('formatDistanceNm', () => {
   it('rounds to the nearest whole mile with a unit suffix', () => {

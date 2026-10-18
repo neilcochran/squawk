@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FormEvent, ReactElement } from 'react';
+import type { FormEvent, ReactElement, Ref } from 'react';
 
 import { FOCUS_RING_CLASSES } from '../../shared/styles/style-tokens.ts';
 import { FloatingPanel } from '../../shared/ui/floating-panel.tsx';
@@ -12,6 +12,8 @@ export interface PlanRouteInputProps {
   value: string;
   /** Called with the normalized route string when the user commits (Enter / blur). */
   onCommit: (route: string) => void;
+  /** Ref to the input bar, so the route framing can keep the route clear of it. */
+  ref?: Ref<HTMLFormElement>;
 }
 
 /**
@@ -32,7 +34,7 @@ function normalizeRoute(raw: string): string {
  * keystroke. Resyncs to the incoming `value` when the URL route changes from
  * elsewhere (share-link load, mode reset).
  */
-export function PlanRouteInput({ value, onCommit }: PlanRouteInputProps): ReactElement {
+export function PlanRouteInput({ value, onCommit, ref }: PlanRouteInputProps): ReactElement {
   const [draft, setDraft] = useState(value);
   // Resync the draft when the URL route changes from outside this input.
   // setState-during-render via a previous-value sentinel avoids an effect
@@ -61,6 +63,7 @@ export function PlanRouteInput({ value, onCommit }: PlanRouteInputProps): ReactE
   // 16rem floor that keeps the field usable.
   return (
     <form
+      ref={ref}
       onSubmit={handleSubmit}
       className="absolute top-2 right-2 left-2 z-10 md:right-auto md:w-[34rem] md:max-w-[max(16rem,calc(100%_-_var(--atlas-side-panel-open-width)_-_1rem))]"
     >
@@ -70,7 +73,7 @@ export function PlanRouteInput({ value, onCommit }: PlanRouteInputProps): ReactE
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={commit}
-          placeholder="Enter a route, e.g. KLAX DCT LAX J60 SAX DCT KJFK"
+          placeholder="Enter a route, e.g. KSEA DCT SEA J70 GEP DCT KJFK"
           aria-label="Flight plan route"
           autoComplete="off"
           autoCapitalize="characters"

@@ -30,8 +30,8 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
-vi.mock('../modes/chart/view-reset-bus.ts', () => ({
-  dispatchChartViewReset: dispatchMock,
+vi.mock('../shared/map/view-reset-bus.ts', () => ({
+  dispatchViewReset: dispatchMock,
 }));
 
 describe('ModeSwitcher', () => {
@@ -52,8 +52,15 @@ describe('ModeSwitcher', () => {
     expect(screen.getByRole('link', { name: 'Plan' })).toBeInTheDocument();
   });
 
-  it('does not dispatch a chart reset when the active Plan link is clicked', () => {
+  it('dispatches a view reset when the active Plan link is clicked', () => {
     useRouterStateMock.mockReturnValue('/plan');
+    render(<ModeSwitcher />);
+    fireEvent.click(screen.getByRole('link', { name: 'Plan' }));
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not dispatch a reset when clicking the Plan link from another route', () => {
+    useRouterStateMock.mockReturnValue('/chart');
     render(<ModeSwitcher />);
     fireEvent.click(screen.getByRole('link', { name: 'Plan' }));
     expect(dispatchMock).not.toHaveBeenCalled();
@@ -75,7 +82,7 @@ describe('ModeSwitcher', () => {
     expect(dispatchMock).not.toHaveBeenCalled();
   });
 
-  it('dispatches a chart-view reset when the active Chart link is clicked', () => {
+  it('dispatches a view reset when the active Chart link is clicked', () => {
     useRouterStateMock.mockReturnValue('/chart');
     render(<ModeSwitcher />);
     fireEvent.click(screen.getByRole('link', { name: 'Chart' }));

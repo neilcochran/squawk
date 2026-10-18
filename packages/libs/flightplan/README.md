@@ -33,7 +33,7 @@ const resolver = createFlightplanResolver({
   procedures: createProcedureResolver({ data: usBundledProcedures.records }),
 });
 
-const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
 for (const element of route.elements) {
   console.log(element.type, element.raw);
 }
@@ -247,7 +247,7 @@ computation otherwise.
 ```typescript
 import { computeRouteDistance } from '@squawk/flightplan';
 
-const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
 const result = computeRouteDistance(route, 450);
 console.log(result.totalDistanceNm, result.estimatedTimeEnrouteHrs);
 ```
@@ -284,7 +284,7 @@ wind correction angle is zero.
 ```typescript
 import { computeRouteTiming } from '@squawk/flightplan';
 
-const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
 const result = computeRouteTiming(route, {
   trueAirspeedKt: 450,
   windProvider: (lat, lon) => ({ directionDeg: 270, speedKt: 80 }),
@@ -337,7 +337,7 @@ two drawable points, since a `LineString` requires at least two positions.
 ```typescript
 import { routeToLineString } from '@squawk/flightplan';
 
-const route = resolver.parse('KLAX DCT LAX J60 SAX DCT KJFK');
+const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
 const line = routeToLineString(route);
 if (line) {
   map.addSource('route', { type: 'geojson', data: line });

@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](../../../LICENSE.md) [![npm](https://img.shields.io/npm/v/@squawk/geo)](https://www.npmjs.com/package/@squawk/geo) ![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
 
-Geospatial utilities for aviation applications: great-circle distance, initial bearing, midpoint, destination point, polygon containment, and polygon label anchors.
+Geospatial utilities for aviation applications: great-circle distance, initial bearing, midpoint, destination point, points along an arc, polygon containment, and polygon label anchors.
 
 **[Documentation](https://neilcochran.github.io/squawk/modules/_squawk_geo.html)**
 
@@ -27,6 +27,10 @@ const brgDeg = greatCircle.bearing(40.6413, -73.7781, 33.9425, -118.4081);
 const both = greatCircle.bearingAndDistance(40.6413, -73.7781, 33.9425, -118.4081);
 const mid = greatCircle.midpoint(40.6413, -73.7781, 33.9425, -118.4081);
 const dest = greatCircle.destination(40.6413, -73.7781, 270, 100);
+
+// Points along the arc no more than 25 NM apart, endpoints included, for
+// drawing a long leg as a curve rather than a straight line on a flat map
+const arc = greatCircle.densify(40.6413, -73.7781, 33.9425, -118.4081, 25);
 
 // Polygon containment with bounding-box pre-filter
 const ring: number[][] = [
@@ -53,6 +57,7 @@ const anchor = polygonGeoJson.poleOfInaccessibility({ type: 'Polygon', coordinat
 - **Great-circle distance** in nautical miles using the Haversine formula
 - **Initial bearing** between two positions, degrees true
 - **Midpoint** and **destination point** along a great-circle path
+- **Points along an arc**, evenly spaced within a maximum segment length, for drawing great-circle legs on a flat map
 - **Point-in-polygon** ray casting for arbitrary closed rings
 - **Axis-aligned bounding box** computation and containment test, useful as a fast rejection filter before the full polygon test
 - **Pole of inaccessibility** of a GeoJSON polygon, the interior point farthest from every edge, for label placement that never lands outside the shape

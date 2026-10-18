@@ -1,10 +1,23 @@
 import type { PlanLegStatus } from './layers/plan-route-features.ts';
 import type { PlanRouteIssue } from './plan-route.ts';
+import type { PlanDatasetName } from './use-plan-resolver.ts';
 
 /**
  * Pure display formatters for the plan-mode summary panel. Kept in a `.ts`
  * sibling so they unit-test without a render harness.
  */
+
+/** Joins display names as an English list: `"a"`, `"a and b"`, `"a, b, and c"`. */
+const LIST_FORMAT = new Intl.ListFormat('en-US', { type: 'conjunction' });
+
+/**
+ * Headline for the notice shown when one or more datasets failed to load,
+ * naming each in route-resolution order (e.g. `["navaids", "procedures"]` ->
+ * `"Couldn't load navaids and procedures."`).
+ */
+export function formatDatasetFailure(failed: readonly PlanDatasetName[]): string {
+  return `Couldn't load ${LIST_FORMAT.format(failed)}.`;
+}
 
 /**
  * Formats a nautical-mile distance for display, rounded to the nearest whole

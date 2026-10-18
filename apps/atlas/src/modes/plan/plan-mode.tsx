@@ -1,14 +1,18 @@
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { MapProvider } from '@vis.gl/react-maplibre';
 import type { ReactElement } from 'react';
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { MapCanvas } from '../../shared/map/map-canvas.tsx';
-import type { ViewStateChange } from '../../shared/map/map-canvas.tsx';
+import { useViewStateWriteBack } from '../../shared/map/use-view-state-write-back.ts';
+import { ViewResetListener } from '../../shared/map/view-reset-listener.tsx';
+import { isDefaultMapView } from '../../shared/map/view-state-schema.ts';
 import { ZoomControls } from '../../shared/map/zoom-controls.tsx';
-import { FloatingPanel } from '../../shared/ui/floating-panel.tsx';
 
 import { PlanRouteLayer } from './layers/plan-route-layer.tsx';
+import { PlanDataStatus } from './plan-data-status.tsx';
+import { PlanRouteFramer } from './plan-route-framer.tsx';
+import type { PlanFrameRequest } from './plan-route-framer.tsx';
 import { PlanRouteInput } from './plan-route-input.tsx';
 import { PlanSummaryPanel } from './plan-summary-panel.tsx';
 import { PLAN_ROUTE_PATH } from './url-state.ts';
@@ -23,35 +27,45 @@ const route = getRouteApi(PLAN_ROUTE_PATH);
  * into a flightplan resolver, parses the URL `route` string, and renders the
  * resolved polyline + waypoints on the shared map with a summary panel
  * (distance, ETE, legs, unresolved tokens). The route string, ground speed,
- * and map view all round-trip through the URL so a plan is shareable.
+ * and map view all round-trip through the URL so a plan is shareable. A
+ * dataset that fails to load is named in a notice rather than blocking the
+ * mode, since the route still resolves against the data that did load.
+ *
+ * Committing a route frames it, so a short route entered at the CONUS zoom
+ * is not a speck. A share link that opens with a route but the default
+ * camera frames it the same way; one that carries its own camera keeps it.
  */
 export function PlanMode(): ReactElement {
   const { lat, lon, zoom, pitch, route: routeString, gs } = route.useSearch();
   const navigate = useNavigate({ from: PLAN_ROUTE_PATH });
 
-  // Composed flightplan resolver, undefined until every dataset has loaded.
-  const resolver = usePlanResolver();
+  // Composed flightplan resolver, ready once every dataset fetch has settled.
+  const resolverState = usePlanResolver();
+  const resolver = resolverState.status === 'ready' ? resolverState.resolver : undefined;
   // Parsed route + geometry + distance, undefined while loading or blank.
   const planRoute = usePlanRoute(resolver, routeString, gs);
+  // A route in the URL that cannot be resolved yet: a share link opened
+  // before the data has arrived.
+  const routeLoading = resolver === undefined && routeString.trim().length > 0;
 
-  const handleViewStateChange = useCallback(
-    (view: ViewStateChange): void => {
-      void navigate({
-        search: (prev) => ({
-          ...prev,
-          lat: view.lat,
-          lon: view.lon,
-          zoom: view.zoom,
-          pitch: view.pitch,
-        }),
-        replace: true,
-      });
-    },
-    [navigate],
-  );
+  // The route the camera should frame once it resolves. Seeded from the URL
+  // at mount for a share link with a route and no camera of its own.
+  const [frameRequest, setFrameRequest] = useState<PlanFrameRequest | undefined>(() => {
+    const initialRoute = routeString.trim();
+    return initialRoute.length > 0 && isDefaultMapView({ lat, lon, zoom, pitch })
+      ? { route: initialRoute }
+      : undefined;
+  });
+  const routeInputRef = useRef<HTMLFormElement>(null);
+  const sheetRef = useRef<HTMLElement>(null);
+
+  const handleViewStateChange = useViewStateWriteBack();
 
   const handleRouteCommit = useCallback(
     (next: string): void => {
+      if (next.length > 0) {
+        setFrameRequest({ route: next });
+      }
       void navigate({
         search: (prev) => ({ ...prev, route: next }),
         replace: true,
@@ -83,41 +97,23 @@ export function PlanMode(): ReactElement {
           <PlanRouteLayer points={planRoute.points} legs={planRoute.distance.legs} />
         ) : null}
       </MapCanvas>
-      <PlanRouteInput value={routeString} onCommit={handleRouteCommit} />
+      <ViewResetListener />
+      <PlanRouteFramer
+        route={planRoute}
+        request={frameRequest}
+        routeInputRef={routeInputRef}
+        sheetRef={sheetRef}
+      />
+      <PlanRouteInput ref={routeInputRef} value={routeString} onCommit={handleRouteCommit} />
       <PlanSummaryPanel
         route={planRoute}
+        loading={routeLoading}
         groundSpeedKt={gs}
         onGroundSpeedChange={handleGroundSpeedChange}
+        sheetRef={sheetRef}
       />
       <ZoomControls />
-      {resolver === undefined ? <PlanDataLoadingBadge /> : null}
+      <PlanDataStatus state={resolverState} />
     </MapProvider>
-  );
-}
-
-/**
- * Small centered "loading" pill shown while the aeronautical datasets stream
- * in. Plan mode has nothing to draw until the resolver is ready, so this
- * communicates the wait without the full-screen wash chart mode uses (there
- * are no partially-painted layers to hide here). Positioned below the route
- * input bar so the two do not overlap.
- */
-function PlanDataLoadingBadge(): ReactElement {
-  return (
-    <div
-      className="absolute inset-x-0 top-16 z-10 flex justify-center"
-      role="status"
-      aria-live="polite"
-    >
-      <FloatingPanel className="flex items-center gap-2 rounded-full px-3 py-1.5 shadow-md">
-        <span
-          className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
-          aria-hidden="true"
-        />
-        <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-          Loading aeronautical data...
-        </span>
-      </FloatingPanel>
-    </div>
   );
 }
