@@ -38,7 +38,7 @@
     "@squawk/units": "^0.4.8",
     "ink": "^8.0.0",
     "ink-text-input": "^6.0.0",
-    "react": "^19.3.0"
+    "react": "^19.3.1"
   },
   "keywords": [
     "aviation",
