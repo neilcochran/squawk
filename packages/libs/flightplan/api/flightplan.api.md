@@ -216,6 +216,7 @@ export interface SidRouteElement {
 export interface SpeedAltitudeRouteElement {
     altitudeFt?: number;
     flightLevel?: number;
+    fromPoint?: string;
     mach?: number;
     raw: string;
     speedKmPerHr?: number;

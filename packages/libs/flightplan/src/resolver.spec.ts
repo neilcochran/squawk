@@ -363,6 +363,7 @@ describe('parse', () => {
     if (el.type === 'speedAltitude') {
       expect(el.speedKt).toBe(450);
       expect(el.flightLevel).toBe(350);
+      expect(el.fromPoint).toBeUndefined();
     }
   });
 
@@ -497,6 +498,101 @@ describe('airport and navaid identifiers', () => {
       .elements.find((e) => e.type === 'star');
     assert(star && star.type === 'star');
     expect(star.airportMismatch).toBeUndefined();
+  });
+});
+
+describe('speed/altitude groups attached to a point', () => {
+  it('resolves the point and follows it with the group', () => {
+    const result = resolver.parse('KJFK DCT MERIT/N0450F370 DCT KLAX');
+    expect(result.elements.map((e) => e.type)).toEqual([
+      'airport',
+      'direct',
+      'waypoint',
+      'speedAltitude',
+      'direct',
+      'airport',
+    ]);
+    expect(result.elements[2]!.raw).toBe('MERIT');
+    expect(result.elements[3]).toEqual({
+      type: 'speedAltitude',
+      raw: 'N0450F370',
+      fromPoint: 'MERIT',
+      speedKt: 450,
+      flightLevel: 370,
+    });
+  });
+
+  it('places the group after the airway element when the point is its exit fix', () => {
+    const result = resolver.parse('CIVET J60 RESOR/M080F390 DCT KLAX');
+    expect(result.elements.map((e) => e.type)).toEqual([
+      'waypoint',
+      'airway',
+      'speedAltitude',
+      'direct',
+      'airport',
+    ]);
+    const airwayEl = result.elements[1]!;
+    assert(airwayEl.type === 'airway');
+    expect(airwayEl.exitFix).toBe('RESOR');
+    const group = result.elements[2]!;
+    assert(group.type === 'speedAltitude');
+    expect(group.fromPoint).toBe('RESOR');
+    expect(group.mach).toBe(0.8);
+  });
+
+  it('still joins an airway at a navaid that carries a group', () => {
+    // LAX directly ahead of J60 is the VORTAC the airway is joined at; the
+    // group between them must not hide the airway from that lookahead.
+    const result = resolver.parse('LAX/N0250A090 J60 CIVET');
+    expect(result.elements.map((e) => e.type)).toEqual(['waypoint', 'speedAltitude', 'airway']);
+    const entryEl = result.elements[0]!;
+    assert(entryEl.type === 'waypoint');
+    expect(entryEl.navaid?.identifier).toBe('LAX');
+    const group = result.elements[1]!;
+    assert(group.type === 'speedAltitude');
+    expect(group.fromPoint).toBe('LAX');
+    expect(group.altitudeFt).toBe(9000);
+    const airwayEl = result.elements[2]!;
+    assert(airwayEl.type === 'airway');
+    expect(airwayEl.entryFix).toBe('LAX');
+  });
+
+  it('emits a group attached to the last token', () => {
+    const result = resolver.parse('KJFK DCT KLAX/N0120A050');
+    expect(result.elements.map((e) => e.type)).toEqual([
+      'airport',
+      'direct',
+      'airport',
+      'speedAltitude',
+    ]);
+  });
+
+  it('is case-insensitive', () => {
+    const result = resolver.parse('kjfk dct merit/n0450f370');
+    const group = result.elements[3]!;
+    assert(group.type === 'speedAltitude');
+    expect(group.raw).toBe('N0450F370');
+    expect(group.fromPoint).toBe('MERIT');
+  });
+
+  it('leaves a slash token whose suffix is not a group unresolved', () => {
+    const result = resolver.parse('KJFK DCT MERIT/XYZ DCT KLAX');
+    expect(result.elements[2]).toEqual({ type: 'unresolved', raw: 'MERIT/XYZ' });
+  });
+
+  it('leaves a group with no point before the slash unresolved', () => {
+    const result = resolver.parse('/N0450F350');
+    expect(result.elements).toEqual([{ type: 'unresolved', raw: '/N0450F350' }]);
+  });
+
+  it('does not change the route distance', () => {
+    const plain = computeRouteDistance(resolver.parse('CIVET J60 RESOR DCT KLAX'));
+    const withGroups = computeRouteDistance(
+      resolver.parse('N0450F350 CIVET J60 RESOR/N0450F370 DCT KLAX'),
+    );
+    expect(withGroups.totalDistanceNm).toBe(plain.totalDistanceNm);
+    expect(withGroups.legs.length).toBe(plain.legs.length);
+    expect(withGroups.unresolvedElements).toEqual([]);
   });
 });
 

@@ -126,7 +126,7 @@ Each element has a `type` discriminant and a `raw` field with the original token
 | `direct`        | DCT (direct) indicator                    | -                                                                            |
 | `waypoint`      | Resolved fix or navaid                    | `fix` and/or `navaid`, `lat`, `lon`                                          |
 | `coordinate`    | Lat/lon specified in the route string     | `lat`, `lon`                                                                 |
-| `speedAltitude` | Speed/altitude group (e.g. N0450F350)     | `speedKt`/`speedKmPerHr`/`mach`, `flightLevel`/`altitudeFt`                  |
+| `speedAltitude` | Speed/altitude group (e.g. N0450F350)     | `speedKt`/`speedKmPerHr`/`mach`, `flightLevel`/`altitudeFt`, `fromPoint`     |
 | `unresolved`    | Token that could not be resolved          | -                                                                            |
 
 An airway element's `gaps` lists any published discontinuity its expansion
@@ -153,6 +153,16 @@ they describe the segment between the waypoint and the one before it.
 - `K0830F350` - 830 km/h at FL350
 - `M082F350` - Mach 0.82 at FL350
 - `N0250A065` - 250 knots at 6500 ft
+
+A group can stand alone, as the initial cruise speed and level at the start of
+an ICAO route, or be attached to a route point with a slash to change speed or
+level from that point on (`ENE/N0450F370`). An attached group is split off: the
+point resolves as it would on its own, including as the fix where an airway is
+joined or left, and the group follows the element that resolved it (the airway
+element, when the point is the airway's exit fix). The group element's `raw` is
+the group alone and its `fromPoint` names the point; a standalone group has no
+`fromPoint`. A slash token whose suffix is not a speed/altitude group is left
+unresolved as written.
 
 ### Airway handling
 
