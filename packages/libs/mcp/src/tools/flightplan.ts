@@ -1,7 +1,8 @@
 /**
  * @packageDocumentation
- * MCP tool module wrapping `@squawk/flightplan` route-string parsing and
- * great-circle distance computation. The flightplan resolver composes the
+ * MCP tool module wrapping `@squawk/flightplan` route-string parsing,
+ * great-circle distance, timing and geometry, and the airway altitude check.
+ * The flightplan resolver composes the
  * shared airport, navaid, fix, airway, and procedure resolvers from the
  * package's `resolvers` module, so the first route parsed in a session loads
  * all five of those snapshots.
@@ -11,6 +12,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import {
+  checkRouteAltitudes,
   computeRouteDistance,
   computeRouteTiming,
   createFlightplanResolver,
@@ -59,9 +61,12 @@ function getFlightplanResolver(): Promise<FlightplanResolver> {
   return flightplanResolver;
 }
 
+/** Navigation equipment kinds accepted by `check_route_altitudes`. */
+const NAVIGATION_EQUIPMENT_VALUES = ['conventional', 'gnss', 'dmeDmeIru'] as const;
+
 /**
- * Registers flight plan parsing and route distance tools on the given MCP
- * server. Each handler pulls the composed resolver from
+ * Registers flight plan parsing, route distance, timing, geometry and altitude
+ * check tools on the given MCP server. Each handler pulls the composed resolver from
  * {@link getFlightplanResolver}, which builds it from the bundled NASR and
  * CIFP snapshots on the first invocation.
  *
@@ -200,6 +205,54 @@ export function registerFlightplanTools(server: McpServer): void {
         ...(wind !== undefined ? { windProvider: () => wind } : {}),
         ...(fuelBurnPerHr !== undefined ? { fuelBurnPerHr } : {}),
         ...(fuelAvailable !== undefined ? { fuelAvailable } : {}),
+      });
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result },
+      };
+    },
+  );
+
+  server.registerTool(
+    'check_route_altitudes',
+    {
+      title: 'Check a route against airway altitudes',
+      description:
+        'Parses a flight plan route string and checks the cruise altitude against the published airway altitudes. Each airway leg is checked against the MEA for the direction flown and the navigation equipment, and against the MAA; each airway fix is checked against its MCA for the direction flown and its MRA. The applicable MEA is the lowest usable with any of the equipment: conventional uses the conventional MEA; gnss uses the GNSS MEA where published and the conventional MEA otherwise, plus FL180 on US Jet and Q route segments that publish no GNSS MEA; dmeDmeIru uses only the DME/DME/IRU MEA. The altitude starts at altitudeFt, which replaces the opening speed/altitude group of the route, or else at that group, and changes at each group attached to a later point (as in "ENE/N0450F370") from that point onward; a flight level counts as hundreds of feet. Each leg and point has a status of pass, fail or notDeterminable with findings (code, kind, message) explaining it, plus the values used; legs line up with compute_route_distance legs and points with get_route_geometry points. The overall status is the worst across legs and points, or noAltitude when no altitude is known. Legs spanning a published gap or along an unusable segment fail as filed; direct, coordinate and procedure legs are notDeterminable since no published enroute altitude applies. Flight below the MEA down to the MOCA, the cruising altitude for the direction of flight, and procedure altitude constraints are not checked. Airway and point FAA remarks are passed through unparsed and may carry further altitude restrictions.',
+      inputSchema: {
+        routeString: z
+          .string()
+          .min(1)
+          .describe('Whitespace-separated route string in ICAO Item 15 conventions.'),
+        altitudeFt: z
+          .number()
+          .positive()
+          .optional()
+          .describe(
+            'Cruise altitude in feet (FL350 is 35000). Replaces the opening speed/altitude group of the route; omit to use the groups in the route.',
+          ),
+        equipment: z
+          .array(z.enum(NAVIGATION_EQUIPMENT_VALUES))
+          .nonempty()
+          .describe(
+            'Navigation equipment aboard, at least one of conventional (VOR), gnss (IFR GPS) and dmeDmeIru (DME/DME/IRU RNAV).',
+          ),
+      },
+    },
+    async ({ routeString, altitudeFt, equipment }) => {
+      // The input schema already rejects an empty list; this narrows the type.
+      const [firstEquipment, ...otherEquipment] = equipment;
+      if (firstEquipment === undefined) {
+        return {
+          content: [{ type: 'text', text: 'equipment must name at least one kind.' }],
+          isError: true,
+        };
+      }
+      const resolver = await getFlightplanResolver();
+      const route = resolver.parse(routeString);
+      const result = checkRouteAltitudes(route, {
+        equipment: [firstEquipment, ...otherEquipment],
+        ...(altitudeFt !== undefined ? { altitudeFt } : {}),
       });
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],

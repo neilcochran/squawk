@@ -35,5 +35,23 @@ export type {
   RouteTimingResult,
 } from './route-timing.js';
 export type { WindVector } from '@squawk/flight-math';
+export { checkRouteAltitudes } from './route-altitude.js';
+export type {
+  NavigationEquipment,
+  RouteAltitudeCheckOptions,
+  RouteAltitudeCheckResult,
+  RouteAltitudeCheckStatus,
+  RouteAltitudeStatus,
+  RouteAltitudeFinding,
+  RouteAltitudeFindingCode,
+  RouteAltitudeFindingKind,
+  RouteAltitudeSource,
+  RouteAltitudeLeg,
+  RouteAltitudePoint,
+  RouteAltitudeAirwayRemarks,
+  ApplicableMinimumEnrouteAltitude,
+  ApplicableMinimumCrossingAltitude,
+  MinimumEnrouteAltitudeKind,
+} from './route-altitude.js';
 export { extractRoutePoints, routeToLineString } from './route-geometry.js';
 export type { RoutePoint } from './route-geometry.js';

@@ -6,6 +6,7 @@
 
 import type { Airport } from '@squawk/types';
 import type { Airway } from '@squawk/types';
+import type { AirwayDirection } from '@squawk/types';
 import type { AirwayGap } from '@squawk/types';
 import type { AirwaySegmentReference } from '@squawk/types';
 import type { AirwayWaypoint } from '@squawk/types';
@@ -35,6 +36,24 @@ export interface AirwayRouteElement {
     unusable: AirwaySegmentReference[];
     waypoints: AirwayWaypoint[];
 }
+
+// @public
+export interface ApplicableMinimumCrossingAltitude {
+    airway: string;
+    altitudeFt: number;
+    direction?: AirwayDirection;
+}
+
+// @public
+export interface ApplicableMinimumEnrouteAltitude {
+    altitudeFt: number;
+    basis: 'published' | 'highRouteGnssDefault';
+    direction?: AirwayDirection;
+    kind: MinimumEnrouteAltitudeKind;
+}
+
+// @public
+export function checkRouteAltitudes(route: ParsedRoute, options: RouteAltitudeCheckOptions): RouteAltitudeCheckResult;
 
 // @public
 export function computeRouteDistance(route: ParsedRoute, groundSpeedKt?: number): RouteDistanceResult;
@@ -119,10 +138,90 @@ export interface FlightplanResolverOptions {
 }
 
 // @public
+export type MinimumEnrouteAltitudeKind = 'conventional' | 'gnss' | 'dmeDmeIru';
+
+// @public
+export type NavigationEquipment = 'conventional' | 'gnss' | 'dmeDmeIru';
+
+// @public
 export interface ParsedRoute {
     elements: RouteElement[];
     raw: string;
 }
+
+// @public
+export interface RouteAltitudeAirwayRemarks {
+    airway: string;
+    remarks: string[];
+}
+
+// @public
+export interface RouteAltitudeCheckOptions {
+    altitudeFt?: number;
+    equipment: readonly [NavigationEquipment, ...NavigationEquipment[]];
+}
+
+// @public
+export interface RouteAltitudeCheckResult {
+    airwayRemarks: RouteAltitudeAirwayRemarks[];
+    legs: RouteAltitudeLeg[];
+    points: RouteAltitudePoint[];
+    status: RouteAltitudeCheckStatus;
+}
+
+// @public
+export type RouteAltitudeCheckStatus = RouteAltitudeStatus | 'noAltitude';
+
+// @public
+export interface RouteAltitudeFinding {
+    code: RouteAltitudeFindingCode;
+    kind: RouteAltitudeFindingKind;
+    message: string;
+}
+
+// @public
+export type RouteAltitudeFindingCode = 'belowMea' | 'aboveMaa' | 'belowMca' | 'belowMra' | 'mcaNotApplicable' | 'unusableSegment' | 'acrossGap' | 'noAltitude' | 'noPublishedMea' | 'noMeaForEquipment' | 'noPublishedCourse' | 'airwayDirectionUnknown' | 'notOnAirway';
+
+// @public
+export type RouteAltitudeFindingKind = 'fail' | 'notDeterminable' | 'info';
+
+// @public
+export interface RouteAltitudeLeg {
+    airway?: string;
+    altitudeFt?: number;
+    altitudeSource?: RouteAltitudeSource;
+    findings: RouteAltitudeFinding[];
+    from: string;
+    maximumAuthorizedAltitudeFt?: number;
+    minimumEnrouteAltitude?: ApplicableMinimumEnrouteAltitude;
+    status: RouteAltitudeStatus;
+    to: string;
+}
+
+// @public
+export interface RouteAltitudePoint {
+    altitudeFt?: number;
+    findings: RouteAltitudeFinding[];
+    label: string;
+    lat: number;
+    lon: number;
+    minimumCrossingAltitude?: ApplicableMinimumCrossingAltitude;
+    minimumReceptionAltitudeFt?: number;
+    remarks?: string[];
+    status: RouteAltitudeStatus;
+}
+
+// @public
+export type RouteAltitudeSource = {
+    type: 'input';
+} | {
+    type: 'route';
+    raw: string;
+    fromPoint?: string;
+};
+
+// @public
+export type RouteAltitudeStatus = 'pass' | 'fail' | 'notDeterminable';
 
 // @public
 export interface RouteDistanceResult {
