@@ -73,6 +73,12 @@ export interface GeoPoint {
    */
   procedureMismatchToNext?: true;
   /**
+   * Set when the leg from this point to the next is part of a SID or STAR:
+   * the procedure's own legs, plus the leg into a SID's first fix or out of a
+   * STAR's last fix.
+   */
+  procedureLegToNext?: true;
+  /**
    * The airway segment the leg from this point to the next runs along: the
    * airway element and the index of the expansion waypoint that starts the
    * segment. Absent when the leg is not an airway segment.
@@ -173,6 +179,9 @@ export function extractGeoPoints(elements: RouteElement[]): {
       if (point.procedureMismatchToNext) {
         last.procedureMismatchToNext = true;
       }
+      if (point.procedureLegToNext) {
+        last.procedureLegToNext = true;
+      }
       if (point.airwaySegmentToNext !== undefined && last.airwaySegmentToNext === undefined) {
         last.airwaySegmentToNext = point.airwaySegmentToNext;
       }
@@ -255,9 +264,15 @@ export function extractGeoPoints(elements: RouteElement[]): {
             ? [{ label: leg.fixIdentifier, lat: leg.lat, lon: leg.lon }]
             : [],
         );
+        if (el.type === 'sid' && drawable.length > 0 && points.length > 0) {
+          points[points.length - 1]!.procedureLegToNext = true;
+        }
         drawable.forEach((point, index) => {
-          if (mismatched && (el.type === 'star' || index < drawable.length - 1)) {
-            point.procedureMismatchToNext = true;
+          if (el.type === 'star' || index < drawable.length - 1) {
+            point.procedureLegToNext = true;
+            if (mismatched) {
+              point.procedureMismatchToNext = true;
+            }
           }
           emit(point);
         });

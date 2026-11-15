@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { magnetic } from '@squawk/flight-math';
+import { greatCircle } from '@squawk/geo';
 import type { Airway, AirwayRegion, AirwayType, AirwayWaypoint } from '@squawk/types';
 
 import type { AirwayRouteElement, SpeedAltitudeRouteElement } from './resolver.js';
 import { checkRouteAltitudes } from './route-altitude.js';
 import type { RouteAltitudeCheckOptions, RouteAltitudeFindingCode } from './route-altitude.js';
 import { computeRouteDistance } from './route-distance.js';
-import { makeAirport, makeDirect, makeWaypoint, route } from './test-utils.js';
+import { makeAirport, makeDirect, makeSid, makeStar, makeWaypoint, route } from './test-utils.js';
 
 /** A waypoint for {@link airway}: identifier, longitude on the 40N parallel, and any published fields. */
 type TestWaypoint = Partial<AirwayWaypoint> & { identifier: string; lon: number };
@@ -807,6 +809,182 @@ describe('checkRouteAltitudes', () => {
         equipment: CONVENTIONAL,
       });
       expect(result.airwayRemarks).toEqual([{ airway: 'R99', remarks: ['HF COMM REQUIRED'] }]);
+    });
+  });
+  describe('cruising altitude for the direction of flight', () => {
+    /** An airway along 40N with a published 090 / 270 course and no MAA. */
+    function eastWest(reversed = false): AirwayRouteElement {
+      return airway(
+        'V9',
+        [
+          {
+            identifier: 'AAA',
+            lon: -75,
+            minimumEnrouteAltitudeFt: 3000,
+            magneticCourseDeg: 90,
+            magneticCourseOppositeDeg: 270,
+          },
+          { identifier: 'BBB', lon: -74 },
+        ],
+        { reversed },
+      );
+    }
+
+    /** Returns the cruising altitude check of the single leg at an altitude. */
+    function cruising(altitudeFt: number, reversed = false): unknown {
+      return checkRouteAltitudes(route([eastWest(reversed)]), {
+        altitudeFt,
+        equipment: CONVENTIONAL,
+      }).legs[0]!.cruisingAltitude;
+    }
+
+    it('uses the published course in the direction flown', () => {
+      expect(cruising(7000)).toEqual({
+        status: 'appropriate',
+        message: '7000 ft is a cruising altitude for eastbound flight (magnetic course 090).',
+        magneticCourseDeg: 90,
+        courseSource: 'published',
+        direction: 'eastbound',
+      });
+      expect(cruising(8000, true)).toMatchObject({
+        status: 'appropriate',
+        magneticCourseDeg: 270,
+        direction: 'westbound',
+      });
+    });
+
+    it('names the nearest cruising altitudes when the altitude is wrong for the direction', () => {
+      expect(cruising(8000)).toMatchObject({
+        status: 'inappropriate',
+        message:
+          '8000 ft is not a cruising altitude for eastbound flight (magnetic course 090); the nearest are 7000 ft and 9000 ft.',
+      });
+      expect(cruising(6500, true)).toMatchObject({
+        status: 'inappropriate',
+        message:
+          '6500 ft is not a cruising altitude for westbound flight (magnetic course 270); the nearest are 6000 ft and 8000 ft.',
+      });
+    });
+
+    it('does not affect the leg or route status', () => {
+      const result = checkRouteAltitudes(route([eastWest()]), {
+        altitudeFt: 8000,
+        equipment: CONVENTIONAL,
+      });
+      expect(result.legs[0]!.cruisingAltitude.status).toBe('inappropriate');
+      expect(result.legs[0]!.status).toBe('pass');
+      expect(result.status).toBe('pass');
+    });
+
+    it('applies odd and even flight levels from FL180 through the RVSM band', () => {
+      for (const altitudeFt of [19000, 29000, 35000, 41000]) {
+        expect(cruising(altitudeFt)).toMatchObject({ status: 'appropriate' });
+        expect(cruising(altitudeFt, true)).toMatchObject({ status: 'inappropriate' });
+      }
+      for (const altitudeFt of [18000, 28000, 30000, 40000]) {
+        expect(cruising(altitudeFt, true)).toMatchObject({ status: 'appropriate' });
+        expect(cruising(altitudeFt)).toMatchObject({ status: 'inappropriate' });
+      }
+    });
+
+    it('applies 4000 ft spacing above FL410', () => {
+      for (const altitudeFt of [45000, 49000, 53000]) {
+        expect(cruising(altitudeFt)).toMatchObject({ status: 'appropriate' });
+      }
+      for (const altitudeFt of [43000, 47000, 51000]) {
+        expect(cruising(altitudeFt, true)).toMatchObject({ status: 'appropriate' });
+        expect(cruising(altitudeFt)).toMatchObject({ status: 'inappropriate' });
+      }
+      expect(cruising(42000)).toMatchObject({
+        status: 'inappropriate',
+        message:
+          '42000 ft is not a cruising altitude for eastbound flight (magnetic course 090); the nearest are 41000 ft and 45000 ft.',
+      });
+      expect(cruising(44000, true)).toMatchObject({ status: 'inappropriate' });
+    });
+
+    it('converts the initial great-circle course to magnetic on a direct leg', () => {
+      const result = checkRouteAltitudes(
+        route([
+          makeWaypoint('AAA', 40, -75),
+          makeDirect(),
+          makeWaypoint('BBB', 41, -75.2),
+          makeDirect(),
+          makeWaypoint('CCC', 40.2, -76.5),
+        ]),
+        { altitudeFt: 7000, equipment: CONVENTIONAL },
+      );
+      const north = result.legs[0]!.cruisingAltitude;
+      const expected = magnetic.trueToMagnetic(greatCircle.bearing(40, -75, 41, -75.2), 40, -75);
+      expect(north.courseSource).toBe('computed');
+      expect(north.magneticCourseDeg).toBeCloseTo(expected, 6);
+      expect(north.direction).toBe('eastbound');
+      expect(north.status).toBe('appropriate');
+      const southwest = result.legs[1]!.cruisingAltitude;
+      expect(southwest.direction).toBe('westbound');
+      expect(southwest.status).toBe('inappropriate');
+    });
+
+    it('computes the course on a leg across a published gap', () => {
+      const gapped = eastWest();
+      gapped.gaps = [{ index: 0, from: 'AAA', to: 'BBB' }];
+      const leg = checkRouteAltitudes(route([gapped]), {
+        altitudeFt: 7000,
+        equipment: CONVENTIONAL,
+      }).legs[0]!;
+      expect(leg.cruisingAltitude.courseSource).toBe('computed');
+      expect(leg.cruisingAltitude.direction).toBe('eastbound');
+    });
+
+    it('does not check SID and STAR legs, including the legs joining them to their airports', () => {
+      const result = checkRouteAltitudes(
+        route([
+          makeAirport('KAAA', 40, -77),
+          makeSid('SID1', [
+            { fixIdentifier: 'S1', lat: 40, lon: -76.8 },
+            { fixIdentifier: 'S2', lat: 40, lon: -76.5 },
+          ]),
+          makeDirect(),
+          makeWaypoint('MID', 40, -75),
+          makeStar('STAR1', [
+            { fixIdentifier: 'T1', lat: 40, lon: -74.5 },
+            { fixIdentifier: 'T2', lat: 40, lon: -74.2 },
+          ]),
+          makeAirport('KBBB', 40, -74),
+        ]),
+        { altitudeFt: 7000, equipment: CONVENTIONAL },
+      );
+      expect(result.legs.map((leg) => [leg.from, leg.cruisingAltitude.status])).toEqual([
+        ['KAAA', 'notDeterminable'],
+        ['S1', 'notDeterminable'],
+        ['S2', 'appropriate'],
+        ['MID', 'appropriate'],
+        ['T1', 'notDeterminable'],
+        ['T2', 'notDeterminable'],
+      ]);
+      expect(result.legs[0]!.cruisingAltitude).toEqual({
+        status: 'notDeterminable',
+        message: 'The leg is part of a SID or STAR, where the aircraft is climbing or descending.',
+      });
+    });
+
+    it('cannot determine a leg with no altitude', () => {
+      const result = checkRouteAltitudes(
+        route([
+          makeWaypoint('AAA', 40, -75),
+          makeDirect(),
+          makeWaypoint('BBB', 40, -74),
+          feet(7000, 'BBB'),
+          makeDirect(),
+          makeWaypoint('CCC', 40, -73),
+        ]),
+        { equipment: CONVENTIONAL },
+      );
+      expect(result.legs[0]!.cruisingAltitude).toEqual({
+        status: 'notDeterminable',
+        message: 'No altitude is known for the leg.',
+      });
+      expect(result.legs[1]!.cruisingAltitude.status).toBe('appropriate');
     });
   });
 });

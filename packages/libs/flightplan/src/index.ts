@@ -52,6 +52,8 @@ export type {
   ApplicableMinimumEnrouteAltitude,
   ApplicableMinimumCrossingAltitude,
   MinimumEnrouteAltitudeKind,
+  CruisingAltitudeCheck,
+  CruisingAltitudeStatus,
 } from './route-altitude.js';
 export { extractRoutePoints, routeToLineString } from './route-geometry.js';
 export type { RoutePoint } from './route-geometry.js';

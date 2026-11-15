@@ -10,6 +10,8 @@
  * `extractRoutePoints`, so the results line up with those one-for-one.
  */
 
+import { magnetic } from '@squawk/flight-math';
+import { greatCircle } from '@squawk/geo';
 import type { AirwayDirection, AirwayWaypoint } from '@squawk/types';
 
 import type { ParsedRoute, SpeedAltitudeRouteElement } from './resolver.js';
@@ -181,6 +183,40 @@ export interface ApplicableMinimumCrossingAltitude {
 }
 
 /**
+ * Whether a leg's altitude suits its direction of flight under the
+ * east/west rule of 14 CFR 91.179(b).
+ *
+ * - `appropriate` - a cruising altitude for the direction flown.
+ * - `inappropriate` - not a cruising altitude for the direction flown.
+ * - `notDeterminable` - no altitude is known, or the leg is part of a SID or
+ *   STAR, where the aircraft is climbing or descending.
+ */
+export type CruisingAltitudeStatus = 'appropriate' | 'inappropriate' | 'notDeterminable';
+
+/**
+ * The cruising altitude check for one leg. Advisory only: it does not affect
+ * the leg's or the route's `status`, since ATC assigns altitudes in
+ * controlled airspace and some routes publish altitudes against the rule.
+ */
+export interface CruisingAltitudeCheck {
+  /** The outcome of the check. */
+  status: CruisingAltitudeStatus;
+  /** Human-readable explanation with the values involved. */
+  message: string;
+  /** The magnetic course the direction of flight was taken from, in degrees; absent when not needed. */
+  magneticCourseDeg?: number;
+  /**
+   * `published` when `magneticCourseDeg` is the airway segment's published
+   * course in the direction flown; `computed` when it is the leg's initial
+   * great-circle true course converted to magnetic with the World Magnetic
+   * Model.
+   */
+  courseSource?: 'published' | 'computed';
+  /** `eastbound` for a magnetic course of 0 to 179 deg, `westbound` for 180 to 359 deg. */
+  direction?: 'eastbound' | 'westbound';
+}
+
+/**
  * The altitude check for one leg between two consecutive route points. The
  * leg at index `i` runs from `points[i]` to `points[i + 1]` and matches leg
  * `i` of `computeRouteDistance`.
@@ -204,6 +240,8 @@ export interface RouteAltitudeLeg {
   minimumEnrouteAltitude?: ApplicableMinimumEnrouteAltitude;
   /** The segment's MAA in feet, when published. */
   maximumAuthorizedAltitudeFt?: number;
+  /** Whether the altitude suits the direction of flight; advisory only. */
+  cruisingAltitude: CruisingAltitudeCheck;
 }
 
 /**
@@ -619,6 +657,109 @@ function applicableMca(
   };
 }
 
+/** Highest altitude in feet at which every thousand alternates direction (FL410). */
+const RVSM_TOP_FT = 41000;
+
+/** Highest altitude in feet considered when naming the nearest cruising altitudes (FL600). */
+const CRUISING_ALTITUDE_CEILING_FT = 60000;
+
+/**
+ * Whether an altitude is a cruising altitude for a direction of flight under
+ * 14 CFR 91.179(b) with RVSM: odd thousands eastbound and even thousands
+ * westbound up to FL410, then FL450, 490, 530 and so on eastbound and FL430,
+ * 470, 510 and so on westbound.
+ */
+function isCruisingAltitude(altitudeFt: number, eastbound: boolean): boolean {
+  if (altitudeFt <= 0 || altitudeFt % 1000 !== 0) {
+    return false;
+  }
+  if (altitudeFt <= RVSM_TOP_FT) {
+    return (altitudeFt / 1000) % 2 === (eastbound ? 1 : 0);
+  }
+  const base = eastbound ? 45000 : 43000;
+  return altitudeFt >= base && (altitudeFt - base) % 4000 === 0;
+}
+
+/**
+ * Lists the cruising altitudes for a direction of flight nearest an altitude:
+ * the highest below it and the lowest above it, where they exist.
+ */
+function nearestCruisingAltitudes(altitudeFt: number, eastbound: boolean): number[] {
+  let below: number | undefined;
+  let above: number | undefined;
+  for (let candidate = 1000; candidate <= CRUISING_ALTITUDE_CEILING_FT; candidate += 1000) {
+    if (!isCruisingAltitude(candidate, eastbound)) {
+      continue;
+    }
+    if (candidate < altitudeFt) {
+      below = candidate;
+    } else if (candidate > altitudeFt && above === undefined) {
+      above = candidate;
+    }
+  }
+  return [below, above].filter((value) => value !== undefined);
+}
+
+/**
+ * Formats a course in whole degrees, zero-padded to three digits.
+ */
+function formatCourse(courseDeg: number): string {
+  return String(Math.round(courseDeg) % 360).padStart(3, '0');
+}
+
+/**
+ * Checks a leg's altitude against the cruising altitudes for its direction
+ * of flight.
+ */
+function checkCruisingAltitude(
+  from: GeoPoint,
+  to: GeoPoint,
+  altitude: SourcedAltitude | undefined,
+): CruisingAltitudeCheck {
+  if (from.procedureLegToNext === true) {
+    return {
+      status: 'notDeterminable',
+      message: 'The leg is part of a SID or STAR, where the aircraft is climbing or descending.',
+    };
+  }
+  if (altitude === undefined) {
+    return { status: 'notDeterminable', message: 'No altitude is known for the leg.' };
+  }
+
+  const position = from.gapToNext === true ? undefined : from.airwaySegmentToNext;
+  const published = position === undefined ? undefined : segmentRecord(position)?.courseDeg;
+  const courseSource = published === undefined ? 'computed' : 'published';
+  const magneticCourseDeg =
+    published ??
+    magnetic.trueToMagnetic(
+      greatCircle.bearing(from.lat, from.lon, to.lat, to.lon),
+      from.lat,
+      from.lon,
+    );
+  const eastbound = ((magneticCourseDeg % 360) + 360) % 360 < 180;
+  const direction = eastbound ? 'eastbound' : 'westbound';
+  const course = `magnetic course ${formatCourse(magneticCourseDeg)}`;
+  const { altitudeFt } = altitude;
+
+  if (isCruisingAltitude(altitudeFt, eastbound)) {
+    return {
+      status: 'appropriate',
+      message: `${ft(altitudeFt)} is a cruising altitude for ${direction} flight (${course}).`,
+      magneticCourseDeg,
+      courseSource,
+      direction,
+    };
+  }
+  const nearest = nearestCruisingAltitudes(altitudeFt, eastbound).map(ft).join(' and ');
+  return {
+    status: 'inappropriate',
+    message: `${ft(altitudeFt)} is not a cruising altitude for ${direction} flight (${course}); the nearest are ${nearest}.`,
+    magneticCourseDeg,
+    courseSource,
+    direction,
+  };
+}
+
 /**
  * Derives a status from findings: `fail` if any fails, else
  * `notDeterminable` if any cannot be determined, else `pass`.
@@ -648,6 +789,7 @@ function checkLeg(
     to: to.label,
     status: 'pass',
     findings,
+    cruisingAltitude: checkCruisingAltitude(from, to, altitude),
   };
   if (altitude !== undefined) {
     leg.altitudeFt = altitude.altitudeFt;
@@ -853,8 +995,15 @@ function checkPoint(
  * or run along an unusable segment fail as filed. Legs that are not airway
  * segments (direct, coordinate and procedure legs) cannot be determined.
  *
- * Flight below the MEA down to the MOCA, the cruising altitude for the
- * direction of flight, and procedure altitude constraints are not checked.
+ * Each leg also carries an advisory `cruisingAltitude` check against the
+ * east/west rule of 14 CFR 91.179(b), with RVSM levels from FL290 to FL410,
+ * which does not affect any status. The course is the airway segment's
+ * published magnetic course in the direction flown, or else the leg's
+ * initial great-circle true course converted to magnetic with the World
+ * Magnetic Model; SID and STAR legs are not checked.
+ *
+ * Flight below the MEA down to the MOCA and procedure altitude constraints
+ * are not checked.
  *
  * ```typescript
  * import { createFlightplanResolver, checkRouteAltitudes } from '@squawk/flightplan';

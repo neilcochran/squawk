@@ -76,6 +76,18 @@ export interface CoordinateRouteElement {
 export function createFlightplanResolver(options: FlightplanResolverOptions): FlightplanResolver;
 
 // @public
+export interface CruisingAltitudeCheck {
+    courseSource?: 'published' | 'computed';
+    direction?: 'eastbound' | 'westbound';
+    magneticCourseDeg?: number;
+    message: string;
+    status: CruisingAltitudeStatus;
+}
+
+// @public
+export type CruisingAltitudeStatus = 'appropriate' | 'inappropriate' | 'notDeterminable';
+
+// @public
 export interface DirectRouteElement {
     raw: string;
     type: 'direct';
@@ -190,6 +202,7 @@ export interface RouteAltitudeLeg {
     airway?: string;
     altitudeFt?: number;
     altitudeSource?: RouteAltitudeSource;
+    cruisingAltitude: CruisingAltitudeCheck;
     findings: RouteAltitudeFinding[];
     from: string;
     maximumAuthorizedAltitudeFt?: number;
