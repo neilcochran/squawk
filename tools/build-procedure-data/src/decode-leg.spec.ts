@@ -144,8 +144,20 @@ describe('decodePrimaryLegRecord', () => {
     expect(decoded?.leg.altitudeConstraint?.primaryFt).toBe(18000);
   });
 
-  it('omits the altitude constraint when the descriptor is blank', () => {
+  it('normalizes a blank altitude descriptor to at (@), as ARINC 424 5.29 defines it', () => {
     const raw = buildLegRecord({ 84: '03000' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.altitudeConstraint).toEqual({ descriptor: '@', primaryFt: 3000 });
+  });
+
+  it('keeps an explicit @ altitude descriptor', () => {
+    const raw = buildLegRecord({ 82: '@', 84: 'FL240' });
+    const decoded = decodePrimaryLegRecord(raw);
+    expect(decoded?.leg.altitudeConstraint).toEqual({ descriptor: '@', primaryFt: 24000 });
+  });
+
+  it('omits the altitude constraint when the descriptor and altitude are both blank', () => {
+    const raw = buildLegRecord();
     const decoded = decodePrimaryLegRecord(raw);
     expect(decoded?.leg.altitudeConstraint).toBe(undefined);
   });
