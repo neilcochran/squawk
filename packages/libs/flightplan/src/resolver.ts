@@ -262,13 +262,21 @@ export interface CoordinateRouteElement {
 }
 
 /**
- * A speed and/or altitude group from the route string (e.g. "N0450F350").
+ * A speed and/or altitude group from the route string: either standalone
+ * (e.g. "N0450F350", the initial cruise speed and level) or attached to a
+ * route point as an ICAO change of speed or level (e.g. "ENE/N0450F370").
+ * An attached group follows the element that resolved its point.
  */
 export interface SpeedAltitudeRouteElement {
   /** Discriminant for speed/altitude elements. */
   type: 'speedAltitude';
-  /** Raw token from the route string. */
+  /** The group as it appears in the route string, without any point it is attached to (e.g. "N0450F370"). */
   raw: string;
+  /**
+   * The route point the group is attached to (the "ENE" of "ENE/N0450F370"),
+   * from which the new speed and level apply. Absent on a standalone group.
+   */
+  fromPoint?: string;
   /** Speed in knots, if specified with N prefix. */
   speedKt?: number;
   /** Speed in km/h, if specified with K prefix. */
@@ -449,6 +457,28 @@ function parseSpeedAltitude(token: string): SpeedAltitudeRouteElement | undefine
   }
 
   return result;
+}
+
+/**
+ * Splits a route point with an attached speed/altitude group (e.g.
+ * "ENE/N0450F370") into the point token and the group element, which names
+ * the point in `fromPoint`. Returns undefined when the token has no point
+ * before its last slash or the part after it is not a speed/altitude group.
+ */
+function splitAttachedSpeedAltitude(
+  token: string,
+): { point: string; group: SpeedAltitudeRouteElement } | undefined {
+  const slash = token.lastIndexOf('/');
+  if (slash <= 0) {
+    return undefined;
+  }
+  const group = parseSpeedAltitude(token.substring(slash + 1).toUpperCase());
+  if (group === undefined) {
+    return undefined;
+  }
+  const point = token.substring(0, slash);
+  group.fromPoint = point.toUpperCase();
+  return { point, group };
 }
 
 // ---------------------------------------------------------------------------
@@ -769,14 +799,38 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
         return { raw, elements: [] };
       }
 
-      const tokens = raw.split(/\s+/);
+      // A group attached to a point is set aside, so every lookahead below
+      // sees the point alone, and is emitted once the point has been consumed
+      // (after the airway element when the point is an airway's exit fix).
+      const tokens: string[] = [];
+      const attachedGroups = new Map<number, SpeedAltitudeRouteElement>();
+      for (const rawToken of raw.split(/\s+/)) {
+        const attached = splitAttachedSpeedAltitude(rawToken);
+        if (attached) {
+          attachedGroups.set(tokens.length, attached.group);
+          tokens.push(attached.point);
+        } else {
+          tokens.push(rawToken);
+        }
+      }
       const elements: RouteElement[] = [];
       let lastWaypointIdent: string | undefined;
       let lastAirportIdent: string | undefined;
       let lastPosition: RouteAnchor | undefined;
 
+      let flushedThrough = 0;
+      function flushAttachedGroups(end: number): void {
+        for (; flushedThrough < end; flushedThrough++) {
+          const group = attachedGroups.get(flushedThrough);
+          if (group) {
+            elements.push(group);
+          }
+        }
+      }
+
       let i = 0;
       while (i < tokens.length) {
+        flushAttachedGroups(i);
         const token = tokens[i]!.toUpperCase();
 
         // DCT (direct)
@@ -944,6 +998,7 @@ export function createFlightplanResolver(options: FlightplanResolverOptions): Fl
         lastWaypointIdent = undefined;
         i++;
       }
+      flushAttachedGroups(tokens.length);
 
       return { raw, elements };
     },
