@@ -341,7 +341,7 @@ Two floors, moved for different reasons:
 | Floor           | Declared in                                                                                                              | Now    | Moves when                                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------- |
 | **Published**   | `engines.node` of the 28 published packages                                                                              | `>=22` | A library needs a newer API, or the floor reaches EOL. Not when a new LTS ships - that breaks consumers for nothing |
-| **Development** | `engines.node` of the root, every `tools/*` (what `scripts/*` resolves against), and `apps/atlas`, plus [.nvmrc](.nvmrc) | `>=24` | A newer line reaches Active LTS. Never the Current line                                                             |
+| **Development** | `engines.node` of the root, every `tools/*` (what `scripts/*` resolves against), and `apps/atlas`, plus [.nvmrc](.nvmrc) | `>=26` | A newer line reaches Active LTS. Never the Current line                                                             |
 
 [.nvmrc](.nvmrc) is the single source of truth for the development floor: every CI job except the `compat` matrix reads it through `node-version-file`.
 

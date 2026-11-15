@@ -59,7 +59,7 @@ jobs:
       - run: npm run test:coverage
 
   # Every published package declares a Node floor its consumers rely on. This
-  # job runs their tests on that floor and on the development floor, so a change
+  # job runs their tests on that floor and on every LTS line above it, so a change
   # that quietly depends on a newer runtime fails here instead of in someone
   # else's install.
   #
@@ -72,10 +72,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The lowest line the published packages support, and the development
-        # floor. Add a line here when a new LTS arrives; drop one when it is EOL
-        # and the published `engines.node` has moved past it.
-        node: [22, 24]
+        # Every LTS line the published packages support, from their floor up to
+        # the development floor. Add a line here when a new LTS arrives; drop one
+        # when it is EOL and the published `engines.node` has moved past it.
+        node: [22, 24, 26]
     env:
       TURBO_CONCURRENCY: 100%
     steps:
