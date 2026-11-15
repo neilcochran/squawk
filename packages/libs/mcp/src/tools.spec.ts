@@ -1832,6 +1832,47 @@ describe('flightplan tools', () => {
     }
   });
 
+  it('check_route_altitudes adds an advisory cruising altitude check per leg', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'check_route_altitudes',
+        arguments: { routeString: 'PEAKS V190 TEDDI', altitudeFt: 14000, equipment: ['gnss'] },
+      });
+      const parsed = z
+        .object({
+          result: z
+            .object({
+              status: z.string(),
+              legs: z.array(
+                z
+                  .object({
+                    cruisingAltitude: z
+                      .object({
+                        status: z.string(),
+                        direction: z.string(),
+                        courseSource: z.string(),
+                      })
+                      .passthrough(),
+                  })
+                  .passthrough(),
+              ),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      // V190 PEAKS-TEDDI is flown eastbound, where 14000 ft is an even thousand.
+      expect(parsed.result.legs[0]!.cruisingAltitude).toMatchObject({
+        status: 'inappropriate',
+        direction: 'eastbound',
+        courseSource: 'published',
+      });
+      expect(parsed.result.status).toBe('pass');
+    } finally {
+      await close();
+    }
+  });
+
   it('check_route_altitudes reports noAltitude when no altitude is known', async () => {
     const { client, close } = await connectTestClient();
     try {

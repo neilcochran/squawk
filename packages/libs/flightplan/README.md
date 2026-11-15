@@ -181,11 +181,11 @@ measured as great circles instead of with the published segment distances.
 Parsing, distance and timing describe the route as filed and do not apply
 altitudes or constraints. `checkRouteAltitudes` (below) compares a cruise
 altitude with the airway MEAs, MAAs, minimum crossing altitudes and minimum
-reception altitudes; beyond that:
+reception altitudes, and with the cruising altitudes for the direction of
+flight; beyond that:
 
 - The MOCA is carried on the airway waypoints as published but is not used, so
-  flight below the MEA down to the MOCA is reported as below the MEA. No
-  altitude is checked for the direction of flight.
+  flight below the MEA down to the MOCA is reported as below the MEA.
 - Procedure legs keep their altitude and speed constraints, path terminators,
   holds and arc data as published. Distance and geometry use only the legs that
   end at a fix, joined by straight lines.
@@ -334,8 +334,9 @@ Checks the altitude flown on each airway leg against the published minimum
 enroute altitude (MEA) for the direction flown and the aircraft's navigation
 equipment, and against the maximum authorized altitude (MAA), and checks each
 airway fix against its minimum crossing altitude (MCA) and minimum reception
-altitude (MRA). Legs and points line up one-for-one with `computeRouteDistance`
-legs and `extractRoutePoints` points.
+altitude (MRA). Each leg also gets an advisory check of whether its altitude
+suits the direction of flight. Legs and points line up one-for-one with
+`computeRouteDistance` legs and `extractRoutePoints` points.
 
 ```typescript
 import { checkRouteAltitudes } from '@squawk/flightplan';
@@ -376,10 +377,25 @@ fix), or both ways when the two published values are equal. A point is crossed
 at the altitude of the leg arriving at it, so a group attached to a point takes
 effect after it.
 
+**Cruising altitude for the direction of flight:** each leg's `cruisingAltitude`
+says whether its altitude is `appropriate` or `inappropriate` under the
+east/west rule of 14 CFR 91.179(b), and names the nearest cruising altitudes
+when it is not. A magnetic course of 0 to 179 degrees takes odd thousands of
+feet (3000, 5000, FL190, FL350) and 180 to 359 degrees even thousands (4000,
+6000, FL180, FL360), up to FL410; above that, eastbound flight uses FL450, 490,
+530 and so on, and westbound FL430, 470, 510 and so on. RVSM is assumed from
+FL290 to FL410. The course is the airway segment's published magnetic course in
+the direction flown, or else the leg's initial great-circle course converted to
+magnetic with the World Magnetic Model. SID and STAR legs, including the leg
+into a SID's first fix and out of a STAR's last fix, are `notDeterminable`,
+since the aircraft is climbing or descending there. The check is advisory and
+never changes a leg's or the route's `status`: ATC assigns altitudes in
+controlled airspace, and some routes publish altitudes against the rule.
+
 **Returns:** `RouteAltitudeCheckResult` with:
 
 - `status` - `pass`, `fail` or `notDeterminable`, the worst across all legs and points; or `noAltitude`, with nothing else, when neither the options nor the route give an altitude
-- `legs` - ordered `RouteAltitudeLeg` values, each with `from`/`to`, the `airway` it runs along, `altitudeFt` and its `altitudeSource` (`input`, or the route group's `raw` and `fromPoint`), `status`, `findings`, the applied `minimumEnrouteAltitude` (value, MEA kind, direction, and whether it is published or the GNSS FL180 default) and the `maximumAuthorizedAltitudeFt`
+- `legs` - ordered `RouteAltitudeLeg` values, each with `from`/`to`, the `airway` it runs along, `altitudeFt` and its `altitudeSource` (`input`, or the route group's `raw` and `fromPoint`), `status`, `findings`, the applied `minimumEnrouteAltitude` (value, MEA kind, direction, and whether it is published or the GNSS FL180 default), the `maximumAuthorizedAltitudeFt`, and the advisory `cruisingAltitude` (`status`, `message`, `magneticCourseDeg`, `courseSource` of `published` or `computed`, and `direction` of `eastbound` or `westbound`)
 - `points` - ordered `RouteAltitudePoint` values, each with `label`, `lat`/`lon`, the crossing `altitudeFt`, `status`, `findings`, the applicable `minimumCrossingAltitude`, the `minimumReceptionAltitudeFt` and the point's FAA `remarks`
 - `airwayRemarks` - the FAA remarks of each airway flown that publishes any, once per airway
 
