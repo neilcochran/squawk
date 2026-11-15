@@ -987,4 +987,227 @@ describe('checkRouteAltitudes', () => {
       expect(result.legs[1]!.cruisingAltitude.status).toBe('appropriate');
     });
   });
+  describe('flight below the MEA down to the MOCA', () => {
+    /** A VORTAC waypoint at a longitude on 40N. */
+    function vor(
+      identifier: string,
+      lon: number,
+      fields: Partial<AirwayWaypoint> = {},
+    ): TestWaypoint {
+      return { identifier, lon, waypointType: 'NAVAID', navaidFacilityType: 'VORTAC', ...fields };
+    }
+
+    /** Segment fields: a 6000 ft conventional MEA and a 4000 ft MOCA, course 090 / 270. */
+    const SEGMENT: Partial<AirwayWaypoint> = {
+      minimumEnrouteAltitudeFt: 6000,
+      minimumObstructionClearanceAltitudeFt: 4000,
+      magneticCourseDeg: 90,
+      magneticCourseOppositeDeg: 270,
+    };
+
+    /** VOR AAA, fix BBB about 16 NM east, VOR CCC about 37 NM east; flown AAA to BBB. */
+    function nearVors(reversed = false): AirwayRouteElement {
+      const element = airway(
+        'V10',
+        [
+          vor('AAA', -75, SEGMENT),
+          { identifier: 'BBB', lon: -74.65, ...SEGMENT },
+          vor('CCC', -74.2),
+        ],
+        { reversed },
+      );
+      return element;
+    }
+
+    it('reports the MOCA and fails below it for any equipment', () => {
+      for (const equipment of [CONVENTIONAL, GNSS]) {
+        const leg = checkRouteAltitudes(route([nearVors()]), { altitudeFt: 3000, equipment })
+          .legs[0]!;
+        expect(leg.minimumObstructionClearanceAltitudeFt).toBe(4000);
+        expect(codes(leg)).toEqual(['belowMoca']);
+        expect(leg.findings[0]!.message).toBe(
+          '3000 ft is below the conventional MEA of 6000 ft and the MOCA of 4000 ft.',
+        );
+        expect(leg.belowMeaAllowance).toBeUndefined();
+      }
+    });
+
+    it('lets GNSS-equipped aircraft use the MOCA anywhere on the segment', () => {
+      const far = airway('V11', [
+        { identifier: 'AAA', lon: -75, ...SEGMENT },
+        { identifier: 'BBB', lon: -73 },
+      ]);
+      const leg = checkRouteAltitudes(route([far]), { altitudeFt: 5000, equipment: GNSS }).legs[0]!;
+      expect(leg.status).toBe('pass');
+      expect(codes(leg)).toEqual(['mocaAllowance']);
+      expect(leg.findings[0]!.kind).toBe('info');
+      expect(leg.belowMeaAllowance).toEqual({
+        basis: 'gnss',
+        altitudeFt: 4000,
+        cautions: [
+          'Communications are not assured below the MEA.',
+          'On a radio or navigation failure, climb to the MEA for the segment.',
+        ],
+      });
+    });
+
+    it('lets a conventional aircraft use the MOCA within 22 NM of the VOR it navigates by', () => {
+      const result = checkRouteAltitudes(route([nearVors()]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      });
+      const leg = result.legs[0]!;
+      expect(leg.status).toBe('pass');
+      expect(leg.belowMeaAllowance).toMatchObject({
+        basis: 'vorWithin22Nm',
+        altitudeFt: 4000,
+        vors: ['AAA'],
+      });
+      expect(leg.findings[0]!.message).toBe(
+        '5000 ft is below the conventional MEA of 6000 ft but at or above the MOCA of 4000 ft, and the leg stays within 22 NM of AAA.',
+      );
+    });
+
+    it('finds the VORs the same way when the airway is flown in reverse', () => {
+      const result = checkRouteAltitudes(route([nearVors(true)]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      });
+      expect(result.legs.map((leg) => [leg.from, leg.to])).toEqual([
+        ['CCC', 'BBB'],
+        ['BBB', 'AAA'],
+      ]);
+      expect(result.legs[1]!.belowMeaAllowance).toMatchObject({ vors: ['AAA'] });
+    });
+
+    it('fails a conventional aircraft beyond 22 NM of the VOR it navigates by', () => {
+      const element = airway('V12', [
+        vor('AAA', -75, SEGMENT),
+        { identifier: 'BBB', lon: -74, ...SEGMENT },
+        { identifier: 'CCC', lon: -73.5 },
+      ]);
+      const leg = checkRouteAltitudes(route([element]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      }).legs[0]!;
+      expect(leg.status).toBe('fail');
+      expect(codes(leg)).toEqual(['mocaBeyondVorRange']);
+      expect(leg.findings[0]!.message).toMatch(
+        /^5000 ft is below the conventional MEA of 6000 ft; the MOCA of 4000 ft applies only within 22 NM of the VOR navigated by, and the leg reaches 4\d\.\d NM from AAA, 2\d\.\d NM beyond it\.$/,
+      );
+      expect(leg.belowMeaAllowance).toBeUndefined();
+    });
+
+    it('switches VORs at the published changeover point instead of midway', () => {
+      // AAA-BBB is about 21 NM and CCC about 41 NM from AAA: midway, AAA covers the
+      // whole leg, but a changeover 5 NM from AAA hands most of it to the far VOR.
+      function build(changeoverDistanceNm?: number): AirwayRouteElement {
+        const first =
+          changeoverDistanceNm === undefined
+            ? vor('AAA', -75, SEGMENT)
+            : vor('AAA', -75, { ...SEGMENT, changeoverDistanceNm });
+        return airway('V13', [first, { identifier: 'BBB', lon: -74.55 }, vor('CCC', -74.1)]);
+      }
+      const midway = checkRouteAltitudes(route([build()]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      }).legs[0]!;
+      expect(midway.belowMeaAllowance).toMatchObject({ vors: ['AAA'] });
+
+      const published = checkRouteAltitudes(route([build(5)]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      }).legs[0]!;
+      expect(codes(published)).toEqual(['mocaBeyondVorRange']);
+      expect(published.findings[0]!.message).toContain('NM from CCC');
+    });
+
+    it('fails a conventional aircraft when the airway has no VOR to navigate the leg by', () => {
+      const element = airway('V14', [
+        { identifier: 'AAA', lon: -75, ...SEGMENT },
+        { identifier: 'BBB', lon: -74.9 },
+        { identifier: 'CCC', lon: -74.8, waypointType: 'NAVAID', navaidFacilityType: 'NDB' },
+      ]);
+      const leg = checkRouteAltitudes(route([element]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      }).legs[0]!;
+      expect(codes(leg)).toEqual(['mocaBeyondVorRange']);
+      expect(leg.findings[0]!.message).toBe(
+        '5000 ft is below the conventional MEA of 6000 ft; the MOCA of 4000 ft applies only within 22 NM of a VOR, and the airway has no VOR to navigate the leg by.',
+      );
+    });
+
+    it('does not look for a VOR across a published gap', () => {
+      const full: AirwayWaypoint[] = [
+        {
+          name: 'AAA',
+          identifier: 'AAA',
+          waypointType: 'NAVAID',
+          navaidFacilityType: 'VORTAC',
+          lat: 40,
+          lon: -75,
+        },
+        {
+          name: 'BBB',
+          identifier: 'BBB',
+          waypointType: 'FIX',
+          lat: 40,
+          lon: -74.95,
+          discontinued: true,
+        },
+        { name: 'CCC', identifier: 'CCC', waypointType: 'FIX', lat: 40, lon: -74.9, ...SEGMENT },
+        { name: 'DDD', identifier: 'DDD', waypointType: 'FIX', lat: 40, lon: -74.85 },
+      ];
+      const element = airway('V15', [
+        { identifier: 'CCC', lon: -74.9 },
+        { identifier: 'DDD', lon: -74.85 },
+      ]);
+      element.airway.waypoints = full;
+      element.waypoints = full.slice(2);
+      const leg = checkRouteAltitudes(route([element]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      }).legs[0]!;
+      expect(codes(leg)).toEqual(['mocaBeyondVorRange']);
+
+      delete full[1]!.discontinued;
+      const continuous = checkRouteAltitudes(route([element]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      }).legs[0]!;
+      expect(continuous.belowMeaAllowance).toMatchObject({ vors: ['AAA'] });
+    });
+
+    it("reads only the expansion when its waypoints are not the airway record's own", () => {
+      const element = nearVors();
+      element.airway.waypoints = element.airway.waypoints.map((waypoint) => ({ ...waypoint }));
+      const leg = checkRouteAltitudes(route([element]), {
+        altitudeFt: 5000,
+        equipment: CONVENTIONAL,
+      }).legs[0]!;
+      expect(leg.belowMeaAllowance).toMatchObject({ vors: ['AAA'] });
+    });
+
+    it('gives DME/DME/IRU equipment alone no MOCA allowance', () => {
+      const element = airway('Q99', [
+        {
+          identifier: 'AAA',
+          lon: -75,
+          dmeDmeIruMinimumEnrouteAltitudeFt: 6000,
+          minimumObstructionClearanceAltitudeFt: 4000,
+          magneticCourseDeg: 90,
+        },
+        { identifier: 'BBB', lon: -74.9 },
+      ]);
+      const leg = checkRouteAltitudes(route([element]), {
+        altitudeFt: 5000,
+        equipment: ['dmeDmeIru'],
+      }).legs[0]!;
+      expect(codes(leg)).toEqual(['belowMea']);
+      expect(leg.findings[0]!.message).toBe(
+        '5000 ft is below the dmeDmeIru MEA of 6000 ft; the MOCA of 4000 ft may be used only with GNSS or within 22 NM of a VOR.',
+      );
+    });
+  });
 });

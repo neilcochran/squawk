@@ -76,7 +76,15 @@ export type RouteAltitudeCheckStatus = RouteAltitudeStatus | 'noAltitude';
 /**
  * What a finding reports.
  *
- * - `belowMea` - the altitude is below the applicable MEA.
+ * - `belowMea` - the altitude is below the applicable MEA, and no MOCA
+ *   allows it (none is published, or the equipment has no allowance).
+ * - `belowMoca` - the altitude is below the applicable MEA and the MOCA.
+ * - `mocaAllowance` - the altitude is below the applicable MEA but at or
+ *   above the MOCA, which the equipment may use (see `belowMeaAllowance`).
+ * - `mocaBeyondVorRange` - the altitude is below the applicable MEA but at or
+ *   above the MOCA, and the equipment may use the MOCA only within 22 NM of
+ *   the VOR it navigates by, which the leg goes beyond (or the airway has no
+ *   VOR to navigate the leg by).
  * - `aboveMaa` - the altitude is above the MAA.
  * - `belowMca` - the point is crossed below its applicable MCA.
  * - `belowMra` - the point is crossed below its MRA.
@@ -97,6 +105,9 @@ export type RouteAltitudeCheckStatus = RouteAltitudeStatus | 'noAltitude';
  */
 export type RouteAltitudeFindingCode =
   | 'belowMea'
+  | 'belowMoca'
+  | 'mocaAllowance'
+  | 'mocaBeyondVorRange'
   | 'aboveMaa'
   | 'belowMca'
   | 'belowMra'
@@ -183,6 +194,25 @@ export interface ApplicableMinimumCrossingAltitude {
 }
 
 /**
+ * Why a leg may be flown below its applicable MEA, down to the MOCA, under
+ * 14 CFR 91.177(a)(2)(ii) and FAA Order JO 7110.65 4-5-6a.
+ */
+export interface BelowMeaAllowance {
+  /**
+   * `gnss` when the equipment includes GNSS, which may use the MOCA anywhere
+   * on the segment; `vorWithin22Nm` when it navigates by VOR and every point
+   * of the leg is within 22 NM of the VOR it navigates by.
+   */
+  basis: 'gnss' | 'vorWithin22Nm';
+  /** The MOCA in feet. */
+  altitudeFt: number;
+  /** Identifiers of the VORs the leg is navigated by, on a `vorWithin22Nm` allowance. */
+  vors?: string[];
+  /** Cautions that come with flying below the MEA. */
+  cautions: string[];
+}
+
+/**
  * Whether a leg's altitude suits its direction of flight under the
  * east/west rule of 14 CFR 91.179(b).
  *
@@ -240,6 +270,10 @@ export interface RouteAltitudeLeg {
   minimumEnrouteAltitude?: ApplicableMinimumEnrouteAltitude;
   /** The segment's MAA in feet, when published. */
   maximumAuthorizedAltitudeFt?: number;
+  /** The segment's MOCA in feet, when published. */
+  minimumObstructionClearanceAltitudeFt?: number;
+  /** Why the leg may be flown below its MEA down to the MOCA, when it is. */
+  belowMeaAllowance?: BelowMeaAllowance;
   /** Whether the altitude suits the direction of flight; advisory only. */
   cruisingAltitude: CruisingAltitudeCheck;
 }
@@ -657,6 +691,227 @@ function applicableMca(
   };
 }
 
+/** Distance in NM from a VOR within which the MOCA applies to aircraft navigating by it. */
+const MOCA_VOR_LIMIT_NM = 22;
+
+/** Longest spacing in NM between the points sampled along a leg to measure its distance from a VOR. */
+const MOCA_SAMPLE_SPACING_NM = 1;
+
+/** Navaid facility types that count as a VOR for the MOCA allowance. */
+const VOR_FACILITY_TYPES: ReadonlySet<string> = new Set(['VOR', 'VOR/DME', 'VORTAC', 'TACAN']);
+
+/** Cautions that come with flying below the MEA, from FAA Order JO 7110.65 4-5-6a. */
+const BELOW_MEA_CAUTIONS = [
+  'Communications are not assured below the MEA.',
+  'On a radio or navigation failure, climb to the MEA for the segment.',
+];
+
+/**
+ * Returns an airway waypoint's identifier, or its name when it has none.
+ */
+function waypointLabel(waypoint: AirwayWaypoint): string {
+  return waypoint.identifier ?? waypoint.name;
+}
+
+/**
+ * Whether an airway waypoint is a VOR, VOR/DME, VORTAC or TACAN.
+ */
+function isVor(waypoint: AirwayWaypoint): boolean {
+  return (
+    waypoint.waypointType === 'NAVAID' &&
+    waypoint.navaidFacilityType !== undefined &&
+    VOR_FACILITY_TYPES.has(waypoint.navaidFacilityType)
+  );
+}
+
+/** How far an airway leg strays from the VORs it is navigated by. */
+interface VorCoverage {
+  /** Identifiers of the VORs the leg is navigated by, in published airway order. */
+  vors: string[];
+  /** The greatest distance in NM from any point of the leg to the VOR it is navigated by. */
+  farthestNm: number;
+  /** Identifier of the VOR at `farthestNm`. */
+  farthestVor: string;
+}
+
+/**
+ * Measures how far an airway leg strays from the VORs it is navigated by:
+ * the nearest VOR along the airway behind the leg and ahead of it (not
+ * across a published gap), with the changeover point between them where the
+ * VOR publishes one and the midpoint otherwise. Reads the whole airway when
+ * the expansion's waypoints are the airway's own, and the expansion alone
+ * otherwise. Returns undefined when no VOR is found either way.
+ */
+function vorCoverage(position: AirwayPosition): VorCoverage | undefined {
+  const { element, index } = position;
+  const reversed = element.reversed === true;
+  const segmentStart = element.waypoints[reversed ? index + 1 : index]!;
+  const segmentEnd = element.waypoints[reversed ? index : index + 1]!;
+
+  // The airway in published order, and the index in it where the segment starts.
+  let line = element.airway.waypoints;
+  let start = line.indexOf(segmentStart);
+  if (start < 0 || line[start + 1] !== segmentEnd) {
+    line = reversed ? [...element.waypoints].reverse() : element.waypoints;
+    start = reversed ? element.waypoints.length - 2 - index : index;
+  }
+
+  const along = [0];
+  for (let k = 0; k < line.length - 1; k++) {
+    const here = line[k]!;
+    const next = line[k + 1]!;
+    const published = here.distanceToNextNm;
+    const length =
+      published !== undefined && published > 0
+        ? published
+        : greatCircle.distanceNm(here.lat, here.lon, next.lat, next.lon);
+    along.push(along[k]! + length);
+  }
+
+  let behind: number | undefined;
+  for (let k = start; k >= 0; k--) {
+    if (k < start && line[k]!.discontinued === true) {
+      break;
+    }
+    if (isVor(line[k]!)) {
+      behind = k;
+      break;
+    }
+  }
+  let ahead: number | undefined;
+  for (let k = start + 1; k < line.length; k++) {
+    if (k > start + 1 && line[k - 1]!.discontinued === true) {
+      break;
+    }
+    if (isVor(line[k]!)) {
+      ahead = k;
+      break;
+    }
+  }
+  if (behind === undefined && ahead === undefined) {
+    return undefined;
+  }
+
+  let changeover = 0;
+  if (behind !== undefined && ahead !== undefined) {
+    const published = line[behind]!.changeoverDistanceNm;
+    changeover =
+      published !== undefined ? along[behind]! + published : (along[behind]! + along[ahead]!) / 2;
+  }
+
+  const lengthNm = greatCircle.distanceNm(
+    segmentStart.lat,
+    segmentStart.lon,
+    segmentEnd.lat,
+    segmentEnd.lon,
+  );
+  const bearing = greatCircle.bearing(
+    segmentStart.lat,
+    segmentStart.lon,
+    segmentEnd.lat,
+    segmentEnd.lon,
+  );
+  const steps = Math.max(1, Math.ceil(lengthNm / MOCA_SAMPLE_SPACING_NM));
+  const used = new Set<number>();
+  let farthestNm = -1;
+  let farthestIndex = 0;
+  for (let step = 0; step <= steps; step++) {
+    const fraction = step / steps;
+    const point =
+      step === steps
+        ? { lat: segmentEnd.lat, lon: segmentEnd.lon }
+        : greatCircle.destination(segmentStart.lat, segmentStart.lon, bearing, lengthNm * fraction);
+    const alongNm = along[start]! + fraction * (along[start + 1]! - along[start]!);
+    const vorIndex =
+      ahead === undefined || (behind !== undefined && alongNm <= changeover) ? behind : ahead;
+    if (vorIndex === undefined) {
+      continue;
+    }
+    used.add(vorIndex);
+    const vor = line[vorIndex]!;
+    const distanceNm = greatCircle.distanceNm(point.lat, point.lon, vor.lat, vor.lon);
+    if (distanceNm > farthestNm) {
+      farthestNm = distanceNm;
+      farthestIndex = vorIndex;
+    }
+  }
+
+  return {
+    vors: [...used].sort((a, b) => a - b).map((k) => waypointLabel(line[k]!)),
+    farthestNm,
+    farthestVor: waypointLabel(line[farthestIndex]!),
+  };
+}
+
+/**
+ * Checks an altitude below a leg's applicable MEA against the segment's
+ * MOCA and the allowance the equipment has to use it.
+ */
+function checkBelowMea(
+  leg: RouteAltitudeLeg,
+  position: AirwayPosition,
+  altitudeFt: number,
+  mea: ApplicableMinimumEnrouteAltitude,
+  equipment: ReadonlySet<NavigationEquipment>,
+): RouteAltitudeFinding {
+  const label = mea.basis === 'highRouteGnssDefault' ? 'GNSS high altitude route' : mea.kind;
+  const belowMea = `${ft(altitudeFt)} is below the ${label} MEA of ${ft(mea.altitudeFt)}${directionSuffix(mea.direction)}`;
+  const moca = leg.minimumObstructionClearanceAltitudeFt;
+  if (moca === undefined) {
+    return { code: 'belowMea', kind: 'fail', message: `${belowMea}.` };
+  }
+  if (altitudeFt < moca) {
+    return {
+      code: 'belowMoca',
+      kind: 'fail',
+      message: `${belowMea} and the MOCA of ${ft(moca)}.`,
+    };
+  }
+  if (equipment.has('gnss')) {
+    leg.belowMeaAllowance = { basis: 'gnss', altitudeFt: moca, cautions: [...BELOW_MEA_CAUTIONS] };
+    return {
+      code: 'mocaAllowance',
+      kind: 'info',
+      message: `${belowMea} but at or above the MOCA of ${ft(moca)}, which GNSS-equipped aircraft may use.`,
+    };
+  }
+  if (!equipment.has('conventional')) {
+    return {
+      code: 'belowMea',
+      kind: 'fail',
+      message: `${belowMea}; the MOCA of ${ft(moca)} may be used only with GNSS or within ${MOCA_VOR_LIMIT_NM} NM of a VOR.`,
+    };
+  }
+  const coverage = vorCoverage(position);
+  if (coverage === undefined) {
+    return {
+      code: 'mocaBeyondVorRange',
+      kind: 'fail',
+      message: `${belowMea}; the MOCA of ${ft(moca)} applies only within ${MOCA_VOR_LIMIT_NM} NM of a VOR, and the airway has no VOR to navigate the leg by.`,
+    };
+  }
+  if (coverage.farthestNm <= MOCA_VOR_LIMIT_NM) {
+    leg.belowMeaAllowance = {
+      basis: 'vorWithin22Nm',
+      altitudeFt: moca,
+      vors: coverage.vors,
+      cautions: [...BELOW_MEA_CAUTIONS],
+    };
+    return {
+      code: 'mocaAllowance',
+      kind: 'info',
+      message: `${belowMea} but at or above the MOCA of ${ft(moca)}, and the leg stays within ${MOCA_VOR_LIMIT_NM} NM of ${coverage.vors.join(' and ')}.`,
+    };
+  }
+  const farthest = coverage.farthestNm.toFixed(1);
+  const beyond = (coverage.farthestNm - MOCA_VOR_LIMIT_NM).toFixed(1);
+  return {
+    code: 'mocaBeyondVorRange',
+    kind: 'fail',
+    message: `${belowMea}; the MOCA of ${ft(moca)} applies only within ${MOCA_VOR_LIMIT_NM} NM of the VOR navigated by, and the leg reaches ${farthest} NM from ${coverage.farthestVor}, ${beyond} NM beyond it.`,
+  };
+}
+
 /** Highest altitude in feet at which every thousand alternates direction (FL410). */
 const RVSM_TOP_FT = 41000;
 
@@ -848,6 +1103,10 @@ function checkLeg(
   if (maa !== undefined) {
     leg.maximumAuthorizedAltitudeFt = maa;
   }
+  const moca = segment.record.minimumObstructionClearanceAltitudeFt;
+  if (moca !== undefined) {
+    leg.minimumObstructionClearanceAltitudeFt = moca;
+  }
 
   if (altitude === undefined) {
     findings.push({
@@ -860,13 +1119,9 @@ function checkLeg(
       leg.minimumEnrouteAltitude !== undefined &&
       altitude.altitudeFt < leg.minimumEnrouteAltitude.altitudeFt
     ) {
-      const { altitudeFt, kind, direction, basis } = leg.minimumEnrouteAltitude;
-      const label = basis === 'highRouteGnssDefault' ? 'GNSS high altitude route' : kind;
-      findings.push({
-        code: 'belowMea',
-        kind: 'fail',
-        message: `${ft(altitude.altitudeFt)} is below the ${label} MEA of ${ft(altitudeFt)}${directionSuffix(direction)}.`,
-      });
+      findings.push(
+        checkBelowMea(leg, position, altitude.altitudeFt, leg.minimumEnrouteAltitude, equipment),
+      );
     }
     if (maa !== undefined && altitude.altitudeFt > maa) {
       findings.push({
@@ -1002,8 +1257,15 @@ function checkPoint(
  * initial great-circle true course converted to magnetic with the World
  * Magnetic Model; SID and STAR legs are not checked.
  *
- * Flight below the MEA down to the MOCA and procedure altitude constraints
- * are not checked.
+ * Below the applicable MEA, a leg at or above the segment's MOCA passes with
+ * a `belowMeaAllowance` when the equipment includes GNSS, or when it includes
+ * conventional navigation and every point of the leg is within 22 NM of the
+ * VOR it is navigated by (the nearest VOR along the airway behind and ahead,
+ * split at the published changeover point or else midway), under 14 CFR
+ * 91.177(a)(2)(ii) and FAA Order JO 7110.65 4-5-6a. Below the MOCA it fails.
+ * The 300 ft margin above controlled airspace and clearance below the MEA
+ * with radar service are not checked, and neither are procedure altitude
+ * constraints.
  *
  * ```typescript
  * import { createFlightplanResolver, checkRouteAltitudes } from '@squawk/flightplan';

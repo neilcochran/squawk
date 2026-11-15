@@ -52,6 +52,7 @@ export type {
   ApplicableMinimumEnrouteAltitude,
   ApplicableMinimumCrossingAltitude,
   MinimumEnrouteAltitudeKind,
+  BelowMeaAllowance,
   CruisingAltitudeCheck,
   CruisingAltitudeStatus,
 } from './route-altitude.js';

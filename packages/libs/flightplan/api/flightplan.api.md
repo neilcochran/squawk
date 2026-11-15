@@ -53,6 +53,14 @@ export interface ApplicableMinimumEnrouteAltitude {
 }
 
 // @public
+export interface BelowMeaAllowance {
+    altitudeFt: number;
+    basis: 'gnss' | 'vorWithin22Nm';
+    cautions: string[];
+    vors?: string[];
+}
+
+// @public
 export function checkRouteAltitudes(route: ParsedRoute, options: RouteAltitudeCheckOptions): RouteAltitudeCheckResult;
 
 // @public
@@ -192,7 +200,7 @@ export interface RouteAltitudeFinding {
 }
 
 // @public
-export type RouteAltitudeFindingCode = 'belowMea' | 'aboveMaa' | 'belowMca' | 'belowMra' | 'mcaNotApplicable' | 'unusableSegment' | 'acrossGap' | 'noAltitude' | 'noPublishedMea' | 'noMeaForEquipment' | 'noPublishedCourse' | 'airwayDirectionUnknown' | 'notOnAirway';
+export type RouteAltitudeFindingCode = 'belowMea' | 'belowMoca' | 'mocaAllowance' | 'mocaBeyondVorRange' | 'aboveMaa' | 'belowMca' | 'belowMra' | 'mcaNotApplicable' | 'unusableSegment' | 'acrossGap' | 'noAltitude' | 'noPublishedMea' | 'noMeaForEquipment' | 'noPublishedCourse' | 'airwayDirectionUnknown' | 'notOnAirway';
 
 // @public
 export type RouteAltitudeFindingKind = 'fail' | 'notDeterminable' | 'info';
@@ -202,11 +210,13 @@ export interface RouteAltitudeLeg {
     airway?: string;
     altitudeFt?: number;
     altitudeSource?: RouteAltitudeSource;
+    belowMeaAllowance?: BelowMeaAllowance;
     cruisingAltitude: CruisingAltitudeCheck;
     findings: RouteAltitudeFinding[];
     from: string;
     maximumAuthorizedAltitudeFt?: number;
     minimumEnrouteAltitude?: ApplicableMinimumEnrouteAltitude;
+    minimumObstructionClearanceAltitudeFt?: number;
     status: RouteAltitudeStatus;
     to: string;
 }

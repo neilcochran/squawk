@@ -1873,6 +1873,43 @@ describe('flightplan tools', () => {
     }
   });
 
+  it('check_route_altitudes allows the MOCA within 22 NM of the VOR navigated by', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      // V1 CRG-LLIPS publishes a 4000 ft MEA and a 2100 ft MOCA, and stays near CRG.
+      const result = await client.callTool({
+        name: 'check_route_altitudes',
+        arguments: { routeString: 'CRG V1 LLIPS', altitudeFt: 2100, equipment: ['conventional'] },
+      });
+      const parsed = z
+        .object({
+          result: z
+            .object({
+              status: z.string(),
+              legs: z.array(
+                z
+                  .object({
+                    status: z.string(),
+                    minimumObstructionClearanceAltitudeFt: z.number(),
+                    belowMeaAllowance: z
+                      .object({ basis: z.string(), vors: z.array(z.string()) })
+                      .passthrough(),
+                  })
+                  .passthrough(),
+              ),
+            })
+            .passthrough(),
+        })
+        .parse(result.structuredContent);
+      const leg = parsed.result.legs[0]!;
+      expect(leg.status).toBe('pass');
+      expect(leg.minimumObstructionClearanceAltitudeFt).toBe(2100);
+      expect(leg.belowMeaAllowance).toMatchObject({ basis: 'vorWithin22Nm', vors: ['CRG'] });
+    } finally {
+      await close();
+    }
+  });
+
   it('check_route_altitudes reports noAltitude when no altitude is known', async () => {
     const { client, close } = await connectTestClient();
     try {
