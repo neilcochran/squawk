@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.16.1"]
+      "args": ["-y", "@squawk/mcp@0.16.2"]
     }
   }
 }
@@ -172,7 +172,7 @@ Pinning works the same way:
         "-p",
         "@squawk/icao-registry-data@0.8.12",
         "-p",
-        "@squawk/mcp@0.16.1",
+        "@squawk/mcp@0.16.2",
         "squawk-mcp"
       ]
     }
@@ -363,13 +363,13 @@ lookup so sessions that never need it do not pay the cost.
 
 ### Flight plans (`@squawk/flightplan`)
 
-| Tool                     | Purpose                                                                                                                                                   |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `parse_flightplan_route` | Parse an ICAO Item 15 route into structured route elements                                                                                                |
-| `compute_route_distance` | Total great-circle route distance with optional ETE                                                                                                       |
-| `get_route_geometry`     | Ordered drawable points and a GeoJSON LineString                                                                                                          |
-| `get_route_timing`       | Per-leg wind-corrected timing, ETE, and fuel/endurance                                                                                                    |
-| `check_route_altitudes`  | Check a cruise altitude against airway MEAs, MAAs, MCAs and MRAs for the equipment aboard, and against the cruising altitudes for the direction of flight |
+| Tool                     | Purpose                                                                                                                                                          |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parse_flightplan_route` | Parse an ICAO Item 15 route into structured route elements                                                                                                       |
+| `compute_route_distance` | Total great-circle route distance with optional ETE                                                                                                              |
+| `get_route_geometry`     | Ordered drawable points and a GeoJSON LineString                                                                                                                 |
+| `get_route_timing`       | Per-leg wind-corrected timing, ETE, and fuel/endurance                                                                                                           |
+| `check_route_altitudes`  | Check a cruise altitude against airway MEAs, MOCAs, MAAs, MCAs and MRAs for the equipment aboard, and against the cruising altitudes for the direction of flight |
 
 ### Flight computer (`@squawk/flight-math`)
 

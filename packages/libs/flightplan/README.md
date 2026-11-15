@@ -180,17 +180,16 @@ measured as great circles instead of with the published segment distances.
 
 Parsing, distance and timing describe the route as filed and do not apply
 altitudes or constraints. `checkRouteAltitudes` (below) compares a cruise
-altitude with the airway MEAs, MAAs, minimum crossing altitudes and minimum
-reception altitudes, and with the cruising altitudes for the direction of
-flight; beyond that:
+altitude with the airway MEAs, MOCAs, MAAs, minimum crossing altitudes and
+minimum reception altitudes, and with the cruising altitudes for the direction
+of flight; beyond that:
 
-- The MOCA is carried on the airway waypoints as published but is not used, so
-  flight below the MEA down to the MOCA is reported as below the MEA.
 - Procedure legs keep their altitude and speed constraints, path terminators,
   holds and arc data as published. Distance and geometry use only the legs that
   end at a fix, joined by straight lines.
-- Airway changeover points, signal gaps and the US-airspace-only flag are
-  returned as published and do not affect the route.
+- Signal gaps and the US-airspace-only flag are returned as published and do
+  not affect the route. Changeover points are used only to pick the VOR a leg
+  is navigated by when checking flight below the MEA.
 
 ### Procedure handling
 
@@ -377,6 +376,25 @@ fix), or both ways when the two published values are equal. A point is crossed
 at the altitude of the leg arriving at it, so a group attached to a point takes
 effect after it.
 
+**Below the MEA, down to the MOCA:** a leg below its applicable MEA but at or
+above the segment's minimum obstruction clearance altitude (MOCA) passes, with a
+`belowMeaAllowance` naming the basis, when either:
+
+- the equipment includes `gnss`, which may use the MOCA anywhere on the segment;
+  or
+- the equipment includes `conventional` and every point of the leg is within 22
+  NM of the VOR it is navigated by: the nearest VOR, VOR/DME, VORTAC or TACAN
+  along the airway behind and ahead of the leg (not across a published gap),
+  switching at the changeover point the VOR publishes, or midway between them
+  otherwise.
+
+This follows 14 CFR 91.177(a)(2)(ii) and FAA Order JO 7110.65 4-5-6a, and the
+allowance carries their cautions: communications are not assured below the MEA,
+and on a radio or navigation failure the pilot climbs to the MEA. `dmeDmeIru`
+alone has no allowance. Below the MOCA a leg fails for any equipment. The 300 ft
+margin above the floor of controlled airspace and clearance below the MEA with
+radar service are not checked.
+
 **Cruising altitude for the direction of flight:** each leg's `cruisingAltitude`
 says whether its altitude is `appropriate` or `inappropriate` under the
 east/west rule of 14 CFR 91.179(b), and names the nearest cruising altitudes
@@ -395,7 +413,7 @@ controlled airspace, and some routes publish altitudes against the rule.
 **Returns:** `RouteAltitudeCheckResult` with:
 
 - `status` - `pass`, `fail` or `notDeterminable`, the worst across all legs and points; or `noAltitude`, with nothing else, when neither the options nor the route give an altitude
-- `legs` - ordered `RouteAltitudeLeg` values, each with `from`/`to`, the `airway` it runs along, `altitudeFt` and its `altitudeSource` (`input`, or the route group's `raw` and `fromPoint`), `status`, `findings`, the applied `minimumEnrouteAltitude` (value, MEA kind, direction, and whether it is published or the GNSS FL180 default), the `maximumAuthorizedAltitudeFt`, and the advisory `cruisingAltitude` (`status`, `message`, `magneticCourseDeg`, `courseSource` of `published` or `computed`, and `direction` of `eastbound` or `westbound`)
+- `legs` - ordered `RouteAltitudeLeg` values, each with `from`/`to`, the `airway` it runs along, `altitudeFt` and its `altitudeSource` (`input`, or the route group's `raw` and `fromPoint`), `status`, `findings`, the applied `minimumEnrouteAltitude` (value, MEA kind, direction, and whether it is published or the GNSS FL180 default), the `maximumAuthorizedAltitudeFt`, the `minimumObstructionClearanceAltitudeFt`, the `belowMeaAllowance` (`basis` of `gnss` or `vorWithin22Nm`, the MOCA as `altitudeFt`, the `vors` navigated by, and `cautions`) when the leg may be flown below its MEA, and the advisory `cruisingAltitude` (`status`, `message`, `magneticCourseDeg`, `courseSource` of `published` or `computed`, and `direction` of `eastbound` or `westbound`)
 - `points` - ordered `RouteAltitudePoint` values, each with `label`, `lat`/`lon`, the crossing `altitudeFt`, `status`, `findings`, the applicable `minimumCrossingAltitude`, the `minimumReceptionAltitudeFt` and the point's FAA `remarks`
 - `airwayRemarks` - the FAA remarks of each airway flown that publishes any, once per airway
 
@@ -403,21 +421,24 @@ Each finding has a `code`, a `kind` and a `message`. A `fail` finding makes its
 leg or point `fail`; otherwise a `notDeterminable` finding makes it
 `notDeterminable`; an `info` finding leaves the status as it is.
 
-| Code                     | Kind              | Meaning                                                                            |
-| ------------------------ | ----------------- | ---------------------------------------------------------------------------------- |
-| `belowMea`               | `fail`            | Below the applicable MEA                                                           |
-| `aboveMaa`               | `fail`            | Above the MAA                                                                      |
-| `belowMca`               | `fail`            | Point crossed below the MCA for the direction flown                                |
-| `belowMra`               | `fail` or `info`  | Point crossed below the MRA; `fail` only when the equipment is conventional alone  |
-| `unusableSegment`        | `fail`            | The FAA marks the airway segment unusable                                          |
-| `acrossGap`              | `fail`            | The leg spans a published gap in its airway                                        |
-| `mcaNotApplicable`       | `info`            | The point's MCA direction matches neither direction of travel, so it is not used   |
-| `noAltitude`             | `notDeterminable` | No altitude is known for the leg or point                                          |
-| `noPublishedMea`         | `notDeterminable` | The airway segment publishes no MEA                                                |
-| `noMeaForEquipment`      | `notDeterminable` | The segment publishes no MEA usable with the equipment                             |
-| `noPublishedCourse`      | `notDeterminable` | A directional value needs the segment's course, which is not published             |
-| `airwayDirectionUnknown` | `notDeterminable` | The airway lookup did not report which way the airway is flown                     |
-| `notOnAirway`            | `notDeterminable` | Direct, coordinate and procedure legs, where no published enroute altitude applies |
+| Code                     | Kind              | Meaning                                                                                                        |
+| ------------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `belowMea`               | `fail`            | Below the applicable MEA, with no MOCA the equipment may use                                                   |
+| `belowMoca`              | `fail`            | Below the applicable MEA and the MOCA                                                                          |
+| `mocaBeyondVorRange`     | `fail`            | Below the MEA and at or above the MOCA, but beyond 22 NM of the VOR navigated by, or with no VOR on the airway |
+| `mocaAllowance`          | `info`            | Below the MEA but at or above the MOCA, which the equipment may use (see `belowMeaAllowance`)                  |
+| `aboveMaa`               | `fail`            | Above the MAA                                                                                                  |
+| `belowMca`               | `fail`            | Point crossed below the MCA for the direction flown                                                            |
+| `belowMra`               | `fail` or `info`  | Point crossed below the MRA; `fail` only when the equipment is conventional alone                              |
+| `unusableSegment`        | `fail`            | The FAA marks the airway segment unusable                                                                      |
+| `acrossGap`              | `fail`            | The leg spans a published gap in its airway                                                                    |
+| `mcaNotApplicable`       | `info`            | The point's MCA direction matches neither direction of travel, so it is not used                               |
+| `noAltitude`             | `notDeterminable` | No altitude is known for the leg or point                                                                      |
+| `noPublishedMea`         | `notDeterminable` | The airway segment publishes no MEA                                                                            |
+| `noMeaForEquipment`      | `notDeterminable` | The segment publishes no MEA usable with the equipment                                                         |
+| `noPublishedCourse`      | `notDeterminable` | A directional value needs the segment's course, which is not published                                         |
+| `airwayDirectionUnknown` | `notDeterminable` | The airway lookup did not report which way the airway is flown                                                 |
+| `notOnAirway`            | `notDeterminable` | Direct, coordinate and procedure legs, where no published enroute altitude applies                             |
 
 ### `extractRoutePoints(route)`
 
