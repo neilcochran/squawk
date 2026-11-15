@@ -1775,6 +1775,94 @@ describe('flightplan tools', () => {
       await close();
     }
   });
+  it('check_route_altitudes picks the MEA for the direction flown and the equipment', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      // V190 PEAKS-TEDDI publishes 10000 W BND / 13000 E BND conventional and an 11000 GNSS MEA.
+      const result = await client.callTool({
+        name: 'check_route_altitudes',
+        arguments: {
+          routeString: 'PEAKS V190 TEDDI',
+          altitudeFt: 11500,
+          equipment: ['conventional'],
+        },
+      });
+      const schema = z.object({
+        result: z
+          .object({
+            status: z.string(),
+            legs: z.array(
+              z
+                .object({
+                  airway: z.string(),
+                  status: z.string(),
+                  findings: z.array(z.object({ code: z.string() }).passthrough()),
+                  minimumEnrouteAltitude: z
+                    .object({ altitudeFt: z.number(), kind: z.string() })
+                    .passthrough(),
+                })
+                .passthrough(),
+            ),
+          })
+          .passthrough(),
+      });
+      const conventional = schema.parse(result.structuredContent);
+      expect(conventional.result.status).toBe('fail');
+      expect(conventional.result.legs[0]!.airway).toBe('V190');
+      expect(conventional.result.legs[0]!.minimumEnrouteAltitude.altitudeFt).toBe(13000);
+      expect(conventional.result.legs[0]!.findings.map((finding) => finding.code)).toEqual([
+        'belowMea',
+      ]);
+
+      const gnss = schema.parse(
+        (
+          await client.callTool({
+            name: 'check_route_altitudes',
+            arguments: { routeString: 'PEAKS V190 TEDDI', altitudeFt: 11500, equipment: ['gnss'] },
+          })
+        ).structuredContent,
+      );
+      expect(gnss.result.status).toBe('pass');
+      expect(gnss.result.legs[0]!.minimumEnrouteAltitude).toMatchObject({
+        altitudeFt: 11000,
+        kind: 'gnss',
+      });
+    } finally {
+      await close();
+    }
+  });
+
+  it('check_route_altitudes reports noAltitude when no altitude is known', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'check_route_altitudes',
+        arguments: { routeString: 'PEAKS V190 TEDDI', equipment: ['gnss'] },
+      });
+      const parsed = z
+        .object({
+          result: z.object({ status: z.string(), legs: z.array(z.unknown()) }).passthrough(),
+        })
+        .parse(result.structuredContent);
+      expect(parsed.result.status).toBe('noAltitude');
+      expect(parsed.result.legs).toEqual([]);
+    } finally {
+      await close();
+    }
+  });
+
+  it('check_route_altitudes rejects an empty equipment list', async () => {
+    const { client, close } = await connectTestClient();
+    try {
+      const result = await client.callTool({
+        name: 'check_route_altitudes',
+        arguments: { routeString: 'PEAKS V190 TEDDI', altitudeFt: 11500, equipment: [] },
+      });
+      expect(result.isError).toBe(true);
+    } finally {
+      await close();
+    }
+  });
 });
 
 describe('weather parsing tools', () => {

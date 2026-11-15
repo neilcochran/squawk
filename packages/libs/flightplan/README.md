@@ -178,13 +178,14 @@ measured as great circles instead of with the published segment distances.
 
 ### What the resolver does not check
 
-Parsing, distance and timing describe the route as filed. Nothing in this
-package validates altitudes or applies constraints:
+Parsing, distance and timing describe the route as filed and do not apply
+altitudes or constraints. `checkRouteAltitudes` (below) compares a cruise
+altitude with the airway MEAs, MAAs, minimum crossing altitudes and minimum
+reception altitudes; beyond that:
 
-- Airway altitudes (MEA, MAA, MOCA, the GNSS and DME/DME/IRU MEAs, minimum
-  crossing altitudes, and their directions) are carried on the airway waypoints
-  as published. A cruise altitude in a speed/altitude group is not compared
-  with them, and no altitude is chosen for the direction of flight.
+- The MOCA is carried on the airway waypoints as published but is not used, so
+  flight below the MEA down to the MOCA is reported as below the MEA. No
+  altitude is checked for the direction of flight.
 - Procedure legs keep their altitude and speed constraints, path terminators,
   holds and arc data as published. Distance and geometry use only the legs that
   end at a fix, joined by straight lines.
@@ -326,6 +327,81 @@ Ground speed comes from the wind triangle as a magnitude, so a leg is left
 untimed (`eteHrs` is `undefined`) only when ground speed is not positive, which
 occurs where a pure headwind equals true airspeed. A headwind exceeding true
 airspeed still yields a positive magnitude and is not separately flagged.
+
+### `checkRouteAltitudes(route, options)`
+
+Checks the altitude flown on each airway leg against the published minimum
+enroute altitude (MEA) for the direction flown and the aircraft's navigation
+equipment, and against the maximum authorized altitude (MAA), and checks each
+airway fix against its minimum crossing altitude (MCA) and minimum reception
+altitude (MRA). Legs and points line up one-for-one with `computeRouteDistance`
+legs and `extractRoutePoints` points.
+
+```typescript
+import { checkRouteAltitudes } from '@squawk/flightplan';
+
+const route = resolver.parse('KSEA DCT SEA J70 GEP DCT KJFK');
+const result = checkRouteAltitudes(route, { altitudeFt: 35000, equipment: ['gnss'] });
+console.log(result.status);
+for (const leg of result.legs) {
+  console.log(
+    leg.from,
+    leg.to,
+    leg.status,
+    leg.findings.map((finding) => finding.message),
+  );
+}
+```
+
+**Parameters:**
+
+- `route` - a `ParsedRoute` from `resolver.parse`
+- `options.altitudeFt` - optional cruise altitude in feet. It replaces the route's opening speed/altitude group; a group attached to a later point (`ENE/N0450F370`) still changes the altitude from that point onward. Omit it to use the route's own groups. A flight level counts as hundreds of feet (FL350 is 35000).
+- `options.equipment` - the navigation equipment aboard, at least one of `'conventional'`, `'gnss'` and `'dmeDmeIru'`
+
+**Which MEA applies:** the lowest one usable with any of the equipment, for the
+direction flown.
+
+- `conventional` uses the conventional MEA.
+- `gnss` uses the GNSS MEA where one is published and the conventional MEA
+  otherwise, since a GNSS MEA is published only where it is lower. On US Jet
+  and Q route segments that publish an MEA but no GNSS MEA, FL180 also applies,
+  as the GNSS MEA on high altitude routes is FL180 unless published higher.
+- `dmeDmeIru` uses only the DME/DME/IRU MEA.
+
+Where an MEA differs by direction, the published direction closest to the
+leg's magnetic course applies. An MCA applies when its direction is within
+67.5 degrees of the course leaving the fix (or arriving at the airway's last
+fix), or both ways when the two published values are equal. A point is crossed
+at the altitude of the leg arriving at it, so a group attached to a point takes
+effect after it.
+
+**Returns:** `RouteAltitudeCheckResult` with:
+
+- `status` - `pass`, `fail` or `notDeterminable`, the worst across all legs and points; or `noAltitude`, with nothing else, when neither the options nor the route give an altitude
+- `legs` - ordered `RouteAltitudeLeg` values, each with `from`/`to`, the `airway` it runs along, `altitudeFt` and its `altitudeSource` (`input`, or the route group's `raw` and `fromPoint`), `status`, `findings`, the applied `minimumEnrouteAltitude` (value, MEA kind, direction, and whether it is published or the GNSS FL180 default) and the `maximumAuthorizedAltitudeFt`
+- `points` - ordered `RouteAltitudePoint` values, each with `label`, `lat`/`lon`, the crossing `altitudeFt`, `status`, `findings`, the applicable `minimumCrossingAltitude`, the `minimumReceptionAltitudeFt` and the point's FAA `remarks`
+- `airwayRemarks` - the FAA remarks of each airway flown that publishes any, once per airway
+
+Each finding has a `code`, a `kind` and a `message`. A `fail` finding makes its
+leg or point `fail`; otherwise a `notDeterminable` finding makes it
+`notDeterminable`; an `info` finding leaves the status as it is.
+
+| Code                     | Kind              | Meaning                                                                            |
+| ------------------------ | ----------------- | ---------------------------------------------------------------------------------- |
+| `belowMea`               | `fail`            | Below the applicable MEA                                                           |
+| `aboveMaa`               | `fail`            | Above the MAA                                                                      |
+| `belowMca`               | `fail`            | Point crossed below the MCA for the direction flown                                |
+| `belowMra`               | `fail` or `info`  | Point crossed below the MRA; `fail` only when the equipment is conventional alone  |
+| `unusableSegment`        | `fail`            | The FAA marks the airway segment unusable                                          |
+| `acrossGap`              | `fail`            | The leg spans a published gap in its airway                                        |
+| `mcaNotApplicable`       | `info`            | The point's MCA direction matches neither direction of travel, so it is not used   |
+| `noAltitude`             | `notDeterminable` | No altitude is known for the leg or point                                          |
+| `noPublishedMea`         | `notDeterminable` | The airway segment publishes no MEA                                                |
+| `noMeaForEquipment`      | `notDeterminable` | The segment publishes no MEA usable with the equipment                             |
+| `noPublishedCourse`      | `notDeterminable` | A directional value needs the segment's course, which is not published             |
+| `airwayDirectionUnknown` | `notDeterminable` | The airway lookup did not report which way the airway is flown                     |
+| `notOnAirway`            | `notDeterminable` | Direct, coordinate and procedure legs, where no published enroute altitude applies |
 
 ### `extractRoutePoints(route)`
 

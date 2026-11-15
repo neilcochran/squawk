@@ -98,7 +98,7 @@ version explicitly in the client config:
   "mcpServers": {
     "squawk": {
       "command": "npx",
-      "args": ["-y", "@squawk/mcp@0.15.5"]
+      "args": ["-y", "@squawk/mcp@0.16.0"]
     }
   }
 }
@@ -172,7 +172,7 @@ Pinning works the same way:
         "-p",
         "@squawk/icao-registry-data@0.8.12",
         "-p",
-        "@squawk/mcp@0.15.5",
+        "@squawk/mcp@0.16.0",
         "squawk-mcp"
       ]
     }
@@ -363,12 +363,13 @@ lookup so sessions that never need it do not pay the cost.
 
 ### Flight plans (`@squawk/flightplan`)
 
-| Tool                     | Purpose                                                    |
-| ------------------------ | ---------------------------------------------------------- |
-| `parse_flightplan_route` | Parse an ICAO Item 15 route into structured route elements |
-| `compute_route_distance` | Total great-circle route distance with optional ETE        |
-| `get_route_geometry`     | Ordered drawable points and a GeoJSON LineString           |
-| `get_route_timing`       | Per-leg wind-corrected timing, ETE, and fuel/endurance     |
+| Tool                     | Purpose                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| `parse_flightplan_route` | Parse an ICAO Item 15 route into structured route elements                                |
+| `compute_route_distance` | Total great-circle route distance with optional ETE                                       |
+| `get_route_geometry`     | Ordered drawable points and a GeoJSON LineString                                          |
+| `get_route_timing`       | Per-leg wind-corrected timing, ETE, and fuel/endurance                                    |
+| `check_route_altitudes`  | Check a cruise altitude against airway MEAs, MAAs, MCAs and MRAs for the equipment aboard |
 
 ### Flight computer (`@squawk/flight-math`)
 
@@ -419,7 +420,7 @@ left to the model itself.
 
 ### Choosing which tools to register
 
-The full catalog is 79 tools, which costs roughly 18k tokens of context in every session
+The full catalog is 80 tools, which costs roughly 18k tokens of context in every session
 before you ask anything. If you only reach for part of it, register only that part and the
 rest never reaches your client.
 
@@ -440,7 +441,7 @@ registered.
 | `icao-registry` |     1 |     250 |
 | `weather`       |    12 |   2,100 |
 | `notams`        |     2 |     300 |
-| `flightplan`    |     4 |   1,400 |
+| `flightplan`    |     5 |   1,800 |
 | `datasets`      |     1 |     180 |
 
 A VFR pilot who wants airport, navaid, and fix lookups plus a distance calculator:
@@ -457,8 +458,8 @@ A VFR pilot who wants airport, navaid, and fix lookups plus a distance calculato
 }
 ```
 
-That registers 18 tools for roughly 4.3k tokens, down from 79 and 18k. Dropping just
-`flight-math` and `weather` - the two largest groups - takes the catalog to 43 tools and
+That registers 18 tools for roughly 4.3k tokens, down from 80 and 18k. Dropping just
+`flight-math` and `weather` - the two largest groups - takes the catalog to 44 tools and
 roughly 11k tokens while leaving every lookup tool in place.
 
 Names are case-insensitive and whitespace around them is ignored. The server refuses to

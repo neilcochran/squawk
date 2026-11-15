@@ -11,7 +11,12 @@
 
 import type { LineString } from 'geojson';
 
-import type { ParsedRoute, RouteElement } from './resolver.js';
+import type {
+  AirwayRouteElement,
+  ParsedRoute,
+  RouteElement,
+  SpeedAltitudeRouteElement,
+} from './resolver.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -67,6 +72,35 @@ export interface GeoPoint {
    * route to, a SID or STAR filed at an airport no adaptation of it serves.
    */
   procedureMismatchToNext?: true;
+  /**
+   * The airway segment the leg from this point to the next runs along: the
+   * airway element and the index of the expansion waypoint that starts the
+   * segment. Absent when the leg is not an airway segment.
+   */
+  airwaySegmentToNext?: AirwayPosition;
+  /**
+   * Every airway waypoint record that lands on this point: one normally, two
+   * where one airway's exit fix is the next airway's entry fix.
+   */
+  airwayFixes?: AirwayPosition[];
+  /**
+   * Speed/altitude groups that take effect at this point, in route order: an
+   * attached group follows the element that resolved its point, and a later
+   * standalone group applies from the last point before it.
+   */
+  speedAltitudeChanges?: SpeedAltitudeRouteElement[];
+}
+
+/**
+ * A position within an airway element's expansion.
+ *
+ * @internal
+ */
+export interface AirwayPosition {
+  /** The airway element. */
+  element: AirwayRouteElement;
+  /** Index into the element's `waypoints`. */
+  index: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,20 +129,25 @@ function samePosition(a: GeoPoint, b: GeoPoint): boolean {
  * points. Duplicate consecutive points (e.g. an airway entry fix at the same
  * position as the preceding waypoint, within about a metre) are suppressed.
  *
- * Also collects all `unresolved` elements encountered during the walk.
+ * Also collects all `unresolved` elements encountered during the walk, and
+ * the speed/altitude groups that come before the first point (the route's
+ * opening cruise speed and level).
  *
  * Internal to the package: `extractRoutePoints` and `routeToLineString`
- * project this into public shapes, and `computeRouteDistance` consumes the
- * precomputed segment distances directly.
+ * project this into public shapes, `computeRouteDistance` consumes the
+ * precomputed segment distances directly, and `checkRouteAltitudes` reads
+ * the airway and speed/altitude context.
  *
  * @internal
  */
 export function extractGeoPoints(elements: RouteElement[]): {
   points: GeoPoint[];
   unresolvedElements: RouteElement[];
+  leadingSpeedAltitudes: SpeedAltitudeRouteElement[];
 } {
   const points: GeoPoint[] = [];
   const unresolvedElements: RouteElement[] = [];
+  const leadingSpeedAltitudes: SpeedAltitudeRouteElement[] = [];
 
   function emit(point: GeoPoint): void {
     if (points.length > 0 && samePosition(points[points.length - 1]!, point)) {
@@ -133,6 +172,12 @@ export function extractGeoPoints(elements: RouteElement[]): {
       }
       if (point.procedureMismatchToNext) {
         last.procedureMismatchToNext = true;
+      }
+      if (point.airwaySegmentToNext !== undefined && last.airwaySegmentToNext === undefined) {
+        last.airwaySegmentToNext = point.airwaySegmentToNext;
+      }
+      if (point.airwayFixes !== undefined) {
+        last.airwayFixes = [...(last.airwayFixes ?? []), ...point.airwayFixes];
       }
       return;
     }
@@ -163,7 +208,11 @@ export function extractGeoPoints(elements: RouteElement[]): {
             label: wp.identifier ?? wp.name,
             lat: wp.lat,
             lon: wp.lon,
+            airwayFixes: [{ element: el, index: i }],
           };
+          if (!isLast) {
+            point.airwaySegmentToNext = { element: el, index: i };
+          }
           // The published distance of the leg to the next waypoint sits on
           // whichever of the two starts the segment in the airway's published
           // order: this waypoint when the airway is flown forward, the next one
@@ -219,15 +268,23 @@ export function extractGeoPoints(elements: RouteElement[]): {
         unresolvedElements.push(el);
         break;
 
-      // 'direct' and 'speedAltitude' are expected non-geographic markers
-      // and are silently skipped.
+      case 'speedAltitude': {
+        const last = points[points.length - 1];
+        if (last === undefined) {
+          leadingSpeedAltitudes.push(el);
+        } else {
+          last.speedAltitudeChanges = [...(last.speedAltitudeChanges ?? []), el];
+        }
+        break;
+      }
+
+      // 'direct' is an expected non-geographic marker and is silently skipped.
       case 'direct':
-      case 'speedAltitude':
         break;
     }
   }
 
-  return { points, unresolvedElements };
+  return { points, unresolvedElements, leadingSpeedAltitudes };
 }
 
 // ---------------------------------------------------------------------------
