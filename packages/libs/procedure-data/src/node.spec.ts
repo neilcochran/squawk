@@ -383,7 +383,10 @@ describe('usBundledProcedures', () => {
     assert(rfCount > 0, 'expected some RF legs in the dataset');
   });
 
-  it('altitude constraints are non-negative and plausible (under FL500)', () => {
+  it('altitude constraints are plausible (above -300 ft and under FL500)', () => {
+    // Approaches to airports below sea level (KTRM, KIPL, KBWC, KCLR in the
+    // Imperial and Coachella valleys) publish negative at-altitudes at the
+    // runway or missed approach point; the lowest US airport is about -210 ft.
     let checked = 0;
     for (const p of usBundledProcedures.records) {
       const allLegs = [
@@ -397,15 +400,15 @@ describe('usBundledProcedures', () => {
         }
         checked += 1;
         assert(
-          leg.altitudeConstraint.primaryFt >= 0,
-          `altitude below MSL: ${leg.altitudeConstraint.primaryFt}`,
+          leg.altitudeConstraint.primaryFt >= -300,
+          `altitude below -300 ft: ${leg.altitudeConstraint.primaryFt}`,
         );
         assert(
           leg.altitudeConstraint.primaryFt <= 50_000,
           `altitude above FL500: ${leg.altitudeConstraint.primaryFt}`,
         );
         if (leg.altitudeConstraint.secondaryFt !== undefined) {
-          assert(leg.altitudeConstraint.secondaryFt >= 0);
+          assert(leg.altitudeConstraint.secondaryFt >= -300);
           assert(leg.altitudeConstraint.secondaryFt <= 50_000);
         }
       }
@@ -560,6 +563,22 @@ describe('usBundledProcedures', () => {
       starMandatory > starMaximum,
       `expected STAR speed restrictions to be mostly mandatory: @ ${starMandatory}, - ${starMaximum}`,
     );
+  });
+
+  it('carries mandatory (@) altitude constraints on SIDs, STARs and IAPs', () => {
+    const counts = { SID: 0, STAR: 0, IAP: 0 };
+    for (const p of usBundledProcedures.records) {
+      for (const leg of legSequences(p).flat()) {
+        if (leg.altitudeConstraint?.descriptor === '@') {
+          counts[p.type] += 1;
+        }
+      }
+    }
+    const total = counts.SID + counts.STAR + counts.IAP;
+    assert(total > 10_000, `expected many mandatory altitudes, got ${total}`);
+    assert(counts.SID > 0, 'expected some mandatory SID altitudes');
+    assert(counts.STAR > 1000, `expected many mandatory STAR altitudes, got ${counts.STAR}`);
+    assert(counts.IAP > 1000, `expected many mandatory IAP altitudes, got ${counts.IAP}`);
   });
 
   it('gives every IAP at an airport a distinct name', () => {

@@ -182,3 +182,6 @@ this dataset.
   preceding CIFP cycle.
 - Nine `+` altitude constraints carry a second altitude that the descriptor
   does not use. It comes from the source data unchanged.
+- Constraint altitudes are feet MSL and can be negative: approaches to the four
+  airports below sea level in the Imperial and Coachella valleys (`KBWC`,
+  `KCLR`, `KIPL`, `KTRM`) publish at-altitudes from -54 to -145 ft.

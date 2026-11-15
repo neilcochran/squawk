@@ -649,17 +649,17 @@ function parseAltitudeFt(raw: string): number | undefined {
 
 /**
  * Parses a leg altitude constraint from its descriptor character and
- * the two 5-character altitude slices.
+ * the two 5-character altitude slices. A leg without a primary altitude
+ * produces `undefined`. ARINC 424 field 5.29 codes an "at" altitude
+ * with a blank descriptor, which is how the CIFP publishes every
+ * mandatory altitude, so a blank descriptor is normalized to `@`.
  */
 function parseAltitudeConstraint(
   descriptorRaw: string,
   primaryRaw: string,
   secondaryRaw: string,
 ): AltitudeConstraint | undefined {
-  const descriptor = descriptorRaw;
-  if (descriptor === ' ' || descriptor === '') {
-    return undefined;
-  }
+  const descriptor = descriptorRaw === ' ' || descriptorRaw === '' ? '@' : descriptorRaw;
   if (!VALID_ALTITUDE_DESCRIPTORS.has(descriptor as AltitudeConstraintDescriptor)) {
     return undefined;
   }

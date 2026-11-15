@@ -111,7 +111,7 @@ export type ProcedureLegPathTerminator =
 /**
  * CIFP altitude constraint descriptor (ARINC 424 field 5.29).
  *
- * - `@` - Cross exactly at the altitude.
+ * - `@` - Cross at the altitude (mandatory). ARINC 424 codes this with a blank descriptor, which is how the CIFP publishes it; the blank form is normalized to `@`.
  * - `+` - Cross at or above the altitude.
  * - `-` - Cross at or below the altitude.
  * - `B` - Cross between `primaryFt` and `secondaryFt` (`primaryFt` is the higher altitude).
