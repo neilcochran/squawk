@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@squawk/fix-data": "^0.8.1",
-    "@types/node": "^26.6.5"
+    "@types/node": "^26.6.6"
   },
   "keywords": [
     "aviation",
